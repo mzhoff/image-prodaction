@@ -1,0 +1,158 @@
+.canvas-shell {
+  position: relative;
+  min-height: 0;
+}
+
+.production-canvas {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: var(--canvas-bg);
+  user-select: none;
+}
+
+.canvas-grid {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #d8d8d3 1px, transparent 1px);
+  opacity: 0.75;
+}
+
+.canvas-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+}
+
+.edge-layer {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.edge-path {
+  fill: none;
+  stroke: var(--blue);
+  stroke-linecap: round;
+  stroke-width: 3px;
+}
+
+.edge-path-text {
+  stroke-dasharray: 8 7;
+}
+
+.edge-path-draft {
+  stroke-dasharray: 9 7;
+  opacity: 0.72;
+}
+
+.canvas-toolbar {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 6px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.canvas-toolbar button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #555;
+}
+
+.canvas-toolbar button:hover {
+  background: #f0f0ee;
+  color: #111;
+}
+
+.canvas-toolbar button:disabled {
+  cursor: default;
+  opacity: 0.34;
+}
+
+.canvas-toolbar button:disabled:hover {
+  background: transparent;
+  color: #555;
+}
+
+.zoom-indicator {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #666;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 720;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
+}
+
+.openrouter-balance {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  z-index: 20;
+  display: grid;
+  gap: 5px;
+  min-width: 168px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 12px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.openrouter-balance div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.openrouter-balance span {
+  color: #777;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.openrouter-balance strong {
+  color: #111;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 15px;
+}
+
+.selection-rect {
+  pointer-events: none;
+  position: fixed;
+  z-index: 50;
+  border: 2px solid #4f62ff;
+  background: rgba(79, 98, 255, 0.11);
+}
+
+@media (max-width: 760px) {
+  .canvas-toolbar {
+    left: 12px;
+    top: 12px;
+  }
+}
