@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { GraphEdge, GraphPoint, ProductionNode } from '@/entities/production-graph/model/types';
 import type { PortPointLookup } from '../lib/edge-path';
@@ -25,14 +25,20 @@ export function usePortPointMeasurement({
   zoom,
 }: UsePortPointMeasurementParams) {
   const [measuredPortPoints, setMeasuredPortPoints] = useState<PortPointLookup>({});
+  const viewportRef = useRef({ pan, zoom });
+
+  useLayoutEffect(() => {
+    viewportRef.current = { pan, zoom };
+  }, [pan, zoom]);
 
   const measurePortPoints = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const canvasRect = container.getBoundingClientRect();
+    const viewport = viewportRef.current;
     const next: PortPointLookup = {};
-    const portElements = container.querySelectorAll<HTMLElement>('[data-port-node-id][data-port-id]');
+    const portElements = container.querySelectorAll<HTMLElement>('.node-port[data-port-node-id][data-port-id]');
     portElements.forEach((element) => {
       const nodeId = element.dataset.portNodeId;
       const portId = element.dataset.portId;
@@ -40,13 +46,13 @@ export function usePortPointMeasurement({
 
       const rect = element.getBoundingClientRect();
       next[getPortPointKey(nodeId, portId)] = {
-        x: (rect.left + rect.width / 2 - canvasRect.left - pan.x) / zoom,
-        y: (rect.top + rect.height / 2 - canvasRect.top - pan.y) / zoom,
+        x: (rect.left + rect.width / 2 - canvasRect.left - viewport.pan.x) / viewport.zoom,
+        y: (rect.top + rect.height / 2 - canvasRect.top - viewport.pan.y) / viewport.zoom,
       };
     });
 
     setMeasuredPortPoints((current) => (arePortPointLookupsEqual(current, next) ? current : next));
-  }, [containerRef, pan.x, pan.y, zoom]);
+  }, [containerRef]);
 
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(measurePortPoints);

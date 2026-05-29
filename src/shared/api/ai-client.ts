@@ -1,0 +1,47 @@
+export interface AnalyzeImageRequest {
+  imageDataUrl: string;
+  model: string;
+  prompt: string;
+}
+
+export interface GenerateImageRequest {
+  aspectRatio: string;
+  inputs: Record<string, string[]>;
+  model: string;
+  prompt: string;
+  referenceImages: Array<{
+    dataUrl: string;
+    slots: string[];
+    sourceAssetId?: string;
+  }>;
+  size: string;
+}
+
+export async function requestAnalyzeImage(payload: AnalyzeImageRequest) {
+  const response = await fetch('/api/ai/analyze-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { text?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  return result.text ?? '';
+}
+
+export async function requestGenerateImage(payload: GenerateImageRequest) {
+  const response = await fetch('/api/ai/generate-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
+  return { imageDataUrl: result.imageDataUrl, message: result.message };
+}
+
+export function formatApiError(error: unknown) {
+  if (typeof error === 'string') return error;
+  if (!error) return 'OpenRouter request failed';
+  return JSON.stringify(error).slice(0, 500);
+}

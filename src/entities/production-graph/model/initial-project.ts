@@ -34,6 +34,7 @@ export const initialNodes: ProductionNode[] = [
       title: 'Extract',
       model: 'google/gemini-2.5-flash',
       preset: 'default',
+      presets: ['default'],
       prompt: defaultExtractPrompt,
       result: '',
     },

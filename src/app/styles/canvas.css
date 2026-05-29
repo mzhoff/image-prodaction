@@ -46,16 +46,20 @@
 }
 
 .edge-path-draft {
-  stroke-dasharray: 9 7;
   opacity: 0.72;
+}
+
+.edge-path-draft.edge-path-text {
+  stroke-dasharray: 9 7;
 }
 
 .canvas-toolbar {
   position: absolute;
-  left: 18px;
-  top: 18px;
+  bottom: 18px;
+  left: 50%;
   z-index: 20;
   display: flex;
+  transform: translateX(-50%);
   gap: 6px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
@@ -142,6 +146,25 @@
   line-height: 15px;
 }
 
+.canvas-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  z-index: 60;
+  max-width: min(420px, calc(100% - 36px));
+  transform: translateX(-50%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: rgba(17, 17, 17, 0.9);
+  color: #fff;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(12px);
+}
+
 .selection-rect {
   pointer-events: none;
   position: fixed;
@@ -152,7 +175,7 @@
 
 @media (max-width: 760px) {
   .canvas-toolbar {
-    left: 12px;
-    top: 12px;
+    bottom: 12px;
+    left: 50%;
   }
 }

@@ -11,6 +11,7 @@ interface PortButtonProps {
   kind: string;
   label: string;
   className?: string;
+  connectionState?: 'empty' | 'text' | 'image' | 'mixed';
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
 }
 
@@ -21,12 +22,13 @@ export function PortButton({
   kind,
   label,
   className,
+  connectionState,
   onStartConnection,
 }: PortButtonProps) {
   return (
     <button
       type="button"
-      className={cn('node-port', `node-port-${side}`, `node-port-${kind}`, className)}
+      className={cn('node-port', `node-port-${side}`, `node-port-${kind}`, connectionState && `node-port-state-${connectionState}`, className)}
       data-port-node-id={nodeId}
       data-port-id={portId}
       data-port-side={side}

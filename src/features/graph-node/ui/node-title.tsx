@@ -1,14 +1,18 @@
 'use client';
 
 import { FileInput, ImageIcon, PencilLine, WandSparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 
-export function NodeTitle({ title, muted }: { title: string; muted?: boolean }) {
+export function NodeTitle({ title, muted, action }: { title: string; muted?: boolean; action?: ReactNode }) {
   const Icon = getNodeIcon(title);
   return (
     <h2 className={cn('node-title', muted && 'node-title-muted')}>
-      {Icon ? <Icon size={16} /> : null}
-      <span>{title}</span>
+      <span className="node-title-main">
+        {Icon ? <Icon size={16} /> : null}
+        <span>{title}</span>
+      </span>
+      {action}
     </h2>
   );
 }

@@ -1,24 +1,13 @@
 'use client';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Sparkles } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useMemo } from 'react';
-import type { GenerateImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
-import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
-import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { saveImageAsset } from '@/shared/lib/asset-db';
-import { dataUrlToFile } from '@/shared/lib/image-data-url';
+import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
-import {
-  buildGeneratePayload,
-  formatApiError,
-  generateInputRows,
-  getGenerateInputSummary,
-} from '../../lib/generate-node-inputs';
-import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../../lib/node-select-options';
+import { useGenerateImageNodeModel } from '../../model/use-generate-image-node-model';
+import { generateReferenceRows } from '../../lib/generate-node-inputs';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 import { PortButton } from '../port-button';
@@ -36,94 +25,65 @@ export function GenerateImageNode({
   onComposingOpenChange,
   onStartConnection,
 }: GenerateImageNodeProps) {
-  const data = node.data as GenerateImageNodeData;
-  const edges = useProductionGraphStore((state) => state.edges);
-  const nodes = useProductionGraphStore((state) => state.nodes);
-  const assets = useProductionGraphStore((state) => state.assets);
-  const addAsset = useProductionGraphStore((state) => state.addAsset);
-  const assignAssetToNode = useProductionGraphStore((state) => state.assignAssetToNode);
-  const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
-  const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
-  const updateNodePrompt = useProductionGraphStore((state) => state.updateNodePrompt);
-  const { imageModels, loading } = useOpenRouterModels();
-  const modelOptions = modelSelectOptions(imageModels);
-  const selectedModel = getSelectedModelId(imageModels, data.model, DEFAULT_IMAGE_MODEL);
-  const selectedImageModel = imageModels.find((model) => model.id === selectedModel);
-  const aspectRatios = selectedImageModel?.aspectRatios?.length ? selectedImageModel.aspectRatios : MODEL_FALLBACK_ASPECT_RATIOS;
-  const sizes = selectedImageModel?.sizes?.length ? selectedImageModel.sizes : MODEL_FALLBACK_SIZES;
-  const selectedAspectRatio = aspectRatios.includes(data.aspectRatio) ? data.aspectRatio : aspectRatios[0];
-  const selectedSize = sizes.includes(data.size) ? data.size : sizes[0];
-  const inputSummary = useMemo(() => getGenerateInputSummary(node.id, edges, nodes), [edges, node.id, nodes]);
-
-  const handleModelChange = (model: string) => {
-    const nextModel = imageModels.find((item) => item.id === model);
-    const nextAspectRatios = nextModel?.aspectRatios?.length ? nextModel.aspectRatios : MODEL_FALLBACK_ASPECT_RATIOS;
-    const nextSizes = nextModel?.sizes?.length ? nextModel.sizes : MODEL_FALLBACK_SIZES;
-    updateNodeData(node.id, {
-      model,
-      aspectRatio: nextAspectRatios.includes(data.aspectRatio) ? data.aspectRatio : nextAspectRatios[0],
-      size: nextSizes.includes(data.size) ? data.size : nextSizes[0],
-    });
-  };
-
-  const handleGenerate = async () => {
-    try {
-      setNodeStatus(node.id, 'running');
-      const payload = await buildGeneratePayload(node.id, edges, nodes, assets);
-      const response = await fetch('/api/ai/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, model: selectedModel, aspectRatio: selectedAspectRatio, size: selectedSize, prompt: data.prompt ?? '' }),
-      });
-      const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
-      if (!response.ok) throw new Error(formatApiError(result.error));
-      if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-
-      const file = await dataUrlToFile(result.imageDataUrl, `generated-${Date.now()}.png`);
-      const asset = await saveImageAsset(file);
-      addAsset(asset);
-      assignAssetToNode(node.id, asset.id);
-      updateNodeData(node.id, { model: selectedModel, aspectRatio: selectedAspectRatio, size: selectedSize, message: result.message });
-      setNodeStatus(node.id, 'success');
-    } catch (error) {
-      setNodeStatus(node.id, 'error');
-      window.alert(error instanceof Error ? error.message : 'OpenRouter generation failed');
-    }
-  };
+  const model = useGenerateImageNodeModel({ node, composingOpen, onComposingOpenChange });
 
   return (
     <>
-      <NodeTitle title="Generate Image" muted />
-      <ImagePlate assetId={data.resultAssetId} loading={node.status === 'running'} />
-      <button type="button" className="primary-node-button" onClick={handleGenerate} disabled={node.status === 'running' || loading}>
+      <NodeTitle
+        title="Generate Image"
+        muted
+        action={(
+          <button type="button" className="node-title-action" onClick={model.toggleAllSections} aria-label={model.allSectionsOpen ? 'Collapse all sections' : 'Expand all sections'}>
+            {model.allSectionsOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
+        )}
+      />
+      <ImagePlate assetId={model.data.resultAssetId} aspectRatio={model.selectedAspectRatio} loading={node.status === 'running'} />
+      <button type="button" className="primary-node-button" onClick={model.handleGenerate} disabled={node.status === 'running' || model.loading}>
         {node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}
         Generate
       </button>
-      <div className="node-block">
-        <div className="node-label">Prompt</div>
-        <PromptBox value={data.prompt} onChange={(value) => updateNodePrompt(node.id, value)} />
-      </div>
-      <CollapsibleSection title="Settings">
-        <SettingRow label="Model" value={selectedModel} options={modelOptions} onChange={handleModelChange} wide />
-        <SettingRow label="Aspect Ratio" value={selectedAspectRatio} options={valueSelectOptions(aspectRatios)} onChange={(aspectRatio) => updateNodeData(node.id, { aspectRatio })} />
-        <SettingRow label="Size" value={selectedSize} options={valueSelectOptions(sizes)} onChange={(size) => updateNodeData(node.id, { size })} />
+      <CollapsibleSection
+        title="Prompt"
+        open={model.promptOpen}
+        onOpenChange={model.setPromptOpen}
+        dropTarget={{ nodeId: node.id, portId: 'prompt' }}
+        sidePort={<PortButton nodeId={node.id} portId="prompt" side="input" kind="text" label="Prompt" connectionState={model.promptState} className="node-port-section" onStartConnection={onStartConnection} />}
+      >
+        <PromptBox value={model.data.prompt} onChange={model.handlePromptChange} />
+      </CollapsibleSection>
+      <CollapsibleSection title="Settings" open={model.settingsOpen} onOpenChange={model.setSettingsOpen}>
+        <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
+        <SettingRow label="Aspect Ratio" value={model.selectedAspectRatio} options={model.aspectRatioOptions} onChange={model.handleAspectRatioChange} />
+        <SettingRow label="Size" value={model.selectedSize} options={model.sizeOptions} onChange={model.handleSizeChange} />
       </CollapsibleSection>
       <CollapsibleSection
-        title="Composing"
+        title="Reference"
         className="generate-composing-section"
         open={composingOpen}
         onOpenChange={onComposingOpenChange}
-        sidePort={!composingOpen ? <PortButton nodeId={node.id} portId="composing" side="input" kind="reference" label="Composing" className="node-port-section" onStartConnection={onStartConnection} /> : null}
+        dropTarget={{ nodeId: node.id, portId: 'reference' }}
+        sidePort={<PortButton nodeId={node.id} portId="reference" side="input" kind="image" label="Reference" connectionState={model.referenceState} className="node-port-section" onStartConnection={onStartConnection} />}
       >
-        {generateInputRows.map((row) => (
-          <div className="setting-row composing-row" key={row.id}>
-            <PortButton nodeId={node.id} portId={row.id} side="input" kind="reference" label={row.label} className="node-port-row" onStartConnection={onStartConnection} />
+        {generateReferenceRows.map((row) => {
+          const state = model.getInputState(row.id);
+          return (
+          <div
+            className={`setting-row composing-row ${state !== 'empty' ? 'composing-row-connected' : ''}`}
+            data-port-node-id={node.id}
+            data-port-id={row.id}
+            data-port-side="input"
+            data-connect-row="true"
+            key={row.id}
+          >
+            <PortButton nodeId={node.id} portId={row.id} side="input" kind="reference" label={row.label} connectionState={state} className="node-port-row" onStartConnection={onStartConnection} />
             <span>{row.label}</span>
-            <span className="input-pill">{inputSummary[row.id]}</span>
+            <span className={`input-pill ${state === 'empty' ? 'input-pill-empty' : 'input-pill-connected'}`}>{model.inputSummary[row.id]}</span>
           </div>
-        ))}
+          );
+        })}
       </CollapsibleSection>
-      {data.message ? <div className="node-note node-note-compact">{data.message}</div> : null}
+      {model.data.message ? <div className="node-note node-note-compact">{model.data.message}</div> : null}
     </>
   );
 }

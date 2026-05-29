@@ -6,7 +6,7 @@ export type ConnectResult = { ok: true } | { ok: false; reason: string };
 export interface ProductionGraphState extends GraphProject {
   historyPast: GraphSnapshot[];
   historyFuture: GraphSnapshot[];
-  addNode: (type: ProductionNodeType, position: GraphPoint) => void;
+  addNode: (type: ProductionNodeType, position: GraphPoint) => string;
   addAsset: (asset: AssetRecord) => void;
   assignAssetToNode: (nodeId: string, assetId: string) => void;
   pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string) => void;
@@ -26,5 +26,6 @@ export interface ProductionGraphState extends GraphProject {
   updateNodeData: (nodeId: string, data: Partial<ProductionNodeData>) => void;
   updateNodePrompt: (nodeId: string, prompt: string) => void;
   updateNodeResult: (nodeId: string, result: string) => void;
+  updateTextPrompt: (nodeId: string, text: string) => void;
   upsertRun: (run: RunRecord) => void;
 }
