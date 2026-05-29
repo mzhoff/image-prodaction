@@ -67,9 +67,13 @@ export async function saveImageAsset(file: File): Promise<AssetRecord> {
   };
 }
 
-export async function loadAssetBlob(asset: AssetRecord) {
-  const record = await withAssetStore<StoredAssetBlob | undefined>('readonly', (store) => store.get(asset.storage.blobKey));
+export async function loadAssetBlobByKey(blobKey: string) {
+  const record = await withAssetStore<StoredAssetBlob | undefined>('readonly', (store) => store.get(blobKey));
   return record?.blob ?? null;
+}
+
+export async function loadAssetBlob(asset: AssetRecord) {
+  return loadAssetBlobByKey(asset.storage.blobKey);
 }
 
 export async function deleteAssetBlob(asset: AssetRecord) {

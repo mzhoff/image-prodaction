@@ -45,6 +45,7 @@ export interface ImportImageNodeData extends BaseNodeData {
 export interface ImageToTextNodeData extends BaseNodeData {
   model?: string;
   preset?: ExtractPresetId;
+  presets?: ExtractPresetId[];
   result?: string;
 }
 

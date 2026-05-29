@@ -22,9 +22,14 @@ export function useContextMenu() {
     });
   }, []);
 
+  const openContextMenuAt = useCallback((x: number, y: number, actions: ContextMenuAction[], minWidth?: number) => {
+    setMenu({ x, y, minWidth, actions });
+  }, []);
+
   return {
     menu,
     openContextMenu,
+    openContextMenuAt,
     closeContextMenu,
   };
 }

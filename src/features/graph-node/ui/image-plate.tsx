@@ -10,17 +10,19 @@ import { useAssetUrl } from '@/shared/ui/use-asset-url';
 
 interface ImagePlateProps {
   assetId?: string;
+  aspectRatio?: string;
   compact?: boolean;
   loading?: boolean;
   adaptive?: boolean;
 }
 
-export function ImagePlate({ assetId, compact, loading }: ImagePlateProps) {
+export function ImagePlate({ assetId, aspectRatio, compact, loading }: ImagePlateProps) {
   const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === assetId));
   const url = useAssetUrl(assetId);
   const [viewerOpen, setViewerOpen] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
-  const aspectRatio = asset?.width && asset.height ? `${asset.width} / ${asset.height}` : undefined;
+  const imageAspectRatio = asset?.width && asset.height ? `${asset.width} / ${asset.height}` : undefined;
+  const plateAspectRatio = formatCssAspectRatio(aspectRatio) ?? imageAspectRatio;
 
   const handleDownload = () => {
     if (!url || !asset) return;
@@ -38,11 +40,11 @@ export function ImagePlate({ assetId, compact, loading }: ImagePlateProps) {
         className={cn(
           'image-plate',
           compact && 'image-plate-compact',
-          aspectRatio && 'image-plate-sized',
+          plateAspectRatio && 'image-plate-sized',
           loading && 'image-plate-loading',
           url && 'image-plate-interactive',
         )}
-        style={aspectRatio ? { aspectRatio } : undefined}
+        style={plateAspectRatio ? { aspectRatio: plateAspectRatio } : undefined}
         onDragStart={(event) => event.preventDefault()}
         onPointerDown={(event) => {
           pointerStartRef.current = { x: event.clientX, y: event.clientY };
@@ -108,4 +110,9 @@ export function ImagePlate({ assetId, compact, loading }: ImagePlateProps) {
       ) : null}
     </>
   );
+}
+
+function formatCssAspectRatio(value?: string) {
+  const normalized = value?.trim().replace(':', ' / ');
+  return normalized && /^\d+(?:\.\d+)?\s*\/\s*\d+(?:\.\d+)?$/.test(normalized) ? normalized : undefined;
 }

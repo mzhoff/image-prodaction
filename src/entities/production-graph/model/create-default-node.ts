@@ -19,6 +19,7 @@ export function createDefaultNode(type: ProductionNodeType, position: GraphPoint
         title: 'Extract',
         model: 'google/gemini-2.5-flash',
         preset: 'default',
+        presets: ['default'],
         prompt: defaultExtractPrompt,
       },
     };

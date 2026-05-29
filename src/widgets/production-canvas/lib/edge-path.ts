@@ -3,9 +3,11 @@ import { productionLayers } from '@/entities/production-graph/model/production-l
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
 import { getPortTop } from '@/features/graph-node/ui/port-button';
 
-const PORT_CENTER_OFFSET = 19.5;
-const GENERATE_COMPOSING_GROUP_TOP = 580;
-const generateInputPortIds = new Set<string>(productionLayers.map((layer) => layer.id));
+const PORT_CENTER_OFFSET = 12;
+const PORT_DOT_RADIUS = 4;
+const PORT_CONTAINER_HALF = 8;
+const GENERATE_REFERENCE_GROUP_TOP = 580;
+const generateInputPortIds = new Set<string>(['reference', ...productionLayers.map((layer) => layer.id)]);
 
 export type PortPointLookup = Record<string, { x: number; y: number }>;
 
@@ -25,30 +27,37 @@ export function getNodeBounds(nodes: ProductionNode[]) {
 }
 
 export function getPortPoint(node: ProductionNode, portId: string, measuredPortPoints?: PortPointLookup) {
-  const measured = measuredPortPoints?.[getPortPointKey(node.id, portId)];
-  if (measured) return measured;
-
   const ports = getNodePorts(node);
   const port = ports.find((item) => item.id === portId);
   if (!port) return null;
 
+  const measured = measuredPortPoints?.[getPortPointKey(node.id, portId)];
+  if (measured) return getPortEdgePoint(measured, port.side);
+
   const sidePorts = ports.filter((item) => item.side === port.side);
   const index = sidePorts.findIndex((item) => item.id === portId);
-  const y = node.position.y + getPortTop(node, port.side, Math.max(0, index)) + 4.5;
+  const y = node.position.y + getPortTop(node, port.side, Math.max(0, index)) + PORT_CONTAINER_HALF;
   const x = port.side === 'input'
     ? node.position.x - PORT_CENTER_OFFSET
     : node.position.x + node.size.width + PORT_CENTER_OFFSET;
 
-  return { x, y };
+  return getPortEdgePoint({ x, y }, port.side);
 }
 
 export function getGenerateComposingGroupPoint(node: ProductionNode, measuredPortPoints?: PortPointLookup) {
-  const measured = measuredPortPoints?.[getPortPointKey(node.id, 'composing')];
-  if (measured) return measured;
+  const measured = measuredPortPoints?.[getPortPointKey(node.id, 'reference')];
+  if (measured) return getPortEdgePoint(measured, 'input');
 
-  return {
+  return getPortEdgePoint({
     x: node.position.x - PORT_CENTER_OFFSET,
-    y: node.position.y + GENERATE_COMPOSING_GROUP_TOP + 4.5,
+    y: node.position.y + GENERATE_REFERENCE_GROUP_TOP + PORT_CONTAINER_HALF,
+  }, 'input');
+}
+
+function getPortEdgePoint(point: { x: number; y: number }, side: 'input' | 'output') {
+  return {
+    x: point.x + (side === 'output' ? PORT_DOT_RADIUS : -PORT_DOT_RADIUS),
+    y: point.y,
   };
 }
 

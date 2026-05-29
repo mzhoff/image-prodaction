@@ -2,15 +2,20 @@ import { getNodePorts } from '@/entities/production-graph/model/node-definitions
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
 
-export const generateInputPortIds: string[] = productionLayers.map((layer) => layer.id);
+export const generateInputPortIds: string[] = ['reference', ...productionLayers.map((layer) => layer.id)];
 
-export function resolveTargetPortId(portId: string | undefined, targetNodeId: string | undefined, edges: GraphEdge[]) {
+export function resolveTargetPortId(
+  portId: string | undefined,
+  targetNodeId: string | undefined,
+  edges: GraphEdge[],
+  sourceNode?: ProductionNode,
+  sourcePortId?: string,
+) {
   if (!portId || !targetNodeId) return undefined;
-  if (portId !== 'composing') return portId;
-
-  return generateInputPortIds.find((inputPortId) => !edges.some((edge) => (
-    edge.targetNodeId === targetNodeId && edge.targetPortId === inputPortId
-  ))) ?? 'composition';
+  void edges;
+  void sourceNode;
+  void sourcePortId;
+  return portId;
 }
 
 export function getEdgeDataKind(edge: GraphEdge, nodesById: Map<string, ProductionNode>) {

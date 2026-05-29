@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterChat } from '@/shared/api/openrouter';
+import type { OpenRouterMessageContentImage, OpenRouterMessageContentText } from '@/shared/api/openrouter';
 import {
   DEFAULT_IMAGE_MODEL,
   getImageModelConfig,
   PREFERRED_IMAGE_MODEL_IDS,
 } from '@/shared/api/openrouter-models';
+import type { GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
+import { composeGenerationPrompt, composeReferenceImageInstruction } from '@/entities/production-graph/model/generate-prompt-builder';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 
 export const runtime = 'nodejs';
@@ -41,8 +44,14 @@ const generateImageSchema = z.object({
   aspectRatio: z.string().min(1).default('16:9'),
   size: z.string().min(1).default('1K'),
   inputs: structuredInputsSchema.default(emptyStructuredInputs),
-  referenceImages: z.array(z.string().min(1)).max(4).default([]),
+  referenceImages: z.array(z.object({
+    dataUrl: z.string().min(1),
+    sourceAssetId: z.string().optional(),
+    slots: z.array(z.custom<GenerateReferenceSlot>(isGenerateReferenceSlot)).default([]),
+  })).max(4).default([]),
 });
+
+const referenceSlotIds = new Set<string>(['reference', ...productionLayers.map((layer) => layer.id)]);
 
 export async function POST(request: Request) {
   const parsed = generateImageSchema.safeParse(await request.json());
@@ -75,15 +84,28 @@ export async function POST(request: Request) {
       return Response.json({ error: `Model ${parsed.data.model} is not available for image generation.` }, { status: 400 });
     }
 
+    const referenceImages = parsed.data.referenceImages;
+    const prompt = composeGenerationPrompt({
+      aspectRatio: parsed.data.aspectRatio,
+      inputs: parsed.data.inputs,
+      prompt: parsed.data.prompt,
+      referenceImages,
+      size: parsed.data.size,
+    });
+    const content: Array<OpenRouterMessageContentText | OpenRouterMessageContentImage> = [
+      { type: 'text', text: prompt },
+      ...referenceImages.flatMap((reference, index) => [
+        { type: 'text' as const, text: composeReferenceImageInstruction(reference, index + 1) },
+        { type: 'image_url' as const, image_url: { url: reference.dataUrl } },
+      ]),
+    ];
+
     const result = await sendOpenRouterChat({
       model: parsed.data.model,
       messages: [
         {
           role: 'user',
-          content: [
-            { type: 'text', text: composeGenerationPrompt(parsed.data.prompt, parsed.data.inputs) },
-            ...parsed.data.referenceImages.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
-          ],
+          content,
         },
       ],
       modalities: ['image', 'text'],
@@ -107,17 +129,8 @@ export async function POST(request: Request) {
   }
 }
 
-function composeGenerationPrompt(prompt: string, inputs: z.infer<typeof structuredInputsSchema>) {
-  const sections = productionLayers.map((layer) => [layer.label, inputs[layer.id]] as const);
-
-  return [
-    'Generate one production-ready image. Use connected image references only as visual references, not as assets to copy literally.',
-    ...sections
-      .filter(([, values]) => values.length > 0)
-      .map(([label, values]) => `${label}:\n${values.map((value) => `- ${value}`).join('\n')}`),
-    prompt.trim() ? `Additional user prompt:\n${prompt.trim()}` : '',
-    'Avoid text, logos, watermarks, UI noise, and accidental typography unless the prompt explicitly asks for it.',
-  ].filter(Boolean).join('\n\n');
+function isGenerateReferenceSlot(value: unknown) {
+  return typeof value === 'string' && referenceSlotIds.has(value);
 }
 
 function extractImageUrl(message?: {

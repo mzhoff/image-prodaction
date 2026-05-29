@@ -15,7 +15,6 @@ import { getPortTop } from './port-button';
 interface NodeCardProps {
   node: ProductionNode;
   selected: boolean;
-  faded: boolean;
   onStartDrag: (node: ProductionNode, event: ReactPointerEvent<HTMLElement>) => void;
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
   onContextMenu: (node: ProductionNode, event: ReactMouseEvent) => void;
@@ -26,7 +25,6 @@ interface NodeCardProps {
 export function NodeCard({
   node,
   selected,
-  faded,
   onStartDrag,
   onStartConnection,
   onContextMenu,
@@ -34,12 +32,17 @@ export function NodeCard({
   onGenerateComposingOpenChange,
 }: NodeCardProps) {
   const ports = getNodePorts(node);
-  const visiblePorts = ports.filter((port) => node.type !== 'generateImage' || port.side !== 'input');
+  const visiblePorts = ports.filter((port) => {
+    if (node.type === 'generateImage' && port.side === 'input') return false;
+    if (node.type === 'imageToText' && port.id === 'result') return false;
+    if (node.type === 'textPrompt' && port.id === 'text') return false;
+    return true;
+  });
 
   return (
     <article
       data-node-id={node.id}
-      className={cn('production-node', selected && 'production-node-selected', faded && 'production-node-faded')}
+      className={cn('production-node', selected && 'production-node-selected')}
       style={{ left: node.position.x, top: node.position.y, width: node.size.width }}
       onPointerDown={(event) => onStartDrag(node, event)}
       onContextMenu={(event) => onContextMenu(node, event)}
@@ -62,8 +65,8 @@ export function NodeCard({
         );
       })}
       {node.type === 'importImage' ? <ImportImageNode node={node} /> : null}
-      {node.type === 'textPrompt' ? <TextPromptNode node={node} /> : null}
-      {node.type === 'imageToText' ? <ImageToTextNode node={node} /> : null}
+      {node.type === 'textPrompt' ? <TextPromptNode node={node} onStartConnection={onStartConnection} /> : null}
+      {node.type === 'imageToText' ? <ImageToTextNode node={node} onStartConnection={onStartConnection} /> : null}
       {node.type === 'referenceComposer' ? <ReferenceComposerNode node={node} /> : null}
       {node.type === 'generateImage' ? (
         <GenerateImageNode

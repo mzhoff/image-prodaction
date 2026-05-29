@@ -1,5 +1,8 @@
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
+import { getPortById } from '@/entities/production-graph/model/node-definitions';
+import type { GenerateReferenceImage, GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
+import { getLayerSectionText } from '@/entities/production-graph/model/layer-text-parser';
 import type {
   AssetRecord,
   GenerateImageNodeData,
@@ -16,7 +19,9 @@ import { loadAssetBlob } from '@/shared/lib/asset-db';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 
 export const generateInputRows = productionLayers;
+export const generateReferenceRows = productionLayers;
 export type GenerateInputId = ProductionLayerId;
+export type GenerateInputKind = 'empty' | 'text' | 'image' | 'mixed';
 
 export function findIncomingImageAsset(
   targetNodeId: string,
@@ -50,9 +55,9 @@ export function getNodeTextResult(node: ProductionNode) {
 }
 
 export function getGenerateInputSummary(targetNodeId: string, edges: GraphEdge[], nodes: ProductionNode[]) {
-  const summary = Object.fromEntries(generateInputRows.map((row) => [row.id, 'Empty'])) as Record<GenerateInputId, string>;
+  const summary = Object.fromEntries(generateReferenceRows.map((row) => [row.id, 'Empty'])) as Record<GenerateInputId, string>;
 
-  for (const row of generateInputRows) {
+  for (const row of generateReferenceRows) {
     const incoming = edges.filter((edge) => edge.targetNodeId === targetNodeId && edge.targetPortId === row.id);
     if (incoming.length === 0) continue;
 
@@ -75,6 +80,25 @@ export function getGenerateInputSummary(targetNodeId: string, edges: GraphEdge[]
   return summary;
 }
 
+export function getGenerateInputKinds(targetNodeId: string, portId: string, edges: GraphEdge[], nodes: ProductionNode[]): GenerateInputKind {
+  let hasText = false;
+  let hasImage = false;
+  for (const edge of edges.filter((item) => item.targetNodeId === targetNodeId && item.targetPortId === portId)) {
+    const sourceNode = nodes.find((node) => node.id === edge.sourceNodeId);
+    if (!sourceNode) continue;
+    const sourcePort = getPortById(sourceNode, edge.sourcePortId);
+    if (sourcePort?.kind === 'image') {
+      hasImage = true;
+    } else if (sourcePort) {
+      hasText = true;
+    }
+  }
+  if (hasText && hasImage) return 'mixed';
+  if (hasImage) return 'image';
+  if (hasText) return 'text';
+  return 'empty';
+}
+
 export async function buildGeneratePayload(
   targetNodeId: string,
   edges: GraphEdge[],
@@ -85,13 +109,11 @@ export async function buildGeneratePayload(
     accumulator[row.id] = [];
     return accumulator;
   }, {} as Record<GenerateInputId, string[]>);
-  const referenceImages: string[] = [];
-  const referenceImagesByAssetId = new Map<string, string>();
-  let actorImageReferenceCount = 0;
+  const referenceImageDrafts = new Map<string, { assetId: string; slots: Set<GenerateReferenceSlot> }>();
+  const promptInputs: string[] = [];
+  const actorImageReferenceAssetIds = new Set<string>();
 
   for (const edge of edges.filter((item) => item.targetNodeId === targetNodeId)) {
-    if (!isGenerateInputId(edge.targetPortId)) continue;
-
     const sourceNode = nodes.find((node) => node.id === edge.sourceNodeId);
     if (!sourceNode) continue;
     if (sourceNode.type === 'imageToText' && !getNodeTextResult(sourceNode)) {
@@ -99,39 +121,56 @@ export async function buildGeneratePayload(
     }
 
     const text = getNodeTextResult(sourceNode);
-    if (text) inputs[edge.targetPortId].push(text);
+    if (edge.targetPortId === 'prompt') {
+      if (text) promptInputs.push(text);
+      continue;
+    }
+    if (isGenerateInputId(edge.targetPortId) && text) {
+      inputs[edge.targetPortId].push(getLayerSectionText(text, edge.targetPortId) || text);
+    }
+
+    const referenceSlot = getReferenceImageSlot(edge.targetPortId);
+    if (!referenceSlot) continue;
 
     const imageAssetId = getNodeImageAssetId(sourceNode);
     if (!imageAssetId) continue;
-    if (edge.targetPortId === 'actors') {
-      actorImageReferenceCount += 1;
-      if (actorImageReferenceCount > 3) {
+    if (referenceSlot === 'actors') {
+      actorImageReferenceAssetIds.add(imageAssetId);
+      if (actorImageReferenceAssetIds.size > 3) {
         throw new Error('В Actors можно подключить не больше 3 image reference. Для остальных деталей лучше использовать текстовые Extract-пресеты.');
       }
     }
-    if (referenceImagesByAssetId.has(imageAssetId)) continue;
-    if (referenceImagesByAssetId.size >= MAX_GENERATE_IMAGE_REFERENCES) {
+    if (!referenceImageDrafts.has(imageAssetId) && referenceImageDrafts.size >= MAX_GENERATE_IMAGE_REFERENCES) {
       throw new Error(`Можно передать не больше ${MAX_GENERATE_IMAGE_REFERENCES} image reference в один Generate Image.`);
     }
 
-    const asset = assets.find((item) => item.id === imageAssetId);
+    const draft = referenceImageDrafts.get(imageAssetId) ?? { assetId: imageAssetId, slots: new Set<GenerateReferenceSlot>() };
+    draft.slots.add(referenceSlot);
+    referenceImageDrafts.set(imageAssetId, draft);
+  }
+
+  const referenceImages: GenerateReferenceImage[] = [];
+  for (const draft of referenceImageDrafts.values()) {
+    const asset = assets.find((item) => item.id === draft.assetId);
     if (!asset) throw new Error('Один из image reference не найден в локальном хранилище.');
     const blob = await loadAssetBlob(asset);
     if (!blob) throw new Error('Не удалось прочитать image reference из локального хранилища.');
-    const preparedImage = await prepareImageForOpenRouter(blob);
-    referenceImagesByAssetId.set(imageAssetId, preparedImage);
-    referenceImages.push(preparedImage);
+    referenceImages.push({
+      dataUrl: await prepareImageForOpenRouter(blob),
+      sourceAssetId: draft.assetId,
+      slots: Array.from(draft.slots),
+    });
   }
 
-  return { inputs, referenceImages };
+  return { inputs, referenceImages, promptInputs };
 }
 
 export function isGenerateInputId(value: string): value is GenerateInputId {
   return generateInputRows.some((row) => row.id === value);
 }
 
-export function formatApiError(error: unknown) {
-  if (typeof error === 'string') return error;
-  if (!error) return 'OpenRouter request failed';
-  return JSON.stringify(error).slice(0, 500);
+function getReferenceImageSlot(value: string): GenerateReferenceSlot | null {
+  if (value === 'reference') return 'reference';
+  if (isGenerateInputId(value)) return value;
+  return null;
 }
