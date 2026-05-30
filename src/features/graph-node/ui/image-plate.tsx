@@ -162,7 +162,7 @@ export function ImagePlate({
       {viewerOpen && url ? createPortal(
         <div className="image-viewer-overlay" data-node-interactive onMouseDown={(event) => event.stopPropagation()}>
           <button type="button" className="image-viewer-backdrop" aria-label="Close image viewer" onClick={() => setViewerOpen(false)} />
-          <div className="image-viewer-content">
+          <div className={cn('image-viewer-content', hasHistory && 'image-viewer-content-with-history')}>
             <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={() => setViewerOpen(false)}>
               <X size={18} />
             </button>
@@ -182,6 +182,17 @@ export function ImagePlate({
                 <button type="button" className="image-viewer-nav image-viewer-nav-next" aria-label="Next generated image" onClick={showNext}>
                   <ChevronRight size={24} />
                 </button>
+                <div className="image-viewer-thumbnail-strip" aria-label="Generated image variations">
+                  {historyAssetIds.map((historyAssetId, index) => (
+                    <ImageViewerThumbnail
+                      key={historyAssetId}
+                      active={index === currentIndex}
+                      assetId={historyAssetId}
+                      index={index}
+                      onSelect={changeVersion}
+                    />
+                  ))}
+                </div>
                 <div className="image-viewer-version-badge">{currentIndex + 1}/{historyAssetIds.length}</div>
               </>
             ) : null}
@@ -190,6 +201,42 @@ export function ImagePlate({
         document.body,
       ) : null}
     </>
+  );
+}
+
+function ImageViewerThumbnail({
+  active,
+  assetId,
+  index,
+  onSelect,
+}: {
+  active: boolean;
+  assetId: string;
+  index: number;
+  onSelect: (index: number) => void;
+}) {
+  const url = useAssetUrl(assetId);
+
+  if (!url) return null;
+
+  return (
+    <button
+      type="button"
+      aria-current={active ? 'true' : undefined}
+      aria-label={`Open generated image variation ${index + 1}`}
+      className={cn('image-viewer-thumbnail', active && 'image-viewer-thumbnail-active')}
+      onClick={() => onSelect(index)}
+    >
+      <Image
+        src={url}
+        alt={`Generated variation ${index + 1}`}
+        fill
+        sizes="80px"
+        unoptimized
+        draggable={false}
+        className="image-viewer-thumbnail-media"
+      />
+    </button>
   );
 }
 
