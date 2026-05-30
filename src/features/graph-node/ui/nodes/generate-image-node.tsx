@@ -45,6 +45,7 @@ export function GenerateImageNode({
         aspectRatio={model.selectedAspectRatio}
         loading={node.status === 'running'}
         onActiveIndexChange={model.handleGenerationHistoryChange}
+        onMaskEdit={model.handleMaskEdit}
       />
       <button type="button" className="primary-node-button" onClick={model.handleGenerate} disabled={node.status === 'running' || model.loading}>
         {node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}

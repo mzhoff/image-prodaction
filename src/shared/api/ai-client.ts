@@ -17,6 +17,15 @@ export interface GenerateImageRequest {
   size: string;
 }
 
+export interface EditImageRequest {
+  aspectRatio: string;
+  imageDataUrl: string;
+  maskDataUrl: string;
+  model: string;
+  prompt: string;
+  size: string;
+}
+
 export async function requestAnalyzeImage(payload: AnalyzeImageRequest) {
   const response = await fetch('/api/ai/analyze-image', {
     method: 'POST',
@@ -30,6 +39,18 @@ export async function requestAnalyzeImage(payload: AnalyzeImageRequest) {
 
 export async function requestGenerateImage(payload: GenerateImageRequest) {
   const response = await fetch('/api/ai/generate-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
+  return { imageDataUrl: result.imageDataUrl, message: result.message };
+}
+
+export async function requestEditImage(payload: EditImageRequest) {
+  const response = await fetch('/api/ai/edit-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

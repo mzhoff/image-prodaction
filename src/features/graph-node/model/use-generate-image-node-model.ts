@@ -4,11 +4,11 @@ import { useMemo, useState } from 'react';
 import { appendGenerationResult, getGenerationHistory, selectGenerationResult } from '@/entities/production-graph/model/generation-history';
 import type { GenerateImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestGenerateImage } from '@/shared/api/ai-client';
+import { requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { saveImageAsset } from '@/shared/lib/asset-db';
-import { dataUrlToFile } from '@/shared/lib/image-data-url';
+import { loadAssetBlob, saveImageAsset } from '@/shared/lib/asset-db';
+import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
 import {
   buildGeneratePayload,
   getGenerateInputKinds,
@@ -89,6 +89,36 @@ export function useGenerateImageNodeModel({
     }
   };
 
+  const handleMaskEdit = async ({ assetId, maskDataUrl, prompt }: { assetId: string; maskDataUrl: string; prompt: string }) => {
+    try {
+      setNodeStatus(node.id, 'running');
+      const sourceAsset = assets.find((asset) => asset.id === assetId);
+      if (!sourceAsset) throw new Error('Активное изображение не найдено в локальном графе.');
+      const sourceBlob = await loadAssetBlob(sourceAsset);
+      if (!sourceBlob) throw new Error('Не удалось прочитать активное изображение из локального хранилища.');
+
+      const result = await requestEditImage({
+        aspectRatio: selectedAspectRatio,
+        imageDataUrl: await blobToDataUrl(sourceBlob),
+        maskDataUrl,
+        model: selectedModel,
+        prompt,
+        size: selectedSize,
+      });
+      const file = await dataUrlToFile(result.imageDataUrl, `edited-${Date.now()}.png`);
+      const editedAsset = await saveImageAsset(file);
+      addAsset(editedAsset);
+      updateNodeData(node.id, {
+        ...appendGenerationResult(data, editedAsset.id),
+        message: result.message,
+      });
+      setNodeStatus(node.id, 'success');
+    } catch (error) {
+      setNodeStatus(node.id, 'error');
+      throw error;
+    }
+  };
+
   return {
     allSectionsOpen,
     aspectRatioOptions: valueSelectOptions(aspectRatios),
@@ -97,6 +127,7 @@ export function useGenerateImageNodeModel({
     handleGenerate,
     handleAspectRatioChange: (aspectRatio: string) => updateNodeData(node.id, { aspectRatio }),
     handleGenerationHistoryChange: (index: number) => updateNodeData(node.id, selectGenerationResult(data, index)),
+    handleMaskEdit,
     handleModelChange,
     handlePromptChange: (prompt: string) => updateNodePrompt(node.id, prompt),
     handleSizeChange: (size: string) => updateNodeData(node.id, { size }),

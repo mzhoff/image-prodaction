@@ -1,12 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2 } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 import { useAssetUrl } from '@/shared/ui/use-asset-url';
+import { ImageViewer, type MaskEditPayload } from './image-viewer';
 
 interface ImagePlateProps {
   activeIndex?: number;
@@ -17,6 +18,7 @@ interface ImagePlateProps {
   loading?: boolean;
   adaptive?: boolean;
   onActiveIndexChange?: (index: number) => void;
+  onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
 }
 
 export function ImagePlate({
@@ -27,6 +29,7 @@ export function ImagePlate({
   compact,
   loading,
   onActiveIndexChange,
+  onMaskEdit,
 }: ImagePlateProps) {
   const historyAssetIds = assetIds?.length ? assetIds : assetId ? [assetId] : [];
   const currentIndex = getSafeIndex(activeIndex, historyAssetIds.length);
@@ -56,24 +59,6 @@ export function ImagePlate({
 
   const showPrevious = useCallback(() => changeVersion(currentIndex - 1), [changeVersion, currentIndex]);
   const showNext = useCallback(() => changeVersion(currentIndex + 1), [changeVersion, currentIndex]);
-
-  useEffect(() => {
-    if (!viewerOpen || !hasHistory) return undefined;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        showPrevious();
-      }
-      if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        showNext();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasHistory, showNext, showPrevious, viewerOpen]);
 
   return (
     <>
@@ -160,83 +145,23 @@ export function ImagePlate({
         ) : null}
       </div>
       {viewerOpen && url ? createPortal(
-        <div className="image-viewer-overlay" data-node-interactive onMouseDown={(event) => event.stopPropagation()}>
-          <button type="button" className="image-viewer-backdrop" aria-label="Close image viewer" onClick={() => setViewerOpen(false)} />
-          <div className={cn('image-viewer-content', hasHistory && 'image-viewer-content-with-history')}>
-            <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={() => setViewerOpen(false)}>
-              <X size={18} />
-            </button>
-            <Image
-              src={url}
-              alt={asset?.name ?? 'Image preview'}
-              width={asset?.width ?? 1200}
-              height={asset?.height ?? 800}
-              unoptimized
-              className="image-viewer-media"
-            />
-            {hasHistory ? (
-              <>
-                <button type="button" className="image-viewer-nav image-viewer-nav-prev" aria-label="Previous generated image" onClick={showPrevious}>
-                  <ChevronLeft size={24} />
-                </button>
-                <button type="button" className="image-viewer-nav image-viewer-nav-next" aria-label="Next generated image" onClick={showNext}>
-                  <ChevronRight size={24} />
-                </button>
-                <div className="image-viewer-thumbnail-strip" aria-label="Generated image variations">
-                  {historyAssetIds.map((historyAssetId, index) => (
-                    <ImageViewerThumbnail
-                      key={historyAssetId}
-                      active={index === currentIndex}
-                      assetId={historyAssetId}
-                      index={index}
-                      onSelect={changeVersion}
-                    />
-                  ))}
-                </div>
-                <div className="image-viewer-version-badge">{currentIndex + 1}/{historyAssetIds.length}</div>
-              </>
-            ) : null}
-          </div>
-        </div>,
+        <ImageViewer
+          asset={asset}
+          assetId={currentAssetId}
+          busy={loading}
+          currentIndex={currentIndex}
+          hasHistory={hasHistory}
+          historyAssetIds={historyAssetIds}
+          onClose={() => setViewerOpen(false)}
+          onMaskEdit={onMaskEdit}
+          onNext={showNext}
+          onPrevious={showPrevious}
+          onSelectVersion={changeVersion}
+          url={url}
+        />,
         document.body,
       ) : null}
     </>
-  );
-}
-
-function ImageViewerThumbnail({
-  active,
-  assetId,
-  index,
-  onSelect,
-}: {
-  active: boolean;
-  assetId: string;
-  index: number;
-  onSelect: (index: number) => void;
-}) {
-  const url = useAssetUrl(assetId);
-
-  if (!url) return null;
-
-  return (
-    <button
-      type="button"
-      aria-current={active ? 'true' : undefined}
-      aria-label={`Open generated image variation ${index + 1}`}
-      className={cn('image-viewer-thumbnail', active && 'image-viewer-thumbnail-active')}
-      onClick={() => onSelect(index)}
-    >
-      <Image
-        src={url}
-        alt={`Generated variation ${index + 1}`}
-        fill
-        sizes="80px"
-        unoptimized
-        draggable={false}
-        className="image-viewer-thumbnail-media"
-      />
-    </button>
   );
 }
 
