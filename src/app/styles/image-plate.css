@@ -201,27 +201,27 @@
   width: 76px;
   height: 54px;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.16);
+  border: 2px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   opacity: 0.72;
   transition:
     border-color 140ms ease,
-    opacity 140ms ease,
-    transform 140ms ease;
+    opacity 140ms ease;
 }
 
-.image-viewer-thumbnail:hover,
-.image-viewer-thumbnail:focus-visible {
+.image-viewer-thumbnail:focus {
+  outline: none;
+}
+
+.image-viewer-thumbnail:hover {
   border-color: rgba(255, 255, 255, 0.62);
   opacity: 1;
 }
 
 .image-viewer-thumbnail-active {
   border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(152, 178, 206, 0.32);
   opacity: 1;
-  transform: translateY(-1px);
 }
 
 .image-viewer-thumbnail-media {
