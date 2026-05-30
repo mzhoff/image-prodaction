@@ -1,5 +1,6 @@
 @import "../src/app/styles/base.css";
 @import "../src/app/styles/canvas.css";
+@import "../src/app/styles/image-plate.css";
 @import "../src/app/styles/node-card.css";
 @import "../src/app/styles/node-controls.css";
 @import "../src/app/styles/overlays.css";

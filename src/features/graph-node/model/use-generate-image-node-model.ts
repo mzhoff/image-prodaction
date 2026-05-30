@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { appendGenerationResult, getGenerationHistory, selectGenerationResult } from '@/entities/production-graph/model/generation-history';
 import type { GenerateImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { requestGenerateImage } from '@/shared/api/ai-client';
@@ -31,7 +32,6 @@ export function useGenerateImageNodeModel({
   const nodes = useProductionGraphStore((state) => state.nodes);
   const assets = useProductionGraphStore((state) => state.assets);
   const addAsset = useProductionGraphStore((state) => state.addAsset);
-  const assignAssetToNode = useProductionGraphStore((state) => state.assignAssetToNode);
   const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodePrompt = useProductionGraphStore((state) => state.updateNodePrompt);
@@ -43,6 +43,7 @@ export function useGenerateImageNodeModel({
   const selectedAspectRatio = aspectRatios.includes(data.aspectRatio) ? data.aspectRatio : aspectRatios[0];
   const selectedSize = sizes.includes(data.size) ? data.size : sizes[0];
   const inputSummary = useMemo(() => getGenerateInputSummary(node.id, edges, nodes), [edges, node.id, nodes]);
+  const generationHistory = useMemo(() => getGenerationHistory(data), [data]);
   const [promptOpen, setPromptOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const allSectionsOpen = promptOpen && settingsOpen && composingOpen;
@@ -74,8 +75,13 @@ export function useGenerateImageNodeModel({
       const file = await dataUrlToFile(result.imageDataUrl, `generated-${Date.now()}.png`);
       const asset = await saveImageAsset(file);
       addAsset(asset);
-      assignAssetToNode(node.id, asset.id);
-      updateNodeData(node.id, { model: selectedModel, aspectRatio: selectedAspectRatio, size: selectedSize, message: result.message });
+      updateNodeData(node.id, {
+        ...appendGenerationResult(data, asset.id),
+        model: selectedModel,
+        aspectRatio: selectedAspectRatio,
+        size: selectedSize,
+        message: result.message,
+      });
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
@@ -87,8 +93,10 @@ export function useGenerateImageNodeModel({
     allSectionsOpen,
     aspectRatioOptions: valueSelectOptions(aspectRatios),
     data,
+    generationHistory,
     handleGenerate,
     handleAspectRatioChange: (aspectRatio: string) => updateNodeData(node.id, { aspectRatio }),
+    handleGenerationHistoryChange: (index: number) => updateNodeData(node.id, selectGenerationResult(data, index)),
     handleModelChange,
     handlePromptChange: (prompt: string) => updateNodePrompt(node.id, prompt),
     handleSizeChange: (size: string) => updateNodeData(node.id, { size }),

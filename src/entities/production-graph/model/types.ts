@@ -66,7 +66,9 @@ export interface GenerateImageNodeData extends BaseNodeData {
   model: string;
   aspectRatio: string;
   size: string;
+  activeResultIndex?: number;
   resultAssetId?: string;
+  resultAssetIds?: string[];
   message?: string;
 }
 

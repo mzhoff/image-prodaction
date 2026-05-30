@@ -1,24 +1,39 @@
 'use client';
 
 import Image from 'next/image';
-import { Download, ImageUp, Maximize2, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 import { useAssetUrl } from '@/shared/ui/use-asset-url';
 
 interface ImagePlateProps {
+  activeIndex?: number;
   assetId?: string;
+  assetIds?: string[];
   aspectRatio?: string;
   compact?: boolean;
   loading?: boolean;
   adaptive?: boolean;
+  onActiveIndexChange?: (index: number) => void;
 }
 
-export function ImagePlate({ assetId, aspectRatio, compact, loading }: ImagePlateProps) {
-  const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === assetId));
-  const url = useAssetUrl(assetId);
+export function ImagePlate({
+  activeIndex,
+  assetId,
+  assetIds,
+  aspectRatio,
+  compact,
+  loading,
+  onActiveIndexChange,
+}: ImagePlateProps) {
+  const historyAssetIds = assetIds?.length ? assetIds : assetId ? [assetId] : [];
+  const currentIndex = getSafeIndex(activeIndex, historyAssetIds.length);
+  const currentAssetId = historyAssetIds[currentIndex] ?? assetId;
+  const hasHistory = historyAssetIds.length > 1 && Boolean(onActiveIndexChange);
+  const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === currentAssetId));
+  const url = useAssetUrl(currentAssetId);
   const [viewerOpen, setViewerOpen] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const imageAspectRatio = asset?.width && asset.height ? `${asset.width} / ${asset.height}` : undefined;
@@ -33,6 +48,32 @@ export function ImagePlate({ assetId, aspectRatio, compact, loading }: ImagePlat
     link.click();
     link.remove();
   };
+
+  const changeVersion = useCallback((nextIndex: number) => {
+    if (!hasHistory) return;
+    onActiveIndexChange?.(wrapIndex(nextIndex, historyAssetIds.length));
+  }, [hasHistory, historyAssetIds.length, onActiveIndexChange]);
+
+  const showPrevious = useCallback(() => changeVersion(currentIndex - 1), [changeVersion, currentIndex]);
+  const showNext = useCallback(() => changeVersion(currentIndex + 1), [changeVersion, currentIndex]);
+
+  useEffect(() => {
+    if (!viewerOpen || !hasHistory) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        showPrevious();
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        showNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasHistory, showNext, showPrevious, viewerOpen]);
 
   return (
     <>
@@ -88,6 +129,35 @@ export function ImagePlate({ assetId, aspectRatio, compact, loading }: ImagePlat
             </button>
           </div>
         ) : null}
+        {hasHistory ? (
+          <>
+            <div className="image-plate-version-controls">
+              <button
+                type="button"
+                aria-label="Previous generated image"
+                title="Previous"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  showPrevious();
+                }}
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <button
+                type="button"
+                aria-label="Next generated image"
+                title="Next"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  showNext();
+                }}
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+            <div className="image-plate-version-badge">{currentIndex + 1}/{historyAssetIds.length}</div>
+          </>
+        ) : null}
       </div>
       {viewerOpen && url ? createPortal(
         <div className="image-viewer-overlay" data-node-interactive onMouseDown={(event) => event.stopPropagation()}>
@@ -104,6 +174,17 @@ export function ImagePlate({ assetId, aspectRatio, compact, loading }: ImagePlat
               unoptimized
               className="image-viewer-media"
             />
+            {hasHistory ? (
+              <>
+                <button type="button" className="image-viewer-nav image-viewer-nav-prev" aria-label="Previous generated image" onClick={showPrevious}>
+                  <ChevronLeft size={24} />
+                </button>
+                <button type="button" className="image-viewer-nav image-viewer-nav-next" aria-label="Next generated image" onClick={showNext}>
+                  <ChevronRight size={24} />
+                </button>
+                <div className="image-viewer-version-badge">{currentIndex + 1}/{historyAssetIds.length}</div>
+              </>
+            ) : null}
           </div>
         </div>,
         document.body,
@@ -115,4 +196,15 @@ export function ImagePlate({ assetId, aspectRatio, compact, loading }: ImagePlat
 function formatCssAspectRatio(value?: string) {
   const normalized = value?.trim().replace(':', ' / ');
   return normalized && /^\d+(?:\.\d+)?\s*\/\s*\d+(?:\.\d+)?$/.test(normalized) ? normalized : undefined;
+}
+
+function getSafeIndex(index: number | undefined, length: number) {
+  if (length <= 0) return -1;
+  if (typeof index !== 'number' || Number.isNaN(index)) return length - 1;
+  return Math.min(Math.max(index, 0), length - 1);
+}
+
+function wrapIndex(index: number, length: number) {
+  if (length <= 0) return -1;
+  return (index + length) % length;
 }

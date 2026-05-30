@@ -1,4 +1,5 @@
 import { buildExtractPrompt, defaultExtractPrompt, normalizeExtractPresetSelection } from './extract-presets';
+import { getGenerationHistory, type GenerationHistoryData } from './generation-history';
 import { initialProject } from './initial-project';
 import { productionLayers } from './production-layers';
 import type { ExtractPresetId, GraphEdge, GraphProject, ProductionNode, ProductionNodeData } from './types';
@@ -52,6 +53,7 @@ function normalizeNode(node: ProductionNode): ProductionNode {
   if (node.type === 'generateImage') {
     const data = node.data as ProductionNodeData;
     const { site: _site, ...nextData } = data as unknown as Record<string, unknown>;
+    const history = getGenerationHistory(nextData as unknown as GenerationHistoryData);
     return {
       ...node,
       size: node.size?.width && node.size.width >= 380 ? node.size : { width: 404, height: 720 },
@@ -60,6 +62,9 @@ function normalizeNode(node: ProductionNode): ProductionNode {
         aspectRatio: '16:9',
         size: '1K',
         ...nextData,
+        activeResultIndex: history.activeIndex,
+        resultAssetId: history.activeAssetId,
+        resultAssetIds: history.assetIds,
         title: 'Generate Image',
       },
     } as ProductionNode;

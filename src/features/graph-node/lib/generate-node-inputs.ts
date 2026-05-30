@@ -2,6 +2,7 @@ import { productionLayers } from '@/entities/production-graph/model/production-l
 import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { GenerateReferenceImage, GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
+import { getGenerationHistory } from '@/entities/production-graph/model/generation-history';
 import { getLayerSectionText } from '@/entities/production-graph/model/layer-text-parser';
 import type {
   AssetRecord,
@@ -39,7 +40,7 @@ export function findIncomingImageAsset(
 export function getNodeImageAssetId(node?: ProductionNode) {
   if (!node) return undefined;
   if (node.type === 'importImage') return (node.data as ImportImageNodeData).assetId;
-  if (node.type === 'generateImage') return (node.data as GenerateImageNodeData).resultAssetId;
+  if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   return undefined;
 }

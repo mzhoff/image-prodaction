@@ -50,6 +50,8 @@ export function createDefaultNode(type: ProductionNodeType, position: GraphPoint
         aspectRatio: '16:9',
         size: '1K',
         prompt: '',
+        activeResultIndex: -1,
+        resultAssetIds: [],
       },
     };
   }
