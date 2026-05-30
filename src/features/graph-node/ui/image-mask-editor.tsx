@@ -28,6 +28,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   width,
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cursorRef = useRef<HTMLDivElement | null>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -44,6 +45,10 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     maskCanvasRef.current = maskCanvas;
     clearCanvas(visibleCanvas);
   }, [height, width]);
+
+  useEffect(() => {
+    if (!enabled) hideBrushCursor(cursorRef.current);
+  }, [enabled]);
 
   useImperativeHandle(ref, () => ({
     clear: () => {
@@ -71,6 +76,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    updateBrushCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width);
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY, width, height);
     drawingRef.current = true;
     lastPointRef.current = point;
@@ -79,9 +85,11 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!enabled || !drawingRef.current || !lastPointRef.current) return;
+    if (!enabled) return;
     event.preventDefault();
     event.stopPropagation();
+    updateBrushCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width);
+    if (!drawingRef.current || !lastPointRef.current) return;
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY, width, height);
     drawSegment({ canvas: event.currentTarget, from: lastPointRef.current, to: point, brushSize, tool });
     if (maskCanvasRef.current) drawSegment({ canvas: maskCanvasRef.current, from: lastPointRef.current, to: point, brushSize, tool, mask: true });
@@ -97,14 +105,24 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={cn('image-mask-canvas', enabled && 'image-mask-canvas-enabled', className)}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={stopDrawing}
-      onPointerCancel={stopDrawing}
-    />
+    <div className={cn('image-mask-layer', enabled && 'image-mask-layer-enabled', className)}>
+      <canvas
+        ref={canvasRef}
+        className="image-mask-canvas"
+        onPointerDown={handlePointerDown}
+        onPointerEnter={(event) => updateBrushCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width)}
+        onPointerLeave={() => {
+          if (!drawingRef.current) hideBrushCursor(cursorRef.current);
+        }}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDrawing}
+        onPointerCancel={(event) => {
+          stopDrawing(event);
+          hideBrushCursor(cursorRef.current);
+        }}
+      />
+      <div ref={cursorRef} className={cn('image-mask-brush-cursor', tool === 'eraser' && 'image-mask-brush-cursor-eraser')} />
+    </div>
   );
 });
 
@@ -151,6 +169,28 @@ function getCanvasPoint(canvas: HTMLCanvasElement, clientX: number, clientY: num
     x: ((clientX - rect.left) / rect.width) * width,
     y: ((clientY - rect.top) / rect.height) * height,
   };
+}
+
+function updateBrushCursor(
+  canvas: HTMLCanvasElement,
+  cursor: HTMLDivElement | null,
+  clientX: number,
+  clientY: number,
+  brushSize: number,
+  sourceWidth: number,
+) {
+  if (!cursor) return;
+  const rect = canvas.getBoundingClientRect();
+  const displayBrushSize = Math.max(4, brushSize * (rect.width / sourceWidth));
+  cursor.style.display = 'block';
+  cursor.style.width = `${displayBrushSize}px`;
+  cursor.style.height = `${displayBrushSize}px`;
+  cursor.style.transform = `translate(${clientX - rect.left}px, ${clientY - rect.top}px) translate(-50%, -50%)`;
+}
+
+function hideBrushCursor(cursor: HTMLDivElement | null) {
+  if (!cursor) return;
+  cursor.style.display = 'none';
 }
 
 function clearCanvas(canvas: HTMLCanvasElement) {
