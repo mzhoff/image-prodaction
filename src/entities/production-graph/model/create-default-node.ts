@@ -56,6 +56,20 @@ export function createDefaultNode(type: ProductionNodeType, position: GraphPoint
     };
   }
 
+  if (type === 'exportImage') {
+    return {
+      ...base,
+      size: { width: 330, height: 400 },
+      data: {
+        title: 'Export',
+        format: 'png',
+        quality: '90',
+        scale: '1',
+        background: 'transparent',
+      },
+    };
+  }
+
   if (type === 'preview') {
     return { ...base, size: { width: 330, height: 360 }, data: { title: 'Preview' } };
   }

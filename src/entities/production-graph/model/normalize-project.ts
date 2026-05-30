@@ -70,6 +70,21 @@ function normalizeNode(node: ProductionNode): ProductionNode {
     } as ProductionNode;
   }
 
+  if (node.type === 'exportImage') {
+    return {
+      ...node,
+      size: node.size?.width && node.size.width >= 300 ? node.size : { width: 330, height: 400 },
+      data: {
+        format: 'png',
+        quality: '90',
+        scale: '1',
+        background: 'transparent',
+        ...node.data,
+        title: 'Export',
+      },
+    } as ProductionNode;
+  }
+
   return node;
 }
 

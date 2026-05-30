@@ -10,6 +10,7 @@ export type ProductionNodeType =
   | 'imageToText'
   | 'referenceComposer'
   | 'generateImage'
+  | 'exportImage'
   | 'preview';
 
 export type PresetRole = ProductionLayerId;
@@ -80,12 +81,24 @@ export interface PreviewNodeData extends BaseNodeData {
   assetId?: string;
 }
 
+export type ExportImageFormat = 'png' | 'jpeg' | 'webp';
+export type ExportImageScale = '1' | '0.75' | '0.5' | '0.25';
+export type ExportImageBackground = 'transparent' | 'white' | 'black';
+
+export interface ExportImageNodeData extends BaseNodeData {
+  format: ExportImageFormat;
+  quality: string;
+  scale: ExportImageScale;
+  background: ExportImageBackground;
+}
+
 export type ProductionNodeData =
   | ImportImageNodeData
   | ImageToTextNodeData
   | ReferenceComposerNodeData
   | GenerateImageNodeData
   | TextPromptNodeData
+  | ExportImageNodeData
   | PreviewNodeData;
 
 export interface ProductionNode {

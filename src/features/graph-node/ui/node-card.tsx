@@ -4,6 +4,7 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent }
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
+import { ExportImageNode } from './nodes/export-image-node';
 import { GenerateImageNode } from './nodes/generate-image-node';
 import { ImageToTextNode } from './nodes/image-to-text-node';
 import { ImportImageNode } from './nodes/import-image-node';
@@ -76,6 +77,7 @@ export function NodeCard({
           onStartConnection={onStartConnection}
         />
       ) : null}
+      {node.type === 'exportImage' ? <ExportImageNode node={node} /> : null}
       {node.type === 'preview' ? <PreviewNode node={node} /> : null}
     </article>
   );

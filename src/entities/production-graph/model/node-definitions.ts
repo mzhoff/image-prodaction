@@ -36,6 +36,9 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
     ...layerReferenceInputPorts,
     { id: 'image', label: 'Image', kind: 'image', side: 'output' },
   ],
+  exportImage: [
+    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+  ],
   preview: [
     { id: 'image', label: 'Image', kind: 'image', side: 'input' },
   ],

@@ -47,6 +47,7 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'generateImage' && side === 'output') return 127;
   if (node.type === 'imageToText' && side === 'input') return 74;
   if (node.type === 'imageToText' && side === 'output') return 402;
+  if (node.type === 'exportImage' && side === 'input') return 126;
   if (node.type === 'preview' && side === 'input') return 52;
   if (node.type === 'importImage' && side === 'output') return 132;
   return Math.max(52, 120 + index * 54);
