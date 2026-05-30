@@ -85,6 +85,20 @@ function normalizeNode(node: ProductionNode): ProductionNode {
     } as ProductionNode;
   }
 
+  if (node.type === 'sketch') {
+    return {
+      ...node,
+      size: node.size?.width && node.size.width >= 320 ? node.size : { width: 360, height: 390 },
+      data: {
+        aspectRatio: '16:9',
+        brushColor: '#111111',
+        brushSize: '48',
+        ...node.data,
+        title: 'Sketch',
+      },
+    } as ProductionNode;
+  }
+
   return node;
 }
 

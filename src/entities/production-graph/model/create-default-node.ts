@@ -56,6 +56,19 @@ export function createDefaultNode(type: ProductionNodeType, position: GraphPoint
     };
   }
 
+  if (type === 'sketch') {
+    return {
+      ...base,
+      size: { width: 360, height: 390 },
+      data: {
+        title: 'Sketch',
+        aspectRatio: '16:9',
+        brushColor: '#111111',
+        brushSize: '48',
+      },
+    };
+  }
+
   if (type === 'exportImage') {
     return {
       ...base,

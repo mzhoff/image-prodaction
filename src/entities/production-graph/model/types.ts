@@ -10,6 +10,7 @@ export type ProductionNodeType =
   | 'imageToText'
   | 'referenceComposer'
   | 'generateImage'
+  | 'sketch'
   | 'exportImage'
   | 'preview';
 
@@ -77,6 +78,13 @@ export interface TextPromptNodeData extends BaseNodeData {
   text: string;
 }
 
+export interface SketchNodeData extends BaseNodeData {
+  aspectRatio: string;
+  assetId?: string;
+  brushColor: string;
+  brushSize: string;
+}
+
 export interface PreviewNodeData extends BaseNodeData {
   assetId?: string;
 }
@@ -98,6 +106,7 @@ export type ProductionNodeData =
   | ReferenceComposerNodeData
   | GenerateImageNodeData
   | TextPromptNodeData
+  | SketchNodeData
   | ExportImageNodeData
   | PreviewNodeData;
 

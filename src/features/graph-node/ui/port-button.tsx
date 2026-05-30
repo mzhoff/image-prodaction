@@ -1,7 +1,7 @@
 'use client';
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { ProductionNode } from '@/entities/production-graph/model/types';
+import type { ProductionNode, SketchNodeData } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 
 interface PortButtonProps {
@@ -45,10 +45,20 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'referenceComposer' && side === 'input') return 304 + index * 38;
   if (node.type === 'generateImage' && side === 'input') return 610 + index * 39;
   if (node.type === 'generateImage' && side === 'output') return 127;
+  if (node.type === 'sketch' && side === 'output') return getSketchOutputPortTop(node);
   if (node.type === 'imageToText' && side === 'input') return 74;
   if (node.type === 'imageToText' && side === 'output') return 402;
   if (node.type === 'exportImage' && side === 'input') return 126;
   if (node.type === 'preview' && side === 'input') return 52;
   if (node.type === 'importImage' && side === 'output') return 132;
   return Math.max(52, 120 + index * 54);
+}
+
+function getSketchOutputPortTop(node: ProductionNode) {
+  const data = node.data as SketchNodeData;
+  const aspectRatio = typeof data.aspectRatio === 'string' ? data.aspectRatio : '16:9';
+  const [rawWidth, rawHeight] = aspectRatio.split(':').map(Number);
+  const ratio = rawWidth > 0 && rawHeight > 0 ? rawWidth / rawHeight : 16 / 9;
+  const innerWidth = Math.max(120, node.size.width - 32);
+  return 43 + (innerWidth / ratio) / 2;
 }

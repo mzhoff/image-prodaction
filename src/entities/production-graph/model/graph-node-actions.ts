@@ -39,7 +39,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
         ...withHistory(state),
         nodes: state.nodes.map((node) => {
           if (node.id !== nodeId) return node;
-          if (node.type === 'importImage' || node.type === 'preview') {
+          if (node.type === 'importImage' || node.type === 'preview' || node.type === 'sketch') {
             return { ...node, data: { ...node.data, assetId } };
           }
           if (node.type === 'generateImage') {

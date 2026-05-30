@@ -10,6 +10,7 @@ import { ImageToTextNode } from './nodes/image-to-text-node';
 import { ImportImageNode } from './nodes/import-image-node';
 import { PreviewNode } from './nodes/preview-node';
 import { ReferenceComposerNode } from './nodes/reference-composer-node';
+import { SketchNode } from './nodes/sketch-node';
 import { TextPromptNode } from './nodes/text-prompt-node';
 import { getPortTop } from './port-button';
 
@@ -69,6 +70,7 @@ export function NodeCard({
       {node.type === 'textPrompt' ? <TextPromptNode node={node} onStartConnection={onStartConnection} /> : null}
       {node.type === 'imageToText' ? <ImageToTextNode node={node} onStartConnection={onStartConnection} /> : null}
       {node.type === 'referenceComposer' ? <ReferenceComposerNode node={node} /> : null}
+      {node.type === 'sketch' ? <SketchNode node={node} /> : null}
       {node.type === 'generateImage' ? (
         <GenerateImageNode
           node={node}

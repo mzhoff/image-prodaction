@@ -13,6 +13,7 @@ import type {
   PreviewNodeData,
   ProductionNode,
   ReferenceComposerNodeData,
+  SketchNodeData,
   TextPromptNodeData,
 } from '@/entities/production-graph/model/types';
 import { MAX_GENERATE_IMAGE_REFERENCES } from '@/entities/production-graph/model/use-production-graph-store';
@@ -41,6 +42,7 @@ export function getNodeImageAssetId(node?: ProductionNode) {
   if (!node) return undefined;
   if (node.type === 'importImage') return (node.data as ImportImageNodeData).assetId;
   if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
+  if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   return undefined;
 }

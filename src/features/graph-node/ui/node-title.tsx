@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FileInput, ImageIcon, PencilLine, WandSparkles } from 'lucide-react';
+import { Download, FileInput, ImageIcon, Paintbrush, PencilLine, WandSparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 
@@ -21,6 +21,7 @@ function getNodeIcon(title: string) {
   if (title === 'Import') return FileInput;
   if (title === 'Extract') return WandSparkles;
   if (title === 'Generate Image') return ImageIcon;
+  if (title === 'Sketch') return Paintbrush;
   if (title === 'Export') return Download;
   if (title === 'Prompt') return PencilLine;
   return null;
