@@ -103,7 +103,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
         const asset = await saveImageAsset(file);
         addAsset(asset);
         updateNodeDataSilent(node.id, {
-          message: `${asset.width ?? sourceAsset.width ?? 0}x${asset.height ?? sourceAsset.height ?? 0} · adjusted PNG`,
+          message: '',
           resultAssetId: asset.id,
           sourceAssetId: sourceAsset.id,
           sourceAspectRatio: sourceAsset.width && sourceAsset.height ? sourceAsset.width / sourceAsset.height : undefined,
@@ -116,7 +116,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
         });
         setNodeStatus(node.id, 'error');
       }
-    }, 180);
+    }, 650);
 
     return () => window.clearTimeout(timer);
   }, [addAsset, node.id, setNodeStatus, sourceAsset, updateNodeDataSilent, values]);
@@ -133,6 +133,14 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
     } as Partial<AdjustmentNodeData>);
   }, [node.id, updateNodeDataSilent]);
 
+  const handleAdjustmentReset = useCallback((id: AdjustmentControlId) => {
+    updateNodeData(node.id, {
+      [id]: 0,
+      message: '',
+      resultAssetId: undefined,
+    } as Partial<AdjustmentNodeData>);
+  }, [node.id, updateNodeData]);
+
   const handleReset = useCallback(() => {
     updateNodeData(node.id, {
       ...defaultAdjustmentValues,
@@ -145,6 +153,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
     data,
     displayAsset: validResultAsset ?? sourceAsset,
     handleAdjustmentChange,
+    handleAdjustmentReset,
     handleAdjustmentStart,
     handleReset,
     message: data.message,

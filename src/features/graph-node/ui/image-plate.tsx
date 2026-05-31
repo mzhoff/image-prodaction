@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
@@ -17,6 +17,7 @@ interface ImagePlateProps {
   aspectRatio?: string;
   compact?: boolean;
   loading?: boolean;
+  mediaStyle?: CSSProperties;
   adaptive?: boolean;
   onActiveIndexChange?: (index: number) => void;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
@@ -29,6 +30,7 @@ export function ImagePlate({
   aspectRatio,
   compact,
   loading,
+  mediaStyle,
   onActiveIndexChange,
   onMaskEdit,
 }: ImagePlateProps) {
@@ -83,7 +85,7 @@ export function ImagePlate({
         }}
       >
         {url ? (
-          <Image src={url} alt="Reference preview" fill sizes="368px" unoptimized draggable={false} className="image-plate-media" />
+          <Image src={url} alt="Reference preview" fill sizes="368px" unoptimized draggable={false} className="image-plate-media" style={mediaStyle} />
         ) : (
           <div className="image-plate-empty">
             <ImageUp size={22} />
