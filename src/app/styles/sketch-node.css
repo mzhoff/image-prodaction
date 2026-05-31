@@ -1,3 +1,75 @@
+.sketch-preview {
+  position: relative;
+  width: 100%;
+  min-height: 132px;
+  overflow: hidden;
+  border: 1px solid #ecece9;
+  border-radius: 8px;
+  background: #fff;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.sketch-preview-media {
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.sketch-preview-empty {
+  display: grid;
+  height: 100%;
+  min-height: 132px;
+  place-items: center;
+  color: #c4c4bf;
+}
+
+.sketch-editor-overlay {
+  cursor: default;
+}
+
+.sketch-editor-overlay .image-viewer-close {
+  position: fixed;
+  right: 18px;
+  top: 18px;
+}
+
+.sketch-editor-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  max-height: calc(100vh - 118px);
+  place-items: center;
+}
+
+.sketch-editor-stage {
+  width: min(92vw, 1180px, calc((100vh - 138px) * var(--sketch-editor-aspect)));
+  overflow: hidden;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.sketch-editor-panel {
+  box-sizing: border-box;
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  width: max-content;
+  max-width: calc(100vw - 36px);
+  gap: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
+  padding: 6px;
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+}
+
 .sketch-canvas-wrap {
   position: relative;
   width: 100%;
@@ -5,6 +77,12 @@
   border: 1px solid #ecece9;
   border-radius: 10px;
   background: #fff;
+}
+
+.sketch-canvas-wrap.sketch-editor-canvas-wrap {
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
 }
 
 .sketch-canvas {
@@ -29,33 +107,42 @@
   pointer-events: none;
 }
 
-.sketch-brush-cursor-eraser {
+.sketch-brush-cursor-eraser,
+.sketch-brush-cursor[data-tool="eraser"] {
   border-style: dashed;
 }
 
 .sketch-toolbar {
-  display: grid;
-  grid-template-columns: 32px 32px 1fr 32px;
+  display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 
 .sketch-tool-button {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  border: 1px solid #e7e7e4;
+  border: 0;
   border-radius: 8px;
-  background: #fff;
-  color: #111;
+  background: transparent;
+  color: #555;
 }
 
 .sketch-tool-button:hover,
 .sketch-tool-button-active {
-  border-color: #d4e4ff;
-  background: #eaf2ff;
-  color: #0d44d9;
+  background: #f0f0ee;
+  color: #111;
+}
+
+.sketch-tool-button:disabled {
+  cursor: default;
+  opacity: 0.34;
+}
+
+.sketch-tool-button:disabled:hover {
+  background: transparent;
+  color: #555;
 }
 
 .sketch-size-control {
@@ -63,7 +150,7 @@
   min-width: 0;
   align-items: center;
   gap: 7px;
-  color: var(--muted);
+  color: #555;
   font-size: 12px;
   font-weight: 700;
   line-height: 14px;
@@ -74,24 +161,49 @@
 }
 
 .sketch-size-control input {
-  width: 100%;
+  width: 170px;
   accent-color: #111;
 }
 
+.sketch-aspect-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #555;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
 .sketch-palette {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-color: rgba(0, 0, 0, 0.26) transparent;
+}
+
+.sketch-palette::-webkit-scrollbar {
+  height: 6px;
+}
+
+.sketch-palette::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sketch-palette::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.26);
 }
 
 .sketch-color-swatch,
 .sketch-color-picker {
   display: block;
-  width: 100%;
-  aspect-ratio: 1;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid #e7e7e4;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff;
   padding: 0;
 }

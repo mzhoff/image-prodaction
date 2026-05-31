@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Sparkles } from 'lucide-react';
+import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import type { ProductionNode, ReferenceComposerNodeData } from '@/entities/production-graph/model/types';
 import { MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
@@ -33,7 +34,7 @@ export function ReferenceComposerNode({ node }: { node: ProductionNode }) {
         />
         <SettingRow
           label="Aspect Ratio"
-          value={data.aspectRatio ?? '16:9'}
+          value={data.aspectRatio ?? DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO}
           options={valueSelectOptions(MODEL_FALLBACK_ASPECT_RATIOS)}
           onChange={(aspectRatio) => updateNodeData(node.id, { aspectRatio })}
         />

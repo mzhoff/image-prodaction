@@ -39,6 +39,18 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   sketch: [
     { id: 'image', label: 'Image', kind: 'image', side: 'output' },
   ],
+  cropImage: [
+    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+    { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+  ],
+  adjustment: [
+    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+    { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+  ],
+  removeBackground: [
+    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+    { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+  ],
   exportImage: [
     { id: 'image', label: 'Image', kind: 'image', side: 'input' },
   ],

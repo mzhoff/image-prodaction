@@ -9,7 +9,7 @@ import type {
   ProductionNode,
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob } from '@/shared/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { exportImageBlob, getExportFileName } from '../lib/export-image';
 import { findIncomingImageAsset } from '../lib/generate-node-inputs';

@@ -1,6 +1,6 @@
-import type { AssetRecord } from '@/entities/production-graph/model/types';
-import { readImageSize } from './file-to-image-size';
-import { createId } from './id';
+import type { AssetRecord } from '../model/types';
+import { readImageSize } from '@/shared/lib/file-to-image-size';
+import { createId } from '@/shared/lib/id';
 
 const DB_NAME = 'reverie-image-production-assets';
 const DB_VERSION = 1;

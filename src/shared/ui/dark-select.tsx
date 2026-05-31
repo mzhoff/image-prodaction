@@ -19,7 +19,7 @@ interface DarkSelectProps {
 
 export function DarkSelect({ value, options, onChange, wide }: DarkSelectProps) {
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ bottom?: number; left: number; top?: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const selected = options.find((option) => option.value === value);
 
@@ -36,9 +36,12 @@ export function DarkSelect({ value, options, onChange, wide }: DarkSelectProps) 
   const openMenu = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
+    const menuHeight = Math.min(240, window.innerHeight - 16);
+    const openAbove = rect.bottom + menuHeight + 4 > window.innerHeight && rect.top > menuHeight;
     setAnchor({
-      top: rect.bottom + 4,
+      bottom: openAbove ? window.innerHeight - rect.top + 4 : undefined,
       left: Math.max(8, rect.right - Math.max(190, rect.width)),
+      top: openAbove ? undefined : rect.bottom + 4,
       width: Math.max(190, rect.width),
     });
     setOpen(true);
@@ -68,7 +71,7 @@ export function DarkSelect({ value, options, onChange, wide }: DarkSelectProps) 
           <div className="dark-select-backdrop" onClick={() => setOpen(false)} />
           <div
             className="dark-select-menu"
-            style={{ top: anchor.top, left: anchor.left, minWidth: anchor.width }}
+            style={{ bottom: anchor.bottom, top: anchor.top, left: anchor.left, minWidth: anchor.width }}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >

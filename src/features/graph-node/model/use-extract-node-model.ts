@@ -11,7 +11,7 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { requestAnalyzeImage } from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { loadAssetBlob } from '@/shared/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 import { findIncomingImageAsset } from '../lib/generate-node-inputs';
 import { getSelectedModelId, modelSelectOptions } from '../lib/node-select-options';
@@ -52,25 +52,26 @@ export function useExtractNodeModel(node: ProductionNode) {
   const handleAnalyze = async () => {
     const sourceAsset = findIncomingImageAsset(node.id, 'image', edges, nodes, assets);
     if (!sourceAsset) {
-      window.alert('Подключи изображение к входу Extract или загрузи его в Import node.');
+      updateNodeData(node.id, { message: 'Подключи изображение к входу Extract или загрузи его в Import node.' });
       return;
     }
     if (!data.prompt?.trim()) {
-      window.alert('Выбери preset или введи prompt для Extract.');
+      updateNodeData(node.id, { message: 'Выбери preset или введи prompt для Extract.' });
       return;
     }
 
     try {
       setNodeStatus(node.id, 'running');
+      updateNodeData(node.id, { message: '' });
       const blob = await loadAssetBlob(sourceAsset);
       if (!blob) throw new Error('Не удалось прочитать загруженное изображение.');
       const imageDataUrl = await prepareImageForOpenRouter(blob);
       const result = await requestAnalyzeImage({ model: selectedModel, prompt: data.prompt, imageDataUrl });
-      updateNodeData(node.id, { model: selectedModel, result });
+      updateNodeData(node.id, { message: '', model: selectedModel, result });
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
-      window.alert(error instanceof Error ? error.message : 'OpenRouter analysis failed');
+      updateNodeData(node.id, { message: error instanceof Error ? error.message : 'OpenRouter analysis failed' });
     }
   };
 

@@ -6,6 +6,8 @@ import { getGenerationHistory } from '@/entities/production-graph/model/generati
 import { getLayerSectionText } from '@/entities/production-graph/model/layer-text-parser';
 import type {
   AssetRecord,
+  AdjustmentNodeData,
+  CropImageNodeData,
   GenerateImageNodeData,
   GraphEdge,
   ImageToTextNodeData,
@@ -13,11 +15,12 @@ import type {
   PreviewNodeData,
   ProductionNode,
   ReferenceComposerNodeData,
+  RemoveBackgroundNodeData,
   SketchNodeData,
   TextPromptNodeData,
 } from '@/entities/production-graph/model/types';
 import { MAX_GENERATE_IMAGE_REFERENCES } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob } from '@/shared/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 
 export const generateInputRows = productionLayers;
@@ -43,6 +46,9 @@ export function getNodeImageAssetId(node?: ProductionNode) {
   if (node.type === 'importImage') return (node.data as ImportImageNodeData).assetId;
   if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
   if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
+  if (node.type === 'cropImage') return (node.data as CropImageNodeData).resultAssetId;
+  if (node.type === 'adjustment') return (node.data as AdjustmentNodeData).resultAssetId;
+  if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   return undefined;
 }
@@ -112,7 +118,11 @@ export async function buildGeneratePayload(
     accumulator[row.id] = [];
     return accumulator;
   }, {} as Record<GenerateInputId, string[]>);
-  const referenceImageDrafts = new Map<string, { assetId: string; slots: Set<GenerateReferenceSlot> }>();
+  const referenceImageDrafts = new Map<string, {
+    assetId: string;
+    slots: Set<GenerateReferenceSlot>;
+    sourceNodeTypes: Set<ProductionNode['type']>;
+  }>();
   const promptInputs: string[] = [];
   const actorImageReferenceAssetIds = new Set<string>();
 
@@ -147,8 +157,13 @@ export async function buildGeneratePayload(
       throw new Error(`Можно передать не больше ${MAX_GENERATE_IMAGE_REFERENCES} image reference в один Generate Image.`);
     }
 
-    const draft = referenceImageDrafts.get(imageAssetId) ?? { assetId: imageAssetId, slots: new Set<GenerateReferenceSlot>() };
+    const draft = referenceImageDrafts.get(imageAssetId) ?? {
+      assetId: imageAssetId,
+      slots: new Set<GenerateReferenceSlot>(),
+      sourceNodeTypes: new Set<ProductionNode['type']>(),
+    };
     draft.slots.add(referenceSlot);
+    draft.sourceNodeTypes.add(sourceNode.type);
     referenceImageDrafts.set(imageAssetId, draft);
   }
 
@@ -161,6 +176,7 @@ export async function buildGeneratePayload(
     referenceImages.push({
       dataUrl: await prepareImageForOpenRouter(blob),
       sourceAssetId: draft.assetId,
+      sourceNodeTypes: Array.from(draft.sourceNodeTypes),
       slots: Array.from(draft.slots),
     });
   }

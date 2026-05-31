@@ -10,11 +10,13 @@ export function cloneSnapshot(snapshot: GraphSnapshot): GraphSnapshot {
 export function getSnapshot(state: GraphProject): GraphSnapshot {
   return cloneSnapshot({
     nodes: state.nodes,
+    sections: state.sections,
     edges: state.edges,
     assets: state.assets,
     presets: state.presets,
     runs: state.runs,
     selectedNodeIds: state.selectedNodeIds,
+    selectedSectionIds: state.selectedSectionIds,
   });
 }
 

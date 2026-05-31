@@ -4,9 +4,10 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
-import { useAssetUrl } from '@/shared/ui/use-asset-url';
+import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { ImageViewer, type MaskEditPayload } from './image-viewer';
 
 interface ImagePlateProps {
@@ -40,7 +41,7 @@ export function ImagePlate({
   const [viewerOpen, setViewerOpen] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const imageAspectRatio = asset?.width && asset.height ? `${asset.width} / ${asset.height}` : undefined;
-  const plateAspectRatio = formatCssAspectRatio(aspectRatio) ?? imageAspectRatio;
+  const plateAspectRatio = formatCssAspectRatio(aspectRatio) ?? imageAspectRatio ?? formatCssAspectRatio(DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO);
 
   const handleDownload = () => {
     if (!url || !asset) return;
@@ -82,7 +83,7 @@ export function ImagePlate({
         }}
       >
         {url ? (
-          <Image src={url} alt="Reference preview" fill sizes="360px" unoptimized draggable={false} className="image-plate-media" />
+          <Image src={url} alt="Reference preview" fill sizes="368px" unoptimized draggable={false} className="image-plate-media" />
         ) : (
           <div className="image-plate-empty">
             <ImageUp size={22} />

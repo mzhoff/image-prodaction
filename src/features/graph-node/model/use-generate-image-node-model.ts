@@ -7,7 +7,7 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { loadAssetBlob, saveImageAsset } from '@/shared/lib/asset-db';
+import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
 import {
   buildGeneratePayload,
@@ -34,6 +34,7 @@ export function useGenerateImageNodeModel({
   const addAsset = useProductionGraphStore((state) => state.addAsset);
   const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
+  const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const updateNodePrompt = useProductionGraphStore((state) => state.updateNodePrompt);
   const { imageModels, loading } = useOpenRouterModels();
   const selectedModel = getSelectedModelId(imageModels, data.model, DEFAULT_IMAGE_MODEL);
@@ -69,6 +70,7 @@ export function useGenerateImageNodeModel({
   const handleGenerate = async () => {
     try {
       setNodeStatus(node.id, 'running');
+      updateNodeDataSilent(node.id, { message: '' });
       const payload = await buildGeneratePayload(node.id, edges, nodes, assets);
       const prompt = [...payload.promptInputs, data.prompt ?? ''].filter((item) => item.trim()).join('\n\n');
       const result = await requestGenerateImage({ ...payload, model: selectedModel, aspectRatio: selectedAspectRatio, size: selectedSize, prompt });
@@ -85,7 +87,9 @@ export function useGenerateImageNodeModel({
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
-      window.alert(error instanceof Error ? error.message : 'OpenRouter generation failed');
+      updateNodeDataSilent(node.id, {
+        message: error instanceof Error ? error.message : 'OpenRouter generation failed',
+      });
     }
   };
 
@@ -126,7 +130,7 @@ export function useGenerateImageNodeModel({
     generationHistory,
     handleGenerate,
     handleAspectRatioChange: (aspectRatio: string) => updateNodeData(node.id, { aspectRatio }),
-    handleGenerationHistoryChange: (index: number) => updateNodeData(node.id, selectGenerationResult(data, index)),
+    handleGenerationHistoryChange: (index: number) => updateNodeDataSilent(node.id, selectGenerationResult(data, index)),
     handleMaskEdit,
     handleModelChange,
     handlePromptChange: (prompt: string) => updateNodePrompt(node.id, prompt),

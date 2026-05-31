@@ -4,13 +4,27 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { AssetRecord } from '@/entities/production-graph/model/types';
-import { loadAssetBlob } from '@/shared/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import {
+  drawCanvasSegment,
+  fillCanvas,
+  getCanvasPoint,
+  getCanvasState,
+  getPointerTool,
+  hideBrushCursorElement,
+  putCanvasState,
+  updateBrushCursorElement,
+} from '@/shared/lib/canvas-drawing';
 import { cn } from '@/shared/lib/cn';
 
 export type SketchTool = 'brush' | 'eraser';
 
 export interface SketchCanvasHandle {
+  canRedo: () => boolean;
+  canUndo: () => boolean;
   clear: () => void;
+  redo: () => void;
+  undo: () => void;
 }
 
 interface SketchCanvasProps {
@@ -20,6 +34,7 @@ interface SketchCanvasProps {
   className?: string;
   height: number;
   onCommit: (canvas: HTMLCanvasElement) => Promise<void> | void;
+  onHistoryChange?: () => void;
   style?: CSSProperties;
   tool: SketchTool;
   width: number;
@@ -32,22 +47,41 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
   className,
   height,
   onCommit,
+  onHistoryChange,
   style,
   tool,
   width,
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cursorRef = useRef<HTMLDivElement | null>(null);
+  const activeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const activeToolRef = useRef<SketchTool>(tool);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const redoStackRef = useRef<ImageData[]>([]);
+  const suppressNextAssetReloadRef = useRef(false);
+  const undoStackRef = useRef<ImageData[]>([]);
+  const sizeRef = useRef({ width: 0, height: 0 });
+  const assetId = asset?.id;
 
   useEffect(() => {
     let cancelled = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const sizeChanged = sizeRef.current.width !== width || sizeRef.current.height !== height;
+    if (!sizeChanged && suppressNextAssetReloadRef.current) {
+      suppressNextAssetReloadRef.current = false;
+      return undefined;
+    }
+
+    sizeRef.current = { width, height };
     canvas.width = width;
     canvas.height = height;
+    redoStackRef.current = [];
+    undoStackRef.current = [];
+    onHistoryChange?.();
     fillCanvas(canvas);
 
     if (!asset) return;
@@ -70,45 +104,112 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
     return () => {
       cancelled = true;
     };
-  }, [asset, height, width]);
+  }, [asset, assetId, height, onHistoryChange, width]);
+
+  useEffect(() => {
+    const handleGlobalPointerEnd = () => finishDrawing(activeCanvasRef.current);
+
+    window.addEventListener('pointerup', handleGlobalPointerEnd, { capture: true });
+    window.addEventListener('pointercancel', handleGlobalPointerEnd, { capture: true });
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerEnd, { capture: true });
+      window.removeEventListener('pointercancel', handleGlobalPointerEnd, { capture: true });
+    };
+  }, []);
+
+  const pushUndoState = (canvas: HTMLCanvasElement, clearRedo = true) => {
+    const state = getCanvasState(canvas);
+    if (!state) return;
+    undoStackRef.current.push(state);
+    if (undoStackRef.current.length > MAX_SKETCH_HISTORY) undoStackRef.current.shift();
+    if (clearRedo) redoStackRef.current = [];
+    onHistoryChange?.();
+  };
+
+  const commitCanvas = (canvas: HTMLCanvasElement) => {
+    suppressNextAssetReloadRef.current = true;
+    void onCommit(canvas);
+  };
 
   useImperativeHandle(ref, () => ({
+    canRedo: () => redoStackRef.current.length > 0,
+    canUndo: () => undoStackRef.current.length > 0,
     clear: () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+      pushUndoState(canvas);
       fillCanvas(canvas);
-      void onCommit(canvas);
+      commitCanvas(canvas);
     },
-  }), [onCommit]);
+    redo: () => {
+      const canvas = canvasRef.current;
+      const nextState = redoStackRef.current.pop();
+      if (!canvas || !nextState) return;
+      pushUndoState(canvas, false);
+      putCanvasState(canvas, nextState);
+      onHistoryChange?.();
+      commitCanvas(canvas);
+    },
+    undo: () => {
+      const canvas = canvasRef.current;
+      const previousState = undoStackRef.current.pop();
+      if (!canvas || !previousState) return;
+      const currentState = getCanvasState(canvas);
+      if (currentState) redoStackRef.current.push(currentState);
+      putCanvasState(canvas, previousState);
+      onHistoryChange?.();
+      commitCanvas(canvas);
+    },
+  }), [onCommit, onHistoryChange]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (event.button !== 0 && event.button !== 2) return;
     event.preventDefault();
     event.stopPropagation();
+    const activeTool = event.button === 2 ? 'eraser' : tool;
+    activeCanvasRef.current = event.currentTarget;
+    activePointerIdRef.current = event.pointerId;
+    activeToolRef.current = activeTool;
     event.currentTarget.setPointerCapture(event.pointerId);
-    updateCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, tool);
+    updateSketchCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, activeTool);
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY);
+    pushUndoState(event.currentTarget);
     drawingRef.current = true;
     lastPointRef.current = point;
-    drawSegment({ canvas: event.currentTarget, from: point, to: point, brushColor, brushSize, tool });
+    drawSketchSegment({ canvas: event.currentTarget, from: point, to: point, brushColor, brushSize, tool: activeTool });
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    updateCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, tool);
+    if (drawingRef.current && event.buttons === 0) {
+      finishDrawing(event.currentTarget);
+      return;
+    }
+    const activeTool = drawingRef.current ? activeToolRef.current : getPointerTool(event.buttons, tool);
+    updateSketchCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, activeTool);
     if (!drawingRef.current || !lastPointRef.current) return;
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY);
-    drawSegment({ canvas: event.currentTarget, from: lastPointRef.current, to: point, brushColor, brushSize, tool });
+    drawSketchSegment({ canvas: event.currentTarget, from: lastPointRef.current, to: point, brushColor, brushSize, tool: activeTool });
     lastPointRef.current = point;
   };
 
-  const stopDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const finishDrawing = (canvas: HTMLCanvasElement | null) => {
     if (!drawingRef.current) return;
-    event.preventDefault();
-    event.stopPropagation();
     drawingRef.current = false;
     lastPointRef.current = null;
-    void onCommit(event.currentTarget);
+    if (canvas && activePointerIdRef.current !== null && canvas.hasPointerCapture(activePointerIdRef.current)) {
+      canvas.releasePointerCapture(activePointerIdRef.current);
+    }
+    activeCanvasRef.current = null;
+    activePointerIdRef.current = null;
+    if (canvas) commitCanvas(canvas);
+  };
+
+  const stopDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    finishDrawing(event.currentTarget);
   };
 
   return (
@@ -116,14 +217,18 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
       <canvas
         ref={canvasRef}
         className="sketch-canvas"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         onPointerCancel={(event) => {
           stopDrawing(event);
-          hideCursor(cursorRef.current);
+          hideBrushCursorElement(cursorRef.current);
         }}
         onPointerDown={handlePointerDown}
-        onPointerEnter={(event) => updateCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, tool)}
+        onPointerEnter={(event) => updateSketchCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, getPointerTool(event.buttons, tool))}
         onPointerLeave={() => {
-          if (!drawingRef.current) hideCursor(cursorRef.current);
+          if (!drawingRef.current) hideBrushCursorElement(cursorRef.current);
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={stopDrawing}
@@ -133,7 +238,9 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
   );
 });
 
-function drawSegment({
+const MAX_SKETCH_HISTORY = 40;
+
+function drawSketchSegment({
   brushColor,
   brushSize,
   canvas,
@@ -148,43 +255,10 @@ function drawSegment({
   to: { x: number; y: number };
   tool: SketchTool;
 }) {
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.save();
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-  context.lineWidth = brushSize;
-  context.strokeStyle = tool === 'eraser' ? '#fff' : brushColor;
-  context.fillStyle = context.strokeStyle;
-  if (Math.hypot(to.x - from.x, to.y - from.y) < 0.1) {
-    context.beginPath();
-    context.arc(from.x, from.y, brushSize / 2, 0, Math.PI * 2);
-    context.fill();
-  } else {
-    context.beginPath();
-    context.moveTo(from.x, from.y);
-    context.lineTo(to.x, to.y);
-    context.stroke();
-  }
-  context.restore();
+  drawCanvasSegment({ brushSize, canvas, color: brushColor, eraserColor: '#fff', from, to, tool });
 }
 
-function fillCanvas(canvas: HTMLCanvasElement) {
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.fillStyle = '#fff';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function getCanvasPoint(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: ((clientX - rect.left) / rect.width) * canvas.width,
-    y: ((clientY - rect.top) / rect.height) * canvas.height,
-  };
-}
-
-function updateCursor(
+function updateSketchCursor(
   canvas: HTMLCanvasElement,
   cursor: HTMLDivElement | null,
   clientX: number,
@@ -192,17 +266,5 @@ function updateCursor(
   brushSize: number,
   tool: SketchTool,
 ) {
-  if (!cursor) return;
-  const rect = canvas.getBoundingClientRect();
-  const displayBrushSize = Math.max(4, brushSize * (rect.width / canvas.width));
-  cursor.style.display = 'block';
-  cursor.style.width = `${displayBrushSize}px`;
-  cursor.style.height = `${displayBrushSize}px`;
-  cursor.style.transform = `translate(${clientX - rect.left}px, ${clientY - rect.top}px) translate(-50%, -50%)`;
-  cursor.dataset.tool = tool;
-}
-
-function hideCursor(cursor: HTMLDivElement | null) {
-  if (!cursor) return;
-  cursor.style.display = 'none';
+  updateBrushCursorElement({ brushSize, canvas, clientX, clientY, cursor, tool });
 }

@@ -1,11 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, RotateCcw, WandSparkles, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Redo2, RotateCcw, Undo2, WandSparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AssetRecord } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
-import { useAssetUrl } from '@/shared/ui/use-asset-url';
+import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { ImageMaskEditor, type ImageMaskEditorHandle, type MaskTool } from './image-mask-editor';
 
 export interface MaskEditPayload {
@@ -47,11 +47,15 @@ export function ImageViewer({
   const [brushSize, setBrushSize] = useState(42);
   const [maskOpen, setMaskOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [maskHistoryVersion, setMaskHistoryVersion] = useState(0);
   const [prompt, setPrompt] = useState('');
   const [tool, setTool] = useState<MaskTool>('brush');
   const maskRef = useRef<ImageMaskEditorHandle | null>(null);
   const width = asset?.width ?? 1200;
   const height = asset?.height ?? 800;
+  const refreshMaskHistory = useCallback(() => setMaskHistoryVersion((version) => version + 1), []);
+  const canMaskRedo = maskHistoryVersion >= 0 && Boolean(maskRef.current?.canRedo());
+  const canMaskUndo = maskHistoryVersion >= 0 && Boolean(maskRef.current?.canUndo());
 
   useEffect(() => {
     if (!hasHistory) return undefined;
@@ -74,7 +78,29 @@ export function ImageViewer({
   }, [hasHistory, onNext, onPrevious]);
 
   useEffect(() => {
-    maskRef.current?.clear();
+    if (!maskOpen) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('textarea,input,select,[contenteditable="true"]')) return;
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.shiftKey) {
+        maskRef.current?.redo();
+      } else {
+        maskRef.current?.undo();
+      }
+      refreshMaskHistory();
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [maskOpen, refreshMaskHistory]);
+
+  useEffect(() => {
+    maskRef.current?.reset();
     setMessage('');
   }, [assetId]);
 
@@ -94,7 +120,7 @@ export function ImageViewer({
     setMessage('');
     try {
       await onMaskEdit({ assetId, maskDataUrl, prompt: trimmedPrompt });
-      maskRef.current?.clear();
+      maskRef.current?.reset();
       setMaskOpen(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Не удалось перегенерировать фрагмент.');
@@ -102,7 +128,15 @@ export function ImageViewer({
   };
 
   return (
-    <div className="image-viewer-overlay" data-node-interactive onMouseDown={(event) => event.stopPropagation()}>
+    <div
+      className="image-viewer-overlay"
+      data-node-interactive
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
       <button type="button" className="image-viewer-backdrop" aria-label="Close image viewer" onClick={onClose} />
       <div className={cn('image-viewer-content', hasHistory && 'image-viewer-content-with-history', maskOpen && 'image-viewer-content-with-editor')}>
         <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={onClose}>
@@ -126,6 +160,7 @@ export function ImageViewer({
               height={height}
               tool={tool}
               width={width}
+              onHistoryChange={refreshMaskHistory}
             />
           ) : null}
         </div>
@@ -143,6 +178,12 @@ export function ImageViewer({
                   </button>
                   <button type="button" className={cn('image-editor-icon-button', tool === 'eraser' && 'image-editor-button-active')} onClick={() => setTool('eraser')} aria-label="Eraser">
                     <Eraser size={15} />
+                  </button>
+                  <button type="button" className="image-editor-icon-button" onClick={() => maskRef.current?.undo()} disabled={!canMaskUndo} aria-label="Undo mask">
+                    <Undo2 size={15} />
+                  </button>
+                  <button type="button" className="image-editor-icon-button" onClick={() => maskRef.current?.redo()} disabled={!canMaskRedo} aria-label="Redo mask">
+                    <Redo2 size={15} />
                   </button>
                   <label className="image-editor-size-control">
                     <span>{brushSize}px</span>

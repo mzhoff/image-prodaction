@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
+import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import type { ProductionNode, SketchNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import {
   MODEL_EXTENDED_GEMINI_FLASH_ASPECT_RATIOS,
   MODEL_FALLBACK_ASPECT_RATIOS,
 } from '@/shared/api/openrouter-models';
-import { saveImageAsset } from '@/shared/lib/asset-db';
+import { saveImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { valueSelectOptions } from '../lib/node-select-options';
 
 const SKETCH_OUTPUT_LONG_SIDE = 1024;
@@ -36,7 +37,7 @@ export function useSketchNodeModel(node: ProductionNode) {
   const assets = useProductionGraphStore((state) => state.assets);
   const addAsset = useProductionGraphStore((state) => state.addAsset);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
-  const aspectRatio = data.aspectRatio || '16:9';
+  const aspectRatio = data.aspectRatio || DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO;
   const brushColor = data.brushColor || sketchPalette[0];
   const brushSize = Number(data.brushSize || 18);
   const asset = assets.find((item) => item.id === data.assetId);
@@ -73,7 +74,7 @@ export function useSketchNodeModel(node: ProductionNode) {
 
 function getSketchCanvasSize(aspectRatio: string) {
   const [rawWidth, rawHeight] = aspectRatio.split(':').map(Number);
-  const ratio = rawWidth > 0 && rawHeight > 0 ? rawWidth / rawHeight : 16 / 9;
+  const ratio = rawWidth > 0 && rawHeight > 0 ? rawWidth / rawHeight : 1;
 
   if (ratio >= 1) {
     return {

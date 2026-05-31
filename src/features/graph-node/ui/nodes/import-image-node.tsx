@@ -5,7 +5,7 @@ import type { ChangeEvent } from 'react';
 import { useRef } from 'react';
 import type { ImportImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { saveImageAsset } from '@/shared/lib/asset-db';
+import { saveImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 

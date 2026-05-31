@@ -14,6 +14,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
   | 'pasteImageAsset'
   | 'setNodeStatus'
   | 'updateNodeData'
+  | 'updateNodeDataSilent'
   | 'updateNodePrompt'
   | 'updateNodeResult'
   | 'updateTextPrompt'
@@ -26,6 +27,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
         ...withHistory(state),
         nodes: [...state.nodes, node],
         selectedNodeIds: [node.id],
+        selectedSectionIds: [],
       }));
       return node.id;
     },
@@ -62,6 +64,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
               node.id === targetNode.id ? { ...node, data: { ...node.data, assetId: asset.id } } : node
             )),
             selectedNodeIds: [targetNode.id],
+            selectedSectionIds: [],
           };
         }
 
@@ -72,6 +75,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
           assets: nextAssets,
           nodes: [...state.nodes, importNode],
           selectedNodeIds: [importNode.id],
+          selectedSectionIds: [],
         };
       });
     },
@@ -83,6 +87,13 @@ export function createGraphNodeActions(set: StoreSet): Pick<
     updateNodeData: (nodeId, data) => {
       set((state) => ({
         ...withHistory(state),
+        nodes: state.nodes.map((node) => (
+          node.id === nodeId ? { ...node, data: { ...node.data, ...data } as ProductionNodeData } : node
+        )),
+      }));
+    },
+    updateNodeDataSilent: (nodeId, data) => {
+      set((state) => ({
         nodes: state.nodes.map((node) => (
           node.id === nodeId ? { ...node, data: { ...node.data, ...data } as ProductionNodeData } : node
         )),

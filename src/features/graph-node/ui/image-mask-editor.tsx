@@ -1,13 +1,28 @@
 'use client';
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import {
+  clearCanvas,
+  drawCanvasSegment,
+  getCanvasPoint,
+  getPointerTool,
+  hasAlphaPixels,
+  hideBrushCursorElement,
+  updateBrushCursorElement,
+} from '@/shared/lib/canvas-drawing';
 import { cn } from '@/shared/lib/cn';
+import { applyMaskEditorState, getMaskEditorState, type MaskHistoryEntry } from '../lib/mask-editor-state';
 
 export type MaskTool = 'brush' | 'eraser';
 
 export interface ImageMaskEditorHandle {
+  canRedo: () => boolean;
+  canUndo: () => boolean;
   clear: () => void;
   getMaskDataUrl: () => string | null;
+  redo: () => void;
+  reset: () => void;
+  undo: () => void;
 }
 
 interface ImageMaskEditorProps {
@@ -15,23 +30,32 @@ interface ImageMaskEditorProps {
   className?: string;
   enabled: boolean;
   height: number;
+  onHistoryChange?: () => void;
   tool: MaskTool;
   width: number;
 }
+
+const MAX_MASK_HISTORY = 40;
 
 export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditorProps>(function ImageMaskEditor({
   brushSize,
   className,
   enabled,
   height,
+  onHistoryChange,
   tool,
   width,
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cursorRef = useRef<HTMLDivElement | null>(null);
+  const activeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const activeToolRef = useRef<MaskTool>(tool);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const redoStackRef = useRef<MaskHistoryEntry[]>([]);
+  const undoStackRef = useRef<MaskHistoryEntry[]>([]);
 
   useEffect(() => {
     const visibleCanvas = canvasRef.current;
@@ -44,20 +68,35 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     maskCanvas.height = height;
     maskCanvasRef.current = maskCanvas;
     clearCanvas(visibleCanvas);
-  }, [height, width]);
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    onHistoryChange?.();
+  }, [height, onHistoryChange, width]);
 
   useEffect(() => {
-    if (!enabled) hideBrushCursor(cursorRef.current);
+    if (!enabled) hideBrushCursorElement(cursorRef.current);
   }, [enabled]);
 
+  useEffect(() => {
+    const handleGlobalPointerEnd = () => finishDrawing(activeCanvasRef.current);
+
+    window.addEventListener('pointerup', handleGlobalPointerEnd, { capture: true });
+    window.addEventListener('pointercancel', handleGlobalPointerEnd, { capture: true });
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerEnd, { capture: true });
+      window.removeEventListener('pointercancel', handleGlobalPointerEnd, { capture: true });
+    };
+  }, []);
+
   useImperativeHandle(ref, () => ({
+    canRedo: () => redoStackRef.current.length > 0,
+    canUndo: () => undoStackRef.current.length > 0,
     clear: () => {
-      if (canvasRef.current) clearCanvas(canvasRef.current);
-      if (maskCanvasRef.current) clearCanvas(maskCanvasRef.current);
+      clearMask();
     },
     getMaskDataUrl: () => {
       const maskCanvas = maskCanvasRef.current;
-      if (!maskCanvas || !hasMaskPixels(maskCanvas)) return null;
+      if (!maskCanvas || !hasAlphaPixels(maskCanvas)) return null;
 
       const output = document.createElement('canvas');
       output.width = maskCanvas.width;
@@ -69,39 +108,126 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
       context.drawImage(maskCanvas, 0, 0);
       return output.toDataURL('image/png');
     },
-  }), []);
+    redo: () => {
+      restoreNextMaskState();
+    },
+    reset: () => {
+      resetMask();
+    },
+    undo: () => {
+      restorePreviousMaskState();
+    },
+  }));
+
+  const pushUndoState = () => {
+    const visibleCanvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!visibleCanvas || !maskCanvas) return false;
+    const state = getMaskEditorState(visibleCanvas, maskCanvas);
+    if (!state) return false;
+    undoStackRef.current.push(state);
+    if (undoStackRef.current.length > MAX_MASK_HISTORY) undoStackRef.current.shift();
+    redoStackRef.current = [];
+    return true;
+  };
+
+  const clearMask = () => {
+    const visibleCanvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!visibleCanvas || !maskCanvas) return;
+    if (hasAlphaPixels(visibleCanvas) || hasAlphaPixels(maskCanvas)) {
+      pushUndoState();
+    }
+    clearCanvas(visibleCanvas);
+    clearCanvas(maskCanvas);
+    onHistoryChange?.();
+  };
+
+  const resetMask = () => {
+    if (canvasRef.current) clearCanvas(canvasRef.current);
+    if (maskCanvasRef.current) clearCanvas(maskCanvasRef.current);
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    onHistoryChange?.();
+  };
+
+  const restorePreviousMaskState = () => {
+    const previous = undoStackRef.current.pop();
+    const visibleCanvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!previous || !visibleCanvas || !maskCanvas) return;
+    const current = getMaskEditorState(visibleCanvas, maskCanvas);
+    if (current) redoStackRef.current.push(current);
+    applyMaskEditorState(visibleCanvas, maskCanvas, previous);
+    onHistoryChange?.();
+  };
+
+  const restoreNextMaskState = () => {
+    const next = redoStackRef.current.pop();
+    const visibleCanvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!next || !visibleCanvas || !maskCanvas) return;
+    const current = getMaskEditorState(visibleCanvas, maskCanvas);
+    if (current) {
+      undoStackRef.current.push(current);
+      if (undoStackRef.current.length > MAX_MASK_HISTORY) undoStackRef.current.shift();
+    }
+    applyMaskEditorState(visibleCanvas, maskCanvas, next);
+    onHistoryChange?.();
+  };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!enabled) return;
+    if (event.button !== 0 && event.button !== 2) return;
     event.preventDefault();
     event.stopPropagation();
+    const activeTool = event.button === 2 ? 'eraser' : tool;
+    activeCanvasRef.current = event.currentTarget;
+    activePointerIdRef.current = event.pointerId;
+    activeToolRef.current = activeTool;
     event.currentTarget.setPointerCapture(event.pointerId);
-    updateBrushCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width);
+    pushUndoState();
+    onHistoryChange?.();
+    updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, activeTool);
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY, width, height);
     drawingRef.current = true;
     lastPointRef.current = point;
-    drawSegment({ canvas: event.currentTarget, from: point, to: point, brushSize, tool });
-    if (maskCanvasRef.current) drawSegment({ canvas: maskCanvasRef.current, from: point, to: point, brushSize, tool, mask: true });
+    drawMaskSegment({ canvas: event.currentTarget, from: point, to: point, brushSize, tool: activeTool });
+    if (maskCanvasRef.current) drawMaskSegment({ canvas: maskCanvasRef.current, from: point, to: point, brushSize, tool: activeTool, mask: true });
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!enabled) return;
     event.preventDefault();
     event.stopPropagation();
-    updateBrushCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width);
+    if (drawingRef.current && event.buttons === 0) {
+      finishDrawing(event.currentTarget);
+      return;
+    }
+    const activeTool = drawingRef.current ? activeToolRef.current : getPointerTool(event.buttons, tool);
+    updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, activeTool);
     if (!drawingRef.current || !lastPointRef.current) return;
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY, width, height);
-    drawSegment({ canvas: event.currentTarget, from: lastPointRef.current, to: point, brushSize, tool });
-    if (maskCanvasRef.current) drawSegment({ canvas: maskCanvasRef.current, from: lastPointRef.current, to: point, brushSize, tool, mask: true });
+    drawMaskSegment({ canvas: event.currentTarget, from: lastPointRef.current, to: point, brushSize, tool: activeTool });
+    if (maskCanvasRef.current) drawMaskSegment({ canvas: maskCanvasRef.current, from: lastPointRef.current, to: point, brushSize, tool: activeTool, mask: true });
     lastPointRef.current = point;
   };
 
-  const stopDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
+  const finishDrawing = (canvas: HTMLCanvasElement | null) => {
     if (!drawingRef.current) return;
-    event.preventDefault();
-    event.stopPropagation();
     drawingRef.current = false;
     lastPointRef.current = null;
+    if (canvas && activePointerIdRef.current !== null && canvas.hasPointerCapture(activePointerIdRef.current)) {
+      canvas.releasePointerCapture(activePointerIdRef.current);
+    }
+    activeCanvasRef.current = null;
+    activePointerIdRef.current = null;
+  };
+
+  const stopDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    finishDrawing(event.currentTarget);
   };
 
   return (
@@ -109,16 +235,20 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
       <canvas
         ref={canvasRef}
         className="image-mask-canvas"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         onPointerDown={handlePointerDown}
-        onPointerEnter={(event) => updateBrushCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width)}
+        onPointerEnter={(event) => updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, getPointerTool(event.buttons, tool))}
         onPointerLeave={() => {
-          if (!drawingRef.current) hideBrushCursor(cursorRef.current);
+          if (!drawingRef.current) hideBrushCursorElement(cursorRef.current);
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={stopDrawing}
         onPointerCancel={(event) => {
           stopDrawing(event);
-          hideBrushCursor(cursorRef.current);
+          hideBrushCursorElement(cursorRef.current);
         }}
       />
       <div ref={cursorRef} className={cn('image-mask-brush-cursor', tool === 'eraser' && 'image-mask-brush-cursor-eraser')} />
@@ -126,7 +256,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   );
 });
 
-function drawSegment({
+function drawMaskSegment({
   brushSize,
   canvas,
   from,
@@ -141,70 +271,25 @@ function drawSegment({
   to: { x: number; y: number };
   tool: MaskTool;
 }) {
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.save();
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-  context.lineWidth = brushSize;
-  context.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
-  context.strokeStyle = mask ? '#fff' : 'rgba(31, 98, 255, 0.55)';
-  if (Math.hypot(to.x - from.x, to.y - from.y) < 0.1) {
-    context.fillStyle = context.strokeStyle;
-    context.beginPath();
-    context.arc(from.x, from.y, brushSize / 2, 0, Math.PI * 2);
-    context.fill();
-  } else {
-    context.beginPath();
-    context.moveTo(from.x, from.y);
-    context.lineTo(to.x, to.y);
-    context.stroke();
-  }
-  context.restore();
+  drawCanvasSegment({
+    brushSize,
+    canvas,
+    color: mask ? '#fff' : 'rgba(31, 98, 255, 0.55)',
+    eraserCompositeOperation: 'destination-out',
+    from,
+    to,
+    tool,
+  });
 }
 
-function getCanvasPoint(canvas: HTMLCanvasElement, clientX: number, clientY: number, width: number, height: number) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: ((clientX - rect.left) / rect.width) * width,
-    y: ((clientY - rect.top) / rect.height) * height,
-  };
-}
-
-function updateBrushCursor(
+function updateMaskCursor(
   canvas: HTMLCanvasElement,
   cursor: HTMLDivElement | null,
   clientX: number,
   clientY: number,
   brushSize: number,
   sourceWidth: number,
+  tool: MaskTool,
 ) {
-  if (!cursor) return;
-  const rect = canvas.getBoundingClientRect();
-  const displayBrushSize = Math.max(4, brushSize * (rect.width / sourceWidth));
-  cursor.style.display = 'block';
-  cursor.style.width = `${displayBrushSize}px`;
-  cursor.style.height = `${displayBrushSize}px`;
-  cursor.style.transform = `translate(${clientX - rect.left}px, ${clientY - rect.top}px) translate(-50%, -50%)`;
-}
-
-function hideBrushCursor(cursor: HTMLDivElement | null) {
-  if (!cursor) return;
-  cursor.style.display = 'none';
-}
-
-function clearCanvas(canvas: HTMLCanvasElement) {
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function hasMaskPixels(canvas: HTMLCanvasElement) {
-  const context = canvas.getContext('2d');
-  if (!context) return false;
-  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-  for (let index = 3; index < pixels.length; index += 4) {
-    if (pixels[index] > 0) return true;
-  }
-  return false;
+  updateBrushCursorElement({ brushSize, canvas, clientX, clientY, cursor, sourceWidth, tool });
 }

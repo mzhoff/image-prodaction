@@ -10,7 +10,7 @@ const editImageSchema = z.object({
   prompt: z.string().min(1),
   imageDataUrl: z.string().min(1),
   maskDataUrl: z.string().min(1),
-  aspectRatio: z.string().min(1).default('16:9'),
+  aspectRatio: z.string().min(1).default('1:1'),
   size: z.string().min(1).default('1K'),
 });
 

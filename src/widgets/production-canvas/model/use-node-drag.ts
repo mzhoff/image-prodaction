@@ -11,6 +11,7 @@ interface UseNodeDragParams {
   pushHistory: () => void;
   screenToWorld: (event: MouseEvent | PointerEvent) => GraphPoint | null;
   selectNode: (nodeId: string, additive?: boolean) => void;
+  selectedSectionSet: Set<string>;
   selectedSet: Set<string>;
 }
 
@@ -21,6 +22,7 @@ export function useNodeDrag({
   pushHistory,
   screenToWorld,
   selectNode,
+  selectedSectionSet,
   selectedSet,
 }: UseNodeDragParams) {
   return useCallback((node: ProductionNode, event: ReactPointerEvent<HTMLElement>) => {
@@ -38,7 +40,7 @@ export function useNodeDrag({
     const alreadySelected = selectedSet.has(node.id);
     if (!alreadySelected) selectNode(node.id, event.shiftKey);
 
-    const groupDrag = alreadySelected && selectedSet.size > 1;
+    const groupDrag = alreadySelected && selectedSet.size + selectedSectionSet.size > 1;
     const startPosition = node.position;
     const startClient = { x: event.clientX, y: event.clientY };
     let didStartDrag = false;
@@ -81,5 +83,14 @@ export function useNodeDrag({
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
-  }, [closeContextMenu, moveNode, moveSelectedNodesBy, pushHistory, screenToWorld, selectNode, selectedSet]);
+  }, [
+    closeContextMenu,
+    moveNode,
+    moveSelectedNodesBy,
+    pushHistory,
+    screenToWorld,
+    selectNode,
+    selectedSectionSet,
+    selectedSet,
+  ]);
 }

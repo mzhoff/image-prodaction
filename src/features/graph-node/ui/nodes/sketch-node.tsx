@@ -1,91 +1,31 @@
 'use client';
 
-import { Eraser, Paintbrush, RotateCcw } from 'lucide-react';
-import { useRef, useState } from 'react';
-import type { ProductionNode } from '@/entities/production-graph/model/types';
+import Image from 'next/image';
+import { ImageUp, Paintbrush } from 'lucide-react';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
+import type { ProductionNode, SketchNodeData } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { SettingRow } from '@/shared/ui/setting-row';
-import { sketchPalette, useSketchNodeModel } from '../../model/use-sketch-node-model';
+import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
+import { useSketchNodeModel } from '../../model/use-sketch-node-model';
 import { NodeTitle } from '../node-title';
-import { SketchCanvas, type SketchCanvasHandle, type SketchTool } from '../sketch-canvas';
+import { SketchEditorOverlay } from '../sketch-editor-overlay';
 
 export function SketchNode({ node }: { node: ProductionNode }) {
   const model = useSketchNodeModel(node);
-  const canvasRef = useRef<SketchCanvasHandle | null>(null);
-  const [tool, setTool] = useState<SketchTool>('brush');
+  const [editorOpen, setEditorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
-  const aspectRatioStyle = `${model.canvasSize.width} / ${model.canvasSize.height}`;
 
   return (
     <>
       <NodeTitle title="Sketch" muted />
-      <SketchCanvas
-        ref={canvasRef}
-        asset={model.asset}
-        brushColor={model.brushColor}
-        brushSize={model.brushSize}
-        height={model.canvasSize.height}
-        onCommit={model.saveCanvas}
-        style={{ aspectRatio: aspectRatioStyle }}
-        tool={tool}
-        width={model.canvasSize.width}
-      />
-      <div className="sketch-toolbar" data-node-interactive>
-        <button
-          type="button"
-          className={`sketch-tool-button ${tool === 'brush' ? 'sketch-tool-button-active' : ''}`}
-          onClick={() => setTool('brush')}
-          aria-label="Brush"
-        >
-          <Paintbrush size={14} />
-        </button>
-        <button
-          type="button"
-          className={`sketch-tool-button ${tool === 'eraser' ? 'sketch-tool-button-active' : ''}`}
-          onClick={() => setTool('eraser')}
-          aria-label="Eraser"
-        >
-          <Eraser size={14} />
-        </button>
-        <label className="sketch-size-control">
-          <span>{model.brushSize}px</span>
-          <input
-            type="range"
-            min="8"
-            max="180"
-            value={model.brushSize}
-            onChange={(event) => model.handleBrushSizeChange(Number(event.target.value))}
-          />
-        </label>
-        <button type="button" className="sketch-tool-button" onClick={() => canvasRef.current?.clear()} aria-label="Clear sketch">
-          <RotateCcw size={14} />
-        </button>
-      </div>
-      <div className="sketch-palette" data-node-interactive>
-        {sketchPalette.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={`sketch-color-swatch ${model.brushColor.toLowerCase() === color.toLowerCase() ? 'sketch-color-swatch-active' : ''}`}
-            style={{ backgroundColor: color }}
-            onClick={() => {
-              setTool('brush');
-              model.handleBrushColorChange(color);
-            }}
-            aria-label={`Use color ${color}`}
-          />
-        ))}
-        <label className="sketch-color-picker" aria-label="Custom color">
-          <input
-            type="color"
-            value={model.brushColor}
-            onChange={(event) => {
-              setTool('brush');
-              model.handleBrushColorChange(event.target.value);
-            }}
-          />
-        </label>
-      </div>
+      <SketchPreview data={model.data} />
+      <button type="button" className="primary-node-button" onClick={() => setEditorOpen(true)} data-node-interactive>
+        <Paintbrush size={16} />
+        Edit
+      </button>
       <CollapsibleSection title="Settings" open={settingsOpen} onOpenChange={setSettingsOpen}>
         <SettingRow
           label="Aspect Ratio"
@@ -94,6 +34,27 @@ export function SketchNode({ node }: { node: ProductionNode }) {
           onChange={model.handleAspectRatioChange}
         />
       </CollapsibleSection>
+      {editorOpen ? createPortal(
+        <SketchEditorOverlay model={model} onClose={() => setEditorOpen(false)} />,
+        document.body,
+      ) : null}
     </>
+  );
+}
+
+function SketchPreview({ data }: { data: SketchNodeData }) {
+  const url = useAssetUrl(data.assetId);
+  const aspectRatio = (data.aspectRatio || DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO).replace(':', ' / ');
+
+  return (
+    <div className="sketch-preview" style={{ aspectRatio }} onDragStart={(event) => event.preventDefault()}>
+      {url ? (
+        <Image src={url} alt="Sketch preview" fill sizes="368px" unoptimized draggable={false} className="sketch-preview-media" />
+      ) : (
+        <div className="sketch-preview-empty">
+          <ImageUp size={22} />
+        </div>
+      )}
+    </div>
   );
 }

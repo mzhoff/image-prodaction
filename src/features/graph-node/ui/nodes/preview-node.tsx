@@ -3,24 +3,23 @@
 import { useMemo } from 'react';
 import type { PreviewNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { findIncomingImageAsset } from '../../lib/generate-node-inputs';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 
 export function PreviewNode({ node }: { node: ProductionNode }) {
   const data = node.data as PreviewNodeData;
+  const edges = useProductionGraphStore((state) => state.edges);
+  const nodes = useProductionGraphStore((state) => state.nodes);
   const assets = useProductionGraphStore((state) => state.assets);
-  const firstImageAsset = useMemo(() => assets.find((asset) => asset.kind === 'image'), [assets]);
+  const sourceAsset = useMemo(() => (
+    findIncomingImageAsset(node.id, 'image', edges, nodes, assets)
+  ), [assets, edges, node.id, nodes]);
 
   return (
     <>
       <NodeTitle title={data.title} muted />
-      <ImagePlate assetId={data.assetId ?? firstImageAsset?.id} />
-      <div className="node-block">
-        <div className="node-label">Output</div>
-        <div className="node-note">
-          Здесь будет показываться результат генерации или выбранный image asset.
-        </div>
-      </div>
+      <ImagePlate assetId={sourceAsset?.id ?? data.assetId} />
     </>
   );
 }

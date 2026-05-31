@@ -9,6 +9,7 @@ import {
 import type { GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
 import { composeGenerationPrompt, composeReferenceImageInstruction } from '@/entities/production-graph/model/generate-prompt-builder';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
+import type { ProductionNodeType } from '@/entities/production-graph/model/types';
 
 export const runtime = 'nodejs';
 
@@ -41,17 +42,31 @@ const emptyStructuredInputs = {
 const generateImageSchema = z.object({
   model: z.string().min(1).default(DEFAULT_IMAGE_MODEL),
   prompt: z.string().default(''),
-  aspectRatio: z.string().min(1).default('16:9'),
+  aspectRatio: z.string().min(1).default('1:1'),
   size: z.string().min(1).default('1K'),
   inputs: structuredInputsSchema.default(emptyStructuredInputs),
   referenceImages: z.array(z.object({
     dataUrl: z.string().min(1),
     sourceAssetId: z.string().optional(),
+    sourceNodeTypes: z.array(z.custom<ProductionNodeType>(isProductionNodeType)).optional(),
     slots: z.array(z.custom<GenerateReferenceSlot>(isGenerateReferenceSlot)).default([]),
   })).max(4).default([]),
 });
 
 const referenceSlotIds = new Set<string>(['reference', ...productionLayers.map((layer) => layer.id)]);
+const productionNodeTypes = new Set<string>([
+  'importImage',
+  'textPrompt',
+  'imageToText',
+  'referenceComposer',
+  'generateImage',
+  'sketch',
+  'cropImage',
+  'adjustment',
+  'removeBackground',
+  'exportImage',
+  'preview',
+]);
 
 export async function POST(request: Request) {
   const parsed = generateImageSchema.safeParse(await request.json());
@@ -131,6 +146,10 @@ export async function POST(request: Request) {
 
 function isGenerateReferenceSlot(value: unknown) {
   return typeof value === 'string' && referenceSlotIds.has(value);
+}
+
+function isProductionNodeType(value: unknown) {
+  return typeof value === 'string' && productionNodeTypes.has(value);
 }
 
 function extractImageUrl(message?: {

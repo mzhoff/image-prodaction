@@ -64,6 +64,7 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
           <PromptBox value={model.data.result} onChange={model.handleResultChange} />
         </div>
       </CollapsibleSection>
+      {model.data.message ? <div className="node-note node-note-compact">{model.data.message}</div> : null}
     </>
   );
 }

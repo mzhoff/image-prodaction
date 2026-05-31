@@ -4,12 +4,15 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent }
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
+import { AdjustmentNode } from './nodes/adjustment-node';
+import { CropNode } from './nodes/crop-node';
 import { ExportImageNode } from './nodes/export-image-node';
 import { GenerateImageNode } from './nodes/generate-image-node';
 import { ImageToTextNode } from './nodes/image-to-text-node';
 import { ImportImageNode } from './nodes/import-image-node';
 import { PreviewNode } from './nodes/preview-node';
 import { ReferenceComposerNode } from './nodes/reference-composer-node';
+import { RemoveBackgroundNode } from './nodes/remove-background-node';
 import { SketchNode } from './nodes/sketch-node';
 import { TextPromptNode } from './nodes/text-prompt-node';
 import { getPortTop } from './port-button';
@@ -53,7 +56,7 @@ export function NodeCard({
         const sideIndex = ports.filter((item) => item.side === port.side).findIndex((item) => item.id === port.id);
         return (
           <button
-            key={port.id}
+            key={`${port.side}:${port.id}`}
             type="button"
             className={cn('node-port', `node-port-${port.side}`, `node-port-${port.kind}`)}
             style={{ top: getPortTop(node, port.side, sideIndex) }}
@@ -71,6 +74,9 @@ export function NodeCard({
       {node.type === 'imageToText' ? <ImageToTextNode node={node} onStartConnection={onStartConnection} /> : null}
       {node.type === 'referenceComposer' ? <ReferenceComposerNode node={node} /> : null}
       {node.type === 'sketch' ? <SketchNode node={node} /> : null}
+      {node.type === 'cropImage' ? <CropNode node={node} /> : null}
+      {node.type === 'adjustment' ? <AdjustmentNode node={node} /> : null}
+      {node.type === 'removeBackground' ? <RemoveBackgroundNode node={node} /> : null}
       {node.type === 'generateImage' ? (
         <GenerateImageNode
           node={node}

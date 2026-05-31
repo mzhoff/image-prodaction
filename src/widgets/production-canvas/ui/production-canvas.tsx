@@ -5,6 +5,7 @@ import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-produc
 import { CanvasEdges } from './canvas-edges';
 import { CanvasGrid } from './canvas-grid';
 import { CanvasNodeLayer } from './canvas-node-layer';
+import { CanvasSectionLayer } from './canvas-section-layer';
 import { CanvasToolbar } from './canvas-toolbar';
 import { OpenRouterBalance } from './openrouter-balance';
 
@@ -14,10 +15,12 @@ export function ProductionCanvas() {
   return (
     <div className="canvas-shell">
       <CanvasToolbar
+        activeTool={model.canvasTool}
         canRedo={model.historyFutureLength > 0}
         canUndo={model.historyPastLength > 0}
         onDeleteSelected={model.deleteSelected}
         onRedo={model.redo}
+        onSelectTool={model.setCanvasTool}
         onUndo={model.undo}
         onZoomToFit={() => model.canvas.zoomToBounds(model.bounds)}
       />
@@ -40,6 +43,15 @@ export function ProductionCanvas() {
             transform: `translate(${model.canvas.pan.x}px, ${model.canvas.pan.y}px) scale(${model.canvas.zoom})`,
           }}
         >
+          <CanvasSectionLayer
+            disabled={model.canvasTool === 'section'}
+            onRenameSection={model.renameSection}
+            onSelectSection={model.selectSection}
+            onStartDrag={model.startSectionDrag}
+            onStartResize={model.startSectionResize}
+            sections={model.sections}
+            selectedSectionSet={model.selectedSectionSet}
+          />
           <CanvasEdges
             collapsedGenerateComposingNodeIds={model.collapsedGenerateComposingNodeIds}
             connectionDraft={model.connectionDraft}
@@ -62,6 +74,7 @@ export function ProductionCanvas() {
         <OpenRouterBalance />
         {model.toastMessage ? <div className="canvas-toast">{model.toastMessage}</div> : null}
         {model.boxSelection.rectStyle ? <div className="selection-rect" style={model.boxSelection.rectStyle} /> : null}
+        {model.sectionDraftStyle ? <div className="section-draft-rect" style={model.sectionDraftStyle} /> : null}
         <ContextMenu menu={model.contextMenu.menu} onClose={model.closeContextMenu} />
       </div>
     </div>

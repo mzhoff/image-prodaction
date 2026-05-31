@@ -11,6 +11,9 @@ export type ProductionNodeType =
   | 'referenceComposer'
   | 'generateImage'
   | 'sketch'
+  | 'cropImage'
+  | 'adjustment'
+  | 'removeBackground'
   | 'exportImage'
   | 'preview';
 
@@ -45,6 +48,7 @@ export interface ImportImageNodeData extends BaseNodeData {
 }
 
 export interface ImageToTextNodeData extends BaseNodeData {
+  message?: string;
   model?: string;
   preset?: ExtractPresetId;
   presets?: ExtractPresetId[];
@@ -85,6 +89,44 @@ export interface SketchNodeData extends BaseNodeData {
   brushSize: string;
 }
 
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CropImageNodeData extends BaseNodeData {
+  aspectRatio: string;
+  crop?: CropRect;
+  cropStateVersion?: number;
+  locked: boolean;
+  resultAssetId?: string;
+  message?: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+}
+
+export interface RemoveBackgroundNodeData extends BaseNodeData {
+  resultAssetId?: string;
+  message?: string;
+}
+
+export interface AdjustmentNodeData extends BaseNodeData {
+  exposure: number;
+  gamma: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  tint: number;
+  highlights: number;
+  shadows: number;
+  resultAssetId?: string;
+  message?: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+}
+
 export interface PreviewNodeData extends BaseNodeData {
   assetId?: string;
 }
@@ -107,6 +149,9 @@ export type ProductionNodeData =
   | GenerateImageNodeData
   | TextPromptNodeData
   | SketchNodeData
+  | CropImageNodeData
+  | AdjustmentNodeData
+  | RemoveBackgroundNodeData
   | ExportImageNodeData
   | PreviewNodeData;
 
@@ -117,6 +162,13 @@ export interface ProductionNode {
   size: GraphSize;
   status: NodeStatus;
   data: ProductionNodeData;
+}
+
+export interface GraphSection {
+  id: string;
+  title: string;
+  position: GraphPoint;
+  size: GraphSize;
 }
 
 export interface GraphEdge {
@@ -160,9 +212,11 @@ export interface RunRecord {
 export interface GraphProject {
   version: 1;
   nodes: ProductionNode[];
+  sections: GraphSection[];
   edges: GraphEdge[];
   assets: AssetRecord[];
   presets: PresetRecord[];
   runs: RunRecord[];
   selectedNodeIds: string[];
+  selectedSectionIds: string[];
 }

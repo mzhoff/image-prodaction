@@ -16,20 +16,31 @@ import { useCanvasToast } from './use-canvas-toast';
 import { type ConnectionDropOnEmpty, useConnectionDraft } from './use-connection-draft';
 import { useNodeDrag } from './use-node-drag';
 import { usePortPointMeasurement } from './use-port-point-measurement';
+import { useSectionDrag } from './use-section-drag';
+import { useSectionDrawing } from './use-section-drawing';
+import { useSectionResize } from './use-section-resize';
 import { addNodeMenu } from '../lib/add-node-menu';
 import { useProductionCanvasStore } from './use-production-canvas-store';
 
 export const CANVAS_WORLD_SIZE = 4000;
+type CanvasTool = 'select' | 'section';
 
 export function useProductionCanvasModel() {
   const canvas = useCanvasNavigation();
   const contextMenu = useContextMenu();
   const graph = useProductionCanvasStore();
+  const [canvasTool, setCanvasTool] = useState<CanvasTool>('select');
   const [collapsedGenerateComposingNodeIds, setCollapsedGenerateComposingNodeIds] = useState<Set<string>>(() => new Set());
   const [pendingConnectionMenu, setPendingConnectionMenu] = useState<ConnectionDropOnEmpty | null>(null);
   const didInitialFitRef = useRef(false);
   const lastPointerWorldRef = useRef({ x: 0, y: 0 });
   const boxSelection = useCanvasBoxSelection({ screenToWorld: canvas.screenToWorld, onSelect: graph.selectNodesInRect });
+  const finishSectionDrawing = useCallback(() => setCanvasTool('select'), []);
+  const sectionDrawing = useSectionDrawing({
+    screenToWorld: canvas.screenToWorld,
+    onCreateSection: graph.addSection,
+    onFinish: finishSectionDrawing,
+  });
   const measuredPortPoints = usePortPointMeasurement({
     collapsedGenerateComposingNodeIds,
     containerRef: canvas.containerRef,
@@ -74,7 +85,24 @@ export function useProductionCanvasModel() {
     pushHistory: graph.pushHistory,
     screenToWorld: canvas.screenToWorld,
     selectNode: graph.selectNode,
+    selectedSectionSet: graph.selectedSectionSet,
     selectedSet: graph.selectedSet,
+  });
+  const startSectionDrag = useSectionDrag({
+    closeContextMenu: contextMenu.closeContextMenu,
+    moveSectionBy: graph.moveSectionBy,
+    moveSelectedNodesBy: graph.moveSelectedNodesBy,
+    nodes: graph.nodes,
+    pushHistory: graph.pushHistory,
+    screenToWorld: canvas.screenToWorld,
+    selectSection: graph.selectSection,
+    selectedNodeSet: graph.selectedSet,
+    selectedSectionSet: graph.selectedSectionSet,
+  });
+  const startSectionResize = useSectionResize({
+    pushHistory: graph.pushHistory,
+    resizeSection: graph.resizeSection,
+    screenToWorld: canvas.screenToWorld,
   });
 
   const createNode = useCallback((type: ProductionNodeType, position: { x: number; y: number }) => {
@@ -121,6 +149,30 @@ export function useProductionCanvasModel() {
     }
     contextMenu.closeContextMenu();
   }, [clearConnectionDraft, contextMenu, pendingConnectionMenu]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isTyping || event.metaKey || event.ctrlKey || event.altKey || target?.closest('.image-viewer-overlay')) return;
+
+      if (event.shiftKey && event.code === 'KeyS') {
+        event.preventDefault();
+        setCanvasTool('section');
+        closeContextMenu();
+        return;
+      }
+
+      if (!event.shiftKey && event.code === 'KeyV') {
+        event.preventDefault();
+        setCanvasTool('select');
+        closeContextMenu();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeContextMenu]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {
     const worldPoint = canvas.screenToWorld(event.nativeEvent) ?? { x: 0, y: 0 };
@@ -170,7 +222,12 @@ export function useProductionCanvasModel() {
     if (event.button !== 0) return;
     const target = event.target as HTMLElement;
     if (target.closest('[data-node-id]') || target.closest('button')) return;
+    if (event.shiftKey && target.closest('[data-canvas-section]')) return;
     closeContextMenu();
+    if (canvasTool === 'section') {
+      sectionDrawing.startSectionDrawing(event);
+      return;
+    }
     boxSelection.startSelection(event);
   };
 
@@ -207,12 +264,15 @@ export function useProductionCanvasModel() {
     });
   }, []);
 
-  const cursor = canvas.isPanning ? 'grabbing' : boxSelection.isSelecting ? 'crosshair' : undefined;
+  const cursor = canvas.isPanning || sectionDrawing.isDrawingSection
+    ? canvas.isPanning ? 'grabbing' : 'crosshair'
+    : canvasTool === 'section' || boxSelection.isSelecting ? 'crosshair' : undefined;
 
   return {
     bounds: graph.bounds,
     boxSelection,
     canvas,
+    canvasTool,
     closeContextMenu,
     collapsedGenerateComposingNodeIds,
     connectionDraft,
@@ -231,10 +291,18 @@ export function useProductionCanvasModel() {
     openCanvasMenu,
     openNodeMenu,
     redo: graph.redo,
+    renameSection: graph.renameSection,
     deleteSelected: graph.deleteSelected,
     selectedSet: graph.selectedSet,
+    selectedSectionSet: graph.selectedSectionSet,
+    selectSection: graph.selectSection,
+    sectionDraftStyle: sectionDrawing.sectionDraftStyle,
+    sections: graph.sections,
+    setCanvasTool,
     startConnection,
     startNodeDrag,
+    startSectionDrag,
+    startSectionResize,
     toastMessage,
     toggleGenerateComposing,
     undo: graph.undo,

@@ -26,6 +26,10 @@ export interface EditImageRequest {
   size: string;
 }
 
+export interface RemoveBackgroundRequest {
+  imageDataUrl: string;
+}
+
 export async function requestAnalyzeImage(payload: AnalyzeImageRequest) {
   const response = await fetch('/api/ai/analyze-image', {
     method: 'POST',
@@ -58,6 +62,18 @@ export async function requestEditImage(payload: EditImageRequest) {
   const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
   if (!response.ok) throw new Error(formatApiError(result.error));
   if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
+  return { imageDataUrl: result.imageDataUrl, message: result.message };
+}
+
+export async function requestRemoveBackground(payload: RemoveBackgroundRequest) {
+  const response = await fetch('/api/ai/remove-background', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.imageDataUrl) throw new Error(result.message || 'FAL не вернул изображение с прозрачностью.');
   return { imageDataUrl: result.imageDataUrl, message: result.message };
 }
 
