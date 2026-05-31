@@ -86,26 +86,34 @@ function AdjustmentSlider({
   const center = ((0 - min) / (max - min)) * 100;
   const fillStart = Math.min(center, progress);
   const fillEnd = Math.max(center, progress);
+  const sliderStyle = {
+    '--adjustment-fill-left': `${fillStart}%`,
+    '--adjustment-fill-width': `${fillEnd - fillStart}%`,
+  } as CSSProperties;
 
   return (
     <label className="adjustment-slider-row" data-node-interactive>
       <span>{label}</span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        className="adjustment-slider"
-        style={{ background: `linear-gradient(90deg, #e5eeee 0%, #e5eeee ${fillStart}%, #000 ${fillStart}%, #000 ${fillEnd}%, #e5eeee ${fillEnd}%, #e5eeee 100%)` }}
-        onChange={(event) => onChange(id, Number(event.target.value))}
-        onDoubleClick={(event) => {
-          event.stopPropagation();
-          onReset(id);
-        }}
-        onKeyDown={handleKeyDown}
-        onPointerDown={handlePointerDown}
-      />
+      <div className="adjustment-slider-control" style={sliderStyle}>
+        <span className="adjustment-slider-rail" aria-hidden="true">
+          <span className="adjustment-slider-fill" />
+        </span>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          className="adjustment-slider"
+          onChange={(event) => onChange(id, Number(event.target.value))}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            onReset(id);
+          }}
+          onKeyDown={handleKeyDown}
+          onPointerDown={handlePointerDown}
+        />
+      </div>
     </label>
   );
 }
