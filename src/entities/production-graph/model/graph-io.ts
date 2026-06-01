@@ -10,6 +10,7 @@ import type {
   ImportImageNodeData,
   PreviewNodeData,
   ProductionNode,
+  RefineImageNodeData,
   ReferenceComposerNodeData,
   RemoveBackgroundNodeData,
   SketchNodeData,
@@ -69,6 +70,7 @@ export function getNodeImageAssetId(node?: ProductionNode) {
     const data = node.data as AdjustmentNodeData;
     return data.resultAssetId ?? data.sourceAssetId;
   }
+  if (node.type === 'refineImage') return getGenerationHistory(node.data as RefineImageNodeData).activeAssetId;
   if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   return undefined;

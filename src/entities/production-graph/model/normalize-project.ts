@@ -167,6 +167,26 @@ function normalizeNode(node: ProductionNode): ProductionNode {
     } as ProductionNode;
   }
 
+  if (node.type === 'refineImage') {
+    const history = getGenerationHistory(node.data as unknown as GenerationHistoryData);
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        model: 'google/gemini-2.5-flash-image',
+        mode: 'reference-cleanup',
+        preserveStrength: 'strict',
+        size: '2K',
+        instruction: '',
+        ...node.data,
+        activeResultIndex: history.activeIndex,
+        resultAssetId: history.activeAssetId,
+        resultAssetIds: history.assetIds,
+        title: 'Refine',
+      },
+    } as ProductionNode;
+  }
+
   if (node.type === 'removeBackground') {
     return {
       ...node,

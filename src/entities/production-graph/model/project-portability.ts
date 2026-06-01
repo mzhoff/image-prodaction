@@ -109,7 +109,7 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.cropStateVersion;
   delete data.message;
 
-  if (node.type === 'generateImage') {
+  if (node.type === 'generateImage' || node.type === 'refineImage') {
     data.activeResultIndex = -1;
     data.resultAssetIds = [];
   }
