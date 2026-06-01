@@ -3,6 +3,7 @@ import { cloneSnapshot, withHistory } from './graph-history';
 import { getRenderedNodeSize } from './graph-store-dom';
 import { initialProject } from './initial-project';
 import { normalizeProject } from './normalize-project';
+import { createEmptyProjectUiState } from './project-schema';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
 
@@ -22,14 +23,26 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
       const selectedSections = new Set(get().selectedSectionIds);
       if (selected.size === 0 && selectedSections.size === 0) return;
 
-      set((state) => ({
-        ...withHistory(state),
-        nodes: state.nodes.filter((node) => !selected.has(node.id)),
-        sections: state.sections.filter((section) => !selectedSections.has(section.id)),
-        edges: state.edges.filter((edge) => !selected.has(edge.sourceNodeId) && !selected.has(edge.targetNodeId)),
-        selectedNodeIds: [],
-        selectedSectionIds: [],
-      }));
+      set((state) => {
+        const nodeUiState = { ...state.uiState.nodes };
+        const sectionUiState = { ...state.uiState.sections };
+        selected.forEach((nodeId) => delete nodeUiState[nodeId]);
+        selectedSections.forEach((sectionId) => delete sectionUiState[sectionId]);
+
+        return {
+          ...withHistory(state),
+          nodes: state.nodes.filter((node) => !selected.has(node.id)),
+          sections: state.sections.filter((section) => !selectedSections.has(section.id)),
+          edges: state.edges.filter((edge) => !selected.has(edge.sourceNodeId) && !selected.has(edge.targetNodeId)),
+          selectedNodeIds: [],
+          selectedSectionIds: [],
+          uiState: {
+            ...state.uiState,
+            nodes: nodeUiState,
+            sections: sectionUiState,
+          },
+        };
+      });
     },
     moveNode: (nodeId, position) => {
       set((state) => ({
@@ -89,7 +102,7 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
         selectedSectionIds: [],
       }));
     },
-    resetProject: () => set((state) => ({ ...withHistory(state), ...normalizeProject(initialProject) })),
+    resetProject: () => set((state) => ({ ...withHistory(state), ...normalizeProject(initialProject), uiState: createEmptyProjectUiState() })),
     selectNode: (nodeId, additive = false) => {
       set((state) => {
         if (!additive) return { selectedNodeIds: [nodeId], selectedSectionIds: [] };

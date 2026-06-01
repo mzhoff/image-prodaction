@@ -30,7 +30,10 @@ export function useProductionCanvasStore() {
   const selectSection = useProductionGraphStore((state) => state.selectSection);
   const renameSection = useProductionGraphStore((state) => state.renameSection);
   const resizeSection = useProductionGraphStore((state) => state.resizeSection);
+  const setNodeUiState = useProductionGraphStore((state) => state.setNodeUiState);
+  const setProjectUiViewport = useProductionGraphStore((state) => state.setProjectUiViewport);
   const undo = useProductionGraphStore((state) => state.undo);
+  const uiState = useProductionGraphStore((state) => state.uiState);
   const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const selectedSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const selectedSectionSet = useMemo(() => new Set(selectedSectionIds), [selectedSectionIds]);
@@ -63,7 +66,10 @@ export function useProductionCanvasStore() {
     selectedSet,
     selectedSectionSet,
     selectNodesInRect,
+    setNodeUiState,
+    setProjectUiViewport,
     sections,
+    uiState,
     undo,
   }), [
     addNode,
@@ -92,7 +98,10 @@ export function useProductionCanvasStore() {
     selectedSet,
     selectedSectionSet,
     selectNodesInRect,
+    setNodeUiState,
+    setProjectUiViewport,
     sections,
+    uiState,
     undo,
   ]);
 }

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { AdjustmentNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { adjustImageBlob, type ImageAdjustmentValues } from '../lib/adjust-image';
-import { findIncomingImageAsset } from '../lib/generate-node-inputs';
 
 export type AdjustmentControlId = keyof ImageAdjustmentValues;
 
@@ -50,7 +50,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
   const processingRef = useRef(0);
 
   const sourceAsset = useMemo(() => (
-    findIncomingImageAsset(node.id, 'image', edges, nodes, assets)
+    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
   ), [assets, edges, node.id, nodes]);
   const resultAsset = useMemo(() => (
     assets.find((asset) => asset.id === data.resultAssetId)

@@ -11,6 +11,12 @@ interface StoredAssetBlob {
   blob: Blob;
 }
 
+interface SaveAssetBlobOptions {
+  kind?: AssetRecord['kind'];
+  name?: string;
+  mimeType?: string;
+}
+
 function openAssetDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -45,18 +51,24 @@ async function withAssetStore<T>(mode: IDBTransactionMode, run: (store: IDBObjec
   });
 }
 
-export async function saveImageAsset(file: File): Promise<AssetRecord> {
+export async function saveAssetBlob(blob: Blob, options: SaveAssetBlobOptions = {}): Promise<AssetRecord> {
+  const kind = options.kind ?? inferAssetKind(options.mimeType ?? blob.type);
+  const name = options.name ?? (blob instanceof File ? blob.name : `${kind}-${Date.now()}`);
+  const mimeType = options.mimeType || blob.type || defaultMimeType(kind);
   const assetId = createId('asset');
-  const blobKey = `${assetId}:${file.name}`;
-  const dimensions = await readImageSize(file).catch(() => undefined);
+  const blobKey = `${assetId}:${name}`;
+  const file = blob instanceof File && blob.name === name && blob.type === mimeType
+    ? blob
+    : new File([blob], name, { type: mimeType });
+  const dimensions = kind === 'image' ? await readImageSize(file).catch(() => undefined) : undefined;
 
   await withAssetStore('readwrite', (store) => store.put({ key: blobKey, blob: file } satisfies StoredAssetBlob));
 
   return {
     id: assetId,
-    kind: 'image',
-    name: file.name,
-    mimeType: file.type || 'image/png',
+    kind,
+    name,
+    mimeType,
     width: dimensions?.width,
     height: dimensions?.height,
     createdAt: new Date().toISOString(),
@@ -65,6 +77,14 @@ export async function saveImageAsset(file: File): Promise<AssetRecord> {
       blobKey,
     },
   };
+}
+
+export async function saveImageAsset(file: File): Promise<AssetRecord> {
+  return saveAssetBlob(file, {
+    kind: 'image',
+    name: file.name,
+    mimeType: file.type || 'image/png',
+  });
 }
 
 export async function loadAssetBlobByKey(blobKey: string) {
@@ -78,4 +98,16 @@ export async function loadAssetBlob(asset: AssetRecord) {
 
 export async function deleteAssetBlob(asset: AssetRecord) {
   await withAssetStore('readwrite', (store) => store.delete(asset.storage.blobKey));
+}
+
+function inferAssetKind(mimeType?: string): AssetRecord['kind'] {
+  if (mimeType?.startsWith('video/')) return 'video';
+  if (mimeType?.startsWith('audio/')) return 'audio';
+  return 'image';
+}
+
+function defaultMimeType(kind: AssetRecord['kind']) {
+  if (kind === 'video') return 'video/mp4';
+  if (kind === 'audio') return 'audio/mpeg';
+  return 'image/png';
 }

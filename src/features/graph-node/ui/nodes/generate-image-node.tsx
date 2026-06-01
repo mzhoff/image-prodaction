@@ -5,6 +5,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
+import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useGenerateImageNodeModel } from '../../model/use-generate-image-node-model';
 import { generateReferenceRows } from '../../lib/generate-node-inputs';
@@ -49,10 +50,13 @@ export function GenerateImageNode({
         onMaskEdit={model.handleMaskEdit}
         sourceModel={model.data.model}
       />
-      <button type="button" className="primary-node-button" onClick={model.handleGenerate} disabled={node.status === 'running' || model.loading}>
-        {node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}
+      <PrimaryActionButton
+        icon={node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}
+        onClick={model.handleGenerate}
+        disabled={node.status === 'running' || model.loading}
+      >
         Generate
-      </button>
+      </PrimaryActionButton>
       <CollapsibleSection
         title="Prompt"
         open={model.promptOpen}

@@ -12,8 +12,8 @@ import { requestAnalyzeImage } from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
-import { findIncomingImageAsset } from '../lib/generate-node-inputs';
 import { getSelectedModelId, modelSelectOptions } from '../lib/node-select-options';
 
 export function useExtractNodeModel(node: ProductionNode) {
@@ -50,7 +50,7 @@ export function useExtractNodeModel(node: ProductionNode) {
   };
 
   const handleAnalyze = async () => {
-    const sourceAsset = findIncomingImageAsset(node.id, 'image', edges, nodes, assets);
+    const sourceAsset = getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets });
     if (!sourceAsset) {
       updateNodeData(node.id, { message: 'Подключи изображение к входу Extract или загрузи его в Import node.' });
       return;

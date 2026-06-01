@@ -7,8 +7,10 @@ import { createGraphHistoryActions } from './graph-history-actions';
 import { createGraphNodeActions } from './graph-node-actions';
 import { createGraphSectionActions } from './graph-section-actions';
 import { createGraphSelectionActions } from './graph-selection-actions';
+import { createGraphUiStateActions } from './graph-ui-state-actions';
 import { initialProject } from './initial-project';
 import { normalizeProject } from './normalize-project';
+import { createEmptyProjectUiState, normalizeProjectUiState } from './project-schema';
 import type { GraphProject } from './types';
 import type { ProductionGraphState } from './store-types';
 
@@ -20,11 +22,13 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       ...initialProject,
       historyPast: [],
       historyFuture: [],
+      uiState: createEmptyProjectUiState(),
       ...createGraphNodeActions(set),
       ...createGraphSectionActions(set),
       ...createGraphConnectionActions(set, get),
       ...createGraphSelectionActions(set, get),
       ...createGraphHistoryActions(set, get),
+      ...createGraphUiStateActions(set),
     }),
     {
       name: 'reverie-image-production-project:v1',
@@ -38,13 +42,19 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
         runs: state.runs,
         selectedNodeIds: state.selectedNodeIds,
         selectedSectionIds: state.selectedSectionIds,
+        uiState: state.uiState,
       }),
-      merge: (persisted, current) => ({
-        ...current,
-        ...normalizeProject({ ...initialProject, ...(persisted as Partial<GraphProject>) }),
-        historyPast: [],
-        historyFuture: [],
-      }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<ProductionGraphState & GraphProject>;
+        const project = normalizeProject({ ...initialProject, ...persistedState });
+        return {
+          ...current,
+          ...project,
+          uiState: normalizeProjectUiState(persistedState.uiState, project),
+          historyPast: [],
+          historyFuture: [],
+        };
+      },
     },
   ),
 );

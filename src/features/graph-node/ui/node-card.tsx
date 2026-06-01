@@ -1,8 +1,9 @@
 'use client';
 
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
+import type { ReactNode } from 'react';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
-import type { ProductionNode } from '@/entities/production-graph/model/types';
+import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import { AdjustmentNode } from './nodes/adjustment-node';
 import { CropNode } from './nodes/crop-node';
@@ -27,6 +28,29 @@ interface NodeCardProps {
   onGenerateComposingOpenChange?: (open: boolean) => void;
 }
 
+type NodeRenderer = (props: NodeCardProps) => ReactNode;
+
+const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
+  importImage: ({ node }) => <ImportImageNode node={node} />,
+  textPrompt: ({ node, onStartConnection }) => <TextPromptNode node={node} onStartConnection={onStartConnection} />,
+  imageToText: ({ node, onStartConnection }) => <ImageToTextNode node={node} onStartConnection={onStartConnection} />,
+  referenceComposer: ({ node }) => <ReferenceComposerNode node={node} />,
+  sketch: ({ node }) => <SketchNode node={node} />,
+  cropImage: ({ node }) => <CropNode node={node} />,
+  adjustment: ({ node }) => <AdjustmentNode node={node} />,
+  removeBackground: ({ node }) => <RemoveBackgroundNode node={node} />,
+  generateImage: ({ node, generateComposingOpen = true, onGenerateComposingOpenChange, onStartConnection }) => (
+    <GenerateImageNode
+      node={node}
+      composingOpen={generateComposingOpen}
+      onComposingOpenChange={onGenerateComposingOpenChange ?? (() => undefined)}
+      onStartConnection={onStartConnection}
+    />
+  ),
+  exportImage: ({ node }) => <ExportImageNode node={node} />,
+  preview: ({ node }) => <PreviewNode node={node} />,
+};
+
 export function NodeCard({
   node,
   selected,
@@ -37,6 +61,7 @@ export function NodeCard({
   onGenerateComposingOpenChange,
 }: NodeCardProps) {
   const ports = getNodePorts(node);
+  const renderNode = nodeRenderers[node.type];
   const visiblePorts = ports.filter((port) => {
     if (node.type === 'generateImage' && port.side === 'input') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
@@ -69,24 +94,15 @@ export function NodeCard({
           />
         );
       })}
-      {node.type === 'importImage' ? <ImportImageNode node={node} /> : null}
-      {node.type === 'textPrompt' ? <TextPromptNode node={node} onStartConnection={onStartConnection} /> : null}
-      {node.type === 'imageToText' ? <ImageToTextNode node={node} onStartConnection={onStartConnection} /> : null}
-      {node.type === 'referenceComposer' ? <ReferenceComposerNode node={node} /> : null}
-      {node.type === 'sketch' ? <SketchNode node={node} /> : null}
-      {node.type === 'cropImage' ? <CropNode node={node} /> : null}
-      {node.type === 'adjustment' ? <AdjustmentNode node={node} /> : null}
-      {node.type === 'removeBackground' ? <RemoveBackgroundNode node={node} /> : null}
-      {node.type === 'generateImage' ? (
-        <GenerateImageNode
-          node={node}
-          composingOpen={generateComposingOpen}
-          onComposingOpenChange={onGenerateComposingOpenChange ?? (() => undefined)}
-          onStartConnection={onStartConnection}
-        />
-      ) : null}
-      {node.type === 'exportImage' ? <ExportImageNode node={node} /> : null}
-      {node.type === 'preview' ? <PreviewNode node={node} /> : null}
+      {renderNode({
+        node,
+        selected,
+        onStartDrag,
+        onStartConnection,
+        onContextMenu,
+        generateComposingOpen,
+        onGenerateComposingOpenChange,
+      })}
     </article>
   );
 }

@@ -5,8 +5,8 @@ import type { ProductionNode, RemoveBackgroundNodeData } from '@/entities/produc
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { requestRemoveBackground } from '@/shared/api/ai-client';
 import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
-import { findIncomingImageAsset } from '../lib/generate-node-inputs';
 
 export function useRemoveBackgroundNodeModel(node: ProductionNode) {
   const data = node.data as RemoveBackgroundNodeData;
@@ -18,7 +18,7 @@ export function useRemoveBackgroundNodeModel(node: ProductionNode) {
   const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const sourceAsset = useMemo(() => (
-    findIncomingImageAsset(node.id, 'image', edges, nodes, assets)
+    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
   ), [assets, edges, node.id, nodes]);
   const resultAsset = useMemo(() => (
     assets.find((asset) => asset.id === data.resultAssetId)
