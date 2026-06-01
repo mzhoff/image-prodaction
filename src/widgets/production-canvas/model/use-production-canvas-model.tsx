@@ -5,8 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
 import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
+import type { PortableProjectExport } from '@/entities/production-graph/model/project-schema';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { hasFileInDataTransfer, hasImageFileInDataTransfer, getImageFileFromDataTransfer } from '@/shared/lib/image-file';
+import { createDatedJsonFileName, downloadJsonFile, readJsonFile } from '@/shared/lib/json-file';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
@@ -94,6 +96,28 @@ export function useProductionCanvasModel() {
 
   const importImageFile = useCanvasImageImport({ getFallbackPastePosition, pasteImageAsset: graph.pasteImageAsset });
   const { showToast, toastMessage } = useCanvasToast();
+  const exportProjectSnapshot = useCallback(() => {
+    downloadJsonFile(graph.exportProjectSnapshot(), createDatedJsonFileName('reverie-project'));
+    showToast('Project snapshot exported.');
+  }, [graph, showToast]);
+  const exportPipelineTemplate = useCallback(() => {
+    downloadJsonFile(graph.exportPipelineTemplate(), createDatedJsonFileName('reverie-pipeline-template'));
+    showToast('Pipeline template exported.');
+  }, [graph, showToast]);
+  const importPortableProjectFile = useCallback(async (file: File, expectedKind: PortableProjectExport['kind']) => {
+    try {
+      const result = graph.importPortableProject(await readJsonFile(file), expectedKind);
+      showToast(result.kind === 'pipelineTemplate' ? 'Pipeline template imported.' : 'Project snapshot imported.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Не удалось импортировать JSON.');
+    }
+  }, [graph, showToast]);
+  const importProjectSnapshotFile = useCallback((file: File) => {
+    void importPortableProjectFile(file, 'projectSnapshot');
+  }, [importPortableProjectFile]);
+  const importPipelineTemplateFile = useCallback((file: File) => {
+    void importPortableProjectFile(file, 'pipelineTemplate');
+  }, [importPortableProjectFile]);
   useCanvasClipboard({
     deleteSelected: graph.deleteSelected,
     importImageFile,
@@ -305,11 +329,15 @@ export function useProductionCanvasModel() {
     handleCanvasMouseMove,
     historyFutureLength: graph.historyFutureLength,
     historyPastLength: graph.historyPastLength,
+    importPipelineTemplateFile,
+    importProjectSnapshotFile,
     measuredPortPoints,
     nodes: graph.nodes,
     nodesById: graph.nodesById,
     openCanvasMenu,
     openNodeMenu,
+    exportPipelineTemplate,
+    exportProjectSnapshot,
     redo: graph.redo,
     renameSection: graph.renameSection,
     deleteSelected: graph.deleteSelected,

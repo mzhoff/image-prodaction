@@ -105,6 +105,13 @@
   color: #555;
 }
 
+.canvas-toolbar-separator {
+  width: 1px;
+  height: 22px;
+  align-self: center;
+  background: rgba(0, 0, 0, 0.08);
+}
+
 .zoom-indicator {
   position: absolute;
   right: 18px;

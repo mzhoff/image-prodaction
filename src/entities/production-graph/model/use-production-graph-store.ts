@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware';
 import { createGraphConnectionActions } from './graph-connection-actions';
 import { createGraphHistoryActions } from './graph-history-actions';
 import { createGraphNodeActions } from './graph-node-actions';
+import { createGraphPortabilityActions } from './graph-portability-actions';
 import { createGraphSectionActions } from './graph-section-actions';
 import { createGraphSelectionActions } from './graph-selection-actions';
 import { createGraphUiStateActions } from './graph-ui-state-actions';
@@ -29,6 +30,7 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       ...createGraphSelectionActions(set, get),
       ...createGraphHistoryActions(set, get),
       ...createGraphUiStateActions(set),
+      ...createGraphPortabilityActions(set, get),
     }),
     {
       name: 'reverie-image-production-project:v1',

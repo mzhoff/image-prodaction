@@ -1,5 +1,5 @@
 import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord } from './types';
-import type { ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
+import type { PipelineTemplateExport, PortableProjectExport, ProjectExport, ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
 export type ConnectResult = { ok: true } | { ok: false; reason: string };
@@ -39,4 +39,7 @@ export interface ProductionGraphState extends GraphProject {
   setProjectUiViewport: (viewport: ProjectViewportState) => void;
   setNodeUiState: (nodeId: string, nodeUiState: Partial<ProjectNodeUiState>) => void;
   setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
+  exportProjectSnapshot: () => ProjectExport;
+  exportPipelineTemplate: () => PipelineTemplateExport;
+  importPortableProject: (payload: unknown, expectedKind?: PortableProjectExport['kind']) => { kind: ProjectExport['kind'] | PipelineTemplateExport['kind'] };
 }

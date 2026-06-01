@@ -18,6 +18,10 @@ export function ProductionCanvas() {
         activeTool={model.canvasTool}
         canRedo={model.historyFutureLength > 0}
         canUndo={model.historyPastLength > 0}
+        onExportPipelineTemplate={model.exportPipelineTemplate}
+        onExportProject={model.exportProjectSnapshot}
+        onImportPipelineTemplate={model.importPipelineTemplateFile}
+        onImportProject={model.importProjectSnapshotFile}
         onDeleteSelected={model.deleteSelected}
         onRedo={model.redo}
         onSelectTool={model.setCanvasTool}
