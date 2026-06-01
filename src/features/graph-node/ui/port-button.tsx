@@ -51,6 +51,7 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'imageToText' && side === 'output') return 402;
   if (node.type === 'cropImage' && (side === 'input' || side === 'output')) return getCropImagePortTop(node);
   if (node.type === 'adjustment' && (side === 'input' || side === 'output')) return getAdjustmentPortTop(node);
+  if (node.type === 'refineImage' && (side === 'input' || side === 'output')) return 126;
   if (node.type === 'removeBackground' && side === 'input') return 126;
   if (node.type === 'removeBackground' && side === 'output') return 126;
   if (node.type === 'exportImage' && side === 'input') return 126;

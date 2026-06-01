@@ -12,6 +12,7 @@ import { GenerateImageNode } from './nodes/generate-image-node';
 import { ImageToTextNode } from './nodes/image-to-text-node';
 import { ImportImageNode } from './nodes/import-image-node';
 import { PreviewNode } from './nodes/preview-node';
+import { RefineImageNode } from './nodes/refine-image-node';
 import { ReferenceComposerNode } from './nodes/reference-composer-node';
 import { RemoveBackgroundNode } from './nodes/remove-background-node';
 import { SketchNode } from './nodes/sketch-node';
@@ -38,6 +39,7 @@ const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
   sketch: ({ node }) => <SketchNode node={node} />,
   cropImage: ({ node }) => <CropNode node={node} />,
   adjustment: ({ node }) => <AdjustmentNode node={node} />,
+  refineImage: ({ node }) => <RefineImageNode node={node} />,
   removeBackground: ({ node }) => <RemoveBackgroundNode node={node} />,
   generateImage: ({ node, generateComposingOpen = true, onGenerateComposingOpenChange, onStartConnection }) => (
     <GenerateImageNode

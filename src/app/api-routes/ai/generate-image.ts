@@ -63,6 +63,7 @@ const productionNodeTypes = new Set<string>([
   'sketch',
   'cropImage',
   'adjustment',
+  'refineImage',
   'removeBackground',
   'exportImage',
   'preview',

@@ -26,6 +26,16 @@ export interface EditImageRequest {
   size: string;
 }
 
+export interface RefineImageRequest {
+  aspectRatio: string;
+  imageDataUrl: string;
+  instruction: string;
+  mode: string;
+  model: string;
+  preserveStrength: string;
+  size: string;
+}
+
 export interface RemoveBackgroundRequest {
   imageDataUrl: string;
 }
@@ -55,6 +65,18 @@ export async function requestGenerateImage(payload: GenerateImageRequest) {
 
 export async function requestEditImage(payload: EditImageRequest) {
   const response = await fetch('/api/ai/edit-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
+  return { imageDataUrl: result.imageDataUrl, message: result.message };
+}
+
+export async function requestRefineImage(payload: RefineImageRequest) {
+  const response = await fetch('/api/ai/refine-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

@@ -144,6 +144,26 @@ export const NODE_DEFINITIONS = {
       shadows: 0,
     }),
   },
+  refineImage: {
+    type: 'refineImage',
+    title: 'Refine',
+    menuLabel: 'Refine / Enhance',
+    defaultHeight: 542,
+    ports: [
+      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Refine',
+      model: 'google/gemini-2.5-flash-image',
+      mode: 'reference-cleanup',
+      preserveStrength: 'strict',
+      size: '2K',
+      instruction: '',
+      activeResultIndex: -1,
+      resultAssetIds: [],
+    }),
+  },
   removeBackground: {
     type: 'removeBackground',
     title: 'Remove BG',

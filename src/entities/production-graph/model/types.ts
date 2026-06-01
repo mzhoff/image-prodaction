@@ -14,6 +14,7 @@ export type ProductionNodeType =
   | 'sketch'
   | 'cropImage'
   | 'adjustment'
+  | 'refineImage'
   | 'removeBackground'
   | 'exportImage'
   | 'preview';
@@ -135,6 +136,24 @@ export interface AdjustmentNodeData extends BaseNodeData {
   sourceAssetId?: string;
 }
 
+export type RefineImageMode = 'reference-cleanup' | 'detail-boost' | 'high-res-redraw';
+export type RefinePreserveStrength = 'strict' | 'balanced' | 'creative';
+
+export interface RefineImageNodeData extends BaseNodeData {
+  activeResultIndex?: number;
+  instruction: string;
+  mode: RefineImageMode;
+  model: string;
+  preserveStrength: RefinePreserveStrength;
+  resultAssetId?: string;
+  resultAssetIds?: string[];
+  resultMetadata?: Record<string, GenerationResultMetadata>;
+  size: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+  message?: string;
+}
+
 export interface PreviewNodeData extends BaseNodeData {
   assetId?: string;
 }
@@ -159,6 +178,7 @@ export type ProductionNodeData =
   | SketchNodeData
   | CropImageNodeData
   | AdjustmentNodeData
+  | RefineImageNodeData
   | RemoveBackgroundNodeData
   | ExportImageNodeData
   | PreviewNodeData;

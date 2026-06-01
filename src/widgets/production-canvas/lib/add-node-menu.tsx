@@ -12,6 +12,7 @@ const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   sketch: <Paintbrush size={14} />,
   cropImage: <Crop size={14} />,
   adjustment: <SlidersHorizontal size={14} />,
+  refineImage: <WandSparkles size={14} />,
   removeBackground: <Scissors size={14} />,
   exportImage: <Download size={14} />,
   preview: <Eye size={14} />,

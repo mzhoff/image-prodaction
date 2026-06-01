@@ -10,6 +10,7 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   sketch: NODE_DEFINITIONS.sketch.ports,
   cropImage: NODE_DEFINITIONS.cropImage.ports,
   adjustment: NODE_DEFINITIONS.adjustment.ports,
+  refineImage: NODE_DEFINITIONS.refineImage.ports,
   removeBackground: NODE_DEFINITIONS.removeBackground.ports,
   exportImage: NODE_DEFINITIONS.exportImage.ports,
   preview: NODE_DEFINITIONS.preview.ports,
