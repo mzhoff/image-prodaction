@@ -10,8 +10,9 @@ import type {
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
-import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
+import { getIncomingImageInputs } from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
+import { createZipBlob } from '@/shared/lib/zip-file';
 import { exportImageBlob, getExportFileName } from '../lib/export-image';
 
 export const exportFormatOptions: DarkSelectOption[] = [
@@ -45,15 +46,26 @@ const opaqueBackgroundOptions = exportBackgroundOptions.filter((option) => optio
 
 export function useExportImageNodeModel(node: ProductionNode) {
   const data = node.data as ExportImageNodeData;
+  const [activeIndex, setActiveIndex] = useState(0);
   const [message, setMessage] = useState('');
   const [exporting, setExporting] = useState(false);
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const assets = useProductionGraphStore((state) => state.assets);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
-  const sourceAsset = useMemo(() => (
-    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
+  const sourceItems = useMemo(() => (
+    getIncomingImageInputs(node.id, 'image', { edges, nodes, assets })
+      .sort((first, second) => {
+        const firstY = first.sourceNode.position.y;
+        const secondY = second.sourceNode.position.y;
+        if (firstY !== secondY) return firstY - secondY;
+        return first.sourceNode.position.x - second.sourceNode.position.x;
+      })
   ), [assets, edges, node.id, nodes]);
+  const safeActiveIndex = getSafeIndex(activeIndex, sourceItems.length);
+  const activeSourceItem = sourceItems[safeActiveIndex];
+  const sourceAsset = activeSourceItem?.asset;
+  const sourceAssetIds = useMemo(() => sourceItems.map((item) => item.assetId), [sourceItems]);
 
   const handleFormatChange = useCallback((format: string) => {
     const nextFormat = format as ExportImageFormat;
@@ -76,7 +88,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
   }, [node.id, updateNodeData]);
 
   const handleDownload = useCallback(async () => {
-    if (!sourceAsset) {
+    if (sourceItems.length === 0) {
       setMessage('Подключи image output к входу Export.');
       return;
     }
@@ -84,26 +96,50 @@ export function useExportImageNodeModel(node: ProductionNode) {
     setExporting(true);
     setMessage('');
     try {
-      const sourceBlob = await loadAssetBlob(sourceAsset);
-      if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
-      const exported = await exportImageBlob(sourceBlob, {
+      const exportOptions = {
         background: data.background,
         format: data.format,
         quality: data.quality,
         scale: data.scale,
-      });
-      downloadBlob(exported.blob, getExportFileName(sourceAsset.name, exported.extension));
-      setMessage(`${exported.width}x${exported.height} · ${exported.mimeType}`);
+      };
+
+      if (sourceItems.length === 1) {
+        const sourceBlob = await loadAssetBlob(sourceItems[0].asset);
+        if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+        const exported = await exportImageBlob(sourceBlob, exportOptions);
+        downloadBlob(exported.blob, getExportFileName(sourceItems[0].asset.name, exported.extension));
+        setMessage(`${exported.width}x${exported.height} · ${exported.mimeType}`);
+        return;
+      }
+
+      const zipEntries = [];
+      for (let index = 0; index < sourceItems.length; index += 1) {
+        const item = sourceItems[index];
+        const sourceBlob = await loadAssetBlob(item.asset);
+        if (!sourceBlob) throw new Error(`Не удалось прочитать ${item.asset.name} из локального хранилища.`);
+        const exported = await exportImageBlob(sourceBlob, exportOptions);
+        zipEntries.push({
+          blob: exported.blob,
+          path: getBatchExportFileName(item.asset.name, exported.extension, index, sourceItems.length),
+        });
+      }
+
+      const zipBlob = await createZipBlob(zipEntries);
+      downloadBlob(zipBlob, createDatedZipFileName('reverie-export'));
+      setMessage(`ZIP · ${zipEntries.length} files · ${data.format.toUpperCase()}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Не удалось экспортировать изображение.');
     } finally {
       setExporting(false);
     }
-  }, [data.background, data.format, data.quality, data.scale, sourceAsset]);
+  }, [data.background, data.format, data.quality, data.scale, sourceItems]);
 
   return {
+    activeIndex: safeActiveIndex,
+    activeSourceItem,
     backgroundOptions: data.format === 'jpeg' ? opaqueBackgroundOptions : exportBackgroundOptions,
     data,
+    downloadLabel: sourceItems.length > 1 ? 'Download ZIP' : 'Download',
     exporting,
     handleBackgroundChange,
     handleDownload,
@@ -112,6 +148,9 @@ export function useExportImageNodeModel(node: ProductionNode) {
     handleScaleChange,
     message,
     sourceAsset,
+    sourceAssetIds,
+    sourceCount: sourceItems.length,
+    setActiveIndex,
   };
 }
 
@@ -124,4 +163,20 @@ function downloadBlob(blob: Blob, fileName: string) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function getSafeIndex(index: number, length: number) {
+  if (length <= 0) return -1;
+  return Math.min(Math.max(index, 0), length - 1);
+}
+
+function getBatchExportFileName(sourceName: string | undefined, extension: string, index: number, total: number) {
+  const baseName = getExportFileName(sourceName, extension);
+  const prefix = String(index + 1).padStart(String(total).length, '0');
+  return `${prefix}-${baseName}`;
+}
+
+function createDatedZipFileName(prefix: string, now = new Date()) {
+  const stamp = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
+  return `${prefix}-${stamp}.zip`;
 }

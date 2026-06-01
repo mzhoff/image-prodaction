@@ -52,6 +52,35 @@
   overflow: auto;
 }
 
+.export-batch-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 8px;
+  background: var(--plate);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.export-batch-summary span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 680;
+}
+
+.export-batch-summary strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #111;
+  font-weight: 720;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .node-section {
   position: relative;
   display: flex;

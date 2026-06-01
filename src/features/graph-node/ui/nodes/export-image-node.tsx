@@ -20,13 +20,24 @@ export function ExportImageNode({ node }: { node: ProductionNode }) {
   return (
     <>
       <NodeTitle title="Export" muted />
-      <ImagePlate assetId={model.sourceAsset?.id} />
+      <ImagePlate
+        activeIndex={model.activeIndex}
+        assetId={model.sourceAsset?.id}
+        assetIds={model.sourceAssetIds}
+        onActiveIndexChange={model.setActiveIndex}
+      />
+      {model.sourceCount > 0 ? (
+        <div className="export-batch-summary">
+          <span>{model.sourceCount > 1 ? `${model.sourceCount} images` : '1 image'}</span>
+          {model.activeSourceItem?.sourceLabel ? <strong>{model.activeSourceItem.sourceLabel}</strong> : null}
+        </div>
+      ) : null}
       <PrimaryActionButton
         icon={model.exporting ? <Loader2 className="spin" size={17} /> : <Download size={17} />}
         onClick={model.handleDownload}
-        disabled={!model.sourceAsset || model.exporting}
+        disabled={model.sourceCount === 0 || model.exporting}
       >
-        Download
+        {model.downloadLabel}
       </PrimaryActionButton>
       <CollapsibleSection title="Settings">
         <SettingRow label="Format" value={model.data.format} options={exportFormatOptions} onChange={model.handleFormatChange} />
