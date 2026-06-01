@@ -85,6 +85,16 @@
   color: #111;
 }
 
+.canvas-toolbar button.canvas-toolbar-active {
+  background: #111;
+  color: #fff;
+}
+
+.canvas-toolbar button.canvas-toolbar-active:hover {
+  background: #111;
+  color: #fff;
+}
+
 .canvas-toolbar button:disabled {
   cursor: default;
   opacity: 0.34;
@@ -171,6 +181,14 @@
   z-index: 50;
   border: 2px solid #4f62ff;
   background: rgba(79, 98, 255, 0.11);
+}
+
+.section-draft-rect {
+  pointer-events: none;
+  position: fixed;
+  z-index: 50;
+  border: 2px solid rgba(60, 60, 60, 0.58);
+  background: rgba(160, 160, 160, 0.2);
 }
 
 @media (max-width: 760px) {

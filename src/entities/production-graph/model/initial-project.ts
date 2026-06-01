@@ -1,5 +1,6 @@
 import type { GraphProject, ProductionNode } from './types';
 import { defaultExtractPrompt } from './extract-presets';
+import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, DEFAULT_NODE_CARD_WIDTH } from './node-layout';
 
 const defaultPrompt = 'Создай редакционную обложку для статьи Gigonom: современная B2B/IT-эстетика, чистая композиция, без текста, без логотипов, без интерфейсного шума. Изображение должно объяснять бизнес-смысл статьи через метафору процессов, данных, автоматизации и роста.';
 
@@ -8,7 +9,7 @@ export const initialNodes: ProductionNode[] = [
     id: 'node-import-style',
     type: 'importImage',
     position: { x: -610, y: -210 },
-    size: { width: 286, height: 300 },
+    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 300 },
     status: 'idle',
     data: {
       title: 'Import',
@@ -18,7 +19,7 @@ export const initialNodes: ProductionNode[] = [
     id: 'node-import-composition',
     type: 'importImage',
     position: { x: -622, y: 742 },
-    size: { width: 286, height: 282 },
+    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 282 },
     status: 'idle',
     data: {
       title: 'Import',
@@ -28,7 +29,7 @@ export const initialNodes: ProductionNode[] = [
     id: 'node-image-to-text',
     type: 'imageToText',
     position: { x: -4, y: 718 },
-    size: { width: 348, height: 468 },
+    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 468 },
     status: 'idle',
     data: {
       title: 'Extract',
@@ -43,12 +44,12 @@ export const initialNodes: ProductionNode[] = [
     id: 'node-generator',
     type: 'generateImage',
     position: { x: 760, y: -80 },
-    size: { width: 404, height: 720 },
+    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 720 },
     status: 'idle',
     data: {
       title: 'Generate Image',
       model: 'google/gemini-2.5-flash-image',
-      aspectRatio: '16:9',
+      aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
       size: '1K',
       prompt: defaultPrompt,
     },
@@ -57,7 +58,7 @@ export const initialNodes: ProductionNode[] = [
     id: 'node-preview',
     type: 'preview',
     position: { x: 1240, y: 140 },
-    size: { width: 330, height: 360 },
+    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 360 },
     status: 'idle',
     data: {
       title: 'Preview',
@@ -68,6 +69,7 @@ export const initialNodes: ProductionNode[] = [
 export const initialProject: GraphProject = {
   version: 1,
   nodes: initialNodes,
+  sections: [],
   edges: [
     {
       id: 'edge-style-to-generator',
@@ -102,4 +104,5 @@ export const initialProject: GraphProject = {
   presets: [],
   runs: [],
   selectedNodeIds: [],
+  selectedSectionIds: [],
 };

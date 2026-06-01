@@ -2,13 +2,16 @@
 
 import { useMemo } from 'react';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { getNodeBounds } from '../lib/edge-path';
+import { getGraphBounds } from '../lib/edge-path';
 
 export function useProductionCanvasStore() {
   const nodes = useProductionGraphStore((state) => state.nodes);
+  const sections = useProductionGraphStore((state) => state.sections);
   const edges = useProductionGraphStore((state) => state.edges);
   const selectedNodeIds = useProductionGraphStore((state) => state.selectedNodeIds);
+  const selectedSectionIds = useProductionGraphStore((state) => state.selectedSectionIds);
   const addNode = useProductionGraphStore((state) => state.addNode);
+  const addSection = useProductionGraphStore((state) => state.addSection);
   const connect = useProductionGraphStore((state) => state.connect);
   const deleteEdge = useProductionGraphStore((state) => state.deleteEdge);
   const deleteSelected = useProductionGraphStore((state) => state.deleteSelected);
@@ -16,6 +19,7 @@ export function useProductionCanvasStore() {
   const historyFutureLength = useProductionGraphStore((state) => state.historyFuture.length);
   const moveNode = useProductionGraphStore((state) => state.moveNode);
   const moveSelectedNodesBy = useProductionGraphStore((state) => state.moveSelectedNodesBy);
+  const moveSectionBy = useProductionGraphStore((state) => state.moveSectionBy);
   const pasteImageAsset = useProductionGraphStore((state) => state.pasteImageAsset);
   const pasteNodes = useProductionGraphStore((state) => state.pasteNodes);
   const pushHistory = useProductionGraphStore((state) => state.pushHistory);
@@ -23,13 +27,18 @@ export function useProductionCanvasStore() {
   const resetProject = useProductionGraphStore((state) => state.resetProject);
   const selectNode = useProductionGraphStore((state) => state.selectNode);
   const selectNodesInRect = useProductionGraphStore((state) => state.selectNodesInRect);
+  const selectSection = useProductionGraphStore((state) => state.selectSection);
+  const renameSection = useProductionGraphStore((state) => state.renameSection);
+  const resizeSection = useProductionGraphStore((state) => state.resizeSection);
   const undo = useProductionGraphStore((state) => state.undo);
   const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const selectedSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
-  const bounds = useMemo(() => getNodeBounds(nodes), [nodes]);
+  const selectedSectionSet = useMemo(() => new Set(selectedSectionIds), [selectedSectionIds]);
+  const bounds = useMemo(() => getGraphBounds(nodes, sections), [nodes, sections]);
 
   return useMemo(() => ({
     addNode,
+    addSection,
     bounds,
     connect,
     deleteEdge,
@@ -39,6 +48,7 @@ export function useProductionCanvasStore() {
     historyPastLength,
     moveNode,
     moveSelectedNodesBy,
+    moveSectionBy,
     nodes,
     nodesById,
     pasteImageAsset,
@@ -46,12 +56,18 @@ export function useProductionCanvasStore() {
     pushHistory,
     redo,
     resetProject,
+    renameSection,
+    resizeSection,
     selectNode,
+    selectSection,
     selectedSet,
+    selectedSectionSet,
     selectNodesInRect,
+    sections,
     undo,
   }), [
     addNode,
+    addSection,
     bounds,
     connect,
     deleteEdge,
@@ -61,6 +77,7 @@ export function useProductionCanvasStore() {
     historyPastLength,
     moveNode,
     moveSelectedNodesBy,
+    moveSectionBy,
     nodes,
     nodesById,
     pasteImageAsset,
@@ -68,9 +85,14 @@ export function useProductionCanvasStore() {
     pushHistory,
     redo,
     resetProject,
+    renameSection,
+    resizeSection,
     selectNode,
+    selectSection,
     selectedSet,
+    selectedSectionSet,
     selectNodesInRect,
+    sections,
     undo,
   ]);
 }

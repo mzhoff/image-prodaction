@@ -1,5 +1,6 @@
 import { productionLayers } from './production-layers';
 import type { ProductionLayerId } from './production-layers';
+import type { ProductionNodeType } from './types';
 
 export type GenerateReferenceSlot = 'reference' | ProductionLayerId;
 export type GenerateLayerInputs = Record<ProductionLayerId, string[]>;
@@ -7,6 +8,7 @@ export type GenerateLayerInputs = Record<ProductionLayerId, string[]>;
 export interface GenerateReferenceImage {
   dataUrl: string;
   sourceAssetId?: string;
+  sourceNodeTypes?: ProductionNodeType[];
   slots: GenerateReferenceSlot[];
 }
 
@@ -47,6 +49,7 @@ export function composeReferenceImageInstruction(reference: Omit<GenerateReferen
   const hasMainReference = slots.includes('reference');
   const layerSlots = slots.filter((slot): slot is ProductionLayerId => slot !== 'reference');
   const layerList = layerSlots.length ? layerSlots.map(getSlotLabel).join(', ') : 'no explicit layer slots';
+  const hasCompositionSketch = layerSlots.includes('composition') && reference.sourceNodeTypes?.includes('sketch');
 
   if (hasMainReference) {
     return [
@@ -61,7 +64,7 @@ export function composeReferenceImageInstruction(reference: Omit<GenerateReferen
   return [
     `[REFERENCE IMAGE ${index}: LAYER REFERENCE]`,
     `Allowed source layers: ${layerList}.`,
-    `Extract and transfer only these visual properties from this image: ${getAllowedLayerProperties(layerSlots)}.`,
+    hasCompositionSketch ? COMPOSITION_SKETCH_CONTROL : `Extract and transfer only these visual properties from this image: ${getAllowedLayerProperties(layerSlots)}.`,
     'This is not a scene reference, not a base image, and not a request to blend or merge visual content.',
     'Do not transfer objects, silhouettes, UI elements, geometry, layout, composition, camera angle, background structure, text, logos, narrative, or subject identity from this image unless those exact layers are listed above.',
     'Keep the Main Reference and main prompt as the source of scene structure and content.',
@@ -108,3 +111,29 @@ const layerPropertyHints: Record<ProductionLayerId, string> = {
   metaphor: 'visual idea, symbolic meaning, communication promise and narrative intent',
   text: 'exact readable text, typography, callouts, labels and text placement',
 };
+
+const COMPOSITION_SKETCH_CONTROL = `[COMPOSITION SKETCH CONTROL]
+
+Use the attached sketch ONLY as a composition, placement and depth-control map.
+
+The sketch is not a drawing style, not line art, not a silhouette design, not clothing, not anatomy, not object shape, not lighting, not color, not background, and not a subject reference. Do not render the black sketch lines in the final image.
+
+Interpret the black strokes as rough bounding masses / placement slots for the main subjects or objects in the final scene.
+
+Follow these rules strictly:
+
+1. Each separate sketched mass represents one main subject/object placement slot.
+2. Preserve the number of main masses unless the main text prompt explicitly says otherwise.
+3. Preserve the relative horizontal positions of the masses: left, center, right.
+4. Preserve the relative vertical positions: top, middle, bottom.
+5. Preserve the relative size hierarchy: larger masses should feel closer or more dominant; smaller masses should feel farther away or less dominant.
+6. Preserve the depth order implied by overlap, scale and staggered placement.
+7. If the sketch shows objects overlapping or arranged in a stepped diagonal sequence, interpret this as depth layering, not as a flat side-by-side row.
+8. The nearest object should partially occlude or visually overlap the objects behind it.
+9. Do not reverse the front-to-back order.
+10. Do not spread the subjects evenly across the frame if the sketch shows them clustered or overlapping.
+11. Do not convert the sketch into mountains, arches, abstract shapes, shadows, hair outlines or decorative lines.
+12. Use the user's text prompt to decide WHAT the subjects are. Use the sketch only to decide WHERE they are placed and how they relate in depth.
+13. If the target aspect ratio differs from the sketch aspect ratio, adapt the sketch proportionally to the target frame while preserving the relative placement, scale hierarchy, overlap and depth order. Add empty space only around the composition, not between the sketched masses.
+
+Generate the final image according to the main prompt, using this sketch only as the composition and depth guide.`;

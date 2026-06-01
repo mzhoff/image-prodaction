@@ -26,6 +26,7 @@ export function usePortPointMeasurement({
 }: UsePortPointMeasurementParams) {
   const [measuredPortPoints, setMeasuredPortPoints] = useState<PortPointLookup>({});
   const viewportRef = useRef({ pan, zoom });
+  const nodePortLayoutSignature = nodes.map(getNodePortLayoutSignature).join('|');
 
   useLayoutEffect(() => {
     viewportRef.current = { pan, zoom };
@@ -35,19 +36,23 @@ export function usePortPointMeasurement({
     const container = containerRef.current;
     if (!container) return;
 
-    const canvasRect = container.getBoundingClientRect();
     const viewport = viewportRef.current;
     const next: PortPointLookup = {};
     const portElements = container.querySelectorAll<HTMLElement>('.node-port[data-port-node-id][data-port-id]');
     portElements.forEach((element) => {
       const nodeId = element.dataset.portNodeId;
       const portId = element.dataset.portId;
-      if (!nodeId || !portId) return;
+      const side = element.dataset.portSide;
+      if (!nodeId || !portId || (side !== 'input' && side !== 'output')) return;
+
+      const nodeElement = element.closest<HTMLElement>('[data-node-id]');
+      if (!nodeElement || nodeElement.dataset.nodeId !== nodeId) return;
 
       const rect = element.getBoundingClientRect();
-      next[getPortPointKey(nodeId, portId)] = {
-        x: (rect.left + rect.width / 2 - canvasRect.left - viewport.pan.x) / viewport.zoom,
-        y: (rect.top + rect.height / 2 - canvasRect.top - viewport.pan.y) / viewport.zoom,
+      const nodeRect = nodeElement.getBoundingClientRect();
+      next[getPortPointKey(nodeId, portId, side)] = {
+        x: (rect.left + rect.width / 2 - nodeRect.left) / viewport.zoom,
+        y: (rect.top + rect.height / 2 - nodeRect.top) / viewport.zoom,
       };
     });
 
@@ -57,7 +62,7 @@ export function usePortPointMeasurement({
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(measurePortPoints);
     return () => window.cancelAnimationFrame(frame);
-  }, [collapsedGenerateComposingNodeIds, edges, measurePortPoints, nodes]);
+  }, [collapsedGenerateComposingNodeIds, edges, measurePortPoints, nodePortLayoutSignature]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -78,7 +83,25 @@ export function usePortPointMeasurement({
       if (frame) window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [collapsedGenerateComposingNodeIds, containerRef, measurePortPoints, nodes.length]);
+  }, [collapsedGenerateComposingNodeIds, containerRef, measurePortPoints, nodePortLayoutSignature]);
 
   return measuredPortPoints;
+}
+
+function getNodePortLayoutSignature(node: ProductionNode) {
+  const data = node.data as unknown as Record<string, unknown>;
+
+  return [
+    node.id,
+    node.type,
+    node.size.width,
+    node.size.height,
+    data.aspectRatio,
+    data.sourceAspectRatio,
+    data.resultOpen,
+    data.promptOpen,
+    data.settingsOpen,
+    data.referenceOpen,
+    data.resultAssetId,
+  ].join(':');
 }

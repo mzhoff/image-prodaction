@@ -1,6 +1,6 @@
 'use client';
 
-import { FileInput, ImageIcon, PencilLine, WandSparkles } from 'lucide-react';
+import { Crop, Download, Eye, FileInput, ImageIcon, Paintbrush, PencilLine, Scissors, SlidersHorizontal, WandSparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/shared/lib/cn';
 
@@ -21,6 +21,12 @@ function getNodeIcon(title: string) {
   if (title === 'Import') return FileInput;
   if (title === 'Extract') return WandSparkles;
   if (title === 'Generate Image') return ImageIcon;
+  if (title === 'Sketch') return Paintbrush;
+  if (title === 'Crop') return Crop;
+  if (title === 'Adjustments') return SlidersHorizontal;
+  if (title === 'Remove BG') return Scissors;
+  if (title === 'Export') return Download;
+  if (title === 'Preview') return Eye;
   if (title === 'Prompt') return PencilLine;
   return null;
 }

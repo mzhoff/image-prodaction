@@ -27,7 +27,7 @@ export function createConnectMenuActions(
 ): ContextMenuAction[] {
   return options.map((option) => ({
     id: `create-connect-${option.type}`,
-    label: `Create ${option.label}`,
+    label: option.label,
     icon: option.icon,
     onSelect: () => onSelect(option),
   }));

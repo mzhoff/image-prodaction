@@ -70,6 +70,45 @@
   background: #e7e7e4;
 }
 
+.pro-tooltip-trigger {
+  display: inline-flex;
+}
+
+.pro-tooltip {
+  position: fixed;
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(17, 17, 17, 0.96);
+  color: #fff;
+  padding: 7px 9px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 14px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.pro-tooltip kbd {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.72);
+  padding: 2px 5px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 720;
+  line-height: 12px;
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }

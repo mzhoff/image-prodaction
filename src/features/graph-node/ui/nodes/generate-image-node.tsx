@@ -38,7 +38,17 @@ export function GenerateImageNode({
           </button>
         )}
       />
-      <ImagePlate assetId={model.data.resultAssetId} aspectRatio={model.selectedAspectRatio} loading={node.status === 'running'} />
+      <ImagePlate
+        activeIndex={model.generationHistory.activeIndex}
+        assetId={model.generationHistory.activeAssetId}
+        assetIds={model.generationHistory.assetIds}
+        assetMetadata={model.data.resultMetadata}
+        aspectRatio={model.selectedAspectRatio}
+        loading={node.status === 'running'}
+        onActiveIndexChange={model.handleGenerationHistoryChange}
+        onMaskEdit={model.handleMaskEdit}
+        sourceModel={model.data.model}
+      />
       <button type="button" className="primary-node-button" onClick={model.handleGenerate} disabled={node.status === 'running' || model.loading}>
         {node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}
         Generate

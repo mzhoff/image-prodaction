@@ -30,6 +30,8 @@ The local `.env.local` file is ignored by git and must not be committed.
 - [OpenRouter node flow](./docs/openrouter-node-flow.md)
 - [MVP plan](./docs/mvp-plan.md)
 - [MVP risks and open questions](./docs/mvp-risks-and-questions.md)
+- [Phase 2 plan](./docs/phase-2-plan.md)
+- [Phase 3 plan](./docs/phase-3-plan.md)
 
 ## Useful Scripts
 

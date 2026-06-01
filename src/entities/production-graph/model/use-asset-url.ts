@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlobByKey } from '@/shared/lib/asset-db';
+import { loadAssetBlobByKey } from '../lib/asset-db';
+import { useProductionGraphStore } from './use-production-graph-store';
 
 export function useAssetUrl(assetId?: string) {
   const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === assetId));

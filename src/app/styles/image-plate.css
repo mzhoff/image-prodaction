@@ -1,0 +1,137 @@
+.image-plate {
+  position: relative;
+  width: 100%;
+  height: 176px;
+  min-height: 132px;
+  max-height: 286px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--plate);
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.image-plate-compact {
+  height: 212px;
+}
+
+.image-plate-sized {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.image-plate-media {
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.adjustment-preview-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.adjustment-preview-fallback-canvas {
+  z-index: 0;
+}
+
+.adjustment-preview-webgl-canvas {
+  z-index: 1;
+  background: transparent;
+  pointer-events: none;
+  transition: opacity 80ms ease;
+}
+
+.image-plate-interactive {
+  cursor: zoom-in;
+}
+
+.image-plate-actions,
+.image-plate-version-controls {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.image-plate-actions {
+  right: 8px;
+  top: 8px;
+}
+
+.image-plate-version-controls {
+  bottom: 8px;
+  left: 8px;
+}
+
+.image-plate:hover .image-plate-actions,
+.image-plate:hover .image-plate-version-controls,
+.image-plate:focus-within .image-plate-actions,
+.image-plate:focus-within .image-plate-version-controls {
+  opacity: 1;
+}
+
+.image-plate-actions button,
+.image-plate-version-controls button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+}
+
+.image-plate-version-badge {
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 14px;
+}
+
+.image-plate-version-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  padding: 8px 10px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.image-plate:hover .image-plate-version-badge,
+.image-plate:focus-within .image-plate-version-badge {
+  opacity: 1;
+}
+
+.image-plate-empty {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: #c4c4bf;
+}
+
+.image-plate-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.68) 45%, transparent 70%);
+  transform: translateX(-100%);
+  animation: image-shimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes image-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}

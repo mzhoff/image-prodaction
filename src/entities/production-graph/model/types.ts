@@ -10,6 +10,11 @@ export type ProductionNodeType =
   | 'imageToText'
   | 'referenceComposer'
   | 'generateImage'
+  | 'sketch'
+  | 'cropImage'
+  | 'adjustment'
+  | 'removeBackground'
+  | 'exportImage'
   | 'preview';
 
 export type PresetRole = ProductionLayerId;
@@ -43,6 +48,7 @@ export interface ImportImageNodeData extends BaseNodeData {
 }
 
 export interface ImageToTextNodeData extends BaseNodeData {
+  message?: string;
   model?: string;
   preset?: ExtractPresetId;
   presets?: ExtractPresetId[];
@@ -62,11 +68,20 @@ export interface ReferenceComposerNodeData extends BaseNodeData {
   composedPrompt?: string;
 }
 
+export interface GenerationResultMetadata {
+  aspectRatio?: string;
+  model?: string;
+  size?: string;
+}
+
 export interface GenerateImageNodeData extends BaseNodeData {
   model: string;
   aspectRatio: string;
   size: string;
+  activeResultIndex?: number;
   resultAssetId?: string;
+  resultAssetIds?: string[];
+  resultMetadata?: Record<string, GenerationResultMetadata>;
   message?: string;
 }
 
@@ -74,8 +89,64 @@ export interface TextPromptNodeData extends BaseNodeData {
   text: string;
 }
 
+export interface SketchNodeData extends BaseNodeData {
+  aspectRatio: string;
+  assetId?: string;
+  brushColor: string;
+  brushSize: string;
+}
+
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CropImageNodeData extends BaseNodeData {
+  aspectRatio: string;
+  crop?: CropRect;
+  cropStateVersion?: number;
+  locked: boolean;
+  resultAssetId?: string;
+  message?: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+}
+
+export interface RemoveBackgroundNodeData extends BaseNodeData {
+  resultAssetId?: string;
+  message?: string;
+}
+
+export interface AdjustmentNodeData extends BaseNodeData {
+  exposure: number;
+  gamma: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  tint: number;
+  highlights: number;
+  shadows: number;
+  resultAssetId?: string;
+  message?: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+}
+
 export interface PreviewNodeData extends BaseNodeData {
   assetId?: string;
+}
+
+export type ExportImageFormat = 'png' | 'jpeg' | 'webp';
+export type ExportImageScale = '1' | '0.75' | '0.5' | '0.25';
+export type ExportImageBackground = 'transparent' | 'white' | 'black';
+
+export interface ExportImageNodeData extends BaseNodeData {
+  format: ExportImageFormat;
+  quality: string;
+  scale: ExportImageScale;
+  background: ExportImageBackground;
 }
 
 export type ProductionNodeData =
@@ -84,6 +155,11 @@ export type ProductionNodeData =
   | ReferenceComposerNodeData
   | GenerateImageNodeData
   | TextPromptNodeData
+  | SketchNodeData
+  | CropImageNodeData
+  | AdjustmentNodeData
+  | RemoveBackgroundNodeData
+  | ExportImageNodeData
   | PreviewNodeData;
 
 export interface ProductionNode {
@@ -93,6 +169,13 @@ export interface ProductionNode {
   size: GraphSize;
   status: NodeStatus;
   data: ProductionNodeData;
+}
+
+export interface GraphSection {
+  id: string;
+  title: string;
+  position: GraphPoint;
+  size: GraphSize;
 }
 
 export interface GraphEdge {
@@ -136,9 +219,11 @@ export interface RunRecord {
 export interface GraphProject {
   version: 1;
   nodes: ProductionNode[];
+  sections: GraphSection[];
   edges: GraphEdge[];
   assets: AssetRecord[];
   presets: PresetRecord[];
   runs: RunRecord[];
   selectedNodeIds: string[];
+  selectedSectionIds: string[];
 }
