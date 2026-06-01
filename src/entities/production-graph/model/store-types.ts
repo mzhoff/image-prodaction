@@ -1,4 +1,5 @@
 import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord } from './types';
+import type { ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
 export type ConnectResult = { ok: true } | { ok: false; reason: string };
@@ -6,6 +7,7 @@ export type ConnectResult = { ok: true } | { ok: false; reason: string };
 export interface ProductionGraphState extends GraphProject {
   historyPast: GraphSnapshot[];
   historyFuture: GraphSnapshot[];
+  uiState: ProjectUiState;
   addSection: (rect: { x: number; y: number; width: number; height: number }) => string;
   addNode: (type: ProductionNodeType, position: GraphPoint) => string;
   addAsset: (asset: AssetRecord) => void;
@@ -34,4 +36,7 @@ export interface ProductionGraphState extends GraphProject {
   updateNodeResult: (nodeId: string, result: string) => void;
   updateTextPrompt: (nodeId: string, text: string) => void;
   upsertRun: (run: RunRecord) => void;
+  setProjectUiViewport: (viewport: ProjectViewportState) => void;
+  setNodeUiState: (nodeId: string, nodeUiState: Partial<ProjectNodeUiState>) => void;
+  setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
 }

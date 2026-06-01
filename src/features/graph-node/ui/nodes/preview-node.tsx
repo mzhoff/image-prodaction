@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import type { PreviewNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { findIncomingImageAsset } from '../../lib/generate-node-inputs';
+import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 
@@ -13,7 +13,7 @@ export function PreviewNode({ node }: { node: ProductionNode }) {
   const nodes = useProductionGraphStore((state) => state.nodes);
   const assets = useProductionGraphStore((state) => state.assets);
   const sourceAsset = useMemo(() => (
-    findIncomingImageAsset(node.id, 'image', edges, nodes, assets)
+    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
   ), [assets, edges, node.id, nodes]);
 
   return (

@@ -10,9 +10,9 @@ import type {
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { exportImageBlob, getExportFileName } from '../lib/export-image';
-import { findIncomingImageAsset } from '../lib/generate-node-inputs';
 
 export const exportFormatOptions: DarkSelectOption[] = [
   { value: 'png', label: 'PNG' },
@@ -52,7 +52,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
   const assets = useProductionGraphStore((state) => state.assets);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const sourceAsset = useMemo(() => (
-    findIncomingImageAsset(node.id, 'image', edges, nodes, assets)
+    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
   ), [assets, edges, node.id, nodes]);
 
   const handleFormatChange = useCallback((format: string) => {

@@ -1,62 +1,18 @@
 import type { GraphPort, ProductionNode, ProductionNodeType } from './types';
-import { productionLayers } from './production-layers';
-
-const layerPresetInputPorts = productionLayers.map((layer) => ({
-  id: layer.id,
-  label: layer.label,
-  kind: 'preset' as const,
-  side: 'input' as const,
-})) satisfies GraphPort[];
-
-const layerReferenceInputPorts = productionLayers.map((layer) => ({
-  id: layer.id,
-  label: layer.label,
-  kind: 'reference' as const,
-  side: 'input' as const,
-})) satisfies GraphPort[];
+import { NODE_DEFINITIONS } from './node-registry';
 
 export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
-  importImage: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'output' },
-  ],
-  textPrompt: [
-    { id: 'text', label: 'Text', kind: 'text', side: 'output' },
-  ],
-  imageToText: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-    { id: 'result', label: 'Result', kind: 'text', side: 'output' },
-  ],
-  referenceComposer: [
-    ...layerPresetInputPorts,
-    { id: 'prompt', label: 'Prompt', kind: 'text', side: 'output' },
-  ],
-  generateImage: [
-    { id: 'prompt', label: 'Prompt', kind: 'text', side: 'input' },
-    { id: 'reference', label: 'Reference', kind: 'image', side: 'input' },
-    ...layerReferenceInputPorts,
-    { id: 'image', label: 'Image', kind: 'image', side: 'output' },
-  ],
-  sketch: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'output' },
-  ],
-  cropImage: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-    { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-  ],
-  adjustment: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-    { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-  ],
-  removeBackground: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-    { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-  ],
-  exportImage: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-  ],
-  preview: [
-    { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-  ],
+  importImage: NODE_DEFINITIONS.importImage.ports,
+  textPrompt: NODE_DEFINITIONS.textPrompt.ports,
+  imageToText: NODE_DEFINITIONS.imageToText.ports,
+  referenceComposer: NODE_DEFINITIONS.referenceComposer.ports,
+  generateImage: NODE_DEFINITIONS.generateImage.ports,
+  sketch: NODE_DEFINITIONS.sketch.ports,
+  cropImage: NODE_DEFINITIONS.cropImage.ports,
+  adjustment: NODE_DEFINITIONS.adjustment.ports,
+  removeBackground: NODE_DEFINITIONS.removeBackground.ports,
+  exportImage: NODE_DEFINITIONS.exportImage.ports,
+  preview: NODE_DEFINITIONS.preview.ports,
 };
 
 export function getNodePorts(node: ProductionNode) {

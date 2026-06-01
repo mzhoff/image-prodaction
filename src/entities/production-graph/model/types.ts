@@ -1,4 +1,5 @@
 import type { ProductionLayerId } from './production-layers';
+import type { ProjectSchemaVersion } from './project-schema';
 
 export type PortKind = 'image' | 'text' | 'preset' | 'reference' | 'video' | 'audio';
 
@@ -217,7 +218,7 @@ export interface RunRecord {
 }
 
 export interface GraphProject {
-  version: 1;
+  version: ProjectSchemaVersion;
   nodes: ProductionNode[];
   sections: GraphSection[];
   edges: GraphEdge[];

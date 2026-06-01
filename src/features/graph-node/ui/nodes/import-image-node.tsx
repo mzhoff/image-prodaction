@@ -6,6 +6,7 @@ import { useRef } from 'react';
 import type { ImportImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 
@@ -29,10 +30,9 @@ export function ImportImageNode({ node }: { node: ProductionNode }) {
       <NodeTitle title={data.title} muted />
       <ImagePlate assetId={data.assetId} adaptive />
       <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleUpload} />
-      <button type="button" className="primary-node-button" onClick={() => fileInputRef.current?.click()}>
-        <Upload size={16} />
+      <PrimaryActionButton icon={<Upload size={16} />} onClick={() => fileInputRef.current?.click()}>
         Upload
-      </button>
+      </PrimaryActionButton>
     </>
   );
 }

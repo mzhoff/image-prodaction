@@ -3,6 +3,7 @@
 import { Download, Loader2 } from 'lucide-react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
+import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { SettingRow } from '@/shared/ui/setting-row';
 import {
   exportFormatOptions,
@@ -20,10 +21,13 @@ export function ExportImageNode({ node }: { node: ProductionNode }) {
     <>
       <NodeTitle title="Export" muted />
       <ImagePlate assetId={model.sourceAsset?.id} />
-      <button type="button" className="primary-node-button" onClick={model.handleDownload} disabled={!model.sourceAsset || model.exporting}>
-        {model.exporting ? <Loader2 className="spin" size={17} /> : <Download size={17} />}
+      <PrimaryActionButton
+        icon={model.exporting ? <Loader2 className="spin" size={17} /> : <Download size={17} />}
+        onClick={model.handleDownload}
+        disabled={!model.sourceAsset || model.exporting}
+      >
         Download
-      </button>
+      </PrimaryActionButton>
       <CollapsibleSection title="Settings">
         <SettingRow label="Format" value={model.data.format} options={exportFormatOptions} onChange={model.handleFormatChange} />
         {model.data.format !== 'png' ? (

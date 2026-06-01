@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { CropImageNodeData, CropRect, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { cropFromPixelSize, cropPixelSize, fullCrop, aspectRatioValue, fitCropToAspect } from '../lib/crop-geometry';
 import { cropImageBlob } from '../lib/crop-image';
-import { findIncomingImageAsset } from '../lib/generate-node-inputs';
 
 export const cropAspectRatioSelectOptions: DarkSelectOption[] = [
   { value: 'Custom', label: 'Custom' },
@@ -35,7 +35,7 @@ export function useCropImageNodeModel(node: ProductionNode) {
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const crop = useMemo(() => data.crop ?? fullCrop(), [data.crop]);
   const sourceAsset = useMemo(() => (
-    findIncomingImageAsset(node.id, 'image', edges, nodes, assets)
+    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
   ), [assets, edges, node.id, nodes]);
   const resultAsset = useMemo(() => (
     assets.find((asset) => asset.id === data.resultAssetId)

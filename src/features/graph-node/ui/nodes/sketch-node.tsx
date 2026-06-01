@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import type { ProductionNode, SketchNodeData } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
+import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { useSketchNodeModel } from '../../model/use-sketch-node-model';
@@ -22,10 +23,9 @@ export function SketchNode({ node }: { node: ProductionNode }) {
     <>
       <NodeTitle title="Sketch" muted />
       <SketchPreview data={model.data} />
-      <button type="button" className="primary-node-button" onClick={() => setEditorOpen(true)} data-node-interactive>
-        <Paintbrush size={16} />
+      <PrimaryActionButton icon={<Paintbrush size={16} />} onClick={() => setEditorOpen(true)} data-node-interactive>
         Edit
-      </button>
+      </PrimaryActionButton>
       <CollapsibleSection title="Settings" open={settingsOpen} onOpenChange={setSettingsOpen}>
         <SettingRow
           label="Aspect Ratio"

@@ -1,9 +1,10 @@
 'use client';
 
 import { Copy, Maximize2, RotateCcw, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
+import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { hasFileInDataTransfer, hasImageFileInDataTransfer, getImageFileFromDataTransfer } from '@/shared/lib/image-file';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
@@ -26,14 +27,25 @@ export const CANVAS_WORLD_SIZE = 4000;
 type CanvasTool = 'select' | 'section';
 
 export function useProductionCanvasModel() {
-  const canvas = useCanvasNavigation();
   const contextMenu = useContextMenu();
   const graph = useProductionCanvasStore();
+  const canvas = useCanvasNavigation({
+    initialPan: { x: graph.uiState.viewport.x, y: graph.uiState.viewport.y },
+    initialZoom: graph.uiState.viewport.zoom,
+  });
   const [canvasTool, setCanvasTool] = useState<CanvasTool>('select');
-  const [collapsedGenerateComposingNodeIds, setCollapsedGenerateComposingNodeIds] = useState<Set<string>>(() => new Set());
   const [pendingConnectionMenu, setPendingConnectionMenu] = useState<ConnectionDropOnEmpty | null>(null);
   const didInitialFitRef = useRef(false);
+  const didApplyRestoredViewportRef = useRef(false);
   const lastPointerWorldRef = useRef({ x: 0, y: 0 });
+  const hasRestoredViewport = graph.uiState.viewport.x !== DEFAULT_PROJECT_VIEWPORT.x
+    || graph.uiState.viewport.y !== DEFAULT_PROJECT_VIEWPORT.y
+    || graph.uiState.viewport.zoom !== DEFAULT_PROJECT_VIEWPORT.zoom;
+  const collapsedGenerateComposingNodeIds = useMemo(() => new Set(
+    graph.nodes
+      .filter((node) => node.type === 'generateImage' && graph.uiState.nodes[node.id]?.collapsed)
+      .map((node) => node.id),
+  ), [graph.nodes, graph.uiState.nodes]);
   const boxSelection = useCanvasBoxSelection({ screenToWorld: canvas.screenToWorld, onSelect: graph.selectNodesInRect });
   const finishSectionDrawing = useCallback(() => setCanvasTool('select'), []);
   const sectionDrawing = useSectionDrawing({
@@ -51,10 +63,23 @@ export function useProductionCanvasModel() {
   });
 
   useEffect(() => {
-    if (didInitialFitRef.current || graph.nodes.length === 0) return;
+    if (!hasRestoredViewport || didApplyRestoredViewportRef.current) return;
+    didApplyRestoredViewportRef.current = true;
+    canvas.setPan({ x: graph.uiState.viewport.x, y: graph.uiState.viewport.y });
+    canvas.setZoom(graph.uiState.viewport.zoom);
+  }, [canvas, graph.uiState.viewport.x, graph.uiState.viewport.y, graph.uiState.viewport.zoom, hasRestoredViewport]);
+
+  useEffect(() => {
+    if (hasRestoredViewport || didInitialFitRef.current || graph.nodes.length === 0) return;
     didInitialFitRef.current = true;
     window.requestAnimationFrame(() => canvas.zoomToBounds(graph.bounds, 64));
-  }, [canvas, graph.bounds, graph.nodes.length]);
+  }, [canvas, graph.bounds, graph.nodes.length, hasRestoredViewport]);
+
+  useEffect(() => {
+    const viewport = { x: canvas.pan.x, y: canvas.pan.y, zoom: canvas.zoom };
+    const timeoutId = window.setTimeout(() => graph.setProjectUiViewport(viewport), 150);
+    return () => window.clearTimeout(timeoutId);
+  }, [canvas.pan.x, canvas.pan.y, canvas.zoom, graph.setProjectUiViewport]);
 
   const getFallbackPastePosition = useCallback(() => {
     const container = canvas.containerRef.current;
@@ -108,7 +133,7 @@ export function useProductionCanvasModel() {
   const createNode = useCallback((type: ProductionNodeType, position: { x: number; y: number }) => {
     const nodeId = graph.addNode(type, position);
     if (type === 'generateImage') {
-      setCollapsedGenerateComposingNodeIds((current) => new Set(current).add(nodeId));
+      graph.setNodeUiState(nodeId, { collapsed: true });
     }
     return nodeId;
   }, [graph]);
@@ -256,13 +281,8 @@ export function useProductionCanvasModel() {
   };
 
   const toggleGenerateComposing = useCallback((nodeId: string, open: boolean) => {
-    setCollapsedGenerateComposingNodeIds((current) => {
-      const next = new Set(current);
-      if (open) next.delete(nodeId);
-      else next.add(nodeId);
-      return next;
-    });
-  }, []);
+    graph.setNodeUiState(nodeId, { collapsed: open ? false : true });
+  }, [graph]);
 
   const cursor = canvas.isPanning || sectionDrawing.isDrawingSection
     ? canvas.isPanning ? 'grabbing' : 'crosshair'

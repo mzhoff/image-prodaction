@@ -3,6 +3,7 @@ import { getGenerationHistory, type GenerationHistoryData } from './generation-h
 import { initialProject } from './initial-project';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, normalizeNodeSize } from './node-layout';
 import { productionLayers } from './production-layers';
+import { PROJECT_SCHEMA_VERSION } from './project-schema';
 import type { ExtractPresetId, GraphEdge, GraphProject, ProductionNode, ProductionNodeData } from './types';
 
 export function normalizeProject(project: GraphProject): GraphProject {
@@ -17,7 +18,7 @@ export function normalizeProject(project: GraphProject): GraphProject {
     nodes,
     sections,
     edges,
-    version: 1,
+    version: PROJECT_SCHEMA_VERSION,
     selectedNodeIds: project.selectedNodeIds ?? [],
     selectedSectionIds: (project.selectedSectionIds ?? []).filter((id) => sectionIds.has(id)),
   };

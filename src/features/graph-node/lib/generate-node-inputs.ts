@@ -2,22 +2,12 @@ import { productionLayers } from '@/entities/production-graph/model/production-l
 import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { GenerateReferenceImage, GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
-import { getGenerationHistory } from '@/entities/production-graph/model/generation-history';
 import { getLayerSectionText } from '@/entities/production-graph/model/layer-text-parser';
+import { getNodeImageAssetId, getNodeTextResult } from '@/entities/production-graph/model/graph-io';
 import type {
   AssetRecord,
-  AdjustmentNodeData,
-  CropImageNodeData,
-  GenerateImageNodeData,
   GraphEdge,
-  ImageToTextNodeData,
-  ImportImageNodeData,
-  PreviewNodeData,
   ProductionNode,
-  ReferenceComposerNodeData,
-  RemoveBackgroundNodeData,
-  SketchNodeData,
-  TextPromptNodeData,
 } from '@/entities/production-graph/model/types';
 import { MAX_GENERATE_IMAGE_REFERENCES } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
@@ -27,44 +17,6 @@ export const generateInputRows = productionLayers;
 export const generateReferenceRows = productionLayers;
 export type GenerateInputId = ProductionLayerId;
 export type GenerateInputKind = 'empty' | 'text' | 'image' | 'mixed';
-
-export function findIncomingImageAsset(
-  targetNodeId: string,
-  targetPortId: string,
-  edges: GraphEdge[],
-  nodes: ProductionNode[],
-  assets: AssetRecord[],
-) {
-  const edge = edges.find((item) => item.targetNodeId === targetNodeId && item.targetPortId === targetPortId);
-  const sourceNode = nodes.find((item) => item.id === edge?.sourceNodeId);
-  const assetId = getNodeImageAssetId(sourceNode);
-  return assets.find((asset) => asset.id === assetId);
-}
-
-export function getNodeImageAssetId(node?: ProductionNode) {
-  if (!node) return undefined;
-  if (node.type === 'importImage') return (node.data as ImportImageNodeData).assetId;
-  if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
-  if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
-  if (node.type === 'cropImage') return (node.data as CropImageNodeData).resultAssetId;
-  if (node.type === 'adjustment') {
-    const data = node.data as AdjustmentNodeData;
-    return data.resultAssetId ?? data.sourceAssetId;
-  }
-  if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
-  if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
-  return undefined;
-}
-
-export function getNodeTextResult(node: ProductionNode) {
-  if (node.type === 'imageToText') return (node.data as ImageToTextNodeData).result?.trim() ?? '';
-  if (node.type === 'textPrompt') return (node.data as TextPromptNodeData).text?.trim() ?? '';
-  if (node.type === 'referenceComposer') {
-    const data = node.data as ReferenceComposerNodeData;
-    return (data.composedPrompt || data.prompt || '').trim();
-  }
-  return '';
-}
 
 export function getGenerateInputSummary(targetNodeId: string, edges: GraphEdge[], nodes: ProductionNode[]) {
   const summary = Object.fromEntries(generateReferenceRows.map((row) => [row.id, 'Empty'])) as Record<GenerateInputId, string>;

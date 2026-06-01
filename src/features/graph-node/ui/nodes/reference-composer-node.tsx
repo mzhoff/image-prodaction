@@ -7,6 +7,7 @@ import { MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
+import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { modelSelectOptions, valueSelectOptions } from '../../lib/node-select-options';
 import { ImagePlate } from '../image-plate';
@@ -60,10 +61,9 @@ export function ReferenceComposerNode({ node }: { node: ProductionNode }) {
         <div className="node-label">Prompt</div>
         <PromptBox value={prompt} readonly />
       </div>
-      <button type="button" className="primary-node-button">
-        <Sparkles size={17} />
+      <PrimaryActionButton icon={<Sparkles size={17} />}>
         Generate
-      </button>
+      </PrimaryActionButton>
     </>
   );
 }
