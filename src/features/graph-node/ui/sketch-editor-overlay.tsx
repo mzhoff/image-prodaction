@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { useSketchNodeModel } from '../model/use-sketch-node-model';
 import { sketchPalette } from '../model/use-sketch-node-model';
 import { DarkSelect } from '@/shared/ui/dark-select';
+import { RangeSlider } from '@/shared/ui/range-slider';
 import { SketchCanvas, type SketchCanvasHandle, type SketchTool } from './sketch-canvas';
 
 type SketchNodeModel = ReturnType<typeof useSketchNodeModel>;
@@ -95,10 +96,15 @@ export function SketchEditorOverlay({ model, onClose }: SketchEditorOverlayProps
           <button type="button" className="sketch-tool-button" onClick={() => canvasRef.current?.redo()} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
             <Redo2 size={14} />
           </button>
-          <label className="sketch-size-control">
-            <span>{model.brushSize}px</span>
-            <input type="range" min="8" max="180" value={model.brushSize} onChange={(event) => model.handleBrushSizeChange(Number(event.target.value))} />
-          </label>
+          <RangeSlider
+            ariaLabel="Sketch brush size"
+            className="sketch-size-slider"
+            max={180}
+            min={8}
+            value={model.brushSize}
+            valueLabel={`${model.brushSize}px`}
+            onChange={model.handleBrushSizeChange}
+          />
           <div className="sketch-aspect-control">
             <span>Aspect</span>
             <DarkSelect value={model.aspectRatio} options={model.aspectRatioOptions} onChange={model.handleAspectRatioChange} />

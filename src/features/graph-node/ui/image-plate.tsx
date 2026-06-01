@@ -4,16 +4,19 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2 } from 'lucide-react';
 import { useCallback, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import type { GenerationResultMetadata } from '@/entities/production-graph/model/types';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
-import { ImageViewer, type MaskEditPayload } from './image-viewer';
+import { ImageViewer } from './image-viewer';
+import type { MaskEditPayload } from './image-viewer-types';
 
 interface ImagePlateProps {
   activeIndex?: number;
   assetId?: string;
   assetIds?: string[];
+  assetMetadata?: Record<string, GenerationResultMetadata>;
   aspectRatio?: string;
   compact?: boolean;
   loading?: boolean;
@@ -21,18 +24,21 @@ interface ImagePlateProps {
   adaptive?: boolean;
   onActiveIndexChange?: (index: number) => void;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
+  sourceModel?: string;
 }
 
 export function ImagePlate({
   activeIndex,
   assetId,
   assetIds,
+  assetMetadata,
   aspectRatio,
   compact,
   loading,
   mediaStyle,
   onActiveIndexChange,
   onMaskEdit,
+  sourceModel,
 }: ImagePlateProps) {
   const historyAssetIds = assetIds?.length ? assetIds : assetId ? [assetId] : [];
   const currentIndex = getSafeIndex(activeIndex, historyAssetIds.length);
@@ -155,11 +161,13 @@ export function ImagePlate({
           currentIndex={currentIndex}
           hasHistory={hasHistory}
           historyAssetIds={historyAssetIds}
+          assetMetadata={assetMetadata}
           onClose={() => setViewerOpen(false)}
           onMaskEdit={onMaskEdit}
           onNext={showNext}
           onPrevious={showPrevious}
           onSelectVersion={changeVersion}
+          sourceModel={sourceModel}
           url={url}
         />,
         document.body,

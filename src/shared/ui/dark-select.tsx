@@ -14,10 +14,11 @@ interface DarkSelectProps {
   value: string;
   options: DarkSelectOption[];
   onChange: (value: string) => void;
+  className?: string;
   wide?: boolean;
 }
 
-export function DarkSelect({ value, options, onChange, wide }: DarkSelectProps) {
+export function DarkSelect({ value, options, onChange, className, wide }: DarkSelectProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ bottom?: number; left: number; top?: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -52,7 +53,7 @@ export function DarkSelect({ value, options, onChange, wide }: DarkSelectProps) 
       <button
         ref={triggerRef}
         type="button"
-        className={cn('mini-select', wide && 'mini-select-wide')}
+        className={cn('mini-select', wide && 'mini-select-wide', className)}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();

@@ -145,24 +145,19 @@
   color: #555;
 }
 
-.sketch-size-control {
-  display: flex;
+.sketch-size-slider.range-slider-row {
+  width: 218px;
   min-width: 0;
-  align-items: center;
+  grid-template-columns: 38px minmax(0, 1fr);
   gap: 7px;
+  padding: 0;
   color: #555;
-  font-size: 12px;
+}
+
+.sketch-size-slider .range-slider-label {
+  color: #555;
   font-weight: 700;
   line-height: 14px;
-}
-
-.sketch-size-control span {
-  min-width: 38px;
-}
-
-.sketch-size-control input {
-  width: 170px;
-  accent-color: #111;
 }
 
 .sketch-aspect-control {

@@ -87,6 +87,29 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
   }, [data.message, data.resultAssetId, data.sourceAspectRatio, data.sourceAssetId, node.id, sourceAsset, updateNodeDataSilent]);
 
   useEffect(() => {
+    if (!sourceAsset) return;
+
+    const sourceAspectRatio = sourceAsset.width && sourceAsset.height
+      ? sourceAsset.width / sourceAsset.height
+      : undefined;
+    if (data.sourceAssetId === sourceAsset.id && data.sourceAspectRatio === sourceAspectRatio) return;
+
+    updateNodeDataSilent(node.id, {
+      message: '',
+      resultAssetId: data.sourceAssetId === sourceAsset.id ? data.resultAssetId : undefined,
+      sourceAssetId: sourceAsset.id,
+      sourceAspectRatio,
+    });
+  }, [
+    data.resultAssetId,
+    data.sourceAspectRatio,
+    data.sourceAssetId,
+    node.id,
+    sourceAsset,
+    updateNodeDataSilent,
+  ]);
+
+  useEffect(() => {
     if (!sourceAsset) return undefined;
 
     const runId = processingRef.current + 1;
@@ -129,7 +152,6 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
     updateNodeDataSilent(node.id, {
       [id]: value,
       message: '',
-      resultAssetId: undefined,
     } as Partial<AdjustmentNodeData>);
   }, [node.id, updateNodeDataSilent]);
 
@@ -137,7 +159,6 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
     updateNodeData(node.id, {
       [id]: 0,
       message: '',
-      resultAssetId: undefined,
     } as Partial<AdjustmentNodeData>);
   }, [node.id, updateNodeData]);
 
@@ -145,7 +166,6 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
     updateNodeData(node.id, {
       ...defaultAdjustmentValues,
       message: '',
-      resultAssetId: undefined,
     } as Partial<AdjustmentNodeData>);
   }, [node.id, updateNodeData]);
 

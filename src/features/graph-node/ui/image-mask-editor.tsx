@@ -31,6 +31,7 @@ interface ImageMaskEditorProps {
   enabled: boolean;
   height: number;
   onHistoryChange?: () => void;
+  onPreviewToolChange?: (tool: MaskTool | null) => void;
   tool: MaskTool;
   width: number;
 }
@@ -43,6 +44,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   enabled,
   height,
   onHistoryChange,
+  onPreviewToolChange,
   tool,
   width,
 }, ref) {
@@ -74,8 +76,11 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   }, [height, onHistoryChange, width]);
 
   useEffect(() => {
-    if (!enabled) hideBrushCursorElement(cursorRef.current);
-  }, [enabled]);
+    if (!enabled) {
+      hideBrushCursorElement(cursorRef.current);
+      onPreviewToolChange?.(null);
+    }
+  }, [enabled, onPreviewToolChange]);
 
   useEffect(() => {
     const handleGlobalPointerEnd = () => finishDrawing(activeCanvasRef.current);
@@ -185,6 +190,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     activeCanvasRef.current = event.currentTarget;
     activePointerIdRef.current = event.pointerId;
     activeToolRef.current = activeTool;
+    onPreviewToolChange?.(activeTool);
     event.currentTarget.setPointerCapture(event.pointerId);
     pushUndoState();
     onHistoryChange?.();
@@ -205,6 +211,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
       return;
     }
     const activeTool = drawingRef.current ? activeToolRef.current : getPointerTool(event.buttons, tool);
+    onPreviewToolChange?.(activeTool === tool && !drawingRef.current ? null : activeTool);
     updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, activeTool);
     if (!drawingRef.current || !lastPointRef.current) return;
     const point = getCanvasPoint(event.currentTarget, event.clientX, event.clientY, width, height);
@@ -222,6 +229,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     }
     activeCanvasRef.current = null;
     activePointerIdRef.current = null;
+    onPreviewToolChange?.(null);
   };
 
   const stopDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -240,9 +248,16 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
           event.stopPropagation();
         }}
         onPointerDown={handlePointerDown}
-        onPointerEnter={(event) => updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, getPointerTool(event.buttons, tool))}
+        onPointerEnter={(event) => {
+          const activeTool = getPointerTool(event.buttons, tool);
+          onPreviewToolChange?.(activeTool === tool ? null : activeTool);
+          updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, activeTool);
+        }}
         onPointerLeave={() => {
-          if (!drawingRef.current) hideBrushCursorElement(cursorRef.current);
+          if (!drawingRef.current) {
+            hideBrushCursorElement(cursorRef.current);
+            onPreviewToolChange?.(null);
+          }
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={stopDrawing}

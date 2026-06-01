@@ -47,7 +47,10 @@ export function getNodeImageAssetId(node?: ProductionNode) {
   if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
   if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
   if (node.type === 'cropImage') return (node.data as CropImageNodeData).resultAssetId;
-  if (node.type === 'adjustment') return (node.data as AdjustmentNodeData).resultAssetId;
+  if (node.type === 'adjustment') {
+    const data = node.data as AdjustmentNodeData;
+    return data.resultAssetId ?? data.sourceAssetId;
+  }
   if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   return undefined;

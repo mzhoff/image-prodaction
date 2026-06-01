@@ -79,6 +79,14 @@ export function useGenerateImageNodeModel({
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, asset.id),
+        resultMetadata: {
+          ...data.resultMetadata,
+          [asset.id]: {
+            aspectRatio: selectedAspectRatio,
+            model: selectedModel,
+            size: selectedSize,
+          },
+        },
         model: selectedModel,
         aspectRatio: selectedAspectRatio,
         size: selectedSize,
@@ -93,7 +101,7 @@ export function useGenerateImageNodeModel({
     }
   };
 
-  const handleMaskEdit = async ({ assetId, maskDataUrl, prompt }: { assetId: string; maskDataUrl: string; prompt: string }) => {
+  const handleMaskEdit = async ({ assetId, maskDataUrl, model, prompt }: { assetId: string; maskDataUrl: string; model: string; prompt: string }) => {
     try {
       setNodeStatus(node.id, 'running');
       const sourceAsset = assets.find((asset) => asset.id === assetId);
@@ -105,7 +113,7 @@ export function useGenerateImageNodeModel({
         aspectRatio: selectedAspectRatio,
         imageDataUrl: await blobToDataUrl(sourceBlob),
         maskDataUrl,
-        model: selectedModel,
+        model,
         prompt,
         size: selectedSize,
       });
@@ -114,6 +122,14 @@ export function useGenerateImageNodeModel({
       addAsset(editedAsset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, editedAsset.id),
+        resultMetadata: {
+          ...data.resultMetadata,
+          [editedAsset.id]: {
+            aspectRatio: selectedAspectRatio,
+            model,
+            size: selectedSize,
+          },
+        },
         message: result.message,
       });
       setNodeStatus(node.id, 'success');

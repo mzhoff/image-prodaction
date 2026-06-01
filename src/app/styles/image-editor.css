@@ -1,23 +1,3 @@
-.image-viewer-stage {
-  position: relative;
-  display: grid;
-  max-width: 100%;
-  max-height: 90vh;
-  place-items: center;
-}
-
-.image-viewer-stage > * {
-  grid-area: 1 / 1;
-}
-
-.image-viewer-content-with-editor .image-viewer-media {
-  max-height: calc(90vh - 232px);
-}
-
-.image-viewer-content-with-history.image-viewer-content-with-editor .image-viewer-media {
-  max-height: calc(90vh - 314px);
-}
-
 .image-mask-layer {
   position: relative;
   z-index: 2;
@@ -64,16 +44,15 @@
 
 .image-editor-panel {
   box-sizing: border-box;
-  display: grid;
-  width: min(92vw, 920px);
+  display: flex;
+  width: min(100%, 680px);
   max-width: 100%;
-  gap: 8px;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(14px);
-  padding: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
 }
 
+.image-editor-toolbar,
 .image-editor-row {
   display: flex;
   min-width: 0;
@@ -81,26 +60,41 @@
   gap: 8px;
 }
 
-.image-editor-row-bottom {
-  justify-content: space-between;
+.image-editor-toolbar {
+  min-height: 32px;
+  padding: 0 8px;
+}
+
+.image-editor-mask-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.image-editor-tool-pair,
+.image-editor-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .image-editor-button,
-.image-editor-icon-button,
-.image-editor-submit {
+.image-editor-icon-button {
   display: inline-flex;
+  height: 32px;
   min-height: 32px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
   border: 0;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.86);
-  padding: 7px 10px;
+  border-radius: 8px;
+  background: #6d6d6d;
+  color: #fff;
+  padding: 8px 12px;
   font-size: 12px;
-  font-weight: 760;
-  line-height: 14px;
+  font-weight: 600;
+  line-height: 10px;
 }
 
 .image-editor-icon-button {
@@ -109,20 +103,96 @@
 }
 
 .image-editor-button:hover,
-.image-editor-icon-button:hover,
-.image-editor-submit:hover {
-  background: rgba(255, 255, 255, 0.2);
+.image-editor-icon-button:hover {
+  background: #7a7a7a;
   color: #fff;
 }
 
 .image-editor-button-active {
   background: #fff;
-  color: #111;
+  color: #5c5f6c;
+}
+
+.image-editor-button-active:hover {
+  background: #fff;
+  color: #5c5f6c;
+}
+
+.image-editor-input-area {
+  position: relative;
+  display: flex;
+  min-height: 154px;
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 0.686px solid #dedfe1;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    0 10px 7.5px rgba(0, 0, 0, 0.1),
+    0 4px 3px rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  animation: image-editor-panel-enter 160ms ease;
+}
+
+.image-editor-input-toolbar {
+  display: flex;
+  min-width: 0;
+  height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.image-editor-model-button,
+.image-editor-mic-button,
+.image-editor-submit {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: #5c5f6c;
+}
+
+.image-editor-model-button.mini-select {
+  max-width: min(220px, 44vw);
+  min-height: 34px;
+  gap: 8px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+.image-editor-mic-button {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  padding: 0;
+}
+
+.image-editor-mic-button:hover,
+.image-editor-model-button:hover {
+  background: #eeeeee;
 }
 
 .image-editor-submit {
-  background: #fff;
-  color: #111;
+  min-height: 40px;
+  gap: 7px;
+  border-radius: 12px;
+  background: #000;
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 12px;
+}
+
+.image-editor-submit:hover {
+  background: #171717;
 }
 
 .image-editor-submit:disabled {
@@ -135,41 +205,111 @@
   opacity: 0.36;
 }
 
-.image-editor-size-control {
-  display: inline-flex;
-  min-width: 168px;
-  align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.74);
-  font-size: 12px;
-  font-weight: 700;
+.image-editor-size-slider.range-slider-row {
+  width: 338px;
+  min-width: 180px;
+  max-width: 338px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  padding: 0;
+  color: #fff;
 }
 
-.image-editor-size-control input {
-  width: 112px;
-  accent-color: #fff;
+.image-editor-size-slider .range-slider-label {
+  color: #fff;
+  font-weight: 700;
+  line-height: 12px;
+}
+
+.image-editor-size-slider .range-slider-rail {
+  background: #a8c0c4;
+}
+
+.image-editor-size-slider .range-slider-fill {
+  background: #fff;
+}
+
+.image-editor-size-slider .range-slider-input::-webkit-slider-thumb {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.image-editor-size-slider .range-slider-input::-moz-range-thumb {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+@keyframes image-editor-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .image-editor-prompt {
   width: 100%;
-  min-height: 62px;
-  resize: vertical;
+  height: 81px;
+  min-height: 81px;
+  resize: none;
   border: 0;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  background: #f5f5f5;
   color: #111;
-  padding: 10px;
-  font-size: 13px;
-  line-height: 16px;
+  padding: 8px;
+  font-size: 14px;
+  line-height: 18px;
   outline: none;
 }
 
+.image-editor-prompt::placeholder {
+  color: #8ca2a7;
+}
+
 .image-editor-message {
+  position: absolute;
+  right: 160px;
+  bottom: 52px;
+  left: 20px;
   min-width: 0;
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.74);
+  color: #be123c;
   font-size: 12px;
   line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .image-editor-toolbar {
+    flex-wrap: wrap;
+    padding: 0;
+  }
+
+  .image-editor-mask-tools {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .image-editor-size-slider.range-slider-row {
+    flex: 1 1 180px;
+    width: auto;
+  }
+
+  .image-editor-input-toolbar {
+    align-items: stretch;
+    height: auto;
+    flex-wrap: wrap;
+  }
+
+  .image-editor-action-group {
+    margin-left: auto;
+  }
+
+  .image-editor-message {
+    right: 20px;
+  }
 }

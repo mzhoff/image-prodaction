@@ -1,22 +1,21 @@
 'use client';
 
 import Image from 'next/image';
-import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Redo2, RotateCcw, Undo2, WandSparkles, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AssetRecord } from '@/entities/production-graph/model/types';
+import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Mic, RotateCcw, WandSparkles, X } from 'lucide-react';
+import { useEffect, type CSSProperties } from 'react';
+import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
+import { DarkSelect } from '@/shared/ui/dark-select';
+import { RangeSlider } from '@/shared/ui/range-slider';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
-import { ImageMaskEditor, type ImageMaskEditorHandle, type MaskTool } from './image-mask-editor';
-
-export interface MaskEditPayload {
-  assetId: string;
-  maskDataUrl: string;
-  prompt: string;
-}
+import { ImageMaskEditor } from './image-mask-editor';
+import type { MaskEditPayload } from './image-viewer-types';
+import { MAX_MASK_BRUSH_SIZE, MIN_MASK_BRUSH_SIZE, useImageViewerMaskModel } from './use-image-viewer-mask-model';
 
 interface ImageViewerProps {
   asset?: AssetRecord;
   assetId?: string;
+  assetMetadata?: Record<string, GenerationResultMetadata>;
   busy?: boolean;
   currentIndex: number;
   hasHistory: boolean;
@@ -26,12 +25,14 @@ interface ImageViewerProps {
   onNext: () => void;
   onPrevious: () => void;
   onSelectVersion: (index: number) => void;
+  sourceModel?: string;
   url: string;
 }
 
 export function ImageViewer({
   asset,
   assetId,
+  assetMetadata,
   busy,
   currentIndex,
   hasHistory,
@@ -41,21 +42,17 @@ export function ImageViewer({
   onNext,
   onPrevious,
   onSelectVersion,
+  sourceModel,
   url,
 }: ImageViewerProps) {
-  const canMaskEdit = Boolean(assetId && onMaskEdit);
-  const [brushSize, setBrushSize] = useState(42);
-  const [maskOpen, setMaskOpen] = useState(false);
-  const [message, setMessage] = useState('');
-  const [maskHistoryVersion, setMaskHistoryVersion] = useState(0);
-  const [prompt, setPrompt] = useState('');
-  const [tool, setTool] = useState<MaskTool>('brush');
-  const maskRef = useRef<ImageMaskEditorHandle | null>(null);
+  const maskModel = useImageViewerMaskModel({ asset, assetId, assetMetadata, onMaskEdit, sourceModel });
   const width = asset?.width ?? 1200;
   const height = asset?.height ?? 800;
-  const refreshMaskHistory = useCallback(() => setMaskHistoryVersion((version) => version + 1), []);
-  const canMaskRedo = maskHistoryVersion >= 0 && Boolean(maskRef.current?.canRedo());
-  const canMaskUndo = maskHistoryVersion >= 0 && Boolean(maskRef.current?.canUndo());
+  const stageStyle = {
+    aspectRatio: `${width} / ${height}`,
+    '--image-viewer-aspect-ratio': width / height,
+    '--image-viewer-inverse-aspect-ratio': height / width,
+  } as CSSProperties;
 
   useEffect(() => {
     if (!hasHistory) return undefined;
@@ -77,59 +74,9 @@ export function ImageViewer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasHistory, onNext, onPrevious]);
 
-  useEffect(() => {
-    if (!maskOpen) return undefined;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('textarea,input,select,[contenteditable="true"]')) return;
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.shiftKey) {
-        maskRef.current?.redo();
-      } else {
-        maskRef.current?.undo();
-      }
-      refreshMaskHistory();
-    };
-
-    window.addEventListener('keydown', handleKeyDown, { capture: true });
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [maskOpen, refreshMaskHistory]);
-
-  useEffect(() => {
-    maskRef.current?.reset();
-    setMessage('');
-  }, [assetId]);
-
-  const handleSubmitEdit = async () => {
-    if (!assetId || !onMaskEdit) return;
-    const trimmedPrompt = prompt.trim();
-    if (!trimmedPrompt) {
-      setMessage('Опиши, что нужно изменить в выделенной области.');
-      return;
-    }
-    const maskDataUrl = maskRef.current?.getMaskDataUrl();
-    if (!maskDataUrl) {
-      setMessage('Сначала нарисуй маску на изображении.');
-      return;
-    }
-
-    setMessage('');
-    try {
-      await onMaskEdit({ assetId, maskDataUrl, prompt: trimmedPrompt });
-      maskRef.current?.reset();
-      setMaskOpen(false);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось перегенерировать фрагмент.');
-    }
-  };
-
   return (
     <div
-      className="image-viewer-overlay"
+      className={cn('image-viewer-overlay', maskModel.maskOpen && 'image-viewer-overlay-editing')}
       data-node-interactive
       onContextMenu={(event) => {
         event.preventDefault();
@@ -138,79 +85,102 @@ export function ImageViewer({
       onMouseDown={(event) => event.stopPropagation()}
     >
       <button type="button" className="image-viewer-backdrop" aria-label="Close image viewer" onClick={onClose} />
-      <div className={cn('image-viewer-content', hasHistory && 'image-viewer-content-with-history', maskOpen && 'image-viewer-content-with-editor')}>
+      <div
+        className={cn(
+          'image-viewer-content',
+          maskModel.canMaskEdit && 'image-viewer-content-with-tools',
+          hasHistory && 'image-viewer-content-with-history',
+          (maskModel.sourceModelLabel || maskModel.imageSizeLabel) && 'image-viewer-content-with-meta',
+          maskModel.maskOpen && 'image-viewer-content-with-editor',
+        )}
+      >
         <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={onClose}>
           <X size={18} />
         </button>
-        <div className="image-viewer-stage">
-          <Image
-            src={url}
-            alt={asset?.name ?? 'Image preview'}
-            width={width}
-            height={height}
-            unoptimized
-            draggable={false}
-            className="image-viewer-media"
-          />
-          {canMaskEdit ? (
-            <ImageMaskEditor
-              ref={maskRef}
-              brushSize={brushSize}
-              enabled={maskOpen && !busy}
-              height={height}
-              tool={tool}
+        <div className="image-viewer-viewport">
+          <div className="image-viewer-stage" style={stageStyle}>
+            <Image
+              src={url}
+              alt={asset?.name ?? 'Image preview'}
               width={width}
-              onHistoryChange={refreshMaskHistory}
+              height={height}
+              unoptimized
+              draggable={false}
+              className="image-viewer-media"
             />
-          ) : null}
+            {maskModel.canMaskEdit ? (
+              <ImageMaskEditor
+                ref={maskModel.maskRef}
+                brushSize={maskModel.brushSize}
+                enabled={maskModel.maskOpen && !busy}
+                height={height}
+                onPreviewToolChange={maskModel.setPreviewTool}
+                tool={maskModel.tool}
+                width={width}
+              />
+            ) : null}
+          </div>
         </div>
-        {canMaskEdit ? (
+        {maskModel.sourceModelLabel || maskModel.imageSizeLabel ? (
+          <div className="image-viewer-meta">
+            {maskModel.sourceModelLabel ? <span className="image-viewer-meta-model">{maskModel.sourceModelLabel}</span> : null}
+            {maskModel.imageSizeLabel ? <span className="image-viewer-meta-size">{maskModel.imageSizeLabel}</span> : null}
+          </div>
+        ) : null}
+        {maskModel.canMaskEdit ? (
           <div className="image-editor-panel">
-            <div className="image-editor-row">
-              <button type="button" className={cn('image-editor-button', maskOpen && 'image-editor-button-active')} onClick={() => setMaskOpen((open) => !open)}>
+            <div className="image-editor-toolbar">
+              <button type="button" className={cn('image-editor-button', maskModel.maskOpen && 'image-editor-button-active')} onClick={() => maskModel.setMaskOpen((open) => !open)}>
                 <Brush size={15} />
                 Mask
               </button>
-              {maskOpen ? (
-                <>
-                  <button type="button" className={cn('image-editor-icon-button', tool === 'brush' && 'image-editor-button-active')} onClick={() => setTool('brush')} aria-label="Brush">
-                    <Brush size={15} />
-                  </button>
-                  <button type="button" className={cn('image-editor-icon-button', tool === 'eraser' && 'image-editor-button-active')} onClick={() => setTool('eraser')} aria-label="Eraser">
-                    <Eraser size={15} />
-                  </button>
-                  <button type="button" className="image-editor-icon-button" onClick={() => maskRef.current?.undo()} disabled={!canMaskUndo} aria-label="Undo mask">
-                    <Undo2 size={15} />
-                  </button>
-                  <button type="button" className="image-editor-icon-button" onClick={() => maskRef.current?.redo()} disabled={!canMaskRedo} aria-label="Redo mask">
-                    <Redo2 size={15} />
-                  </button>
-                  <label className="image-editor-size-control">
-                    <span>{brushSize}px</span>
-                    <input type="range" min="8" max="120" value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} />
-                  </label>
-                  <button type="button" className="image-editor-icon-button" onClick={() => maskRef.current?.clear()} aria-label="Clear mask">
+              {maskModel.maskOpen ? (
+                <div className="image-editor-mask-tools">
+                  <div className="image-editor-tool-pair">
+                    <button type="button" className={cn('image-editor-icon-button', maskModel.visibleTool === 'brush' && 'image-editor-button-active')} onClick={() => maskModel.setTool('brush')} aria-label="Brush">
+                      <Brush size={15} />
+                    </button>
+                    <button type="button" className={cn('image-editor-icon-button', maskModel.visibleTool === 'eraser' && 'image-editor-button-active')} onClick={() => maskModel.setTool('eraser')} aria-label="Eraser">
+                      <Eraser size={15} />
+                    </button>
+                  </div>
+                  <RangeSlider
+                    ariaLabel="Mask brush size"
+                    className="image-editor-size-slider"
+                    max={MAX_MASK_BRUSH_SIZE}
+                    min={MIN_MASK_BRUSH_SIZE}
+                    value={maskModel.brushSize}
+                    valueLabel={`${maskModel.brushSize}px`}
+                    onChange={maskModel.setBrushSize}
+                  />
+                  <button type="button" className="image-editor-icon-button" onClick={() => maskModel.maskRef.current?.clear()} aria-label="Clear mask">
                     <RotateCcw size={15} />
                   </button>
-                </>
+                </div>
               ) : null}
             </div>
-            {maskOpen ? (
-              <>
+            {maskModel.maskOpen ? (
+              <div className="image-editor-input-area">
                 <textarea
                   className="image-editor-prompt"
-                  value={prompt}
-                  placeholder="Что нужно изменить в выделенном фрагменте"
-                  onChange={(event) => setPrompt(event.target.value)}
+                  value={maskModel.prompt}
+                  placeholder="Что необходимо изменить в выделенном фрагменте?"
+                  onChange={(event) => maskModel.setPrompt(event.target.value)}
                 />
-                <div className="image-editor-row image-editor-row-bottom">
-                  <span className="image-editor-message">{message}</span>
-                  <button type="button" className="image-editor-submit" onClick={handleSubmitEdit} disabled={busy}>
-                    {busy ? <Loader2 className="spin" size={15} /> : <WandSparkles size={15} />}
-                    Regenerate area
-                  </button>
+                <div className="image-editor-input-toolbar">
+                  <DarkSelect className="image-editor-model-button" value={maskModel.selectedEditModel} options={maskModel.modelOptions} onChange={maskModel.setEditModel} />
+                  <div className="image-editor-action-group">
+                    <button type="button" className="image-editor-mic-button" aria-label="Voice input">
+                      <Mic size={20} />
+                    </button>
+                    <button type="button" className="image-editor-submit" onClick={maskModel.handleSubmitEdit} disabled={busy}>
+                      {busy ? <Loader2 className="spin" size={16} /> : <WandSparkles size={16} />}
+                      ReGenerate
+                    </button>
+                  </div>
                 </div>
-              </>
+                {maskModel.message ? <span className="image-editor-message">{maskModel.message}</span> : null}
+              </div>
             ) : null}
           </div>
         ) : null}

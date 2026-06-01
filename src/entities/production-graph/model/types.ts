@@ -68,6 +68,12 @@ export interface ReferenceComposerNodeData extends BaseNodeData {
   composedPrompt?: string;
 }
 
+export interface GenerationResultMetadata {
+  aspectRatio?: string;
+  model?: string;
+  size?: string;
+}
+
 export interface GenerateImageNodeData extends BaseNodeData {
   model: string;
   aspectRatio: string;
@@ -75,6 +81,7 @@ export interface GenerateImageNodeData extends BaseNodeData {
   activeResultIndex?: number;
   resultAssetId?: string;
   resultAssetIds?: string[];
+  resultMetadata?: Record<string, GenerationResultMetadata>;
   message?: string;
 }
 
