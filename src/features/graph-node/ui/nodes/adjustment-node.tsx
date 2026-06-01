@@ -2,25 +2,25 @@
 
 import { RotateCcw } from 'lucide-react';
 import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { adjustmentControls, type AdjustmentControlId, useAdjustmentNodeModel } from '../../model/use-adjustment-node-model';
+import { drawAdjustedImagePreview, type ImageAdjustmentValues } from '../../lib/adjust-image';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 
 export function AdjustmentNode({ node }: { node: ProductionNode }) {
   const model = useAdjustmentNodeModel(node);
-  const sourceRatio = model.displayAsset?.width && model.displayAsset.height
-    ? `${model.displayAsset.width}:${model.displayAsset.height}`
-    : undefined;
-  const previewStyle = model.displayAsset?.id === model.sourceAsset?.id
-    ? { filter: buildAdjustmentPreviewFilter(model.values) } satisfies CSSProperties
+  const sourceRatio = model.sourceAsset?.width && model.sourceAsset.height
+    ? `${model.sourceAsset.width}:${model.sourceAsset.height}`
     : undefined;
 
   return (
     <>
       <NodeTitle title="Adjustments" muted />
-      <ImagePlate assetId={model.displayAsset?.id} aspectRatio={sourceRatio} mediaStyle={previewStyle} />
+      <AdjustmentPreview assetId={model.sourceAsset?.id} aspectRatio={sourceRatio} values={model.values} />
       <button
         type="button"
         className="adjustment-reset-button"
@@ -49,6 +49,72 @@ export function AdjustmentNode({ node }: { node: ProductionNode }) {
         </div>
       </CollapsibleSection>
     </>
+  );
+}
+
+function AdjustmentPreview({
+  assetId,
+  aspectRatio,
+  values,
+}: {
+  assetId?: string;
+  aspectRatio?: string;
+  values: ImageAdjustmentValues;
+}) {
+  const url = useAssetUrl(assetId);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setReady(false);
+    imageRef.current = null;
+
+    if (!url) return undefined;
+
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      if (!active) return;
+      imageRef.current = image;
+      setReady(true);
+    };
+    image.onerror = () => {
+      if (!active) return;
+      imageRef.current = null;
+      setReady(false);
+    };
+    image.src = url;
+
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  useEffect(() => {
+    if (!ready || !canvasRef.current || !imageRef.current) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      if (!canvasRef.current || !imageRef.current) return;
+      drawAdjustedImagePreview(canvasRef.current, imageRef.current, values);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [ready, values]);
+
+  if (!url) {
+    return <ImagePlate assetId={undefined} aspectRatio={aspectRatio} />;
+  }
+
+  return (
+    <div
+      className="image-plate image-plate-sized adjustment-preview"
+      style={{ aspectRatio: formatCssAspectRatio(aspectRatio) ?? '1 / 1' }}
+      onDragStart={(event) => event.preventDefault()}
+    >
+      <canvas ref={canvasRef} className="adjustment-preview-canvas" />
+    </div>
   );
 }
 
@@ -118,16 +184,7 @@ function AdjustmentSlider({
   );
 }
 
-function buildAdjustmentPreviewFilter(values: Record<AdjustmentControlId, number>) {
-  const brightness = clamp(1 + values.exposure / 180 + values.gamma / 260 + values.highlights / 420 + values.shadows / 520, 0.2, 2.4);
-  const contrast = clamp(1 + values.contrast / 100 + values.highlights / 520 - values.shadows / 650, 0.2, 2.5);
-  const saturation = clamp(1 + values.saturation / 100 + Math.abs(values.tint) / 900, 0, 2.8);
-  const hueRotate = clamp(values.temperature * 0.16 + values.tint * 0.28, -35, 35);
-  const sepia = clamp(Math.abs(values.temperature) / 550 + Math.abs(values.tint) / 750, 0, 0.28);
-
-  return `brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) sepia(${sepia}) hue-rotate(${hueRotate}deg)`;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
+function formatCssAspectRatio(value?: string) {
+  const normalized = value?.trim().replace(':', ' / ');
+  return normalized && /^\d+(?:\.\d+)?\s*\/\s*\d+(?:\.\d+)?$/.test(normalized) ? normalized : undefined;
 }

@@ -20,14 +20,36 @@ export async function adjustImageBlob(sourceBlob: Blob, values: ImageAdjustmentV
 
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  applyAdjustments(imageData.data, values);
+  applyAdjustmentsToPixels(imageData.data, values);
   context.putImageData(imageData, 0, 0);
 
   const blob = await canvasToBlob(canvas, 'image/png');
   return new File([blob], fileName, { type: 'image/png' });
 }
 
-function applyAdjustments(data: Uint8ClampedArray, values: ImageAdjustmentValues) {
+export function drawAdjustedImagePreview(canvas: HTMLCanvasElement, image: HTMLImageElement, values: ImageAdjustmentValues) {
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) return;
+
+  const targetWidth = Math.max(1, Math.round(Math.min(sourceWidth, (canvas.clientWidth || 368) * window.devicePixelRatio)));
+  const targetHeight = Math.max(1, Math.round(targetWidth / (sourceWidth / sourceHeight)));
+  if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+  }
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  applyAdjustmentsToPixels(imageData.data, values);
+  context.putImageData(imageData, 0, 0);
+}
+
+export function applyAdjustmentsToPixels(data: Uint8ClampedArray, values: ImageAdjustmentValues) {
   const exposureFactor = 2 ** (values.exposure / 100);
   const gammaExponent = clamp(1 - values.gamma / 150, 0.2, 3);
   const contrastFactor = (100 + values.contrast) / 100;

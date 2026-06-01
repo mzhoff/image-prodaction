@@ -27,6 +27,13 @@
   user-select: none;
 }
 
+.adjustment-preview-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
 .image-plate-interactive {
   cursor: zoom-in;
 }
