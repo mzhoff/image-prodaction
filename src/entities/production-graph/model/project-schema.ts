@@ -36,6 +36,7 @@ export interface AssetManifestItem {
 }
 
 export interface ProjectExport {
+  kind: 'projectSnapshot';
   schemaVersion: ProjectSchemaVersion;
   exportedAt: string;
   project: GraphProject;
@@ -44,15 +45,18 @@ export interface ProjectExport {
 }
 
 export interface PipelineTemplateExport {
+  kind: 'pipelineTemplate';
   schemaVersion: ProjectSchemaVersion;
   exportedAt: string;
   project: Omit<GraphProject, 'assets' | 'runs'> & {
-    assets: AssetRecord[];
+    assets: [];
     runs: [];
   };
   uiState: ProjectUiState;
   assetsManifest: AssetManifestItem[];
 }
+
+export type PortableProjectExport = ProjectExport | PipelineTemplateExport;
 
 export const DEFAULT_PROJECT_VIEWPORT: ProjectViewportState = {
   x: 445,
@@ -94,6 +98,7 @@ export function createAssetManifest(assets: AssetRecord[]): AssetManifestItem[] 
 
 export function createProjectExport(project: GraphProject, uiState: ProjectUiState, exportedAt = new Date().toISOString()): ProjectExport {
   return {
+    kind: 'projectSnapshot',
     schemaVersion: PROJECT_SCHEMA_VERSION,
     exportedAt,
     project,

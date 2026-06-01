@@ -15,8 +15,11 @@ export function useProductionCanvasStore() {
   const connect = useProductionGraphStore((state) => state.connect);
   const deleteEdge = useProductionGraphStore((state) => state.deleteEdge);
   const deleteSelected = useProductionGraphStore((state) => state.deleteSelected);
+  const exportPipelineTemplate = useProductionGraphStore((state) => state.exportPipelineTemplate);
+  const exportProjectSnapshot = useProductionGraphStore((state) => state.exportProjectSnapshot);
   const historyPastLength = useProductionGraphStore((state) => state.historyPast.length);
   const historyFutureLength = useProductionGraphStore((state) => state.historyFuture.length);
+  const importPortableProject = useProductionGraphStore((state) => state.importPortableProject);
   const moveNode = useProductionGraphStore((state) => state.moveNode);
   const moveSelectedNodesBy = useProductionGraphStore((state) => state.moveSelectedNodesBy);
   const moveSectionBy = useProductionGraphStore((state) => state.moveSectionBy);
@@ -47,8 +50,11 @@ export function useProductionCanvasStore() {
     deleteEdge,
     deleteSelected,
     edges,
+    exportPipelineTemplate,
+    exportProjectSnapshot,
     historyFutureLength,
     historyPastLength,
+    importPortableProject,
     moveNode,
     moveSelectedNodesBy,
     moveSectionBy,
@@ -79,8 +85,11 @@ export function useProductionCanvasStore() {
     deleteEdge,
     deleteSelected,
     edges,
+    exportPipelineTemplate,
+    exportProjectSnapshot,
     historyFutureLength,
     historyPastLength,
+    importPortableProject,
     moveNode,
     moveSelectedNodesBy,
     moveSectionBy,

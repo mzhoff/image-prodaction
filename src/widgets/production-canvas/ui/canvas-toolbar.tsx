@@ -1,6 +1,8 @@
 'use client';
 
-import { Frame, Maximize2, MousePointer2, Redo2, Trash2, Undo2 } from 'lucide-react';
+import { Download, Frame, Maximize2, MousePointer2, Redo2, Trash2, Undo2, Upload } from 'lucide-react';
+import { useRef } from 'react';
+import type { ChangeEvent } from 'react';
 import { ProTooltip } from '@/shared/ui/pro-tooltip';
 
 type CanvasTool = 'select' | 'section';
@@ -10,6 +12,10 @@ interface CanvasToolbarProps {
   canRedo: boolean;
   canUndo: boolean;
   onDeleteSelected: () => void;
+  onExportPipelineTemplate: () => void;
+  onExportProject: () => void;
+  onImportPipelineTemplate: (file: File) => void;
+  onImportProject: (file: File) => void;
   onRedo: () => void;
   onSelectTool: (tool: CanvasTool) => void;
   onUndo: () => void;
@@ -21,11 +27,23 @@ export function CanvasToolbar({
   canRedo,
   canUndo,
   onDeleteSelected,
+  onExportPipelineTemplate,
+  onExportProject,
+  onImportPipelineTemplate,
+  onImportProject,
   onRedo,
   onSelectTool,
   onUndo,
   onZoomToFit,
 }: CanvasToolbarProps) {
+  const projectInputRef = useRef<HTMLInputElement | null>(null);
+  const templateInputRef = useRef<HTMLInputElement | null>(null);
+  const handleJsonFileChange = (event: ChangeEvent<HTMLInputElement>, onFile: (file: File) => void) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) onFile(file);
+  };
+
   return (
     <div className="canvas-toolbar" aria-label="Canvas tools">
       <ProTooltip label="Select" shortcut="V">
@@ -63,6 +81,42 @@ export function CanvasToolbar({
           <Maximize2 size={16} />
         </button>
       </ProTooltip>
+      <span className="canvas-toolbar-separator" aria-hidden="true" />
+      <ProTooltip label="Export project snapshot">
+        <button type="button" aria-label="Export project snapshot" onClick={onExportProject}>
+          <Download size={16} />
+        </button>
+      </ProTooltip>
+      <ProTooltip label="Import project snapshot">
+        <button type="button" aria-label="Import project snapshot" onClick={() => projectInputRef.current?.click()}>
+          <Upload size={16} />
+        </button>
+      </ProTooltip>
+      <ProTooltip label="Export pipeline template">
+        <button type="button" aria-label="Export pipeline template" onClick={onExportPipelineTemplate}>
+          <Download size={16} />
+        </button>
+      </ProTooltip>
+      <ProTooltip label="Import pipeline template">
+        <button type="button" aria-label="Import pipeline template" onClick={() => templateInputRef.current?.click()}>
+          <Upload size={16} />
+        </button>
+      </ProTooltip>
+      <input
+        ref={projectInputRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(event) => handleJsonFileChange(event, onImportProject)}
+      />
+      <input
+        ref={templateInputRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(event) => handleJsonFileChange(event, onImportPipelineTemplate)}
+      />
+      <span className="canvas-toolbar-separator" aria-hidden="true" />
       <ProTooltip label="Delete selected" shortcut="Del">
         <button type="button" aria-label="Delete selected" onClick={onDeleteSelected}>
           <Trash2 size={16} />
