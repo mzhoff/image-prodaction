@@ -30,7 +30,7 @@ export function getGenerateInputSummary(targetNodeId: string, edges: GraphEdge[]
     for (const edge of incoming) {
       const sourceNode = nodes.find((node) => node.id === edge.sourceNodeId);
       if (!sourceNode) continue;
-      if (getNodeTextResult(sourceNode)) textCount += 1;
+      if (getNodeTextResult(sourceNode, edge.sourcePortId)) textCount += 1;
       if (getNodeImageAssetId(sourceNode)) imageCount += 1;
     }
 
@@ -84,11 +84,11 @@ export async function buildGeneratePayload(
   for (const edge of edges.filter((item) => item.targetNodeId === targetNodeId)) {
     const sourceNode = nodes.find((node) => node.id === edge.sourceNodeId);
     if (!sourceNode) continue;
-    if (sourceNode.type === 'imageToText' && !getNodeTextResult(sourceNode)) {
+    if (sourceNode.type === 'imageToText' && !getNodeTextResult(sourceNode, edge.sourcePortId)) {
       throw new Error('В подключенной Extract node пока нет результата. Сначала нажми Analyze, потом запускай Generate.');
     }
 
-    const text = getNodeTextResult(sourceNode);
+    const text = getNodeTextResult(sourceNode, edge.sourcePortId);
     if (edge.targetPortId === 'prompt') {
       if (text) promptInputs.push(text);
       continue;

@@ -10,7 +10,7 @@ import { SettingRow } from '@/shared/ui/setting-row';
 import { useGenerateImageNodeModel } from '../../model/use-generate-image-node-model';
 import { generateReferenceRows } from '../../lib/generate-node-inputs';
 import { ImagePlate } from '../image-plate';
-import { NodeTitle } from '../node-title';
+import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
 
 interface GenerateImageNodeProps {
@@ -34,9 +34,21 @@ export function GenerateImageNode({
         title="Generate Image"
         muted
         action={(
-          <button type="button" className="node-title-action" onClick={model.toggleAllSections} aria-label={model.allSectionsOpen ? 'Collapse all sections' : 'Expand all sections'}>
-            {model.allSectionsOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
+          <NodeTitleActions>
+            <button
+              type="button"
+              className="node-title-action"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                model.toggleAllSections();
+              }}
+              aria-label={model.allSectionsOpen ? 'Collapse all sections' : 'Expand all sections'}
+            >
+              {model.allSectionsOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            <NodeTitleOptionsButton />
+          </NodeTitleActions>
         )}
       />
       <ImagePlate

@@ -86,6 +86,19 @@ const analysisModelLabels: Record<string, string> = {
   'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
 };
 
+const analysisModelSupportedParameters: Record<string, string[]> = {
+  'google/gemini-3.5-flash': ['include_reasoning', 'max_tokens', 'reasoning', 'response_format', 'seed', 'stop', 'structured_outputs', 'temperature', 'tool_choice', 'tools', 'top_p'],
+  'google/gemini-2.5-flash': ['include_reasoning', 'max_tokens', 'reasoning', 'response_format', 'seed', 'stop', 'structured_outputs', 'temperature', 'tool_choice', 'tools', 'top_p'],
+  'google/gemini-2.5-pro': ['include_reasoning', 'max_tokens', 'reasoning', 'response_format', 'seed', 'stop', 'structured_outputs', 'temperature', 'tool_choice', 'tools', 'top_p'],
+  'openai/gpt-5.5-pro': ['max_tokens', 'reasoning', 'response_format', 'seed', 'structured_outputs', 'tool_choice', 'tools'],
+  'openai/gpt-5.5': ['max_tokens', 'reasoning', 'response_format', 'seed', 'structured_outputs', 'tool_choice', 'tools'],
+  'openai/gpt-5-mini': ['max_tokens', 'reasoning', 'response_format', 'seed', 'structured_outputs', 'tool_choice', 'tools'],
+  'openai/gpt-5-pro': ['max_tokens', 'reasoning', 'response_format', 'seed', 'structured_outputs', 'tool_choice', 'tools'],
+  'anthropic/claude-sonnet-4.6': ['max_tokens', 'reasoning', 'stop', 'temperature', 'tool_choice', 'tools', 'top_k', 'top_p', 'verbosity'],
+  'anthropic/claude-sonnet-4.5': ['max_tokens', 'reasoning', 'stop', 'temperature', 'tool_choice', 'tools', 'top_k', 'top_p'],
+  'anthropic/claude-sonnet-4': ['max_tokens', 'reasoning', 'stop', 'temperature', 'tool_choice', 'tools', 'top_k', 'top_p'],
+};
+
 export const PREFERRED_ANALYSIS_MODEL_IDS = [
   'google/gemini-3.5-flash',
   'google/gemini-2.5-flash',
@@ -177,7 +190,9 @@ function createFallbackModel(id: string, type: 'analysis' | 'image'): OpenRouter
     label: imageConfig?.label ?? analysisModelLabels[id] ?? id,
     inputModalities: type === 'image' ? ['text', 'image'] : ['text', 'image'],
     outputModalities: type === 'image' ? ['image', 'text'] : ['text'],
-    supportedParameters: ['max_tokens', 'temperature', 'top_p'],
+    supportedParameters: type === 'analysis'
+      ? analysisModelSupportedParameters[id] ?? ['max_tokens', 'temperature', 'top_p']
+      : ['max_tokens', 'temperature', 'top_p'],
     aspectRatios: imageConfig?.aspectRatios,
     sizes: imageConfig?.sizes,
   };

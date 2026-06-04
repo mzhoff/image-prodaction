@@ -28,7 +28,12 @@ export function RefineImageNode({ node }: { node: ProductionNode }) {
         assetMetadata={model.data.resultMetadata}
         loading={node.status === 'running'}
         onActiveIndexChange={model.handleResultHistoryChange}
-        sourceModel={model.data.model}
+        sourceModel={model.selectedModel}
+      />
+      <RefineImageMeta
+        aspectRatio={model.selectedAspectRatio}
+        outputSize={model.outputSizeLabel}
+        sourceSize={model.sourceSizeLabel}
       />
       <PrimaryActionButton
         icon={model.processing ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}
@@ -42,7 +47,6 @@ export function RefineImageNode({ node }: { node: ProductionNode }) {
         <SettingRow label="Preserve" value={model.data.preserveStrength} options={refinePreserveStrengthOptions} onChange={model.handlePreserveStrengthChange} />
         <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
         <SettingRow label="Size" value={model.selectedSize} options={model.sizeOptions} onChange={model.handleSizeChange} />
-        <SettingRow label="Aspect" value={model.selectedAspectRatio} />
       </CollapsibleSection>
       <CollapsibleSection title="Instruction">
         <PromptBox value={model.data.instruction} onChange={model.handleInstructionChange} />
@@ -52,5 +56,23 @@ export function RefineImageNode({ node }: { node: ProductionNode }) {
       </div>
       {model.data.message ? <div className="node-note node-note-compact">{model.data.message}</div> : null}
     </>
+  );
+}
+
+function RefineImageMeta({
+  aspectRatio,
+  outputSize,
+  sourceSize,
+}: {
+  aspectRatio: string;
+  outputSize?: string;
+  sourceSize?: string;
+}) {
+  return (
+    <div className="refine-image-meta">
+      <span>Aspect {aspectRatio}</span>
+      {sourceSize ? <span>Input {sourceSize}</span> : null}
+      {outputSize ? <strong>Output {outputSize}</strong> : null}
+    </div>
   );
 }

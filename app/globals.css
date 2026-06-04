@@ -3,6 +3,7 @@
 @import "../src/app/styles/canvas-section.css";
 @import "../src/app/styles/crop-node.css";
 @import "../src/app/styles/shared-controls.css";
+@import "../src/app/styles/curves-node.css";
 @import "../src/app/styles/image-editor.css";
 @import "../src/app/styles/image-plate.css";
 @import "../src/app/styles/image-viewer.css";

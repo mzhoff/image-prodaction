@@ -162,6 +162,8 @@ export function useCanvasNavigation({
     };
 
     const handleWheel = (event: WheelEvent) => {
+      if (shouldLetTextareaHandleWheel(event)) return;
+
       event.preventDefault();
       if (middlePanRef.current.active) return;
 
@@ -226,4 +228,14 @@ export function useCanvasNavigation({
     screenToWorld,
     zoomToBounds,
   };
+}
+
+function shouldLetTextareaHandleWheel(event: WheelEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+
+  const textarea = target.closest('textarea.prompt-box');
+  if (!(textarea instanceof HTMLTextAreaElement)) return false;
+
+  return textarea.scrollHeight > textarea.clientHeight || textarea.scrollWidth > textarea.clientWidth;
 }

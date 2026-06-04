@@ -12,6 +12,7 @@ export function useProductionCanvasStore() {
   const selectedSectionIds = useProductionGraphStore((state) => state.selectedSectionIds);
   const addNode = useProductionGraphStore((state) => state.addNode);
   const addSection = useProductionGraphStore((state) => state.addSection);
+  const compactTextConcatInputs = useProductionGraphStore((state) => state.compactTextConcatInputs);
   const connect = useProductionGraphStore((state) => state.connect);
   const deleteEdge = useProductionGraphStore((state) => state.deleteEdge);
   const deleteSelected = useProductionGraphStore((state) => state.deleteSelected);
@@ -46,6 +47,7 @@ export function useProductionCanvasStore() {
     addNode,
     addSection,
     bounds,
+    compactTextConcatInputs,
     connect,
     deleteEdge,
     deleteSelected,
@@ -81,6 +83,7 @@ export function useProductionCanvasStore() {
     addNode,
     addSection,
     bounds,
+    compactTextConcatInputs,
     connect,
     deleteEdge,
     deleteSelected,

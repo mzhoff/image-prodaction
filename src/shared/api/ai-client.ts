@@ -36,6 +36,15 @@ export interface RefineImageRequest {
   size: string;
 }
 
+export interface GenerateTextRequest {
+  inputText: string;
+  instruction: string;
+  model: string;
+  outputStyle: string;
+  reasoning?: 'low' | 'medium' | 'high';
+  temperature?: number;
+}
+
 export interface RemoveBackgroundRequest {
   imageDataUrl: string;
 }
@@ -85,6 +94,18 @@ export async function requestRefineImage(payload: RefineImageRequest) {
   if (!response.ok) throw new Error(formatApiError(result.error));
   if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
   return { imageDataUrl: result.imageDataUrl, message: result.message };
+}
+
+export async function requestGenerateText(payload: GenerateTextRequest) {
+  const response = await fetch('/api/ai/generate-text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { text?: string | null; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.text) throw new Error(result.message || 'OpenRouter не вернул текст.');
+  return { message: result.message, text: result.text };
 }
 
 export async function requestRemoveBackground(payload: RemoveBackgroundRequest) {

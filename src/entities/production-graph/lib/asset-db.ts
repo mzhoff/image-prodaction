@@ -1,6 +1,7 @@
 import type { AssetRecord } from '../model/types';
 import { readImageSize } from '@/shared/lib/file-to-image-size';
 import { createId } from '@/shared/lib/id';
+import { normalizeImageFileForStorage } from '@/shared/lib/normalize-image-file';
 
 const DB_NAME = 'reverie-image-production-assets';
 const DB_VERSION = 1;
@@ -80,10 +81,12 @@ export async function saveAssetBlob(blob: Blob, options: SaveAssetBlobOptions = 
 }
 
 export async function saveImageAsset(file: File): Promise<AssetRecord> {
-  return saveAssetBlob(file, {
+  const normalizedFile = await normalizeImageFileForStorage(file);
+
+  return saveAssetBlob(normalizedFile, {
     kind: 'image',
-    name: file.name,
-    mimeType: file.type || 'image/png',
+    name: normalizedFile.name,
+    mimeType: normalizedFile.type || 'image/png',
   });
 }
 

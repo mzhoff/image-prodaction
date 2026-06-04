@@ -3,6 +3,12 @@ import type { PipelineTemplateExport, PortableProjectExport, ProjectExport, Proj
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
 export type ConnectResult = { ok: true } | { ok: false; reason: string };
+export interface ConnectOptions {
+  detachedEdge?: GraphEdge;
+}
+export interface DeleteEdgeOptions {
+  preserveTextConcatSlots?: boolean;
+}
 
 export interface ProductionGraphState extends GraphProject {
   historyPast: GraphSnapshot[];
@@ -13,9 +19,10 @@ export interface ProductionGraphState extends GraphProject {
   addAsset: (asset: AssetRecord) => void;
   assignAssetToNode: (nodeId: string, assetId: string) => void;
   pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string) => void;
-  connect: (sourceNodeId: string, sourcePortId: string, targetNodeId: string, targetPortId: string) => ConnectResult;
+  compactTextConcatInputs: (nodeId: string) => void;
+  connect: (sourceNodeId: string, sourcePortId: string, targetNodeId: string, targetPortId: string, options?: ConnectOptions) => ConnectResult;
   deleteSelected: () => void;
-  deleteEdge: (edgeId: string) => void;
+  deleteEdge: (edgeId: string, options?: DeleteEdgeOptions) => void;
   moveNode: (nodeId: string, position: GraphPoint) => void;
   moveSelectedNodesBy: (delta: GraphPoint) => void;
   pasteNodes: (nodes: ProductionNode[], edges: GraphEdge[], position: GraphPoint) => void;

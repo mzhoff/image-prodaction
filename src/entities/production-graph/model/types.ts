@@ -8,12 +8,17 @@ export type NodeStatus = 'idle' | 'running' | 'success' | 'error';
 export type ProductionNodeType =
   | 'importImage'
   | 'textPrompt'
+  | 'textConcat'
+  | 'textGeneration'
+  | 'textSplitter'
   | 'imageToText'
   | 'referenceComposer'
   | 'generateImage'
   | 'sketch'
   | 'cropImage'
   | 'adjustment'
+  | 'curves'
+  | 'frequencyRetouch'
   | 'refineImage'
   | 'removeBackground'
   | 'exportImage'
@@ -91,6 +96,45 @@ export interface TextPromptNodeData extends BaseNodeData {
   text: string;
 }
 
+export type TextConcatSeparator = 'newline' | 'double-newline' | 'space' | 'custom';
+
+export interface TextConcatNodeData extends BaseNodeData {
+  customSeparator: string;
+  inputCount?: number;
+  prefix: string;
+  result?: string;
+  separator: TextConcatSeparator;
+  sourceCount?: number;
+  suffix: string;
+}
+
+export type TextGenerationOutputStyle = 'plain' | 'markdown' | 'numbered-list';
+export type TextGenerationReasoning = 'low' | 'medium' | 'high';
+
+export interface TextGenerationNodeData extends BaseNodeData {
+  activeResultIndex?: number;
+  instruction: string;
+  message?: string;
+  model: string;
+  outputStyle: TextGenerationOutputStyle;
+  reasoning?: TextGenerationReasoning;
+  result?: string;
+  resultTexts?: string[];
+  temperature?: number;
+}
+
+export type TextSplitterMode = 'newline' | 'paragraph' | 'numbered-list' | 'delimiter';
+
+export interface TextSplitterNodeData extends BaseNodeData {
+  activeItemIndex?: number;
+  delimiter: string;
+  items?: string[];
+  message?: string;
+  mode: TextSplitterMode;
+  result?: string;
+  sourceText?: string;
+}
+
 export interface SketchNodeData extends BaseNodeData {
   aspectRatio: string;
   assetId?: string;
@@ -136,6 +180,34 @@ export interface AdjustmentNodeData extends BaseNodeData {
   sourceAssetId?: string;
 }
 
+export interface CurvesNodeData extends BaseNodeData {
+  activeChannel?: 'master' | 'red' | 'green' | 'blue';
+  curves?: {
+    master?: Array<{ id: string; x: number; y: number }>;
+    red?: Array<{ id: string; x: number; y: number }>;
+    green?: Array<{ id: string; x: number; y: number }>;
+    blue?: Array<{ id: string; x: number; y: number }>;
+  };
+  maskDataUrl?: string;
+  message?: string;
+  opacity: number;
+  resultAssetId?: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+}
+
+export interface FrequencyRetouchNodeData extends BaseNodeData {
+  maskDataUrl?: string;
+  radius: number;
+  rednessReduction: number;
+  resultAssetId?: string;
+  sourceAspectRatio?: number;
+  sourceAssetId?: string;
+  message?: string;
+  textureAmount: number;
+  toneSmoothing: number;
+}
+
 export type RefineImageMode = 'reference-cleanup' | 'detail-boost' | 'high-res-redraw';
 export type RefinePreserveStrength = 'strict' | 'balanced' | 'creative';
 
@@ -175,9 +247,14 @@ export type ProductionNodeData =
   | ReferenceComposerNodeData
   | GenerateImageNodeData
   | TextPromptNodeData
+  | TextConcatNodeData
+  | TextGenerationNodeData
+  | TextSplitterNodeData
   | SketchNodeData
   | CropImageNodeData
   | AdjustmentNodeData
+  | CurvesNodeData
+  | FrequencyRetouchNodeData
   | RefineImageNodeData
   | RemoveBackgroundNodeData
   | ExportImageNodeData

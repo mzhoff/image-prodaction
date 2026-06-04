@@ -11,13 +11,21 @@ export interface ConnectCreateOption {
   type: ProductionNodeType;
   label: string;
   icon: ReactNode;
-  targetPortId: string;
+  sourcePortId?: string;
+  targetPortId?: string;
 }
 
 export function getConnectCreateOptions(sourceKind: PortKind) {
   return addNodeMenu.flatMap((item) => {
     const targetPortId = getDefaultTargetPortId(item.type, sourceKind);
     return targetPortId ? [{ ...item, targetPortId }] : [];
+  });
+}
+
+export function getConnectCreateSourceOptions(targetKind: PortKind) {
+  return addNodeMenu.flatMap((item) => {
+    const sourcePortId = getDefaultSourcePortId(item.type, targetKind);
+    return sourcePortId ? [{ ...item, sourcePortId }] : [];
   });
 }
 
@@ -37,12 +45,26 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
   const inputPorts = NODE_PORTS[type].filter((port) => port.side === 'input');
   const priority = sourceKind === 'image'
     ? ['image', 'reference', ...layerPortIds]
-    : ['prompt', ...layerPortIds, 'image'];
+    : ['text', 'text-0', 'prompt', ...layerPortIds, 'image'];
 
   return priority.find((portId) => {
     const targetPort = inputPorts.find((port) => port.id === portId);
     if (!targetPort) return false;
     if (targetPort.kind === 'reference') return sourceKind === 'text' || sourceKind === 'image' || sourceKind === 'preset';
     return targetPort.kind === sourceKind;
+  });
+}
+
+function getDefaultSourcePortId(type: ProductionNodeType, targetKind: PortKind) {
+  const outputPorts = NODE_PORTS[type].filter((port) => port.side === 'output');
+  const priority = targetKind === 'image'
+    ? ['image', 'result']
+    : ['text', 'result', 'prompt'];
+
+  return priority.find((portId) => {
+    const sourcePort = outputPorts.find((port) => port.id === portId);
+    if (!sourcePort) return false;
+    if (targetKind === 'reference') return sourcePort.kind === 'text' || sourcePort.kind === 'image' || sourcePort.kind === 'preset';
+    return sourcePort.kind === targetKind;
   });
 }

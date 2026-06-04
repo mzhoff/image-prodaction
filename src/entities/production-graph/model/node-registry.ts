@@ -2,6 +2,7 @@ import { defaultExtractPrompt } from './extract-presets';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from './node-defaults';
 import { productionLayers } from './production-layers';
 import type { GraphPort, ProductionNodeData, ProductionNodeType } from './types';
+import { createDefaultCurves } from '@/shared/lib/image-renderer/curves';
 
 interface ProductionNodeDefinition {
   type: ProductionNodeType;
@@ -42,6 +43,67 @@ export const NODE_DEFINITIONS = {
     defaultHeight: 230,
     ports: [{ id: 'text', label: 'Text', kind: 'text', side: 'output' }],
     createData: () => ({ title: 'Prompt', text: '' }),
+  },
+  textConcat: {
+    type: 'textConcat',
+    title: 'Concat',
+    menuLabel: 'Text concat',
+    defaultHeight: 637,
+    ports: [
+      { id: 'text-0', label: 'Input 1', kind: 'text', side: 'input' },
+      { id: 'text-1', label: 'Input 2', kind: 'text', side: 'input' },
+      { id: 'result', label: 'Result', kind: 'text', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Concat',
+      separator: 'double-newline',
+      customSeparator: '',
+      inputCount: 2,
+      prefix: '',
+      suffix: '',
+      result: '',
+      sourceCount: 0,
+    }),
+  },
+  textGeneration: {
+    type: 'textGeneration',
+    title: 'Text Gen',
+    menuLabel: 'Text generation',
+    defaultHeight: 757,
+    ports: [
+      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+      { id: 'result', label: 'Result', kind: 'text', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Text Gen',
+      model: 'google/gemini-2.5-flash',
+      instruction: 'Rewrite the connected text into a concise production-ready image prompt.',
+      outputStyle: 'plain',
+      reasoning: 'low',
+      temperature: 1,
+      activeResultIndex: -1,
+      result: '',
+      resultTexts: [],
+    }),
+  },
+  textSplitter: {
+    type: 'textSplitter',
+    title: 'Splitter',
+    menuLabel: 'Text splitter',
+    defaultHeight: 422,
+    ports: [
+      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+      { id: 'item-0', label: 'Item 1', kind: 'text', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Splitter',
+      mode: 'delimiter',
+      delimiter: '*',
+      activeItemIndex: 0,
+      items: [],
+      result: '',
+      sourceText: '',
+    }),
   },
   imageToText: {
     type: 'imageToText',
@@ -142,6 +204,39 @@ export const NODE_DEFINITIONS = {
       tint: 0,
       highlights: 0,
       shadows: 0,
+    }),
+  },
+  curves: {
+    type: 'curves',
+    title: 'Curves',
+    menuLabel: 'Curves',
+    defaultHeight: 690,
+    ports: [
+      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Curves',
+      activeChannel: 'master',
+      curves: createDefaultCurves(),
+      opacity: 100,
+    }),
+  },
+  frequencyRetouch: {
+    type: 'frequencyRetouch',
+    title: 'Retouch',
+    menuLabel: 'Frequency retouch',
+    defaultHeight: 500,
+    ports: [
+      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Retouch',
+      radius: 8,
+      rednessReduction: 20,
+      textureAmount: 100,
+      toneSmoothing: 45,
     }),
   },
   refineImage: {

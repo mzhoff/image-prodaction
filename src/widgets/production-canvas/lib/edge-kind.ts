@@ -1,3 +1,4 @@
+import { getNodeImageAssetId, getNodeTextResult } from '@/entities/production-graph/model/graph-io';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
@@ -22,4 +23,12 @@ export function getEdgeDataKind(edge: GraphEdge, nodesById: Map<string, Producti
   const source = nodesById.get(edge.sourceNodeId);
   const sourcePort = source ? getNodePorts(source).find((port) => port.id === edge.sourcePortId) : undefined;
   return sourcePort?.kind === 'image' ? 'image' : 'text';
+}
+
+export function getEdgeHasData(edge: GraphEdge, nodesById: Map<string, ProductionNode>) {
+  const source = nodesById.get(edge.sourceNodeId);
+  if (!source) return false;
+  const sourcePort = getNodePorts(source).find((port) => port.id === edge.sourcePortId);
+  if (sourcePort?.kind === 'image') return Boolean(getNodeImageAssetId(source));
+  return Boolean(getNodeTextResult(source, edge.sourcePortId));
 }

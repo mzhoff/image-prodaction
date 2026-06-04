@@ -1,22 +1,39 @@
 'use client';
 
+import type { WheelEvent as ReactWheelEvent } from 'react';
+import { cn } from '@/shared/lib/cn';
+
 interface PromptBoxProps {
+  className?: string;
   value?: string;
+  placeholder?: string;
   readonly?: boolean;
   onChange?: (value: string) => void;
 }
 
-export function PromptBox({ value, readonly, onChange }: PromptBoxProps) {
-  if (readonly) {
-    return <div className="prompt-box prompt-box-readonly">{value}</div>;
-  }
+const DEFAULT_PROMPT_PLACEHOLDER = 'Добавьте промпт или ограничение';
+
+export function PromptBox({ className, value, placeholder = DEFAULT_PROMPT_PLACEHOLDER, readonly, onChange }: PromptBoxProps) {
+  const textareaPlaceholder = readonly && placeholder === DEFAULT_PROMPT_PLACEHOLDER ? '' : placeholder;
 
   return (
     <textarea
-      className="prompt-box"
+      className={cn('prompt-box', readonly && 'prompt-box-readonly', className)}
       value={value ?? ''}
-      onChange={(event) => onChange?.(event.target.value)}
-      placeholder="Добавьте промпт или ограничение"
+      readOnly={readonly}
+      onChange={(event) => {
+        if (!readonly) onChange?.(event.target.value);
+      }}
+      onWheel={handleTextareaWheel}
+      placeholder={textareaPlaceholder}
+      data-node-interactive
     />
   );
+}
+
+function handleTextareaWheel(event: ReactWheelEvent<HTMLTextAreaElement>) {
+  const textarea = event.currentTarget;
+  if (textarea.scrollHeight > textarea.clientHeight || textarea.scrollWidth > textarea.clientWidth) {
+    event.stopPropagation();
+  }
 }

@@ -12,7 +12,7 @@ import { createDatedJsonFileName, downloadJsonFile, readJsonFile } from '@/share
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
-import { createConnectMenuActions, getConnectCreateOptions } from '../lib/connect-create-menu';
+import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
 import { useCanvasClipboard } from './use-canvas-clipboard';
 import { useCanvasImageImport } from './use-canvas-image-import';
 import { useCanvasToast } from './use-canvas-toast';
@@ -163,10 +163,14 @@ export function useProductionCanvasModel() {
   }, [graph]);
 
   const openConnectionCreateMenu = useCallback((drop: ConnectionDropOnEmpty) => {
-    const source = graph.nodesById.get(drop.sourceNodeId);
-    const sourcePort = source ? getPortById(source, drop.sourcePortId) : undefined;
-    const options = sourcePort ? getConnectCreateOptions(sourcePort.kind) : [];
-    if (!source || !sourcePort || options.length === 0) {
+    const source = drop.sourceNodeId ? graph.nodesById.get(drop.sourceNodeId) : undefined;
+    const target = drop.targetNodeId ? graph.nodesById.get(drop.targetNodeId) : undefined;
+    const sourcePort = source && drop.sourcePortId ? getPortById(source, drop.sourcePortId) : undefined;
+    const targetPort = target && drop.targetPortId ? getPortById(target, drop.targetPortId) : undefined;
+    const options = drop.direction === 'from-output'
+      ? sourcePort ? getConnectCreateOptions(sourcePort.kind) : []
+      : targetPort ? getConnectCreateSourceOptions(targetPort.kind) : [];
+    if (options.length === 0) {
       setPendingConnectionMenu(null);
       return;
     }
@@ -174,13 +178,20 @@ export function useProductionCanvasModel() {
     setPendingConnectionMenu(drop);
     contextMenu.openContextMenuAt(drop.screenPoint.x, drop.screenPoint.y, createConnectMenuActions(options, (option) => {
       const nodeId = createNode(option.type, drop.worldPoint);
-      const result = graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, option.targetPortId);
+      const result = drop.direction === 'from-output'
+        ? drop.sourceNodeId && drop.sourcePortId && option.targetPortId
+          ? graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, option.targetPortId)
+          : { ok: false as const, reason: 'Could not create a downstream connection.' }
+        : drop.targetNodeId && drop.targetPortId && option.sourcePortId
+          ? graph.connect(nodeId, option.sourcePortId, drop.targetNodeId, drop.targetPortId)
+          : { ok: false as const, reason: 'Could not create an upstream connection.' };
       if (!result.ok) showToast(result.reason);
       setPendingConnectionMenu(null);
     }));
   }, [contextMenu, createNode, graph, showToast]);
 
   const { clearConnectionDraft, connectionDraft, startConnection } = useConnectionDraft({
+    compactTextConcatInputs: graph.compactTextConcatInputs,
     connect: graph.connect,
     deleteEdge: graph.deleteEdge,
     edges: graph.edges,

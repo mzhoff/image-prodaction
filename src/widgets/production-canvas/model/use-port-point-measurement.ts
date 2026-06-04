@@ -102,6 +102,8 @@ function getNodePortLayoutSignature(node: ProductionNode) {
     data.promptOpen,
     data.settingsOpen,
     data.referenceOpen,
+    data.inputCount,
+    Array.isArray(data.items) ? data.items.length : '',
     data.resultAssetId,
   ].join(':');
 }

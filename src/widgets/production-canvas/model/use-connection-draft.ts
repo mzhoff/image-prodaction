@@ -3,29 +3,38 @@
 import { useCallback, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
-import type { GraphEdge, GraphPoint, ProductionNode } from '@/entities/production-graph/model/types';
+import type { GraphEdge, GraphPoint, PortKind, ProductionNode } from '@/entities/production-graph/model/types';
+import type { ConnectOptions, DeleteEdgeOptions } from '@/entities/production-graph/model/store-types';
 import { getPortPoint, type PortPointLookup } from '../lib/edge-path';
-import { resolveTargetPortId } from '../lib/edge-kind';
 
 export interface ConnectionDraft {
-  sourceNodeId: string;
-  sourcePortId: string;
-  start: GraphPoint;
-  current: GraphPoint;
   detached: boolean;
+  detachedEdge?: GraphEdge;
+  kind: PortKind;
+  sourceNodeId?: string;
+  sourcePortId?: string;
+  start: GraphPoint;
+  startSide: 'input' | 'output';
+  current: GraphPoint;
+  targetNodeId?: string;
+  targetPortId?: string;
 }
 
 export interface ConnectionDropOnEmpty {
-  sourceNodeId: string;
-  sourcePortId: string;
+  direction: 'from-input' | 'from-output';
   detached: boolean;
   screenPoint: GraphPoint;
+  sourceNodeId?: string;
+  sourcePortId?: string;
+  targetNodeId?: string;
+  targetPortId?: string;
   worldPoint: GraphPoint;
 }
 
 interface UseConnectionDraftParams {
-  connect: (sourceNodeId: string, sourcePortId: string, targetNodeId: string, targetPortId: string) => { ok: true } | { ok: false; reason: string };
-  deleteEdge: (edgeId: string) => void;
+  compactTextConcatInputs: (nodeId: string) => void;
+  connect: (sourceNodeId: string, sourcePortId: string, targetNodeId: string, targetPortId: string, options?: ConnectOptions) => { ok: true } | { ok: false; reason: string };
+  deleteEdge: (edgeId: string, options?: DeleteEdgeOptions) => void;
   edges: GraphEdge[];
   measuredPortPoints: PortPointLookup;
   nodesById: Map<string, ProductionNode>;
@@ -35,6 +44,7 @@ interface UseConnectionDraftParams {
 }
 
 export function useConnectionDraft({
+  compactTextConcatInputs,
   connect,
   deleteEdge,
   edges,
@@ -54,30 +64,49 @@ export function useConnectionDraft({
     const port = getNodePorts(node).find((item) => item.id === portId);
     if (!port) return;
 
-    let sourceNodeId = nodeId;
-    let sourcePortId = portId;
+    let draft: ConnectionDraft;
     let detachedEdge: GraphEdge | undefined;
+    const startPortPoint = getPortPoint(node, portId, measuredPortPoints) ?? screenToWorld(event.nativeEvent);
+    if (!startPortPoint) return;
 
-    if (port.side === 'input') {
+    if (port.side === 'output') {
+      draft = {
+        current: startPortPoint,
+        detached: false,
+        kind: port.kind,
+        sourceNodeId: nodeId,
+        sourcePortId: portId,
+        start: startPortPoint,
+        startSide: 'output',
+      };
+    } else {
       detachedEdge = edges.find((edge) => (
         edge.targetNodeId === nodeId
         && edge.targetPortId === portId
       ));
-      if (!detachedEdge) return;
-      sourceNodeId = detachedEdge.sourceNodeId;
-      sourcePortId = detachedEdge.sourcePortId;
+      const source = detachedEdge ? nodesById.get(detachedEdge.sourceNodeId) : undefined;
+      const sourcePort = source ? getNodePorts(source).find((item) => item.id === detachedEdge?.sourcePortId) : undefined;
+      const sourcePoint = source && detachedEdge
+        ? getPortPoint(source, detachedEdge.sourcePortId, measuredPortPoints)
+        : null;
+      draft = {
+        current: sourcePoint ?? startPortPoint,
+        detached: Boolean(detachedEdge),
+        detachedEdge,
+        kind: sourcePort?.kind ?? port.kind,
+        sourceNodeId: detachedEdge?.sourceNodeId,
+        sourcePortId: detachedEdge?.sourcePortId,
+        start: sourcePoint ?? startPortPoint,
+        startSide: 'input',
+        targetNodeId: nodeId,
+        targetPortId: portId,
+      };
     }
-
-    const source = nodesById.get(sourceNodeId);
-    if (!source) return;
-    const start = getPortPoint(source, sourcePortId, measuredPortPoints) ?? screenToWorld(event.nativeEvent);
-    if (!start) return;
 
     event.preventDefault();
     event.stopPropagation();
-    if (detachedEdge) deleteEdge(detachedEdge.id);
-    const detached = Boolean(detachedEdge);
-    setConnectionDraft({ sourceNodeId, sourcePortId, start, current: start, detached });
+    if (detachedEdge) deleteEdge(detachedEdge.id, { preserveTextConcatSlots: true });
+    setConnectionDraft(draft);
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const current = screenToWorld(moveEvent);
@@ -89,19 +118,29 @@ export function useConnectionDraft({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
 
-      const target = (upEvent.target as HTMLElement | null)?.closest('[data-port-side="input"]') as HTMLElement | null;
+      const target = (upEvent.target as HTMLElement | null)?.closest('[data-port-side]') as HTMLElement | null;
       const targetNodeId = target?.dataset.portNodeId;
-      const sourceNode = nodesById.get(sourceNodeId);
-      const targetPortId = resolveTargetPortId(target?.dataset.portId, targetNodeId, edges, sourceNode, sourcePortId);
-      if (!targetNodeId || !targetPortId) {
+      const targetPortId = target?.dataset.portId;
+      const targetSide = target?.dataset.portSide;
+      const dropResult = targetNodeId && targetPortId && (targetSide === 'input' || targetSide === 'output')
+        ? connectDroppedPorts(draft, targetNodeId, targetPortId, targetSide, connect)
+        : null;
+
+      if (!dropResult) {
         const worldPoint = screenToWorld(upEvent);
-        if (worldPoint && onDropOnEmpty && !detached) {
+        if (draft.detached && draft.targetNodeId) {
+          compactTextConcatInputs(draft.targetNodeId);
+        }
+        if (worldPoint && onDropOnEmpty && !draft.detached) {
           setConnectionDraft((draft) => (draft ? { ...draft, current: worldPoint } : draft));
           onDropOnEmpty({
-            sourceNodeId,
-            sourcePortId,
-            detached,
+            detached: draft.detached,
+            direction: draft.startSide === 'input' ? 'from-input' : 'from-output',
             screenPoint: { x: upEvent.clientX, y: upEvent.clientY },
+            sourceNodeId: draft.sourceNodeId,
+            sourcePortId: draft.sourcePortId,
+            targetNodeId: draft.targetNodeId,
+            targetPortId: draft.targetPortId,
             worldPoint,
           });
           return;
@@ -110,13 +149,38 @@ export function useConnectionDraft({
         return;
       }
       setConnectionDraft(null);
-      const result = connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-      if (!result.ok) onConnectionError?.(result.reason);
+      if (!dropResult.ok) {
+        if (draft.detached && draft.targetNodeId) compactTextConcatInputs(draft.targetNodeId);
+        onConnectionError?.(dropResult.reason);
+      }
     };
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
-  }, [connect, deleteEdge, edges, measuredPortPoints, nodesById, onConnectionError, onDropOnEmpty, screenToWorld]);
+  }, [compactTextConcatInputs, connect, deleteEdge, edges, measuredPortPoints, nodesById, onConnectionError, onDropOnEmpty, screenToWorld]);
 
   return { clearConnectionDraft: () => setConnectionDraft(null), connectionDraft, startConnection };
+}
+
+function connectDroppedPorts(
+  draft: ConnectionDraft,
+  targetNodeId: string,
+  targetPortId: string,
+  targetSide: 'input' | 'output',
+  connect: UseConnectionDraftParams['connect'],
+) {
+  if (draft.startSide === 'output') {
+    if (!draft.sourceNodeId || !draft.sourcePortId || targetSide !== 'input') return null;
+    return connect(draft.sourceNodeId, draft.sourcePortId, targetNodeId, targetPortId);
+  }
+
+  if (targetSide === 'output' && draft.targetNodeId && draft.targetPortId) {
+    return connect(targetNodeId, targetPortId, draft.targetNodeId, draft.targetPortId, { detachedEdge: draft.detachedEdge });
+  }
+
+  if (targetSide === 'input' && draft.detached && draft.sourceNodeId && draft.sourcePortId) {
+    return connect(draft.sourceNodeId, draft.sourcePortId, targetNodeId, targetPortId, { detachedEdge: draft.detachedEdge });
+  }
+
+  return null;
 }

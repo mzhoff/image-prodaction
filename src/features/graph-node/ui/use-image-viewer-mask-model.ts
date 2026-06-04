@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
-import { DEFAULT_IMAGE_MODEL, getImageModelConfig } from '@/shared/api/openrouter-models';
+import { DEFAULT_IMAGE_MODEL, PREFERRED_IMAGE_MODEL_IDS, getImageModelConfig } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { modelSelectOptions } from '../lib/node-select-options';
 import type { ImageMaskEditorHandle, MaskTool } from './image-mask-editor';
@@ -15,6 +15,8 @@ interface UseImageViewerMaskModelParams {
   asset?: AssetRecord;
   assetId?: string;
   assetMetadata?: Record<string, GenerationResultMetadata>;
+  maskDataUrl?: string;
+  onMaskChange?: (maskDataUrl: string | null) => void;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
   sourceModel?: string;
 }
@@ -23,13 +25,18 @@ export function useImageViewerMaskModel({
   asset,
   assetId,
   assetMetadata,
+  maskDataUrl,
+  onMaskChange,
   onMaskEdit,
   sourceModel,
 }: UseImageViewerMaskModelParams) {
-  const canMaskEdit = Boolean(assetId && onMaskEdit);
+  const canMaskEdit = Boolean(assetId && (onMaskEdit || onMaskChange));
+  const localMaskMode = Boolean(onMaskChange && !onMaskEdit);
   const activeMetadata = assetId ? assetMetadata?.[assetId] : undefined;
   const sourceModelId = activeMetadata?.model ?? sourceModel;
-  const editDefaultModel = sourceModelId ?? DEFAULT_IMAGE_MODEL;
+  const editDefaultModel = sourceModelId && PREFERRED_IMAGE_MODEL_IDS.includes(sourceModelId)
+    ? sourceModelId
+    : DEFAULT_IMAGE_MODEL;
   const [brushSize, setBrushSize] = useState(16);
   const [editModel, setEditModel] = useState(editDefaultModel);
   const [maskOpen, setMaskOpen] = useState(false);
@@ -76,9 +83,11 @@ export function useImageViewerMaskModel({
   }, [maskOpen]);
 
   useEffect(() => {
-    maskRef.current?.reset();
+    if (!localMaskMode) {
+      maskRef.current?.reset();
+    }
     setMessage('');
-  }, [assetId]);
+  }, [assetId, localMaskMode]);
 
   useEffect(() => {
     setEditModel(editDefaultModel);
@@ -115,10 +124,13 @@ export function useImageViewerMaskModel({
     brushSize,
     canMaskEdit,
     handleSubmitEdit,
+    localMaskMode,
     imageSizeLabel,
+    maskDataUrl,
     maskOpen,
     maskRef,
     message,
+    onMaskChange,
     modelOptions,
     prompt,
     selectedEditModel,

@@ -10,7 +10,7 @@ import { PromptBox } from '@/shared/ui/prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useExtractNodeModel } from '../../model/use-extract-node-model';
 import { ExtractLayerTags } from '../extract-layer-tags';
-import { NodeTitle } from '../node-title';
+import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
 
 interface ImageToTextNodeProps {
@@ -27,9 +27,21 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
         title="Extract"
         muted
         action={(
-          <button type="button" className="node-title-action" onClick={model.toggleAllSections} aria-label={model.allSectionsOpen ? 'Collapse all sections' : 'Expand all sections'}>
-            {model.allSectionsOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
+          <NodeTitleActions>
+            <button
+              type="button"
+              className="node-title-action"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                model.toggleAllSections();
+              }}
+              aria-label={model.allSectionsOpen ? 'Collapse all sections' : 'Expand all sections'}
+            >
+              {model.allSectionsOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            <NodeTitleOptionsButton />
+          </NodeTitleActions>
         )}
       />
       <CollapsibleSection title="Settings" open={model.settingsOpen} onOpenChange={model.setSettingsOpen}>

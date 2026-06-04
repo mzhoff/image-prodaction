@@ -9,7 +9,7 @@ import { DarkSelect } from '@/shared/ui/dark-select';
 import { RangeSlider } from '@/shared/ui/range-slider';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { ImageMaskEditor } from './image-mask-editor';
-import type { MaskEditPayload } from './image-viewer-types';
+import type { ImageViewerEditorPanel, MaskEditPayload } from './image-viewer-types';
 import { MAX_MASK_BRUSH_SIZE, MIN_MASK_BRUSH_SIZE, useImageViewerMaskModel } from './use-image-viewer-mask-model';
 
 interface ImageViewerProps {
@@ -20,13 +20,16 @@ interface ImageViewerProps {
   currentIndex: number;
   hasHistory: boolean;
   historyAssetIds: string[];
+  maskDataUrl?: string;
   onClose: () => void;
+  onMaskChange?: (maskDataUrl: string | null) => void;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
   onNext: () => void;
   onPrevious: () => void;
   onSelectVersion: (index: number) => void;
   sourceModel?: string;
   url: string;
+  viewerPanel?: ImageViewerEditorPanel;
 }
 
 export function ImageViewer({
@@ -37,15 +40,21 @@ export function ImageViewer({
   currentIndex,
   hasHistory,
   historyAssetIds,
+  maskDataUrl,
   onClose,
+  onMaskChange,
   onMaskEdit,
   onNext,
   onPrevious,
   onSelectVersion,
   sourceModel,
   url,
+  viewerPanel,
 }: ImageViewerProps) {
-  const maskModel = useImageViewerMaskModel({ asset, assetId, assetMetadata, onMaskEdit, sourceModel });
+  const maskModel = useImageViewerMaskModel({ asset, assetId, assetMetadata, maskDataUrl, onMaskChange, onMaskEdit, sourceModel });
+  const hasToolPanel = maskModel.canMaskEdit || Boolean(viewerPanel);
+  const customPanelOpen = Boolean(viewerPanel?.active);
+  const editorOpen = maskModel.maskOpen || customPanelOpen;
   const width = asset?.width ?? 1200;
   const height = asset?.height ?? 800;
   const stageStyle = {
@@ -53,6 +62,9 @@ export function ImageViewer({
     '--image-viewer-aspect-ratio': width / height,
     '--image-viewer-inverse-aspect-ratio': height / width,
   } as CSSProperties;
+  const contentStyle = customPanelOpen && viewerPanel?.height
+    ? { '--image-viewer-panel-height': `${viewerPanel.height}px` } as CSSProperties
+    : undefined;
 
   useEffect(() => {
     if (!hasHistory) return undefined;
@@ -88,11 +100,13 @@ export function ImageViewer({
       <div
         className={cn(
           'image-viewer-content',
-          maskModel.canMaskEdit && 'image-viewer-content-with-tools',
+          hasToolPanel && 'image-viewer-content-with-tools',
           hasHistory && 'image-viewer-content-with-history',
           (maskModel.sourceModelLabel || maskModel.imageSizeLabel) && 'image-viewer-content-with-meta',
-          maskModel.maskOpen && 'image-viewer-content-with-editor',
+          editorOpen && 'image-viewer-content-with-editor',
+          maskModel.localMaskMode && 'image-viewer-content-with-local-mask',
         )}
+        style={contentStyle}
       >
         <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={onClose}>
           <X size={18} />
@@ -114,6 +128,8 @@ export function ImageViewer({
                 brushSize={maskModel.brushSize}
                 enabled={maskModel.maskOpen && !busy}
                 height={height}
+                initialMaskDataUrl={maskModel.maskDataUrl ?? null}
+                onMaskChange={maskModel.onMaskChange}
                 onPreviewToolChange={maskModel.setPreviewTool}
                 tool={maskModel.tool}
                 width={width}
@@ -127,14 +143,16 @@ export function ImageViewer({
             {maskModel.imageSizeLabel ? <span className="image-viewer-meta-size">{maskModel.imageSizeLabel}</span> : null}
           </div>
         ) : null}
-        {maskModel.canMaskEdit ? (
-          <div className="image-editor-panel">
+        {hasToolPanel ? (
+          <div className={cn('image-editor-panel', viewerPanel?.className)}>
             <div className="image-editor-toolbar">
-              <button type="button" className={cn('image-editor-button', maskModel.maskOpen && 'image-editor-button-active')} onClick={() => maskModel.setMaskOpen((open) => !open)}>
-                <Brush size={15} />
-                Mask
-              </button>
-              {maskModel.maskOpen ? (
+              {maskModel.canMaskEdit ? (
+                <button type="button" className={cn('image-editor-button', maskModel.maskOpen && 'image-editor-button-active')} onClick={() => maskModel.setMaskOpen((open) => !open)}>
+                  <Brush size={15} />
+                  Mask
+                </button>
+              ) : null}
+              {maskModel.canMaskEdit && maskModel.maskOpen ? (
                 <div className="image-editor-mask-tools">
                   <div className="image-editor-tool-pair">
                     <button type="button" className={cn('image-editor-icon-button', maskModel.visibleTool === 'brush' && 'image-editor-button-active')} onClick={() => maskModel.setTool('brush')} aria-label="Brush">
@@ -158,8 +176,9 @@ export function ImageViewer({
                   </button>
                 </div>
               ) : null}
+              {viewerPanel?.toolbar ? <div className="image-editor-custom-toolbar">{viewerPanel.toolbar}</div> : null}
             </div>
-            {maskModel.maskOpen ? (
+            {maskModel.maskOpen && !maskModel.localMaskMode ? (
               <div className="image-editor-input-area">
                 <textarea
                   className="image-editor-prompt"
@@ -180,6 +199,11 @@ export function ImageViewer({
                   </div>
                 </div>
                 {maskModel.message ? <span className="image-editor-message">{maskModel.message}</span> : null}
+              </div>
+            ) : null}
+            {viewerPanel?.active ? (
+              <div className="image-editor-custom-panel">
+                {viewerPanel.body}
               </div>
             ) : null}
           </div>

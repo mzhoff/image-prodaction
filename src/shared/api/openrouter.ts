@@ -44,12 +44,17 @@ export interface OpenRouterImageConfig {
   image_size?: string;
 }
 
+export interface OpenRouterReasoningConfig {
+  effort?: 'low' | 'medium' | 'high';
+}
+
 export async function sendOpenRouterChat({
   model,
   messages,
   modalities,
   imageConfig,
   maxTokens,
+  reasoning,
   temperature,
 }: {
   model: string;
@@ -57,6 +62,7 @@ export async function sendOpenRouterChat({
   modalities?: Array<'text' | 'image'>;
   imageConfig?: OpenRouterImageConfig;
   maxTokens?: number;
+  reasoning?: OpenRouterReasoningConfig;
   temperature?: number;
 }) {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -78,6 +84,7 @@ export async function sendOpenRouterChat({
       modalities,
       image_config: imageConfig,
       max_tokens: maxTokens,
+      reasoning,
       temperature,
       stream: false,
     })),

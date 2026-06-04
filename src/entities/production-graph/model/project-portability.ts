@@ -100,13 +100,18 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
 
   delete data.assetId;
   delete data.activeResultIndex;
+  delete data.activeItemIndex;
+  delete data.items;
   delete data.result;
   delete data.resultAssetId;
   delete data.resultAssetIds;
   delete data.resultMetadata;
+  delete data.resultTexts;
   delete data.sourceAssetId;
   delete data.sourceAspectRatio;
+  delete data.sourceText;
   delete data.cropStateVersion;
+  delete data.maskDataUrl;
   delete data.message;
 
   if (node.type === 'generateImage' || node.type === 'refineImage') {

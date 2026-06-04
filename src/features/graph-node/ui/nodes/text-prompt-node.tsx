@@ -7,7 +7,7 @@ import type { ProductionNode, TextPromptNodeData } from '@/entities/production-g
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
-import { NodeTitle } from '../node-title';
+import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
 
 interface TextPromptNodeProps {
@@ -26,9 +26,21 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
         title={data.title}
         muted
         action={(
-          <button type="button" className="node-title-action" onClick={() => setPromptOpen((open) => !open)} aria-label={promptOpen ? 'Collapse all sections' : 'Expand all sections'}>
-            {promptOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
+          <NodeTitleActions>
+            <button
+              type="button"
+              className="node-title-action"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setPromptOpen((open) => !open);
+              }}
+              aria-label={promptOpen ? 'Collapse all sections' : 'Expand all sections'}
+            >
+              {promptOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            <NodeTitleOptionsButton />
+          </NodeTitleActions>
         )}
       />
       <CollapsibleSection

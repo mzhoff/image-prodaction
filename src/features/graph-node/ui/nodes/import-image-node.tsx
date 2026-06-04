@@ -29,7 +29,7 @@ export function ImportImageNode({ node }: { node: ProductionNode }) {
     <>
       <NodeTitle title={data.title} muted />
       <ImagePlate assetId={data.assetId} adaptive />
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleUpload} />
+      <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" hidden onChange={handleUpload} />
       <PrimaryActionButton icon={<Upload size={16} />} onClick={() => fileInputRef.current?.click()}>
         Upload
       </PrimaryActionButton>

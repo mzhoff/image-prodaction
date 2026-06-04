@@ -1,10 +1,12 @@
 import { getGenerationHistory } from './generation-history';
-import { getPortById } from './node-definitions';
+import { getPortById, getTextSplitterItemPortIndex } from './node-definitions';
 import type {
   AdjustmentNodeData,
   AssetRecord,
   CropImageNodeData,
+  CurvesNodeData,
   GenerateImageNodeData,
+  FrequencyRetouchNodeData,
   GraphEdge,
   ImageToTextNodeData,
   ImportImageNodeData,
@@ -14,7 +16,10 @@ import type {
   ReferenceComposerNodeData,
   RemoveBackgroundNodeData,
   SketchNodeData,
+  TextConcatNodeData,
+  TextGenerationNodeData,
   TextPromptNodeData,
+  TextSplitterNodeData,
 } from './types';
 
 export interface GraphIoContext {
@@ -70,15 +75,31 @@ export function getNodeImageAssetId(node?: ProductionNode) {
     const data = node.data as AdjustmentNodeData;
     return data.resultAssetId ?? data.sourceAssetId;
   }
+  if (node.type === 'curves') {
+    const data = node.data as CurvesNodeData;
+    return data.resultAssetId ?? data.sourceAssetId;
+  }
+  if (node.type === 'frequencyRetouch') {
+    const data = node.data as FrequencyRetouchNodeData;
+    return data.resultAssetId ?? data.sourceAssetId;
+  }
   if (node.type === 'refineImage') return getGenerationHistory(node.data as RefineImageNodeData).activeAssetId;
   if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   return undefined;
 }
 
-export function getNodeTextResult(node: ProductionNode) {
+export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
   if (node.type === 'imageToText') return (node.data as ImageToTextNodeData).result?.trim() ?? '';
   if (node.type === 'textPrompt') return (node.data as TextPromptNodeData).text?.trim() ?? '';
+  if (node.type === 'textConcat') return (node.data as TextConcatNodeData).result?.trim() ?? '';
+  if (node.type === 'textGeneration') return (node.data as TextGenerationNodeData).result?.trim() ?? '';
+  if (node.type === 'textSplitter') {
+    const data = node.data as TextSplitterNodeData;
+    const itemIndex = sourcePortId ? getTextSplitterItemPortIndex(sourcePortId) : -1;
+    if (itemIndex >= 0) return data.items?.[itemIndex]?.trim() ?? '';
+    return data.result?.trim() ?? '';
+  }
   if (node.type === 'referenceComposer') {
     const data = node.data as ReferenceComposerNodeData;
     return (data.composedPrompt || data.prompt || '').trim();
@@ -113,7 +134,7 @@ export function getFirstIncomingImageAsset(targetNodeId: string, targetPortId: s
 
 export function getIncomingTextInputs(targetNodeId: string, targetPortId: string | undefined, context: Pick<GraphIoContext, 'edges' | 'nodes'>): GraphTextInputItem[] {
   return getIncomingSources(targetNodeId, targetPortId, context).flatMap((source): GraphTextInputItem[] => {
-    const text = getNodeTextResult(source.sourceNode);
+    const text = getNodeTextResult(source.sourceNode, source.sourcePortId);
     if (!text) return [];
 
     return [{

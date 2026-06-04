@@ -3,9 +3,9 @@ import { productionLayers } from '@/entities/production-graph/model/production-l
 import type { GraphEdge, GraphSection, ProductionNode } from '@/entities/production-graph/model/types';
 import { getPortTop } from '@/features/graph-node/ui/port-button';
 
-const PORT_CENTER_OFFSET = 12;
-const PORT_DOT_RADIUS = 4;
-const PORT_CONTAINER_HALF = 8;
+const PORT_CENTER_OFFSET = 13.5;
+const PORT_DOT_RADIUS = 6;
+const PORT_CONTAINER_HALF = 12;
 const GENERATE_REFERENCE_GROUP_TOP = 580;
 const generateInputPortIds = new Set<string>(['reference', ...productionLayers.map((layer) => layer.id)]);
 
@@ -122,7 +122,7 @@ export function getEdgePath(
 }
 
 function normalizeSourcePortId(source: ProductionNode, portId: string) {
-  if ((source.type === 'cropImage' || source.type === 'removeBackground') && portId === 'image') return 'result';
+  if ((source.type === 'cropImage' || source.type === 'curves' || source.type === 'frequencyRetouch' || source.type === 'removeBackground') && portId === 'image') return 'result';
   return portId;
 }
 
