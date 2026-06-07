@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { LogIn, LogOut, UserPlus } from 'lucide-react';
 import { signOut, useSession } from '@/shared/auth/client';
 import { getAuthErrorMessage } from '@/features/auth/lib/auth-form-utils';
 
 export function AuthPanel() {
+  const router = useRouter();
   const { data: session, isPending, refetch } = useSession();
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,6 +32,8 @@ export function AuthPanel() {
       }
 
       await refetch();
+      router.replace('/login');
+      router.refresh();
     } catch (error) {
       setActionError(getAuthErrorMessage(error));
     } finally {
