@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { getIncomingImageInputs, getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import { buildSubjectPassportText } from '@/entities/production-graph/model/subject-passport';
@@ -16,7 +16,7 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { requestDescribeSubject, requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL, DEFAULT_IMAGE_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { blobToDataUrl, dataUrlToFile, prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
+import { blobToDataUrl, prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 import { getSelectedModelId, modelSelectOptions } from '../lib/node-select-options';
 
 export function useSubjectBuilderNodeModel(node: ProductionNode) {
@@ -192,8 +192,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
           size: '1K',
           subjectInputs: subjectPassport ? [subjectPassport] : [],
         });
-        const file = await dataUrlToFile(response.imageDataUrl, `subject-${slot.id}-${Date.now()}.png`);
-        const asset = await saveImageAsset(file);
+        const asset = response.asset;
         addAsset(asset);
         if (targetSlot) {
           const slotIndex = SUBJECT_PROFILE_REFERENCE_SLOTS.findIndex((item) => item.id === slot.id);
@@ -245,8 +244,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
         prompt,
         size: '1K',
       });
-      const file = await dataUrlToFile(result.imageDataUrl, `subject-${slotId}-edited-${Date.now()}.png`);
-      const editedAsset = await saveImageAsset(file);
+      const editedAsset = result.asset;
       addAsset(editedAsset);
 
       const slotIndex = SUBJECT_PROFILE_REFERENCE_SLOTS.findIndex((slot) => slot.id === slotId);

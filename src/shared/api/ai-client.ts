@@ -1,3 +1,5 @@
+import type { AssetRecord } from '@/entities/production-graph/model/types';
+
 export interface AnalyzeImageRequest {
   imageDataUrl: string;
   model: string;
@@ -93,6 +95,12 @@ export interface RemoveBackgroundRequest {
   imageDataUrl: string;
 }
 
+export interface ImageOperationResult {
+  asset: AssetRecord;
+  imageUrl: string;
+  message?: string;
+}
+
 export async function requestAnalyzeImage(payload: AnalyzeImageRequest) {
   const response = await fetch('/api/ai/analyze-image', {
     method: 'POST',
@@ -110,10 +118,9 @@ export async function requestGenerateImage(payload: GenerateImageRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  const result = await response.json() as ImageOperationApiResponse;
   if (!response.ok) throw new Error(formatApiError(result.error));
-  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  return readImageOperationResult(result, 'OpenRouter не вернул S3 asset изображения.');
 }
 
 export async function requestEditImage(payload: EditImageRequest) {
@@ -122,10 +129,9 @@ export async function requestEditImage(payload: EditImageRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  const result = await response.json() as ImageOperationApiResponse;
   if (!response.ok) throw new Error(formatApiError(result.error));
-  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  return readImageOperationResult(result, 'OpenRouter не вернул S3 asset изображения.');
 }
 
 export async function requestRefineImage(payload: RefineImageRequest) {
@@ -134,10 +140,9 @@ export async function requestRefineImage(payload: RefineImageRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  const result = await response.json() as ImageOperationApiResponse;
   if (!response.ok) throw new Error(formatApiError(result.error));
-  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  return readImageOperationResult(result, 'OpenRouter не вернул S3 asset изображения.');
 }
 
 export async function requestGenerateText(payload: GenerateTextRequest) {
@@ -199,14 +204,27 @@ export async function requestRemoveBackground(payload: RemoveBackgroundRequest) 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
+  const result = await response.json() as ImageOperationApiResponse;
   if (!response.ok) throw new Error(formatApiError(result.error));
-  if (!result.imageDataUrl) throw new Error(result.message || 'FAL не вернул изображение с прозрачностью.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  return readImageOperationResult(result, 'FAL не вернул S3 asset изображения с прозрачностью.');
 }
 
 export function formatApiError(error: unknown) {
   if (typeof error === 'string') return error;
   if (!error) return 'OpenRouter request failed';
   return JSON.stringify(error).slice(0, 500);
+}
+
+interface ImageOperationApiResponse {
+  asset?: AssetRecord;
+  imageUrl?: string | null;
+  message?: string;
+  error?: unknown;
+}
+
+function readImageOperationResult(result: ImageOperationApiResponse, fallbackMessage: string): ImageOperationResult {
+  if (!result.asset) throw new Error(result.message || fallbackMessage);
+  const imageUrl = result.imageUrl ?? result.asset.storage.publicUrl;
+  if (!imageUrl) throw new Error(result.message || fallbackMessage);
+  return { asset: result.asset, imageUrl, message: result.message };
 }

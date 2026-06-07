@@ -7,8 +7,8 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
-import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import { blobToDataUrl } from '@/shared/lib/image-data-url';
 import {
   buildGeneratePayload,
   getGenerateInputKinds,
@@ -74,8 +74,7 @@ export function useGenerateImageNodeModel({
       const payload = await buildGeneratePayload(node.id, edges, nodes, assets);
       const prompt = [...payload.promptInputs, data.prompt ?? ''].filter((item) => item.trim()).join('\n\n');
       const result = await requestGenerateImage({ ...payload, model: selectedModel, aspectRatio: selectedAspectRatio, size: selectedSize, prompt });
-      const file = await dataUrlToFile(result.imageDataUrl, `generated-${Date.now()}.png`);
-      const asset = await saveImageAsset(file);
+      const asset = result.asset;
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, asset.id),
@@ -117,8 +116,7 @@ export function useGenerateImageNodeModel({
         prompt,
         size: selectedSize,
       });
-      const file = await dataUrlToFile(result.imageDataUrl, `edited-${Date.now()}.png`);
-      const editedAsset = await saveImageAsset(file);
+      const editedAsset = result.asset;
       addAsset(editedAsset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, editedAsset.id),

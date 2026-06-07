@@ -8,13 +8,14 @@ The current MVP is a local Next.js app for building image workflows on a canvas:
 - extract structured text layers from an image through OpenRouter;
 - connect text or image outputs between nodes;
 - generate images from prompt, references, aspect ratio and model settings;
-- store the local graph and image assets in the browser.
+- store the local graph in the browser and serve image assets from S3-compatible storage.
 
 ## Quick Start
 
 ```bash
 npm install
 cp .env.example .env.local
+docker compose up -d postgres minio minio-init
 npm run dev:local
 ```
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { uploadGeneratedImageToS3 } from '@/shared/storage/s3-assets';
 
 export const runtime = 'nodejs';
 
@@ -44,8 +45,14 @@ export async function POST(request: Request) {
       return Response.json({ error: 'FAL did not return a background-removed image.' }, { status: 502 });
     }
 
+    const asset = await uploadGeneratedImageToS3({
+      namePrefix: 'removed-bg',
+      sourceUrl: imageUrl,
+    });
+
     return Response.json({
-      imageDataUrl: await normalizeFalImageUrl(imageUrl),
+      asset,
+      imageUrl: asset.storage.publicUrl,
       message: 'Background removed with FAL Bria RMBG 2.0.',
       provider: 'fal',
     });
@@ -80,12 +87,3 @@ function formatFalError(error: unknown, fallback: string) {
   return JSON.stringify(error).slice(0, 500);
 }
 
-async function normalizeFalImageUrl(url: string) {
-  if (url.startsWith('data:')) return url;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`FAL image download failed: ${response.status}`);
-  const contentType = response.headers.get('content-type') ?? 'image/png';
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return `data:${contentType};base64,${buffer.toString('base64')}`;
-}

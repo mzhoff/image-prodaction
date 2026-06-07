@@ -4,7 +4,7 @@
 
 - Node.js `>=20.9.0`; local development currently uses Node `24`.
 - npm `>=10`.
-- Docker with Docker Compose for local PostgreSQL.
+- Docker with Docker Compose for local PostgreSQL and MinIO.
 - OpenRouter account and API key for real model calls.
 
 If you use `nvm`:
@@ -33,6 +33,13 @@ Fill `.env.local`:
 OPENROUTER_API_KEY=your_openrouter_key_here
 OPENROUTER_SITE_URL=http://localhost:3004
 OPENROUTER_APP_NAME=Reverie Image Production Pipeline
+S3_ENDPOINT=http://localhost:9000
+S3_PUBLIC_BASE_URL=http://localhost:9000/image-prodaction-assets
+S3_REGION=us-east-1
+S3_BUCKET=image-prodaction-assets
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_FORCE_PATH_STYLE=true
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/image_prodaction
 BETTER_AUTH_URL=http://localhost:3004
 BETTER_AUTH_SECRET=generated_secret_here
@@ -50,12 +57,12 @@ openssl rand -base64 32
 
 Never commit `.env.local`.
 
-## Database
+## Database and Storage
 
-Start PostgreSQL:
+Start PostgreSQL and MinIO:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres minio minio-init
 ```
 
 Apply Drizzle migrations:
@@ -90,5 +97,5 @@ npm run build
 ## Local Storage Model
 
 - Graph metadata is persisted in browser storage through Zustand.
-- Image assets are stored locally in IndexedDB.
+- Image assets are uploaded by API routes to S3-compatible storage and rendered in the frontend through public S3 URLs.
 - Authentication data is stored in local PostgreSQL through Better Auth and Drizzle.
