@@ -6,11 +6,11 @@ import type { GenerationHistoryData } from '@/entities/production-graph/model/ge
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import type { RefineImageNodeData, RefineImageMode, RefinePreserveStrength, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { requestRefineImage } from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { dataUrlToFile, prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
+import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
 
@@ -119,8 +119,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
         preserveStrength: data.preserveStrength,
         size: selectedSize,
       });
-      const file = await dataUrlToFile(result.imageDataUrl, `refined-${Date.now()}.png`);
-      const asset = await saveImageAsset(file);
+      const asset = result.asset;
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data as GenerationHistoryData, asset.id),

@@ -338,14 +338,16 @@ Section и group menu должны получить `Collapse all`, чтобы �
 
 - graph metadata;
 - UI state;
-- image blobs в IndexedDB;
 - project snapshot / pipeline template exports.
+
+Backend / storage layer хранит:
+
+- assets в S3-like storage.
 
 В будущем backend должен хранить:
 
 - workspaces;
 - documents;
-- assets в S3-like storage;
 - library objects;
 - executable pipelines;
 - publication artifacts;

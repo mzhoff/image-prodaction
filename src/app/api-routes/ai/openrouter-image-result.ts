@@ -42,12 +42,3 @@ export function missingOpenRouterImageErrorWithContext(action: string, message?:
   return `${missingOpenRouterImageError(action)} Ответ модели: ${text.slice(0, 500)}`;
 }
 
-export async function normalizeOpenRouterImageUrl(url: string) {
-  if (url.startsWith('data:')) return url;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`OpenRouter image download failed: ${response.status}`);
-  const contentType = response.headers.get('content-type') ?? 'image/png';
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return `data:${contentType};base64,${buffer.toString('base64')}`;
-}

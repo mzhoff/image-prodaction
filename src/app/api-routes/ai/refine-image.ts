@@ -6,9 +6,9 @@ import {
   extractOpenRouterImageUrl,
   extractOpenRouterMessageText,
   missingOpenRouterImageError,
-  normalizeOpenRouterImageUrl,
   summarizeOpenRouterImageMessage,
 } from './openrouter-image-result';
+import { uploadGeneratedImageToS3 } from '@/shared/storage/s3-assets';
 
 export const runtime = 'nodejs';
 
@@ -87,8 +87,14 @@ export async function POST(request: Request) {
       return Response.json({ error: missingOpenRouterImageError('OpenRouter image refine') }, { status: 502 });
     }
 
+    const asset = await uploadGeneratedImageToS3({
+      namePrefix: 'refined',
+      sourceUrl: imageUrl,
+    });
+
     return Response.json({
-      imageDataUrl: await normalizeOpenRouterImageUrl(imageUrl),
+      asset,
+      imageUrl: asset.storage.publicUrl,
       message: extractOpenRouterMessageText(message),
       provider: 'openrouter',
     });

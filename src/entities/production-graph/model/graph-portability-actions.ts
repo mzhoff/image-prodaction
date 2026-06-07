@@ -4,17 +4,17 @@ import {
   normalizePortableProjectExport,
 } from './project-portability';
 import { withHistory } from './graph-history';
+import { createGraphProjectFromState } from './graph-pipelines';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
-import type { GraphProject } from './types';
 
 export function createGraphPortabilityActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
   'exportPipelineTemplate' | 'exportProjectSnapshot' | 'importPortableProject'
 > {
   return {
-    exportProjectSnapshot: () => createProjectSnapshotExport(getGraphProject(get()), get().uiState),
-    exportPipelineTemplate: () => createPipelineTemplateExport(getGraphProject(get()), get().uiState),
+    exportProjectSnapshot: () => createProjectSnapshotExport(createGraphProjectFromState(get()), get().uiState),
+    exportPipelineTemplate: () => createPipelineTemplateExport(createGraphProjectFromState(get()), get().uiState),
     importPortableProject: (payload, expectedKind) => {
       const imported = normalizePortableProjectExport(payload);
       if (expectedKind && imported.kind !== expectedKind) {
@@ -36,21 +36,4 @@ function getPortableKindMismatchMessage(expectedKind: 'projectSnapshot' | 'pipel
   return expectedKind === 'pipelineTemplate'
     ? 'Выбран project snapshot JSON. Нужен pipeline template JSON.'
     : 'Выбран pipeline template JSON. Нужен project snapshot JSON.';
-}
-
-function getGraphProject(state: ProductionGraphState): GraphProject {
-  return {
-    version: state.version,
-    nodes: state.nodes,
-    sections: state.sections,
-    edges: state.edges,
-    assets: state.assets,
-    presets: state.presets,
-    subjects: state.subjects,
-    locations: state.locations,
-    publications: state.publications,
-    runs: state.runs,
-    selectedNodeIds: state.selectedNodeIds,
-    selectedSectionIds: state.selectedSectionIds,
-  };
 }

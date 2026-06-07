@@ -5,6 +5,7 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { getGraphBounds } from '../lib/edge-path';
 
 export function useProductionCanvasStore() {
+  const activePipelineId = useProductionGraphStore((state) => state.activePipelineId);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const sections = useProductionGraphStore((state) => state.sections);
   const edges = useProductionGraphStore((state) => state.edges);
@@ -54,6 +55,7 @@ export function useProductionCanvasStore() {
   const bounds = useMemo(() => getGraphBounds(nodes, sections), [nodes, sections]);
 
   return useMemo(() => ({
+    activePipelineId,
     addNode,
     addSection,
     assets,
@@ -100,6 +102,7 @@ export function useProductionCanvasStore() {
     uiState,
     undo,
   }), [
+    activePipelineId,
     addNode,
     addSection,
     assets,

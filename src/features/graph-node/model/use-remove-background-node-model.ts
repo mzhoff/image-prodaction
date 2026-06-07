@@ -4,9 +4,9 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ProductionNode, RemoveBackgroundNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { requestRemoveBackground } from '@/shared/api/ai-client';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
-import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
+import { blobToDataUrl } from '@/shared/lib/image-data-url';
 
 export function useRemoveBackgroundNodeModel(node: ProductionNode) {
   const data = node.data as RemoveBackgroundNodeData;
@@ -40,8 +40,7 @@ export function useRemoveBackgroundNodeModel(node: ProductionNode) {
       const result = await requestRemoveBackground({
         imageDataUrl: await blobToDataUrl(sourceBlob),
       });
-      const file = await dataUrlToFile(result.imageDataUrl, `removed-bg-${Date.now()}.png`);
-      const asset = await saveImageAsset(file);
+      const asset = result.asset;
       addAsset(asset);
       updateNodeData(node.id, {
         resultAssetId: asset.id,

@@ -8,6 +8,9 @@
     "dev:local": "next dev -p 3004",
     "build": "next build",
     "start": "next start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
     "test:graph-sections": "node --experimental-strip-types --test src/entities/production-graph/model/graph-section-layout.test.ts",
     "test:telegram-rich-text": "node --experimental-strip-types --test src/features/graph-node/lib/telegram-rich-text.test.ts",
     "typecheck": "tsc --noEmit"
@@ -17,12 +20,17 @@
     "npm": ">=10"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1063.0",
     "@lexical/react": "^0.45.0",
+    "better-auth": "^1.6.14",
     "clsx": "2.1.1",
+    "drizzle-orm": "^0.45.2",
     "heic2any": "0.0.4",
+    "kysely": "^0.28.17",
     "lexical": "^0.45.0",
     "lucide-react": "1.17.0",
     "next": "16.2.6",
+    "pg": "^8.21.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "zod": "4.4.3",
@@ -30,8 +38,11 @@
   },
   "devDependencies": {
     "@types/node": "25.9.1",
+    "@types/pg": "^8.20.0",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "typescript": "6.0.3"
   }
 }

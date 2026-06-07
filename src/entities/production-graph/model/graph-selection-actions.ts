@@ -1,6 +1,5 @@
 import { createId } from '@/shared/lib/id';
 import { cloneSnapshot, withHistory } from './graph-history';
-import { clearGraphPersistBackups } from './graph-persistence';
 import { getRenderedNodeSize } from './graph-store-dom';
 import {
   getSectionAndDescendantIds,
@@ -138,7 +137,6 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
       }));
     },
     resetProject: () => {
-      clearGraphPersistBackups();
       set((state) => ({ ...withHistory(state), ...normalizeProject(initialProject), uiState: createEmptyProjectUiState() }));
     },
     selectNode: (nodeId, additive = false) => {

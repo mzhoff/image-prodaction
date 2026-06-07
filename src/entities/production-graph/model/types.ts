@@ -434,8 +434,10 @@ export interface AssetRecord {
   height?: number;
   createdAt: string;
   storage: {
-    type: 'indexeddb';
-    blobKey: string;
+    type: 's3';
+    bucket: string;
+    key: string;
+    publicUrl: string;
   };
 }
 

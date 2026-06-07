@@ -1,5 +1,8 @@
-import { ProductionEditorPage } from '@/pages/production-editor/ui/production-editor-page';
+import { PipelineIndexPage } from '@/pages/production-editor/ui/pipeline-index-page';
+import { requirePageSession } from '@/shared/auth/require-page-session';
 
-export default function Home() {
-  return <ProductionEditorPage />;
+export default async function Home() {
+  await requirePageSession();
+
+  return <PipelineIndexPage />;
 }
