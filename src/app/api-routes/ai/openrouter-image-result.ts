@@ -36,6 +36,12 @@ export function missingOpenRouterImageError(action: string) {
   return `${action}: OpenRouter ответил без изображения. HTTP-запрос завершился, но в ответе не было image payload для сохранения в ноду.`;
 }
 
+export function missingOpenRouterImageErrorWithContext(action: string, message?: OpenRouterImageMessage) {
+  const text = extractOpenRouterMessageText(message).trim();
+  if (!text) return missingOpenRouterImageError(action);
+  return `${missingOpenRouterImageError(action)} Ответ модели: ${text.slice(0, 500)}`;
+}
+
 export async function normalizeOpenRouterImageUrl(url: string) {
   if (url.startsWith('data:')) return url;
 

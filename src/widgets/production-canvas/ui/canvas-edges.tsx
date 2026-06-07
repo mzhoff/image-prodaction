@@ -32,14 +32,14 @@ export function CanvasEdges({
           <path
             key={edge.id}
             d={path}
-            className={`edge-path ${edgeDataKind === 'text' ? 'edge-path-text' : 'edge-path-image'} ${edgeHasData ? 'edge-path-has-data' : 'edge-path-empty'}`}
+            className={`edge-path ${getEdgeKindClass(edgeDataKind)} ${edgeHasData ? 'edge-path-has-data' : 'edge-path-empty'}`}
           />
         );
       })}
       {connectionDraft ? (
         <path
           d={getDraftPath(connectionDraft)}
-          className={`edge-path edge-path-draft ${getDraftKind(connectionDraft, nodesById) === 'text' ? 'edge-path-text' : 'edge-path-image'}`}
+          className={`edge-path edge-path-draft ${getEdgeKindClass(getDraftKind(connectionDraft, nodesById))}`}
         />
       ) : null}
     </svg>
@@ -54,9 +54,27 @@ function getDraftPath(connectionDraft: ConnectionDraft) {
 }
 
 function getDraftKind(connectionDraft: ConnectionDraft, nodesById: Map<string, ProductionNode>) {
-  if (connectionDraft.kind) return connectionDraft.kind === 'image' ? 'image' : 'text';
+  if (connectionDraft.kind) {
+    if (connectionDraft.kind === 'subject') return 'subject';
+    if (connectionDraft.kind === 'location') return 'location';
+    if (connectionDraft.kind === 'publication') return 'publication';
+    if (connectionDraft.kind === 'image') return 'image';
+    return 'text';
+  }
   if (!connectionDraft.sourceNodeId || !connectionDraft.sourcePortId) return 'text';
   const source = nodesById.get(connectionDraft.sourceNodeId);
   const sourcePort = source ? getPortById(source, connectionDraft.sourcePortId) : undefined;
-  return sourcePort?.kind === 'image' ? 'image' : 'text';
+  if (sourcePort?.kind === 'subject') return 'subject';
+  if (sourcePort?.kind === 'location') return 'location';
+  if (sourcePort?.kind === 'publication') return 'publication';
+  if (sourcePort?.kind === 'image') return 'image';
+  return 'text';
+}
+
+function getEdgeKindClass(kind: string) {
+  if (kind === 'image') return 'edge-path-image';
+  if (kind === 'subject') return 'edge-path-subject';
+  if (kind === 'location') return 'edge-path-location';
+  if (kind === 'publication') return 'edge-path-publication';
+  return 'edge-path-text';
 }

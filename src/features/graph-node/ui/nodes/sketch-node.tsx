@@ -21,7 +21,7 @@ export function SketchNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Sketch" muted />
+      <NodeTitle title="Sketch" nodeType={node.type} muted />
       <SketchPreview data={model.data} />
       <PrimaryActionButton icon={<Paintbrush size={16} />} onClick={() => setEditorOpen(true)} data-node-interactive>
         Edit

@@ -13,16 +13,25 @@ export function hasFileInDataTransfer(dataTransfer: DataTransfer | null) {
 }
 
 export function getImageFileFromDataTransfer(dataTransfer: DataTransfer | null, fallbackPrefix: string) {
-  if (!dataTransfer) return null;
+  return getImageFilesFromDataTransfer(dataTransfer, fallbackPrefix)[0] ?? null;
+}
 
-  const item = Array.from(dataTransfer.items).find((transferItem) => (
-    transferItem.kind === 'file' && transferItem.type.startsWith('image/')
-  ));
-  const file = item?.getAsFile() ?? Array.from(dataTransfer.files).find((transferFile) => (
-    isImageFile(transferFile)
-  ));
-  if (!file) return null;
+export function getImageFilesFromDataTransfer(dataTransfer: DataTransfer | null, fallbackPrefix: string) {
+  if (!dataTransfer) return [];
 
+  const itemFiles = Array.from(dataTransfer.items)
+    .filter((transferItem) => transferItem.kind === 'file')
+    .map((transferItem) => transferItem.getAsFile())
+    .filter((file): file is File => {
+      if (!file) return false;
+      return isImageFile(file);
+    });
+  const files = itemFiles.length ? itemFiles : Array.from(dataTransfer.files).filter(isImageFile);
+
+  return files.map((file, index) => normalizeImageFile(file, files.length > 1 ? `${fallbackPrefix}-${index + 1}` : fallbackPrefix));
+}
+
+function normalizeImageFile(file: File, fallbackPrefix: string) {
   const mimeType = getImageMimeType(file);
   const extension = getImageExtension(mimeType, file.name);
   const name = file.name && file.name !== 'image.png'

@@ -1,6 +1,6 @@
 'use client';
 
-import type { WheelEvent as ReactWheelEvent } from 'react';
+import type { RefObject, WheelEvent as ReactWheelEvent } from 'react';
 import { cn } from '@/shared/lib/cn';
 
 interface PromptBoxProps {
@@ -8,16 +8,18 @@ interface PromptBoxProps {
   value?: string;
   placeholder?: string;
   readonly?: boolean;
+  textareaRef?: RefObject<HTMLTextAreaElement | null>;
   onChange?: (value: string) => void;
 }
 
 const DEFAULT_PROMPT_PLACEHOLDER = 'Добавьте промпт или ограничение';
 
-export function PromptBox({ className, value, placeholder = DEFAULT_PROMPT_PLACEHOLDER, readonly, onChange }: PromptBoxProps) {
+export function PromptBox({ className, value, placeholder = DEFAULT_PROMPT_PLACEHOLDER, readonly, textareaRef, onChange }: PromptBoxProps) {
   const textareaPlaceholder = readonly && placeholder === DEFAULT_PROMPT_PLACEHOLDER ? '' : placeholder;
 
   return (
     <textarea
+      ref={textareaRef}
       className={cn('prompt-box', readonly && 'prompt-box-readonly', className)}
       value={value ?? ''}
       readOnly={readonly}

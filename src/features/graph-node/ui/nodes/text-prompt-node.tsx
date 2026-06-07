@@ -1,14 +1,14 @@
 'use client';
 
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, Plus } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ProductionNode, TextPromptNodeData } from '@/entities/production-graph/model/types';
-import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { DarkSelect } from '@/shared/ui/dark-select';
+import { clampTextPromptTextareaHeight, textPromptVariableDisplayOptions, useTextPromptNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
+import { TextPromptVariableEditor } from '../text-prompt-variable-editor';
 
 interface TextPromptNodeProps {
   node: ProductionNode;
@@ -17,13 +17,44 @@ interface TextPromptNodeProps {
 
 export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps) {
   const data = node.data as TextPromptNodeData;
-  const updateTextPrompt = useProductionGraphStore((state) => state.updateTextPrompt);
-  const [promptOpen, setPromptOpen] = useState(true);
+  const model = useTextPromptNodeModel(node);
+  const [collapsed, setCollapsed] = useState(false);
+  const [draftTextareaHeight, setDraftTextareaHeight] = useState(model.textareaHeight);
+  const textareaHeight = Math.max(draftTextareaHeight, getTextPromptTextareaMinHeight(model.variableSlots.length));
+
+  useEffect(() => {
+    setDraftTextareaHeight(model.textareaHeight);
+  }, [model.textareaHeight]);
+
+  const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startY = event.clientY;
+    const startHeight = textareaHeight;
+    let nextHeight = startHeight;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      nextHeight = clampTextPromptTextareaHeight(
+        Math.max(startHeight + moveEvent.clientY - startY, getTextPromptTextareaMinHeight(model.variableSlots.length)),
+      );
+      setDraftTextareaHeight(nextHeight);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      if (nextHeight !== model.textareaHeight) model.handleTextareaHeightChange(nextHeight);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp, { once: true });
+  };
 
   return (
     <>
       <NodeTitle
         title={data.title}
+        nodeType={node.type}
         muted
         action={(
           <NodeTitleActions>
@@ -33,24 +64,101 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
-                setPromptOpen((open) => !open);
+                setCollapsed((value) => !value);
               }}
-              aria-label={promptOpen ? 'Collapse all sections' : 'Expand all sections'}
+              aria-label={collapsed ? 'Expand node' : 'Collapse node'}
             >
-              {promptOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {collapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
             </button>
             <NodeTitleOptionsButton />
           </NodeTitleActions>
         )}
       />
-      <CollapsibleSection
-        title="Prompt"
-        open={promptOpen}
-        onOpenChange={setPromptOpen}
-        sidePort={<PortButton nodeId={node.id} portId="text" side="output" kind="text" label="Text" className="node-port-section" onStartConnection={onStartConnection} />}
-      >
-        <PromptBox value={data.text} onChange={(value) => updateTextPrompt(node.id, value)} />
-      </CollapsibleSection>
+      {model.variableSlots.map((slot, index) => (
+        <PortButton
+          key={slot.portId}
+          nodeId={node.id}
+          portId={slot.portId}
+          side="input"
+          kind="text"
+          label={slot.alias}
+          className="text-prompt-variable-port"
+          style={{ top: collapsed ? getCollapsedTextPromptVariablePortTop() : getTextPromptVariablePortTop(index) }}
+          onStartConnection={onStartConnection}
+        />
+      ))}
+      <PortButton
+        nodeId={node.id}
+        portId="text"
+        side="output"
+        kind="text"
+        label="Text"
+        className="text-prompt-output-port"
+        style={{ top: collapsed ? 20 : getTextPromptVariablePortTop(0) }}
+        onStartConnection={onStartConnection}
+      />
+      {!collapsed ? (
+        <div className="text-prompt-body">
+          <TextPromptVariableEditor
+            canAddVariable={model.canAddVariable}
+            className="text-prompt-main-box"
+            displayMode={model.variableDisplayMode}
+            onAddVariable={model.handleAddVariable}
+            onChange={model.handleTextChange}
+            placeholder="Write prompt. Type @ to insert a variable."
+            slots={model.variableSlots}
+            style={{ height: textareaHeight }}
+            value={data.text}
+          />
+          <div className="text-prompt-footer">
+            <button
+              type="button"
+              className="text-concat-add-button text-prompt-add-variable-button"
+              disabled={!model.canAddVariable}
+              onClick={model.handleAddVariable}
+            >
+              <Plus size={16} />
+              <span>Add variable</span>
+            </button>
+            {model.hasVariables ? (
+              <label className="text-prompt-display-control">
+                <span>Display</span>
+                <DarkSelect
+                  value={model.variableDisplayMode}
+                  options={textPromptVariableDisplayOptions}
+                  onChange={model.handleDisplayModeChange}
+                  wide
+                />
+              </label>
+            ) : null}
+          </div>
+          <div
+            className="text-prompt-resize-handle"
+            data-node-interactive
+            onPointerDown={handleResizePointerDown}
+            aria-label="Resize prompt text area"
+          />
+        </div>
+      ) : null}
     </>
   );
+}
+
+const TEXT_PROMPT_TEXTAREA_TOP = 54;
+const TEXT_PROMPT_PORT_HEIGHT = 24;
+const TEXT_PROMPT_VARIABLE_PORT_STEP = 39;
+const TEXT_PROMPT_FIXED_HEIGHT_WITHOUT_TEXTAREA = 128;
+
+function getTextPromptVariablePortTop(index: number) {
+  return TEXT_PROMPT_TEXTAREA_TOP - TEXT_PROMPT_PORT_HEIGHT / 2 + index * TEXT_PROMPT_VARIABLE_PORT_STEP;
+}
+
+function getCollapsedTextPromptVariablePortTop() {
+  return 20;
+}
+
+function getTextPromptTextareaMinHeight(variableCount: number) {
+  if (variableCount <= 0) return 0;
+  const lastPortBottom = getTextPromptVariablePortTop(variableCount - 1) + TEXT_PROMPT_PORT_HEIGHT;
+  return Math.max(0, lastPortBottom - TEXT_PROMPT_FIXED_HEIGHT_WITHOUT_TEXTAREA);
 }

@@ -23,7 +23,7 @@ export function ReferenceComposerNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title={data.title} muted />
+      <NodeTitle title={data.title} nodeType={node.type} muted />
       <ImagePlate compact />
       <CollapsibleSection title="Settings">
         <SettingRow

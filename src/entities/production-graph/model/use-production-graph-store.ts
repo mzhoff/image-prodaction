@@ -1,13 +1,16 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { createGraphConnectionActions } from './graph-connection-actions';
 import { createGraphHistoryActions } from './graph-history-actions';
+import { createGraphLocationActions } from './graph-location-actions';
 import { createGraphNodeActions } from './graph-node-actions';
+import { createGraphPersistStorage, createPersistedGraphState, GRAPH_PERSIST_STORAGE_KEY } from './graph-persistence';
 import { createGraphPortabilityActions } from './graph-portability-actions';
 import { createGraphSectionActions } from './graph-section-actions';
 import { createGraphSelectionActions } from './graph-selection-actions';
+import { createGraphSubjectActions } from './graph-subject-actions';
 import { createGraphUiStateActions } from './graph-ui-state-actions';
 import { initialProject } from './initial-project';
 import { normalizeProject } from './normalize-project';
@@ -25,7 +28,9 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       historyFuture: [],
       uiState: createEmptyProjectUiState(),
       ...createGraphNodeActions(set),
-      ...createGraphSectionActions(set),
+      ...createGraphSectionActions(set, get),
+      ...createGraphSubjectActions(set, get),
+      ...createGraphLocationActions(set, get),
       ...createGraphConnectionActions(set, get),
       ...createGraphSelectionActions(set, get),
       ...createGraphHistoryActions(set, get),
@@ -33,19 +38,9 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       ...createGraphPortabilityActions(set, get),
     }),
     {
-      name: 'reverie-image-production-project:v1',
-      partialize: (state) => ({
-        version: state.version,
-        nodes: state.nodes,
-        sections: state.sections,
-        edges: state.edges,
-        assets: state.assets,
-        presets: state.presets,
-        runs: state.runs,
-        selectedNodeIds: state.selectedNodeIds,
-        selectedSectionIds: state.selectedSectionIds,
-        uiState: state.uiState,
-      }),
+      name: GRAPH_PERSIST_STORAGE_KEY,
+      storage: createJSONStorage(createGraphPersistStorage),
+      partialize: createPersistedGraphState,
       merge: (persisted, current) => {
         const persistedState = persisted as Partial<ProductionGraphState & GraphProject>;
         const project = normalizeProject({ ...initialProject, ...persistedState });

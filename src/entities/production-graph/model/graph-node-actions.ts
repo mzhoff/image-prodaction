@@ -11,8 +11,12 @@ export function createGraphNodeActions(set: StoreSet): Pick<
   | 'addAsset'
   | 'addNode'
   | 'assignAssetToNode'
+  | 'clearNodeGenerations'
+  | 'duplicateNode'
   | 'pasteImageAsset'
+  | 'renameNode'
   | 'setNodeStatus'
+  | 'toggleNodeLock'
   | 'updateNodeData'
   | 'updateNodeDataSilent'
   | 'updateNodePrompt'
@@ -51,6 +55,41 @@ export function createGraphNodeActions(set: StoreSet): Pick<
         }),
       }));
     },
+    clearNodeGenerations: (nodeId) => {
+      set((state) => {
+        const node = state.nodes.find((item) => item.id === nodeId);
+        if (!node || !hasClearableGenerationData(node)) return {};
+        return {
+          ...withHistory(state),
+          nodes: state.nodes.map((item) => (
+            item.id === nodeId
+              ? { ...item, data: { ...item.data, ...getClearedGenerationData(item) } as ProductionNodeData }
+              : item
+          )),
+        };
+      });
+    },
+    duplicateNode: (nodeId) => {
+      set((state) => {
+        const node = state.nodes.find((item) => item.id === nodeId);
+        if (!node) return {};
+        const duplicatedNode = {
+          ...(JSON.parse(JSON.stringify(node)) as ProductionNode),
+          id: createId('node'),
+          locked: false,
+          position: {
+            x: node.position.x + 36,
+            y: node.position.y + 36,
+          },
+        } satisfies ProductionNode;
+        return {
+          ...withHistory(state),
+          nodes: [...state.nodes, duplicatedNode],
+          selectedNodeIds: [duplicatedNode.id],
+          selectedSectionIds: [],
+        };
+      });
+    },
     pasteImageAsset: (asset, position, targetNodeId) => {
       set((state) => {
         const targetNode = targetNodeId ? state.nodes.find((node) => node.id === targetNodeId) : undefined;
@@ -82,6 +121,22 @@ export function createGraphNodeActions(set: StoreSet): Pick<
     setNodeStatus: (nodeId, status) => {
       set((state) => ({
         nodes: state.nodes.map((node) => (node.id === nodeId ? { ...node, status } : node)),
+      }));
+    },
+    renameNode: (nodeId, title) => {
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) return;
+      set((state) => ({
+        ...withHistory(state),
+        nodes: state.nodes.map((node) => (
+          node.id === nodeId ? { ...node, data: { ...node.data, title: trimmedTitle } as ProductionNodeData } : node
+        )),
+      }));
+    },
+    toggleNodeLock: (nodeId) => {
+      set((state) => ({
+        ...withHistory(state),
+        nodes: state.nodes.map((node) => (node.id === nodeId ? { ...node, locked: !node.locked } : node)),
       }));
     },
     updateNodeData: (nodeId, data) => {
@@ -122,4 +177,49 @@ export function createGraphNodeActions(set: StoreSet): Pick<
       }));
     },
   };
+}
+
+function hasClearableGenerationData(node: ProductionNode) {
+  const data = node.data as unknown as Record<string, unknown>;
+  if (node.type === 'generateImage' || node.type === 'refineImage') {
+    return Boolean(data.resultAssetId) || (Array.isArray(data.resultAssetIds) && data.resultAssetIds.length > 0);
+  }
+  if (node.type === 'textGeneration') {
+    return Boolean(data.result) || (Array.isArray(data.resultTexts) && data.resultTexts.length > 0);
+  }
+  if (node.type === 'subjectBuilder' || node.type === 'locationBuilder') {
+    return Array.isArray(data.libraryImageAssetIds) && data.libraryImageAssetIds.length > 0;
+  }
+  return Boolean(data.resultAssetId);
+}
+
+function getClearedGenerationData(node: ProductionNode): Partial<ProductionNodeData> {
+  if (node.type === 'generateImage' || node.type === 'refineImage') {
+    return {
+      activeResultIndex: -1,
+      resultAssetId: undefined,
+      resultAssetIds: [],
+      resultMetadata: {},
+      message: '',
+    } as Partial<ProductionNodeData>;
+  }
+  if (node.type === 'textGeneration') {
+    return {
+      activeResultIndex: -1,
+      disabledResultFilterIds: [],
+      result: '',
+      resultTexts: [],
+      message: '',
+    } as Partial<ProductionNodeData>;
+  }
+  if (node.type === 'subjectBuilder' || node.type === 'locationBuilder') {
+    return {
+      libraryImageAssetIds: [],
+      message: '',
+    } as Partial<ProductionNodeData>;
+  }
+  return {
+    resultAssetId: undefined,
+    message: '',
+  } as Partial<ProductionNodeData>;
 }

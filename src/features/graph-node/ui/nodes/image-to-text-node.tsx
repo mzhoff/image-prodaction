@@ -10,6 +10,7 @@ import { PromptBox } from '@/shared/ui/prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useExtractNodeModel } from '../../model/use-extract-node-model';
 import { ExtractLayerTags } from '../extract-layer-tags';
+import { ExtractResultBox } from '../extract-result-box';
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
 
@@ -18,6 +19,8 @@ interface ImageToTextNodeProps {
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
 }
 
+const useRichExtractResultEditor = true;
+
 export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProps) {
   const model = useExtractNodeModel(node);
 
@@ -25,6 +28,7 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
     <>
       <NodeTitle
         title="Extract"
+        nodeType={node.type}
         muted
         action={(
           <NodeTitleActions>
@@ -72,8 +76,12 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
       >
         <div className="node-result-port-anchor">
           <PortButton nodeId={node.id} portId="result" side="output" kind="text" label="Result" className="node-port-result" onStartConnection={onStartConnection} />
-          <ExtractLayerTags text={model.data.result} />
-          <PromptBox value={model.data.result} onChange={model.handleResultChange} />
+          <ExtractLayerTags text={model.data.result} disabledLayerIds={model.disabledLayerIds} onToggle={model.handleLayerToggle} />
+          {useRichExtractResultEditor ? (
+            <ExtractResultBox value={model.data.result} disabledLayerIds={model.disabledLayerIds} onChange={model.handleResultChange} />
+          ) : (
+            <PromptBox value={model.data.result} onChange={model.handleResultChange} />
+          )}
         </div>
       </CollapsibleSection>
       {model.data.message ? <div className="node-note node-note-compact">{model.data.message}</div> : null}

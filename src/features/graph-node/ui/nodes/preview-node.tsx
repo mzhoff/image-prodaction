@@ -18,7 +18,7 @@ export function PreviewNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title={data.title} muted />
+      <NodeTitle title={data.title} nodeType={node.type} muted />
       <ImagePlate assetId={sourceAsset?.id ?? data.assetId} />
     </>
   );

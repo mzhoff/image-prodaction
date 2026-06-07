@@ -21,7 +21,7 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
 
   return (
     <>
-      <NodeTitle title="Concatenate" muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title="Concatenate" nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
       {model.inputSlots.map((slot, index) => (
         <PortButton
           key={slot.portId}

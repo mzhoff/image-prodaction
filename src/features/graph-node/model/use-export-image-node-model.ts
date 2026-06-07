@@ -10,7 +10,7 @@ import type {
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
-import { getIncomingImageInputs } from '@/entities/production-graph/model/graph-io';
+import { getIncomingImageCollectionInputs } from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { createZipBlob } from '@/shared/lib/zip-file';
 import { exportImageBlob, getExportFileName } from '../lib/export-image';
@@ -54,12 +54,15 @@ export function useExportImageNodeModel(node: ProductionNode) {
   const assets = useProductionGraphStore((state) => state.assets);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const sourceItems = useMemo(() => (
-    getIncomingImageInputs(node.id, 'image', { edges, nodes, assets })
+    getIncomingImageCollectionInputs(node.id, 'image', { edges, nodes, assets })
       .sort((first, second) => {
         const firstY = first.sourceNode.position.y;
         const secondY = second.sourceNode.position.y;
         if (firstY !== secondY) return firstY - secondY;
-        return first.sourceNode.position.x - second.sourceNode.position.x;
+        if (first.sourceNode.position.x !== second.sourceNode.position.x) {
+          return first.sourceNode.position.x - second.sourceNode.position.x;
+        }
+        return (first.collectionIndex ?? 0) - (second.collectionIndex ?? 0);
       })
   ), [assets, edges, node.id, nodes]);
   const safeActiveIndex = getSafeIndex(activeIndex, sourceItems.length);

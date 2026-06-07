@@ -13,7 +13,7 @@ import type { ProductionNodeType } from '@/entities/production-graph/model/types
 import {
   extractOpenRouterImageUrl,
   extractOpenRouterMessageText,
-  missingOpenRouterImageError,
+  missingOpenRouterImageErrorWithContext,
   normalizeOpenRouterImageUrl,
   summarizeOpenRouterImageMessage,
 } from './openrouter-image-result';
@@ -52,6 +52,8 @@ const generateImageSchema = z.object({
   aspectRatio: z.string().min(1).default('1:1'),
   size: z.string().min(1).default('1K'),
   inputs: structuredInputsSchema.default(emptyStructuredInputs),
+  subjectInputs: z.array(z.string().min(1)).default([]),
+  locationInputs: z.array(z.string().min(1)).default([]),
   referenceImages: z.array(z.object({
     dataUrl: z.string().min(1),
     sourceAssetId: z.string().optional(),
@@ -64,6 +66,11 @@ const referenceSlotIds = new Set<string>(['reference', ...productionLayers.map((
 const productionNodeTypes = new Set<string>([
   'importImage',
   'textPrompt',
+  'textConcat',
+  'textGeneration',
+  'textSplitter',
+  'subjectBuilder',
+  'locationBuilder',
   'imageToText',
   'referenceComposer',
   'generateImage',
@@ -86,8 +93,10 @@ export async function POST(request: Request) {
 
   const hasPrompt = parsed.data.prompt.trim().length > 0;
   const hasStructuredText = Object.values(parsed.data.inputs).some((items) => items.length > 0);
+  const hasSubjects = parsed.data.subjectInputs.some((item) => item.trim().length > 0);
+  const hasLocations = parsed.data.locationInputs.some((item) => item.trim().length > 0);
   const hasImages = parsed.data.referenceImages.length > 0;
-  if (!hasPrompt && !hasStructuredText && !hasImages) {
+  if (!hasPrompt && !hasStructuredText && !hasSubjects && !hasLocations && !hasImages) {
     return Response.json({ error: 'Add a prompt or connect at least one reference.' }, { status: 400 });
   }
 
@@ -113,9 +122,11 @@ export async function POST(request: Request) {
     const prompt = composeGenerationPrompt({
       aspectRatio: parsed.data.aspectRatio,
       inputs: parsed.data.inputs,
+      locationInputs: parsed.data.locationInputs,
       prompt: parsed.data.prompt,
       referenceImages,
       size: parsed.data.size,
+      subjectInputs: parsed.data.subjectInputs,
     });
     const content: Array<OpenRouterMessageContentText | OpenRouterMessageContentImage> = [
       { type: 'text', text: prompt },
@@ -128,8 +139,10 @@ export async function POST(request: Request) {
     console.info('[openrouter:image:generate] request', {
       aspectRatio: parsed.data.aspectRatio,
       model: parsed.data.model,
+      locationCount: parsed.data.locationInputs.length,
       referenceCount: referenceImages.length,
       size: parsed.data.size,
+      subjectCount: parsed.data.subjectInputs.length,
     });
     const result = await sendOpenRouterChat({
       model: parsed.data.model,
@@ -158,7 +171,7 @@ export async function POST(request: Request) {
         ...responseSummary,
         model: parsed.data.model,
       });
-      return Response.json({ error: missingOpenRouterImageError('OpenRouter generation') }, { status: 502 });
+      return Response.json({ error: missingOpenRouterImageErrorWithContext('OpenRouter generation', message) }, { status: 502 });
     }
 
     return Response.json({

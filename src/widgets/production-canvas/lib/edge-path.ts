@@ -1,13 +1,16 @@
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
+import { getPortTop } from '@/entities/production-graph/model/node-port-layout';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { GraphEdge, GraphSection, ProductionNode } from '@/entities/production-graph/model/types';
-import { getPortTop } from '@/features/graph-node/ui/port-button';
+import { getBezierPath } from './edge-bezier-path';
 
 const PORT_CENTER_OFFSET = 13.5;
 const PORT_DOT_RADIUS = 6;
 const PORT_CONTAINER_HALF = 12;
 const GENERATE_REFERENCE_GROUP_TOP = 580;
 const generateInputPortIds = new Set<string>(['reference', ...productionLayers.map((layer) => layer.id)]);
+
+export { getBezierPath };
 
 export type PortPointLookup = Record<string, { x: number; y: number }>;
 
@@ -130,12 +133,4 @@ function shouldUseCollapsedGenerateGroup(edge: GraphEdge, target: ProductionNode
   return target.type === 'generateImage'
     && Boolean(collapsedNodeIds?.has(target.id))
     && generateInputPortIds.has(edge.targetPortId);
-}
-
-export function getBezierPath(start: { x: number; y: number }, end: { x: number; y: number }) {
-  const distance = Math.max(120, Math.abs(end.x - start.x) * 0.45);
-  const c1x = start.x + distance;
-  const c2x = end.x - distance;
-
-  return `M ${start.x} ${start.y} C ${c1x} ${start.y} ${c2x} ${end.y} ${end.x} ${end.y}`;
 }

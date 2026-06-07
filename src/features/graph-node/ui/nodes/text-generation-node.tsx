@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
@@ -12,6 +12,8 @@ import { SettingRow } from '@/shared/ui/setting-row';
 import { useTextGenerationNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
+import { TextSectionDuplicateWarnings, TextSectionFilterTags } from '../text-section-filter-tags';
+import { TextSectionResultBox } from '../text-section-result-box';
 
 interface TextGenerationNodeProps {
   node: ProductionNode;
@@ -21,10 +23,11 @@ interface TextGenerationNodeProps {
 export function TextGenerationNode({ node, onStartConnection }: TextGenerationNodeProps) {
   const model = useTextGenerationNodeModel(node);
   const [collapsed, setCollapsed] = useState(false);
+  const [scrollTargetStart, setScrollTargetStart] = useState<number | null>(null);
 
   return (
     <>
-      <NodeTitle title="Text Generate (LLM)" muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title="Text Generate (LLM)" nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
       <PortButton
         nodeId={node.id}
         portId="text"
@@ -78,18 +81,85 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
             className="text-node-section text-generation-result-section"
           >
             {model.history.items.length > 1 ? (
-              <SettingRow
-                label="Version"
-                value={String(model.history.activeIndex)}
-                options={model.history.items.map((_, index) => ({ value: String(index), label: `Version ${index + 1}` }))}
-                onChange={(value) => model.handleResultHistoryChange(Number(value))}
+              <TextResultVersionControl
+                activeIndex={model.history.activeIndex}
+                count={model.history.items.length}
+                onChange={model.handleResultHistoryChange}
               />
             ) : null}
-            <PromptBox value={model.history.activeText} readonly className="text-generation-result-box" />
+            <TextSectionFilterTags
+              className="text-generation-filter-tags"
+              disabledFilterIds={model.disabledResultFilterIds}
+              onToggle={model.handleResultFilterToggle}
+              text={model.history.activeText}
+            />
+            <TextSectionResultBox
+              ariaLabel="Text generation result"
+              value={model.history.activeText}
+              className="text-generation-result-box"
+              disabledFilterIds={model.disabledResultFilterIds}
+              onChange={model.handleResultChange}
+              scrollToStart={scrollTargetStart}
+            />
           </CollapsibleSection>
+          <TextSectionDuplicateWarnings
+            issues={model.resultFilterIssues}
+            onSelectIssue={(issue) => {
+              setScrollTargetStart(null);
+              window.requestAnimationFrame(() => setScrollTargetStart(issue.start));
+            }}
+          />
           {model.data.message ? <div className="node-note node-note-compact">{model.data.message}</div> : null}
         </>
       ) : null}
     </>
   );
+}
+
+function TextResultVersionControl({
+  activeIndex,
+  count,
+  onChange,
+}: {
+  activeIndex: number;
+  count: number;
+  onChange: (index: number) => void;
+}) {
+  const currentIndex = getSafeVersionIndex(activeIndex, count);
+
+  return (
+    <div className="text-generation-version-row" data-node-interactive>
+      <span>Version</span>
+      <div className="text-generation-version-controls">
+        <button
+          type="button"
+          aria-label="Previous text version"
+          title="Previous"
+          onClick={() => onChange(wrapVersionIndex(currentIndex - 1, count))}
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <strong>{currentIndex + 1}/{count}</strong>
+        <button
+          type="button"
+          aria-label="Next text version"
+          title="Next"
+          onClick={() => onChange(wrapVersionIndex(currentIndex + 1, count))}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function getSafeVersionIndex(index: number, count: number) {
+  if (count <= 0) return -1;
+  if (!Number.isFinite(index)) return count - 1;
+  return Math.min(Math.max(index, 0), count - 1);
+}
+
+function wrapVersionIndex(index: number, count: number) {
+  if (count <= 0) return -1;
+  return (index + count) % count;
 }

@@ -13,8 +13,11 @@ export interface GenerateImageRequest {
     dataUrl: string;
     slots: string[];
     sourceAssetId?: string;
+    sourceNodeTypes?: string[];
   }>;
   size: string;
+  locationInputs?: string[];
+  subjectInputs?: string[];
 }
 
 export interface EditImageRequest {
@@ -43,6 +46,47 @@ export interface GenerateTextRequest {
   outputStyle: string;
   reasoning?: 'low' | 'medium' | 'high';
   temperature?: number;
+}
+
+export interface FormatTelegramTextRequest {
+  inputText: string;
+  model: string;
+  rulesText?: string;
+}
+
+export interface SubjectDescriptionDraft {
+  identitySummary?: string;
+  immutableTraits?: string;
+  mutableAttributes?: string;
+  name?: string;
+  negativeConstraints?: string;
+  notes?: string;
+  subjectType?: string;
+}
+
+export interface LocationDescriptionDraft {
+  atmosphere?: string;
+  description?: string;
+  locationType?: string;
+  mutableAttributes?: string;
+  name?: string;
+  negativeConstraints?: string;
+  notes?: string;
+  spatialLayout?: string;
+}
+
+export interface DescribeSubjectRequest {
+  imageDataUrls: string[];
+  model: string;
+  subjectType: string;
+  textNotes?: string[];
+}
+
+export interface DescribeLocationRequest {
+  imageDataUrls: string[];
+  locationType: string;
+  model: string;
+  textNotes?: string[];
 }
 
 export interface RemoveBackgroundRequest {
@@ -106,6 +150,47 @@ export async function requestGenerateText(payload: GenerateTextRequest) {
   if (!response.ok) throw new Error(formatApiError(result.error));
   if (!result.text) throw new Error(result.message || 'OpenRouter не вернул текст.');
   return { message: result.message, text: result.text };
+}
+
+export async function requestFormatTelegramText(payload: FormatTelegramTextRequest) {
+  const response = await fetch('/api/ai/format-telegram-text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as {
+    message?: string;
+    plainText?: string | null;
+    richText?: string | null;
+    error?: unknown;
+  };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.plainText || !result.richText) throw new Error(result.message || 'OpenRouter не вернул форматирование Telegram-текста.');
+  return { message: result.message, plainText: result.plainText, richText: result.richText };
+}
+
+export async function requestDescribeSubject(payload: DescribeSubjectRequest) {
+  const response = await fetch('/api/ai/describe-subject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { draft?: SubjectDescriptionDraft; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.draft) throw new Error(result.message || 'OpenRouter не вернул описание субъекта.');
+  return { draft: result.draft, message: result.message };
+}
+
+export async function requestDescribeLocation(payload: DescribeLocationRequest) {
+  const response = await fetch('/api/ai/describe-location', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json() as { draft?: LocationDescriptionDraft; message?: string; error?: unknown };
+  if (!response.ok) throw new Error(formatApiError(result.error));
+  if (!result.draft) throw new Error(result.message || 'OpenRouter не вернул описание локации.');
+  return { draft: result.draft, message: result.message };
 }
 
 export async function requestRemoveBackground(payload: RemoveBackgroundRequest) {

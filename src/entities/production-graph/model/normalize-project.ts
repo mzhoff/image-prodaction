@@ -1,19 +1,40 @@
 import { buildExtractPrompt, defaultExtractPrompt, normalizeExtractPresetSelection } from './extract-presets';
 import { getGenerationHistory, type GenerationHistoryData } from './generation-history';
 import { initialProject } from './initial-project';
-import { TEXT_CONCAT_MIN_INPUTS, getTextConcatInputPortId, getTextConcatInputPortIndex } from './node-definitions';
+import {
+  TELEGRAM_MEDIA_MAX_INPUTS,
+  TELEGRAM_MEDIA_MIN_INPUTS,
+  TEXT_CONCAT_MIN_INPUTS,
+  TEXT_PROMPT_VARIABLE_MAX_INPUTS,
+  getTelegramMediaInputPortId,
+  getTelegramMediaInputPortIndex,
+  getTextConcatInputPortId,
+  getTextConcatInputPortIndex,
+  getTextPromptVariablePortId,
+  getTextPromptVariablePortIndex,
+} from './node-definitions';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, normalizeNodeSize } from './node-layout';
 import { productionLayers } from './production-layers';
 import { PROJECT_SCHEMA_VERSION } from './project-schema';
-import type { ExtractPresetId, GraphEdge, GraphProject, ProductionNode, ProductionNodeData } from './types';
+import { normalizePublicationArtifacts } from './publication';
+import { DEFAULT_PUBLICATION_CONTENT_UNIT_ID } from './publication-platforms';
+import { normalizeLocationPreserveStrength, normalizeLocationType } from './location';
+import { normalizeSubjectPreserveStrength, normalizeSubjectType } from './subject';
+import { normalizeProductionLayerIds } from './layer-text-parser';
+import { normalizeSectionHierarchyByGeometry } from './graph-section-layout';
+import type { ExtractPresetId, GraphEdge, GraphProject, LocationRecord, ProductionNode, ProductionNodeData, SubjectRecord } from './types';
 import { normalizeCurves } from '@/shared/lib/image-renderer/curves';
 
 export function normalizeProject(project: GraphProject): GraphProject {
-  const nodes = (project.nodes ?? []).map(normalizeNode);
-  const edges = normalizeTextConcatEdges((project.edges ?? []).map((edge) => normalizeEdge(edge, nodes)), nodes);
-  const nodesWithPortCounts = normalizeTextConcatInputCounts(nodes, edges);
-  const sections = (project.sections ?? []).map((section, index) => normalizeSection(section, index));
+  const nodes = (project.nodes ?? []).map(normalizeNode).map(normalizeNodeRuntimeStatus);
+  const normalizedEdges = (project.edges ?? []).map((edge) => normalizeEdge(edge, nodes));
+  const edges = normalizeTelegramMediaEdges(normalizeTextConcatEdges(normalizedEdges, nodes), nodes);
+  const nodesWithPortCounts = normalizeTelegramMediaInputCounts(normalizeTextConcatInputCounts(nodes, edges), edges);
+  const sections = normalizeSectionHierarchyByGeometry((project.sections ?? []).map((section, index) => normalizeSection(section, index)));
   const sectionIds = new Set(sections.map((section) => section.id));
+  const subjects = normalizeSubjectRecords(project.subjects ?? []);
+  const locations = normalizeLocationRecords(project.locations ?? []);
+  const publications = normalizePublicationArtifacts(project.publications);
 
   return {
     ...initialProject,
@@ -21,10 +42,19 @@ export function normalizeProject(project: GraphProject): GraphProject {
     nodes: nodesWithPortCounts,
     sections,
     edges,
+    subjects,
+    locations,
+    publications,
     version: PROJECT_SCHEMA_VERSION,
     selectedNodeIds: project.selectedNodeIds ?? [],
     selectedSectionIds: (project.selectedSectionIds ?? []).filter((id) => sectionIds.has(id)),
   };
+}
+
+function normalizeNodeRuntimeStatus(node: ProductionNode): ProductionNode {
+  if (node.status === 'running') return { ...node, status: 'idle' };
+  if (node.status === 'idle' || node.status === 'success' || node.status === 'error') return node;
+  return { ...node, status: 'idle' };
 }
 
 function normalizeTextConcatInputCounts(nodes: ProductionNode[], edges: GraphEdge[]) {
@@ -38,13 +68,44 @@ function normalizeTextConcatInputCounts(nodes: ProductionNode[], edges: GraphEdg
   });
 }
 
+function normalizeTelegramMediaInputCounts(nodes: ProductionNode[], edges: GraphEdge[]) {
+  return nodes.map((node) => {
+    if (node.type !== 'telegramPublication') return node;
+    const usedCount = edges.filter((edge) => edge.targetNodeId === node.id && getTelegramMediaInputPortIndex(edge.targetPortId) >= 0).length;
+    const inputCount = Math.max(
+      TELEGRAM_MEDIA_MIN_INPUTS,
+      Math.min(TELEGRAM_MEDIA_MAX_INPUTS, usedCount + 1),
+    );
+    const data = node.data as ProductionNodeData & { mediaInputCount?: number };
+    if (data.mediaInputCount === inputCount) return node;
+    return { ...node, data: { ...node.data, mediaInputCount: inputCount } };
+  });
+}
+
 function normalizeTextConcatEdges(edges: GraphEdge[], nodes: ProductionNode[]) {
   const textConcatIds = new Set(nodes.filter((node) => node.type === 'textConcat').map((node) => node.id));
   const nextPortByEdgeId = new Map<string, string>();
   textConcatIds.forEach((nodeId) => {
     edges
       .filter((edge) => edge.targetNodeId === nodeId && getTextConcatInputPortIndex(edge.targetPortId) >= 0)
+      .sort((first, second) => getTextConcatInputPortIndex(first.targetPortId) - getTextConcatInputPortIndex(second.targetPortId))
       .forEach((edge, index) => nextPortByEdgeId.set(edge.id, getTextConcatInputPortId(index)));
+  });
+  return edges.map((edge) => (
+    nextPortByEdgeId.has(edge.id)
+      ? { ...edge, targetPortId: nextPortByEdgeId.get(edge.id) ?? edge.targetPortId }
+      : edge
+  ));
+}
+
+function normalizeTelegramMediaEdges(edges: GraphEdge[], nodes: ProductionNode[]) {
+  const telegramPublicationIds = new Set(nodes.filter((node) => node.type === 'telegramPublication').map((node) => node.id));
+  const nextPortByEdgeId = new Map<string, string>();
+  telegramPublicationIds.forEach((nodeId) => {
+    edges
+      .filter((edge) => edge.targetNodeId === nodeId && getTelegramMediaInputPortIndex(edge.targetPortId) >= 0)
+      .sort((first, second) => getTelegramMediaInputPortIndex(first.targetPortId) - getTelegramMediaInputPortIndex(second.targetPortId))
+      .forEach((edge, index) => nextPortByEdgeId.set(edge.id, getTelegramMediaInputPortId(index)));
   });
   return edges.map((edge) => (
     nextPortByEdgeId.has(edge.id)
@@ -57,9 +118,16 @@ function normalizeSection(section: GraphProject['sections'][number], index: numb
   return {
     id: section.id || `section-${index + 1}`,
     title: section.title || `Section ${index + 1}`,
+    parentId: typeof section.parentId === 'string' ? section.parentId : undefined,
     position: section.position ?? { x: 0, y: 0 },
     size: section.size ?? { width: 640, height: 420 },
+    color: normalizeSectionColor(section.color),
+    locked: section.locked === true,
   };
+}
+
+function normalizeSectionColor(color: unknown) {
+  return typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color : undefined;
 }
 
 function normalizeNode(node: ProductionNode): ProductionNode {
@@ -91,7 +159,33 @@ function normalizeNode(node: ProductionNode): ProductionNode {
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
-      data: { model: 'google/gemini-2.5-flash', ...nextData, preset: presets[0], presets, prompt, title: 'Extract' },
+      data: {
+        model: 'google/gemini-2.5-flash',
+        ...nextData,
+        disabledLayerIds: normalizeProductionLayerIds(nextData.disabledLayerIds),
+        preset: presets[0],
+        presets,
+        prompt,
+        title: 'Extract',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'textPrompt') {
+    const data = node.data as ProductionNodeData & { textareaHeight?: unknown; variableDisplayMode?: unknown; variables?: unknown };
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        result: '',
+        sourceCount: 0,
+        text: '',
+        ...data,
+        textareaHeight: normalizeTextPromptTextareaHeight(data.textareaHeight),
+        title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Prompt',
+        variableDisplayMode: normalizeTextPromptVariableDisplayMode(data.variableDisplayMode),
+        variables: normalizeTextPromptVariables(data.variables),
+      },
     } as ProductionNode;
   }
 
@@ -124,6 +218,7 @@ function normalizeNode(node: ProductionNode): ProductionNode {
         reasoning: 'low',
         temperature: 1,
         activeResultIndex: -1,
+        disabledResultFilterIds: [],
         result: '',
         resultTexts: [],
         ...node.data,
@@ -146,6 +241,139 @@ function normalizeNode(node: ProductionNode): ProductionNode {
         sourceText: '',
         ...node.data,
         title: 'Splitter',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'iterator') {
+    const data = node.data as ProductionNodeData & {
+      activeIndex?: unknown;
+      activeKind?: unknown;
+      imageCount?: unknown;
+      textCount?: unknown;
+    };
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        ...data,
+        activeImageAssetId: '',
+        activeIndex: typeof data.activeIndex === 'number' && Number.isFinite(data.activeIndex) ? Math.max(0, Math.floor(data.activeIndex)) : 0,
+        activeKind: data.activeKind === 'text' ? 'text' : 'image',
+        activeText: '',
+        imageCount: typeof data.imageCount === 'number' && Number.isFinite(data.imageCount) ? Math.max(0, Math.floor(data.imageCount)) : 0,
+        message: '',
+        textCount: typeof data.textCount === 'number' && Number.isFinite(data.textCount) ? Math.max(0, Math.floor(data.textCount)) : 0,
+        title: 'Iterator',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'subjectBuilder') {
+    const data = node.data as ProductionNodeData & {
+      libraryImageAssetIds?: unknown;
+      librarySubjectId?: unknown;
+      libraryUpdatedAt?: unknown;
+      preserveStrength?: unknown;
+      referenceModel?: unknown;
+      subjectType?: unknown;
+    };
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        name: '',
+        identitySummary: '',
+        immutableTraits: '',
+        mutableAttributes: '',
+        negativeConstraints: '',
+        notes: '',
+        result: '',
+        sourceCount: 0,
+        ...data,
+        libraryImageAssetIds: normalizeStringArray(data.libraryImageAssetIds),
+        librarySubjectId: typeof data.librarySubjectId === 'string' ? data.librarySubjectId : undefined,
+        libraryUpdatedAt: typeof data.libraryUpdatedAt === 'string' ? data.libraryUpdatedAt : undefined,
+        preserveStrength: normalizeSubjectPreserveStrength(data.preserveStrength),
+        referenceModel: typeof data.referenceModel === 'string' ? data.referenceModel : 'google/gemini-2.5-flash-image',
+        subjectType: normalizeSubjectType(data.subjectType),
+        title: 'Subject',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'locationBuilder') {
+    const data = node.data as ProductionNodeData & {
+      libraryImageAssetIds?: unknown;
+      libraryLocationId?: unknown;
+      libraryUpdatedAt?: unknown;
+      locationType?: unknown;
+      preserveStrength?: unknown;
+    };
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        atmosphere: '',
+        description: '',
+        mutableAttributes: '',
+        name: '',
+        negativeConstraints: '',
+        notes: '',
+        result: '',
+        sourceCount: 0,
+        spatialLayout: '',
+        ...data,
+        libraryImageAssetIds: normalizeStringArray(data.libraryImageAssetIds),
+        libraryLocationId: typeof data.libraryLocationId === 'string' ? data.libraryLocationId : undefined,
+        libraryUpdatedAt: typeof data.libraryUpdatedAt === 'string' ? data.libraryUpdatedAt : undefined,
+        locationType: normalizeLocationType(data.locationType),
+        preserveStrength: normalizeLocationPreserveStrength(data.preserveStrength),
+        title: 'Location',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'telegramPublication') {
+    const data = node.data as ProductionNodeData & {
+      contentUnitId?: unknown;
+      mediaInputCount?: unknown;
+      mediaOrder?: unknown;
+      messageRichText?: unknown;
+      messageRichTextSource?: unknown;
+      messageSourceText?: unknown;
+      messageText?: unknown;
+      platformId?: unknown;
+      sourceImageCount?: unknown;
+      sourceTextCount?: unknown;
+    };
+    const legacyMessageText = getLegacyTelegramMessageText(data as unknown as Record<string, unknown>);
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        artifactId: '',
+        result: '',
+        ...data,
+        contentUnitId: data.contentUnitId === DEFAULT_PUBLICATION_CONTENT_UNIT_ID
+          ? data.contentUnitId
+          : DEFAULT_PUBLICATION_CONTENT_UNIT_ID,
+        mediaInputCount: typeof data.mediaInputCount === 'number' && Number.isFinite(data.mediaInputCount)
+          ? Math.max(1, Math.min(10, Math.floor(data.mediaInputCount)))
+          : 1,
+        mediaOrder: normalizeStringArray(data.mediaOrder),
+        messageRichText: typeof data.messageRichText === 'string' ? data.messageRichText : '',
+        messageRichTextSource: typeof data.messageRichTextSource === 'string' ? data.messageRichTextSource : '',
+        messageSourceText: typeof data.messageSourceText === 'string' ? data.messageSourceText : '',
+        messageText: typeof data.messageText === 'string' ? data.messageText : legacyMessageText,
+        platformId: data.platformId === 'telegram' ? data.platformId : 'telegram',
+        sourceImageCount: typeof data.sourceImageCount === 'number' && Number.isFinite(data.sourceImageCount)
+          ? Math.max(0, Math.floor(data.sourceImageCount))
+          : 0,
+        sourceTextCount: typeof data.sourceTextCount === 'number' && Number.isFinite(data.sourceTextCount)
+          ? Math.max(0, Math.floor(data.sourceTextCount))
+          : 0,
+        title: 'Telegram Post',
       },
     } as ProductionNode;
   }
@@ -329,6 +557,89 @@ function normalizeNode(node: ProductionNode): ProductionNode {
   };
 }
 
+function normalizeSubjectRecords(subjects: SubjectRecord[]) {
+  return subjects
+    .filter((subject): subject is SubjectRecord => Boolean(subject?.id))
+    .map((subject) => ({
+      id: subject.id,
+      createdAt: typeof subject.createdAt === 'string' ? subject.createdAt : new Date().toISOString(),
+      identitySummary: subject.identitySummary ?? '',
+      imageAssetIds: normalizeStringArray(subject.imageAssetIds),
+      immutableTraits: subject.immutableTraits ?? '',
+      mutableAttributes: subject.mutableAttributes ?? '',
+      name: subject.name ?? '',
+      negativeConstraints: subject.negativeConstraints ?? '',
+      notes: subject.notes ?? '',
+      passportText: subject.passportText ?? '',
+      preserveStrength: normalizeSubjectPreserveStrength(subject.preserveStrength),
+      sourceNodeId: typeof subject.sourceNodeId === 'string' ? subject.sourceNodeId : undefined,
+      subjectType: normalizeSubjectType(subject.subjectType),
+      title: subject.title || subject.name || 'Untitled subject',
+      updatedAt: typeof subject.updatedAt === 'string' ? subject.updatedAt : new Date().toISOString(),
+    }));
+}
+
+function normalizeLocationRecords(locations: LocationRecord[]) {
+  return locations
+    .filter((location): location is LocationRecord => Boolean(location?.id))
+    .map((location) => ({
+      id: location.id,
+      atmosphere: location.atmosphere ?? '',
+      createdAt: typeof location.createdAt === 'string' ? location.createdAt : new Date().toISOString(),
+      description: location.description ?? '',
+      imageAssetIds: normalizeStringArray(location.imageAssetIds),
+      locationType: normalizeLocationType(location.locationType),
+      mutableAttributes: location.mutableAttributes ?? '',
+      name: location.name ?? '',
+      negativeConstraints: location.negativeConstraints ?? '',
+      notes: location.notes ?? '',
+      passportText: location.passportText ?? '',
+      preserveStrength: normalizeLocationPreserveStrength(location.preserveStrength),
+      sourceNodeId: typeof location.sourceNodeId === 'string' ? location.sourceNodeId : undefined,
+      spatialLayout: location.spatialLayout ?? '',
+      title: location.title || location.name || 'Untitled location',
+      updatedAt: typeof location.updatedAt === 'string' ? location.updatedAt : new Date().toISOString(),
+    }));
+}
+
+function normalizeStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function normalizeTextPromptVariables(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  const usedPortIds = new Set<string>();
+  return value.slice(0, TEXT_PROMPT_VARIABLE_MAX_INPUTS).map((item, index) => {
+    const candidate = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+    const rawPortId = typeof candidate.id === 'string' ? candidate.id : '';
+    const fallbackPortId = getTextPromptVariablePortId(index);
+    const portId = getTextPromptVariablePortIndex(rawPortId) >= 0 && !usedPortIds.has(rawPortId)
+      ? rawPortId
+      : fallbackPortId;
+    usedPortIds.add(portId);
+    const alias = typeof candidate.alias === 'string' && candidate.alias.trim()
+      ? candidate.alias.trim()
+      : `Variable ${getTextPromptVariablePortIndex(portId) + 1}`;
+    return { id: portId, alias };
+  });
+}
+
+function normalizeTextPromptVariableDisplayMode(value: unknown) {
+  return value === 'source' || value === 'value' || value === 'source-value' ? value : 'source-value';
+}
+
+function normalizeTextPromptTextareaHeight(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 248;
+  return Math.min(Math.max(Math.round(value), 64), 560);
+}
+
+function getLegacyTelegramMessageText(data: Record<string, unknown>) {
+  return ['publicationTitle', 'body', 'caption', 'cta']
+    .map((key) => (typeof data[key] === 'string' ? data[key].trim() : ''))
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 function isLegacyExtractPrompt(prompt: string, preset: ExtractPresetId) {
   const trimmed = prompt.trim();
   if (preset !== 'default') {
@@ -355,6 +666,9 @@ function normalizeEdge(edge: GraphEdge, nodes: ProductionNode[]) {
     : edge.sourcePortId === 'preset' ? 'result' : edge.sourcePortId;
   const targetPortId = target?.type === 'textConcat' && edge.targetPortId === 'text'
     ? 'text-0'
+    : target?.type === 'telegramPublication' && edge.targetPortId === 'media'
+    ? getTelegramMediaInputPortId(0)
+    : target?.type === 'generateImage' && edge.targetPortId === 'subject' ? 'actors'
     : edge.targetPortId === 'reference' ? 'style' : edge.targetPortId;
 
   return {

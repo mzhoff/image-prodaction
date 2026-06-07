@@ -1,6 +1,9 @@
 import { defaultExtractPrompt } from './extract-presets';
+import { normalizeLocationPreserveStrength, normalizeLocationType } from './location';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from './node-defaults';
+import { DEFAULT_PUBLICATION_CONTENT_UNIT_ID } from './publication-platforms';
 import { productionLayers } from './production-layers';
+import { normalizeSubjectPreserveStrength, normalizeSubjectType } from './subject';
 import type { GraphPort, ProductionNodeData, ProductionNodeType } from './types';
 import { createDefaultCurves } from '@/shared/lib/image-renderer/curves';
 
@@ -40,9 +43,17 @@ export const NODE_DEFINITIONS = {
     type: 'textPrompt',
     title: 'Prompt',
     menuLabel: 'Text prompt',
-    defaultHeight: 230,
+    defaultHeight: 370,
     ports: [{ id: 'text', label: 'Text', kind: 'text', side: 'output' }],
-    createData: () => ({ title: 'Prompt', text: '' }),
+    createData: () => ({
+      title: 'Prompt',
+      result: '',
+      sourceCount: 0,
+      text: '',
+      textareaHeight: 248,
+      variableDisplayMode: 'source-value',
+      variables: [],
+    }),
   },
   textConcat: {
     type: 'textConcat',
@@ -82,6 +93,7 @@ export const NODE_DEFINITIONS = {
       reasoning: 'low',
       temperature: 1,
       activeResultIndex: -1,
+      disabledResultFilterIds: [],
       result: '',
       resultTexts: [],
     }),
@@ -93,6 +105,7 @@ export const NODE_DEFINITIONS = {
     defaultHeight: 422,
     ports: [
       { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+      { id: 'items', label: 'Items', kind: 'text', side: 'output' },
       { id: 'item-0', label: 'Item 1', kind: 'text', side: 'output' },
     ],
     createData: () => ({
@@ -103,6 +116,105 @@ export const NODE_DEFINITIONS = {
       items: [],
       result: '',
       sourceText: '',
+    }),
+  },
+  iterator: {
+    type: 'iterator',
+    title: 'Iterator',
+    menuLabel: 'Iterator',
+    defaultHeight: 430,
+    ports: [
+      { id: 'imageCollection', label: 'Image collection', kind: 'image', side: 'input' },
+      { id: 'textCollection', label: 'Text collection', kind: 'text', side: 'input' },
+      { id: 'imageItem', label: 'Image item', kind: 'image', side: 'output' },
+      { id: 'textItem', label: 'Text item', kind: 'text', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Iterator',
+      activeKind: 'image',
+      activeIndex: 0,
+      activeText: '',
+      imageCount: 0,
+      textCount: 0,
+    }),
+  },
+  subjectBuilder: {
+    type: 'subjectBuilder',
+    title: 'Subject',
+    menuLabel: 'Subject builder',
+    defaultHeight: 694,
+    ports: [
+      { id: 'image', label: 'Image refs', kind: 'image', side: 'input' },
+      { id: 'text', label: 'Text notes', kind: 'text', side: 'input' },
+      { id: 'subject', label: 'Subject', kind: 'subject', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Subject',
+      name: '',
+      subjectType: normalizeSubjectType('person'),
+      preserveStrength: normalizeSubjectPreserveStrength('balanced'),
+      referenceModel: 'google/gemini-2.5-flash-image',
+      identitySummary: '',
+      immutableTraits: '',
+      mutableAttributes: '',
+      negativeConstraints: '',
+      notes: '',
+      result: '',
+      libraryImageAssetIds: [],
+      sourceCount: 0,
+    }),
+  },
+  locationBuilder: {
+    type: 'locationBuilder',
+    title: 'Location',
+    menuLabel: 'Location builder',
+    defaultHeight: 694,
+    ports: [
+      { id: 'image', label: 'Image refs', kind: 'image', side: 'input' },
+      { id: 'text', label: 'Text notes', kind: 'text', side: 'input' },
+      { id: 'location', label: 'Location', kind: 'location', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Location',
+      atmosphere: '',
+      description: '',
+      locationType: normalizeLocationType('interior'),
+      preserveStrength: normalizeLocationPreserveStrength('balanced'),
+      mutableAttributes: '',
+      name: '',
+      negativeConstraints: '',
+      notes: '',
+      result: '',
+      spatialLayout: '',
+      libraryImageAssetIds: [],
+      sourceCount: 0,
+    }),
+  },
+  telegramPublication: {
+    type: 'telegramPublication',
+    title: 'Telegram Post',
+    menuLabel: 'Telegram post',
+    defaultHeight: 640,
+    ports: [
+      { id: 'body', label: 'Text blocks', kind: 'text', side: 'input' },
+      { id: 'media-0', label: 'Image 1', kind: 'image', side: 'input' },
+      { id: 'formatRules', label: 'Format rules', kind: 'text', side: 'input' },
+      { id: 'checkRules', label: 'Check rules', kind: 'text', side: 'input' },
+    ],
+    createData: () => ({
+      title: 'Telegram Post',
+      artifactId: '',
+      contentUnitId: DEFAULT_PUBLICATION_CONTENT_UNIT_ID,
+      mediaInputCount: 1,
+      mediaOrder: [],
+      messageRichText: '',
+      messageRichTextSource: '',
+      messageSourceText: '',
+      messageText: '',
+      platformId: 'telegram',
+      result: '',
+      sourceImageCount: 0,
+      sourceTextCount: 0,
     }),
   },
   imageToText: {

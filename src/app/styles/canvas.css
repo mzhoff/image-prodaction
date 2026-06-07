@@ -48,6 +48,18 @@
   stroke: #16a34a;
 }
 
+.edge-path-subject {
+  stroke: #7c3aed;
+}
+
+.edge-path-location {
+  stroke: #0f766e;
+}
+
+.edge-path-publication {
+  stroke: #2aabee;
+}
+
 .edge-path-empty {
   stroke-dasharray: 8 7;
 }

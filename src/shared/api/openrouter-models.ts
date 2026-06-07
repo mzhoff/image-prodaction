@@ -41,6 +41,11 @@ export const MODEL_FALLBACK_SIZES = ['1K', '2K', '4K'];
 export const MODEL_EXTENDED_GEMINI_FLASH_SIZES = ['0.5K', ...MODEL_FALLBACK_SIZES];
 
 const imageModelConfig: Record<string, { label: string; aspectRatios: string[]; sizes: string[] }> = {
+  'openrouter/auto': {
+    label: 'Auto Router',
+    aspectRatios: MODEL_FALLBACK_ASPECT_RATIOS,
+    sizes: MODEL_FALLBACK_SIZES,
+  },
   'openai/gpt-5.4-image-2': {
     label: 'GPT Image 2',
     aspectRatios: MODEL_FALLBACK_ASPECT_RATIOS,
@@ -113,6 +118,7 @@ export const PREFERRED_ANALYSIS_MODEL_IDS = [
 ];
 
 export const PREFERRED_IMAGE_MODEL_IDS = [
+  'openrouter/auto',
   'google/gemini-2.5-flash-image',
   'google/gemini-3.1-flash-image-preview',
   'google/gemini-3-pro-image-preview',

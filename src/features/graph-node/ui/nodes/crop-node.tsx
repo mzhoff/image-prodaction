@@ -17,7 +17,7 @@ export function CropNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Crop" muted />
+      <NodeTitle title="Crop" nodeType={node.type} muted />
       <CropEditor
         aspectRatio={model.aspectRatio}
         crop={model.crop}

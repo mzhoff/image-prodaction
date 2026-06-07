@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { sortSectionsForRender } from '@/entities/production-graph/model/graph-section-layout';
 import type { GraphSection } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import type { SectionResizeHandle } from '../model/use-section-resize';
@@ -7,9 +8,11 @@ import type { SectionResizeHandle } from '../model/use-section-resize';
 interface CanvasSectionLayerProps {
   disabled?: boolean;
   onRenameSection: (sectionId: string, title: string) => void;
+  onSectionContextMenu: (section: GraphSection, event: ReactMouseEvent) => void;
   onSelectSection: (sectionId: string, additive?: boolean) => void;
   onStartDrag: (section: GraphSection, event: ReactPointerEvent<HTMLElement>) => void;
   onStartResize: (section: GraphSection, handle: SectionResizeHandle, event: ReactPointerEvent<HTMLElement>) => void;
+  sectionColorPreviews?: Record<string, string>;
   sections: GraphSection[];
   selectedSectionSet: Set<string>;
 }
@@ -17,20 +20,26 @@ interface CanvasSectionLayerProps {
 export function CanvasSectionLayer({
   disabled,
   onRenameSection,
+  onSectionContextMenu,
   onSelectSection,
   onStartDrag,
   onStartResize,
+  sectionColorPreviews,
   sections,
   selectedSectionSet,
 }: CanvasSectionLayerProps) {
+  const renderSections = sortSectionsForRender(sections);
+
   return (
     <div className={cn('canvas-section-layer', disabled && 'canvas-section-layer-disabled')}>
-      {sections.map((section) => (
+      {renderSections.map((section) => (
         <CanvasSection
           key={section.id}
           section={section}
+          previewColor={sectionColorPreviews?.[section.id]}
           selected={selectedSectionSet.has(section.id)}
           onRenameSection={onRenameSection}
+          onSectionContextMenu={onSectionContextMenu}
           onSelectSection={onSelectSection}
           onStartDrag={onStartDrag}
           onStartResize={onStartResize}
@@ -42,17 +51,21 @@ export function CanvasSectionLayer({
 
 function CanvasSection({
   onRenameSection,
+  onSectionContextMenu,
   onSelectSection,
   onStartDrag,
   onStartResize,
   section,
+  previewColor,
   selected,
 }: {
   onRenameSection: (sectionId: string, title: string) => void;
+  onSectionContextMenu: (section: GraphSection, event: ReactMouseEvent) => void;
   onSelectSection: (sectionId: string, additive?: boolean) => void;
   onStartDrag: (section: GraphSection, event: ReactPointerEvent<HTMLElement>) => void;
   onStartResize: (section: GraphSection, handle: SectionResizeHandle, event: ReactPointerEvent<HTMLElement>) => void;
   section: GraphSection;
+  previewColor?: string;
   selected: boolean;
 }) {
   const cancelEditRef = useRef(false);
@@ -85,8 +98,9 @@ function CanvasSection({
 
   return (
     <div
-      className={cn('canvas-section', selected && 'canvas-section-selected')}
+      className={cn('canvas-section', selected && 'canvas-section-selected', section.locked && 'canvas-section-locked')}
       data-canvas-section
+      onContextMenu={(event) => onSectionContextMenu(section, event)}
       onClick={(event) => {
         event.stopPropagation();
         const pointerDown = pointerDownRef.current;
@@ -100,14 +114,15 @@ function CanvasSection({
       }}
       onPointerDown={(event) => {
         pointerDownRef.current = { selected, x: event.clientX, y: event.clientY };
-        if (selected) onStartDrag(section, event);
+        if (selected && !section.locked) onStartDrag(section, event);
       }}
       style={{
         left: section.position.x,
         top: section.position.y,
         width: section.size.width,
         height: section.size.height,
-      }}
+        '--section-accent': previewColor ?? section.color ?? '#d9d9d9',
+      } as CSSProperties}
     >
       <div
         className="canvas-section-badge"
@@ -118,12 +133,13 @@ function CanvasSection({
         }}
         onPointerDown={(event) => {
           pointerDownRef.current = { selected, x: event.clientX, y: event.clientY };
-          if (selected) onStartDrag(section, event);
+          if (selected && !section.locked) onStartDrag(section, event);
         }}
       >
         {editing ? (
           <input
             ref={inputRef}
+            size={Math.max(8, draftTitle.length || 8)}
             value={draftTitle}
             onBlur={commitTitle}
             onChange={(event) => setDraftTitle(event.target.value)}
@@ -147,7 +163,7 @@ function CanvasSection({
           section.title
         )}
       </div>
-      {selected ? (
+      {selected && !section.locked ? (
         <>
           {(['n', 's', 'e', 'w'] as SectionResizeHandle[]).map((handle) => (
             <button

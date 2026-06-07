@@ -162,7 +162,7 @@ export function useCanvasNavigation({
     };
 
     const handleWheel = (event: WheelEvent) => {
-      if (shouldLetTextareaHandleWheel(event)) return;
+      if (shouldLetScrollableInputHandleWheel(event)) return;
 
       event.preventDefault();
       if (middlePanRef.current.active) return;
@@ -230,12 +230,12 @@ export function useCanvasNavigation({
   };
 }
 
-function shouldLetTextareaHandleWheel(event: WheelEvent) {
+function shouldLetScrollableInputHandleWheel(event: WheelEvent) {
   const target = event.target;
   if (!(target instanceof Element)) return false;
 
-  const textarea = target.closest('textarea.prompt-box');
-  if (!(textarea instanceof HTMLTextAreaElement)) return false;
+  const scrollable = target.closest('textarea.prompt-box, [data-canvas-wheel-scroll="true"]');
+  if (!(scrollable instanceof HTMLElement)) return false;
 
-  return textarea.scrollHeight > textarea.clientHeight || textarea.scrollWidth > textarea.clientWidth;
+  return scrollable.scrollHeight > scrollable.clientHeight || scrollable.scrollWidth > scrollable.clientWidth;
 }

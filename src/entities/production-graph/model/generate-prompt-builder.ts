@@ -18,25 +18,47 @@ interface ComposeGenerationPromptParams {
   prompt: string;
   referenceImages: Array<Omit<GenerateReferenceImage, 'dataUrl'>>;
   size: string;
+  locationInputs?: string[];
+  subjectInputs?: string[];
 }
 
 export function composeGenerationPrompt({
   aspectRatio,
   inputs,
+  locationInputs = [],
   prompt,
   referenceImages,
   size,
+  subjectInputs = [],
 }: ComposeGenerationPromptParams) {
   const layerBlocks = productionLayers
     .map((layer) => formatLayerBlock(layer.id, layer.label, inputs[layer.id]))
     .filter(Boolean);
+  const subjectBlock = formatSubjectBlock(subjectInputs);
+  const locationBlock = formatLocationBlock(locationInputs);
+  const defaultTaskBlock = formatDefaultTaskBlock({
+    hasExplicitTextTask: Boolean(prompt.trim()) || layerBlocks.length > 0,
+    hasLocationReferences: locationInputs.length > 0 || referenceImages.some((reference) => (
+      reference.slots.includes('background')
+      && reference.sourceNodeTypes?.includes('locationBuilder')
+    )),
+    hasReferenceImages: referenceImages.length > 0,
+    hasSubjectReferences: subjectInputs.length > 0 || referenceImages.some((reference) => (
+      reference.slots.includes('actors')
+      && reference.sourceNodeTypes?.includes('subjectBuilder')
+    )),
+  });
 
   return [
     'You are an AI image production generator. Build one production-ready image from a layered creative brief.',
     `Output contract: aspect ratio ${aspectRatio}, image size ${size}.`,
+    'Return exactly one generated image payload. Do not return only text, analysis, instructions, or a prompt rewrite.',
     'Priority: main user prompt first; connected layer text and layer image references override the same layer from the Main Reference; layer references guide only the slots they are connected to.',
     'Never blend a Layer Reference image as a second scene. Treat every Layer Reference as a sampling source for selected visual properties, not as content, layout, object, or composition to merge.',
+    defaultTaskBlock,
     prompt.trim() ? `[MAIN USER PROMPT]\n${prompt.trim()}` : '',
+    subjectBlock,
+    locationBlock,
     layerBlocks.length ? `[CONNECTED LAYER INSTRUCTIONS]\n${layerBlocks.join('\n\n')}` : '',
     referenceImages.length ? `[IMAGE REFERENCE ROUTING]\n${referenceImages.map(formatReferenceSummary).join('\n\n')}` : '',
     'If a Main Reference image is attached, treat it as the base source image: preserve visible properties that are not explicitly changed by the main prompt, connected layer text, or connected layer image references.',
@@ -50,6 +72,8 @@ export function composeReferenceImageInstruction(reference: Omit<GenerateReferen
   const layerSlots = slots.filter((slot): slot is ProductionLayerId => slot !== 'reference');
   const layerList = layerSlots.length ? layerSlots.map(getSlotLabel).join(', ') : 'no explicit layer slots';
   const hasCompositionSketch = layerSlots.includes('composition') && reference.sourceNodeTypes?.includes('sketch');
+  const hasSubjectBuilder = layerSlots.includes('actors') && reference.sourceNodeTypes?.includes('subjectBuilder');
+  const hasLocationBuilder = layerSlots.includes('background') && reference.sourceNodeTypes?.includes('locationBuilder');
 
   if (hasMainReference) {
     return [
@@ -64,10 +88,12 @@ export function composeReferenceImageInstruction(reference: Omit<GenerateReferen
   return [
     `[REFERENCE IMAGE ${index}: LAYER REFERENCE]`,
     `Allowed source layers: ${layerList}.`,
+    hasSubjectBuilder ? 'This image came from a Subject Builder. Use it only to preserve subject identity, recognizable anatomy, proportions, face, silhouette, product shape, material marks, and stable subject traits.' : '',
+    hasLocationBuilder ? 'This image came from a Location Builder. Use it only to preserve environment identity, spatial layout, architecture, surfaces, scale cues, atmosphere, and stable location traits.' : '',
     hasCompositionSketch ? COMPOSITION_SKETCH_CONTROL : `Extract and transfer only these visual properties from this image: ${getAllowedLayerProperties(layerSlots)}.`,
     'This is not a scene reference, not a base image, and not a request to blend or merge visual content.',
     'Do not transfer objects, silhouettes, UI elements, geometry, layout, composition, camera angle, background structure, text, logos, narrative, or subject identity from this image unless those exact layers are listed above.',
-    'Keep the Main Reference and main prompt as the source of scene structure and content.',
+    'Keep the Main Reference, main prompt, or explicit default generation task as the source of scene structure and content.',
   ].join('\n');
 }
 
@@ -80,6 +106,64 @@ function formatLayerBlock(layerId: ProductionLayerId, label: string, values: str
   const cleanValues = values.map((value) => value.trim()).filter(Boolean);
   if (cleanValues.length === 0) return '';
   return `[${label.toUpperCase()}]\n${cleanValues.map((value) => `- ${value}`).join('\n')}`;
+}
+
+function formatSubjectBlock(values: string[]) {
+  const cleanValues = values.map((value) => value.trim()).filter(Boolean);
+  if (cleanValues.length === 0) return '';
+  return [
+    '[CONNECTED SUBJECT PASSPORTS]',
+    'Use these subject passports as identity-control instructions. Preserve immutable traits and recognizable identity. Scene, pose, lighting, outfit, background and style may adapt only where the passport or main prompt allows it.',
+    cleanValues.map((value, index) => `[SUBJECT ${index + 1}]\n${value}`).join('\n\n'),
+  ].join('\n\n');
+}
+
+function formatLocationBlock(values: string[]) {
+  const cleanValues = values.map((value) => value.trim()).filter(Boolean);
+  if (cleanValues.length === 0) return '';
+  return [
+    '[CONNECTED LOCATION PASSPORTS]',
+    'Use these location passports as environment-control instructions. Preserve stable spatial identity, architecture, surfaces, environmental cues, scale, and atmosphere. Camera, lighting, dressing, weather, action, and subject placement may adapt only where the passport or main prompt allows it.',
+    cleanValues.map((value, index) => `[LOCATION ${index + 1}]\n${value}`).join('\n\n'),
+  ].join('\n\n');
+}
+
+function formatDefaultTaskBlock({
+  hasExplicitTextTask,
+  hasLocationReferences,
+  hasReferenceImages,
+  hasSubjectReferences,
+}: {
+  hasExplicitTextTask: boolean;
+  hasLocationReferences: boolean;
+  hasReferenceImages: boolean;
+  hasSubjectReferences: boolean;
+}) {
+  if (hasExplicitTextTask) return '';
+  if (hasSubjectReferences) {
+    return [
+      '[DEFAULT GENERATION TASK]',
+      'No main scene prompt is connected. Generate a single neutral production-ready identity shot for the connected subject.',
+      'Use a clean studio/editorial composition, centered readable subject, simple non-distracting background, no text, no logo, no watermark, no collage.',
+      'Preserve recognizable subject identity from the subject passport and subject reference images. Do not invent a different person, product, animal, object, or character.',
+    ].join('\n');
+  }
+  if (hasLocationReferences) {
+    return [
+      '[DEFAULT GENERATION TASK]',
+      'No main scene prompt is connected. Generate a single neutral production-ready establishing image for the connected location.',
+      'Use a clean editorial composition, readable environment geometry, coherent scale, no text, no logo, no watermark, no collage.',
+      'Preserve recognizable location identity from the location passport and location reference images. Do not invent a different place, environment type, architecture, or spatial layout.',
+    ].join('\n');
+  }
+  if (hasReferenceImages) {
+    return [
+      '[DEFAULT GENERATION TASK]',
+      'No main scene prompt is connected. Generate one production-ready image guided by the attached references and their allowed routing slots.',
+      'Use a clean, coherent composition with no text, no logo, no watermark, and no collage unless explicitly requested.',
+    ].join('\n');
+  }
+  return '';
 }
 
 function formatReferenceSummary(reference: Omit<GenerateReferenceImage, 'dataUrl'>, index: number) {

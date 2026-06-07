@@ -32,6 +32,7 @@ export function GenerateImageNode({
     <>
       <NodeTitle
         title="Generate Image"
+        nodeType={node.type}
         muted
         action={(
           <NodeTitleActions>

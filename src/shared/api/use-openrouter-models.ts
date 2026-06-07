@@ -10,14 +10,13 @@ let catalogPromise: Promise<OpenRouterModelCatalog> | null = null;
 
 export function useOpenRouterModels() {
   const [catalog, setCatalog] = useState<OpenRouterModelCatalog>(cachedCatalog ?? fallbackCatalog);
-  const [loading, setLoading] = useState(!cachedCatalog);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     if (cachedCatalog) {
       setCatalog(cachedCatalog);
-      setLoading(false);
       return undefined;
     }
 

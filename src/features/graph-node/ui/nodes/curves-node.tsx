@@ -26,7 +26,7 @@ export function CurvesNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Curves" muted />
+      <NodeTitle title="Curves" nodeType={node.type} muted />
       <ImagePlate
         assetId={model.displayAsset?.id}
         aspectRatio={sourceRatio}

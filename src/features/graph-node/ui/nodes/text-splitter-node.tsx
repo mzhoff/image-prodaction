@@ -18,7 +18,7 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
 
   return (
     <>
-      <NodeTitle title="Text Split" muted action={<TextNodeTitleActions collapsed={collapsed} count={`${model.items.length}/30`} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title="Text Split" nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} count={`${model.items.length}/30`} onCollapsedChange={setCollapsed} />} />
       <PortButton
         nodeId={node.id}
         portId="text"
@@ -26,6 +26,15 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
         kind="text"
         label="Text"
         className="text-node-header-input-port"
+        onStartConnection={onStartConnection}
+      />
+      <PortButton
+        nodeId={node.id}
+        portId="items"
+        side="output"
+        kind="text"
+        label="Items"
+        className="text-node-header-output-port"
         onStartConnection={onStartConnection}
       />
       {!collapsed ? (

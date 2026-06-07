@@ -4,9 +4,14 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
 import {
   TEXT_SPLITTER_MAX_ITEMS,
+  TEXT_PROMPT_VARIABLE_MAX_INPUTS,
+  getTextPromptVariablePortId,
+  getTextPromptVariablePortIndex,
+  getTextPromptVariables,
   getTextConcatInputCount,
   getTextConcatInputPortId,
 } from '@/entities/production-graph/model/node-definitions';
+import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type {
   ProductionNode,
   TextConcatNodeData,
@@ -14,6 +19,7 @@ import type {
   TextGenerationNodeData,
   TextGenerationOutputStyle,
   TextGenerationReasoning,
+  TextPromptNodeData,
   TextSplitterMode,
   TextSplitterNodeData,
 } from '@/entities/production-graph/model/types';
@@ -22,7 +28,9 @@ import { requestGenerateText } from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
+import { composeTextPromptResult, normalizeTextPromptVariableDisplayMode } from '../lib/text-prompt-variables';
 import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
+import { useTextSectionFilters } from './use-text-section-filters';
 
 export const textConcatSeparatorOptions: DarkSelectOption[] = [
   { value: 'double-newline', label: 'Double newline' },
@@ -49,6 +57,91 @@ export const textSplitterModeOptions: DarkSelectOption[] = [
   { value: 'paragraph', label: 'Paragraph' },
   { value: 'delimiter', label: 'Delimiter' },
 ];
+
+export const textPromptVariableDisplayOptions: DarkSelectOption[] = [
+  { value: 'source-value', label: 'Source + Value' },
+  { value: 'value', label: 'Value' },
+  { value: 'source', label: 'Source' },
+];
+
+export const TEXT_PROMPT_TEXTAREA_DEFAULT_HEIGHT = 248;
+export const TEXT_PROMPT_TEXTAREA_MIN_HEIGHT = 64;
+export const TEXT_PROMPT_TEXTAREA_MAX_HEIGHT = 560;
+
+export function useTextPromptNodeModel(node: ProductionNode) {
+  const data = node.data as TextPromptNodeData;
+  const edges = useProductionGraphStore((state) => state.edges);
+  const nodes = useProductionGraphStore((state) => state.nodes);
+  const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
+  const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
+  const variables = useMemo(() => getTextPromptVariables(node), [node]);
+  const variableDisplayMode = normalizeTextPromptVariableDisplayMode(data.variableDisplayMode);
+  const variableSlots = useMemo(() => variables.map((variable, index) => {
+    const incomingEdge = edges.find((edge) => edge.targetNodeId === node.id && edge.targetPortId === variable.id);
+    const sourceNode = incomingEdge ? nodes.find((item) => item.id === incomingEdge.sourceNodeId) : undefined;
+    const sourceAlias = getCustomTextPromptSourceAlias(sourceNode);
+    const incoming = getIncomingTextInputs(node.id, variable.id, { edges, nodes });
+    const value = incoming.map((input) => input.text).join('\n\n');
+    const connected = Boolean(incomingEdge);
+    const alias = sourceAlias ?? variable.alias;
+    return {
+      ...variable,
+      alias,
+      connected,
+      index,
+      mentionAliases: sourceAlias && sourceAlias !== variable.alias ? [variable.alias] : undefined,
+      portId: variable.id,
+      sourceLabel: sourceNode?.data.title ?? incoming[0]?.sourceLabel,
+      value,
+    };
+  }), [edges, node.id, nodes, variables]);
+  const sourceCount = variableSlots.filter((slot) => slot.value.trim()).length;
+  const result = useMemo(() => composeTextPromptResult(data.text, variableSlots), [data.text, variableSlots]);
+  const hasVariables = variables.length > 0;
+  const textareaHeight = clampTextPromptTextareaHeight(data.textareaHeight);
+
+  useEffect(() => {
+    const nextData: Partial<TextPromptNodeData> = {};
+    if (data.result !== result) nextData.result = result;
+    if (data.sourceCount !== sourceCount) nextData.sourceCount = sourceCount;
+    if (data.textareaHeight !== textareaHeight) nextData.textareaHeight = textareaHeight;
+    if (data.variableDisplayMode !== variableDisplayMode) nextData.variableDisplayMode = variableDisplayMode;
+    if (!samePromptVariables(data.variables, variables)) nextData.variables = variables;
+    if (Object.keys(nextData).length === 0) return;
+    updateNodeDataSilent(node.id, nextData);
+  }, [data.result, data.sourceCount, data.textareaHeight, data.variableDisplayMode, data.variables, node.id, result, sourceCount, textareaHeight, updateNodeDataSilent, variableDisplayMode, variables]);
+
+  const handleAddVariable = useCallback(() => {
+    if (variables.length >= TEXT_PROMPT_VARIABLE_MAX_INPUTS) return undefined;
+    const usedIndexes = new Set(variables.map((variable) => getTextPromptVariablePortIndex(variable.id)));
+    const nextIndex = Array.from({ length: TEXT_PROMPT_VARIABLE_MAX_INPUTS }, (_, index) => index).find((index) => !usedIndexes.has(index));
+    if (typeof nextIndex !== 'number') return undefined;
+    const variable = {
+      id: getTextPromptVariablePortId(nextIndex),
+      alias: `Variable ${nextIndex + 1}`,
+    };
+    updateNodeData(node.id, {
+      variables: [...variables, variable],
+    });
+    return variable;
+  }, [node.id, updateNodeData, variables]);
+
+  return {
+    canAddVariable: variables.length < TEXT_PROMPT_VARIABLE_MAX_INPUTS,
+    data,
+    handleAddVariable,
+    handleDisplayModeChange: (value: string) => updateNodeData(node.id, { variableDisplayMode: normalizeTextPromptVariableDisplayMode(value) }),
+    handleTextareaHeightChange: (nextHeight: number) => updateNodeData(node.id, { textareaHeight: clampTextPromptTextareaHeight(nextHeight) }),
+    handleTextChange: (text: string) => updateNodeData(node.id, { text }),
+    hasVariables,
+    result,
+    sourceCount,
+    textareaHeight,
+    variableDisplayMode,
+    variableSlots,
+    variables,
+  };
+}
 
 export function useTextConcatNodeModel(node: ProductionNode) {
   const data = node.data as TextConcatNodeData;
@@ -106,6 +199,11 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
     getIncomingTextInputs(node.id, 'text', { edges, nodes }).map((input) => input.text).join('\n\n')
   ), [edges, node.id, nodes]);
   const history = getTextHistory(data);
+  const resultSectionFilters = useTextSectionFilters({
+    disabledFilterIds: data.disabledResultFilterIds,
+    onDisabledFilterIdsChange: (disabledResultFilterIds) => updateNodeData(node.id, { disabledResultFilterIds }),
+    text: history.activeText,
+  });
 
   const handleGenerate = useCallback(async () => {
     if (!inputText.trim()) {
@@ -150,6 +248,8 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
     handleOutputStyleChange: (outputStyle: string) => updateNodeData(node.id, { outputStyle: outputStyle as TextGenerationOutputStyle }),
     handleReasoningChange: (nextReasoning: string) => updateNodeData(node.id, { reasoning: nextReasoning as TextGenerationReasoning }),
     handleResultHistoryChange: (index: number) => updateNodeDataSilent(node.id, selectTextResult(data, index)),
+    handleResultChange: (result: string) => updateNodeData(node.id, updateTextResult(data, result)),
+    handleResultFilterToggle: resultSectionFilters.toggleFilter,
     handleTemperatureChange: (nextTemperature: number) => updateNodeData(node.id, { temperature: clampTemperature(nextTemperature) }),
     history,
     inputText,
@@ -158,6 +258,8 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
     outputStyleOptions: textGenerationOutputStyleOptions,
     reasoning,
     reasoningOptions: textGenerationReasoningOptions,
+    disabledResultFilterIds: resultSectionFilters.disabledFilterIds,
+    resultFilterIssues: resultSectionFilters.duplicateIssues,
     selectedModel,
     supportsReasoning,
     supportsTemperature,
@@ -224,6 +326,22 @@ function composeConcatText(data: TextConcatNodeData, parts: string[]) {
   ].filter(Boolean).join(separator);
 }
 
+function samePromptVariables(first: TextPromptNodeData['variables'], second: NonNullable<TextPromptNodeData['variables']>) {
+  if (!Array.isArray(first) || first.length !== second.length) return false;
+  return first.every((variable, index) => variable.id === second[index]?.id && variable.alias === second[index]?.alias);
+}
+
+function getCustomTextPromptSourceAlias(sourceNode: ProductionNode | undefined) {
+  const title = sourceNode?.data.title?.trim();
+  if (!sourceNode || !title) return undefined;
+  return title === getNodeDefinition(sourceNode.type).title ? undefined : title;
+}
+
+export function clampTextPromptTextareaHeight(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return TEXT_PROMPT_TEXTAREA_DEFAULT_HEIGHT;
+  return Math.min(Math.max(Math.round(value), TEXT_PROMPT_TEXTAREA_MIN_HEIGHT), TEXT_PROMPT_TEXTAREA_MAX_HEIGHT);
+}
+
 function getSeparator(separator: TextConcatSeparator, customSeparator: string) {
   if (separator === 'newline') return '\n';
   if (separator === 'space') return ' ';
@@ -255,6 +373,19 @@ function selectTextResult(data: TextGenerationNodeData, index: number): Partial<
   return {
     activeResultIndex: activeIndex,
     result: items[activeIndex],
+    resultTexts: items,
+  };
+}
+
+function updateTextResult(data: TextGenerationNodeData, text: string): Partial<TextGenerationNodeData> {
+  const history = getTextHistory(data);
+  const activeIndex = history.activeIndex >= 0 ? history.activeIndex : 0;
+  const items = history.items.length > 0 ? [...history.items] : [''];
+  items[activeIndex] = text;
+
+  return {
+    activeResultIndex: activeIndex,
+    result: text,
     resultTexts: items,
   };
 }

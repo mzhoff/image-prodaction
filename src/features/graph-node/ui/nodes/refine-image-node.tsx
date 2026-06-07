@@ -20,7 +20,7 @@ export function RefineImageNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Refine" muted />
+      <NodeTitle title="Refine" nodeType={node.type} muted />
       <ImagePlate
         activeIndex={model.generationHistory.activeIndex}
         assetId={displayAssetId}

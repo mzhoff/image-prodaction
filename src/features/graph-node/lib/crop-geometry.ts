@@ -36,6 +36,43 @@ export function fitCropToAspect(sourceWidth: number, sourceHeight: number, aspec
   return normalizeCrop({ x: 0, y: (1 - height) / 2, width: 1, height });
 }
 
+export function fitCropToOutputAspectPreservingOrigin(crop: CropRect, sourceAspectRatio: number, outputAspectRatio: number): CropRect {
+  if (!Number.isFinite(sourceAspectRatio) || sourceAspectRatio <= 0) return normalizeCrop(crop);
+  if (!Number.isFinite(outputAspectRatio) || outputAspectRatio <= 0) return normalizeCrop(crop);
+
+  const normalizedRatio = outputAspectRatio / sourceAspectRatio;
+  if (!Number.isFinite(normalizedRatio) || normalizedRatio <= 0) return normalizeCrop(crop);
+
+  const x = clamp(crop.x, 0, 1 - MIN_CROP);
+  const y = clamp(crop.y, 0, 1 - MIN_CROP);
+  const maxWidth = Math.max(MIN_CROP, 1 - x);
+  const maxHeight = Math.max(MIN_CROP, 1 - y);
+  let width = clamp(crop.width, MIN_CROP, maxWidth);
+  let height = width / normalizedRatio;
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * normalizedRatio;
+  }
+
+  if (width > maxWidth) {
+    width = maxWidth;
+    height = width / normalizedRatio;
+  }
+
+  if (height < MIN_CROP) {
+    height = Math.min(maxHeight, MIN_CROP);
+    width = height * normalizedRatio;
+  }
+
+  if (width < MIN_CROP) {
+    width = Math.min(maxWidth, MIN_CROP);
+    height = width / normalizedRatio;
+  }
+
+  return normalizeCrop({ x, y, width, height });
+}
+
 export function cropFromPixelSize(params: {
   crop: CropRect;
   height: number;

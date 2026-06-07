@@ -12,9 +12,11 @@ import {
 } from './project-schema';
 import type {
   GraphProject,
+  LocationRecord,
   PresetRecord,
   ProductionNode,
   ProductionNodeData,
+  SubjectRecord,
 } from './types';
 
 export function createProjectSnapshotExport(project: GraphProject, uiState: ProjectUiState) {
@@ -81,6 +83,9 @@ function createPipelineTemplateProject(project: GraphProject): PipelineTemplateE
     nodes: project.nodes.map(toPipelineTemplateNode),
     assets: [],
     presets: project.presets.map(toPipelineTemplatePreset),
+    subjects: project.subjects.map(toPipelineTemplateSubject),
+    locations: project.locations.map(toPipelineTemplateLocation),
+    publications: [],
     runs: [],
     selectedNodeIds: [],
     selectedSectionIds: [],
@@ -99,9 +104,13 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   const data = { ...node.data } as Record<string, unknown>;
 
   delete data.assetId;
+  delete data.activeIndex;
   delete data.activeResultIndex;
   delete data.activeItemIndex;
+  delete data.activeImageAssetId;
+  delete data.activeText;
   delete data.items;
+  delete data.imageCount;
   delete data.result;
   delete data.resultAssetId;
   delete data.resultAssetIds;
@@ -110,9 +119,11 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.sourceAssetId;
   delete data.sourceAspectRatio;
   delete data.sourceText;
+  delete data.textCount;
   delete data.cropStateVersion;
   delete data.maskDataUrl;
   delete data.message;
+  delete data.libraryImageAssetIds;
 
   if (node.type === 'generateImage' || node.type === 'refineImage') {
     data.activeResultIndex = -1;
@@ -125,6 +136,22 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
 function toPipelineTemplatePreset(preset: PresetRecord): PresetRecord {
   const { sourceAssetId: _sourceAssetId, ...nextPreset } = preset;
   return nextPreset;
+}
+
+function toPipelineTemplateSubject(subject: SubjectRecord): SubjectRecord {
+  return {
+    ...subject,
+    imageAssetIds: [],
+    sourceNodeId: undefined,
+  };
+}
+
+function toPipelineTemplateLocation(location: LocationRecord): LocationRecord {
+  return {
+    ...location,
+    imageAssetIds: [],
+    sourceNodeId: undefined,
+  };
 }
 
 function normalizeAssetsManifest(value: unknown, project: GraphProject): AssetManifestItem[] {
