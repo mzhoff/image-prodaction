@@ -1,4 +1,5 @@
 import { ProductionCanvas } from '@/widgets/production-canvas/ui/production-canvas';
+import { AuthPanel } from '@/features/auth/ui/auth-panel';
 
 export function ProductionEditorPage() {
   return (
@@ -15,6 +16,7 @@ export function ProductionEditorPage() {
           <span>Local graph</span>
           <strong>IndexedDB assets</strong>
         </div>
+        <AuthPanel />
       </header>
       <ProductionCanvas />
     </main>

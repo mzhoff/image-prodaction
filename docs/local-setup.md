@@ -4,6 +4,7 @@
 
 - Node.js `>=20.9.0`; local development currently uses Node `24`.
 - npm `>=10`.
+- Docker with Docker Compose for local PostgreSQL.
 - OpenRouter account and API key for real model calls.
 
 If you use `nvm`:
@@ -32,13 +33,36 @@ Fill `.env.local`:
 OPENROUTER_API_KEY=your_openrouter_key_here
 OPENROUTER_SITE_URL=http://localhost:3004
 OPENROUTER_APP_NAME=Reverie Image Production Pipeline
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/image_prodaction
+BETTER_AUTH_URL=http://localhost:3004
+BETTER_AUTH_SECRET=generated_secret_here
 ```
 
-`OPENROUTER_API_KEY` is the only required secret. It is used only in Next.js API routes, not in browser code.
+Generate a local Better Auth secret with:
+
+```bash
+openssl rand -base64 32
+```
+
+`OPENROUTER_API_KEY` and `BETTER_AUTH_SECRET` are required secrets. They are used only in Next.js API routes, not in browser code.
 
 `OPENROUTER_SITE_URL` and `OPENROUTER_APP_NAME` are metadata headers sent to OpenRouter. If you run the app on another port, update `OPENROUTER_SITE_URL`.
 
 Never commit `.env.local`.
+
+## Database
+
+Start PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+Apply Drizzle migrations:
+
+```bash
+npm run db:migrate
+```
 
 ## Run
 
@@ -67,4 +91,4 @@ npm run build
 
 - Graph metadata is persisted in browser storage through Zustand.
 - Image assets are stored locally in IndexedDB.
-- There is no backend database, auth or S3/MinIO in the current MVP.
+- Authentication data is stored in local PostgreSQL through Better Auth and Drizzle.

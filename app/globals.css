@@ -1,4 +1,5 @@
 @import "../src/app/styles/base.css";
+@import "../src/app/styles/auth.css";
 @import "../src/app/styles/canvas.css";
 @import "../src/app/styles/canvas-section.css";
 @import "../src/app/styles/crop-node.css";
