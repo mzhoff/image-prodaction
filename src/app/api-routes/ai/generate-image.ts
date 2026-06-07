@@ -10,6 +10,13 @@ import type { GenerateReferenceSlot } from '@/entities/production-graph/model/ge
 import { composeGenerationPrompt, composeReferenceImageInstruction } from '@/entities/production-graph/model/generate-prompt-builder';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
+import {
+  extractOpenRouterImageUrl,
+  extractOpenRouterMessageText,
+  missingOpenRouterImageErrorWithContext,
+  normalizeOpenRouterImageUrl,
+  summarizeOpenRouterImageMessage,
+} from './openrouter-image-result';
 
 export const runtime = 'nodejs';
 
@@ -45,6 +52,8 @@ const generateImageSchema = z.object({
   aspectRatio: z.string().min(1).default('1:1'),
   size: z.string().min(1).default('1K'),
   inputs: structuredInputsSchema.default(emptyStructuredInputs),
+  subjectInputs: z.array(z.string().min(1)).default([]),
+  locationInputs: z.array(z.string().min(1)).default([]),
   referenceImages: z.array(z.object({
     dataUrl: z.string().min(1),
     sourceAssetId: z.string().optional(),
@@ -57,12 +66,19 @@ const referenceSlotIds = new Set<string>(['reference', ...productionLayers.map((
 const productionNodeTypes = new Set<string>([
   'importImage',
   'textPrompt',
+  'textConcat',
+  'textGeneration',
+  'textSplitter',
+  'subjectBuilder',
+  'locationBuilder',
   'imageToText',
   'referenceComposer',
   'generateImage',
   'sketch',
   'cropImage',
   'adjustment',
+  'curves',
+  'frequencyRetouch',
   'refineImage',
   'removeBackground',
   'exportImage',
@@ -77,8 +93,10 @@ export async function POST(request: Request) {
 
   const hasPrompt = parsed.data.prompt.trim().length > 0;
   const hasStructuredText = Object.values(parsed.data.inputs).some((items) => items.length > 0);
+  const hasSubjects = parsed.data.subjectInputs.some((item) => item.trim().length > 0);
+  const hasLocations = parsed.data.locationInputs.some((item) => item.trim().length > 0);
   const hasImages = parsed.data.referenceImages.length > 0;
-  if (!hasPrompt && !hasStructuredText && !hasImages) {
+  if (!hasPrompt && !hasStructuredText && !hasSubjects && !hasLocations && !hasImages) {
     return Response.json({ error: 'Add a prompt or connect at least one reference.' }, { status: 400 });
   }
 
@@ -104,9 +122,11 @@ export async function POST(request: Request) {
     const prompt = composeGenerationPrompt({
       aspectRatio: parsed.data.aspectRatio,
       inputs: parsed.data.inputs,
+      locationInputs: parsed.data.locationInputs,
       prompt: parsed.data.prompt,
       referenceImages,
       size: parsed.data.size,
+      subjectInputs: parsed.data.subjectInputs,
     });
     const content: Array<OpenRouterMessageContentText | OpenRouterMessageContentImage> = [
       { type: 'text', text: prompt },
@@ -116,6 +136,14 @@ export async function POST(request: Request) {
       ]),
     ];
 
+    console.info('[openrouter:image:generate] request', {
+      aspectRatio: parsed.data.aspectRatio,
+      model: parsed.data.model,
+      locationCount: parsed.data.locationInputs.length,
+      referenceCount: referenceImages.length,
+      size: parsed.data.size,
+      subjectCount: parsed.data.subjectInputs.length,
+    });
     const result = await sendOpenRouterChat({
       model: parsed.data.model,
       messages: [
@@ -132,10 +160,23 @@ export async function POST(request: Request) {
     });
 
     const message = result.choices?.[0]?.message;
-    const imageUrl = extractImageUrl(message);
+    const responseSummary = summarizeOpenRouterImageMessage(message);
+    console.info('[openrouter:image:generate] response', {
+      ...responseSummary,
+      model: parsed.data.model,
+    });
+    const imageUrl = extractOpenRouterImageUrl(message);
+    if (!imageUrl) {
+      console.warn('[openrouter:image:generate] missing image payload', {
+        ...responseSummary,
+        model: parsed.data.model,
+      });
+      return Response.json({ error: missingOpenRouterImageErrorWithContext('OpenRouter generation', message) }, { status: 502 });
+    }
+
     return Response.json({
-      imageDataUrl: imageUrl ? await normalizeImageUrl(imageUrl) : null,
-      message: typeof message?.content === 'string' ? message.content : '',
+      imageDataUrl: await normalizeOpenRouterImageUrl(imageUrl),
+      message: extractOpenRouterMessageText(message),
       provider: 'openrouter',
     });
   } catch (error) {
@@ -151,26 +192,4 @@ function isGenerateReferenceSlot(value: unknown) {
 
 function isProductionNodeType(value: unknown) {
   return typeof value === 'string' && productionNodeTypes.has(value);
-}
-
-function extractImageUrl(message?: {
-  content?: string;
-  images?: Array<{
-    type?: string;
-    image_url?: {
-      url?: string;
-    };
-  }>;
-}) {
-  return message?.images?.find((image) => image.image_url?.url)?.image_url?.url ?? null;
-}
-
-async function normalizeImageUrl(url: string) {
-  if (url.startsWith('data:')) return url;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`OpenRouter image download failed: ${response.status}`);
-  const contentType = response.headers.get('content-type') ?? 'image/png';
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return `data:${contentType};base64,${buffer.toString('base64')}`;
 }

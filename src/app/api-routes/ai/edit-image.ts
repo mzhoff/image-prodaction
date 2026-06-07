@@ -2,6 +2,13 @@ import { z } from 'zod';
 import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterChat } from '@/shared/api/openrouter';
 import type { OpenRouterMessageContentImage, OpenRouterMessageContentText } from '@/shared/api/openrouter';
 import { DEFAULT_IMAGE_MODEL, getImageModelConfig, PREFERRED_IMAGE_MODEL_IDS } from '@/shared/api/openrouter-models';
+import {
+  extractOpenRouterImageUrl,
+  extractOpenRouterMessageText,
+  missingOpenRouterImageError,
+  normalizeOpenRouterImageUrl,
+  summarizeOpenRouterImageMessage,
+} from './openrouter-image-result';
 
 export const runtime = 'nodejs';
 
@@ -46,6 +53,11 @@ export async function POST(request: Request) {
       { type: 'image_url', image_url: { url: parsed.data.maskDataUrl } },
     ];
 
+    console.info('[openrouter:image:edit] request', {
+      aspectRatio: parsed.data.aspectRatio,
+      model: parsed.data.model,
+      size: parsed.data.size,
+    });
     const result = await sendOpenRouterChat({
       model: parsed.data.model,
       messages: [{ role: 'user', content }],
@@ -57,10 +69,23 @@ export async function POST(request: Request) {
     });
 
     const message = result.choices?.[0]?.message;
-    const imageUrl = extractImageUrl(message);
+    const responseSummary = summarizeOpenRouterImageMessage(message);
+    console.info('[openrouter:image:edit] response', {
+      ...responseSummary,
+      model: parsed.data.model,
+    });
+    const imageUrl = extractOpenRouterImageUrl(message);
+    if (!imageUrl) {
+      console.warn('[openrouter:image:edit] missing image payload', {
+        ...responseSummary,
+        model: parsed.data.model,
+      });
+      return Response.json({ error: missingOpenRouterImageError('OpenRouter image edit') }, { status: 502 });
+    }
+
     return Response.json({
-      imageDataUrl: imageUrl ? await normalizeImageUrl(imageUrl) : null,
-      message: typeof message?.content === 'string' ? message.content : '',
+      imageDataUrl: await normalizeOpenRouterImageUrl(imageUrl),
+      message: extractOpenRouterMessageText(message),
       provider: 'openrouter',
     });
   } catch (error) {
@@ -90,26 +115,4 @@ function composeEditPrompt(userPrompt: string) {
     'User edit instruction:',
     userPrompt,
   ].join('\n');
-}
-
-function extractImageUrl(message?: {
-  content?: string;
-  images?: Array<{
-    type?: string;
-    image_url?: {
-      url?: string;
-    };
-  }>;
-}) {
-  return message?.images?.find((image) => image.image_url?.url)?.image_url?.url ?? null;
-}
-
-async function normalizeImageUrl(url: string) {
-  if (url.startsWith('data:')) return url;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`OpenRouter image download failed: ${response.status}`);
-  const contentType = response.headers.get('content-type') ?? 'image/png';
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return `data:${contentType};base64,${buffer.toString('base64')}`;
 }

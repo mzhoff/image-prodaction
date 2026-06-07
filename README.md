@@ -32,6 +32,7 @@ The local `.env.local` file is ignored by git and must not be committed.
 - [MVP risks and open questions](./docs/mvp-risks-and-questions.md)
 - [Phase 2 plan](./docs/phase-2-plan.md)
 - [Phase 3 plan](./docs/phase-3-plan.md)
+- [Phase 4 plan](./docs/phase-4-plan.md)
 
 ## Useful Scripts
 

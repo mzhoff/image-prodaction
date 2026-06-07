@@ -1,7 +1,7 @@
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
 import { getBezierPath, getEdgePath, type PortPointLookup } from '../lib/edge-path';
-import { getEdgeDataKind } from '../lib/edge-kind';
+import { getEdgeDataKind, getEdgeHasData } from '../lib/edge-kind';
 import type { ConnectionDraft } from '../model/use-connection-draft';
 
 interface CanvasEdgesProps {
@@ -27,26 +27,54 @@ export function CanvasEdges({
         const path = getEdgePath(edge, nodesById, { collapsedGenerateComposingNodeIds, measuredPortPoints });
         if (!path) return null;
         const edgeDataKind = getEdgeDataKind(edge, nodesById);
+        const edgeHasData = getEdgeHasData(edge, nodesById);
         return (
           <path
             key={edge.id}
             d={path}
-            className={`edge-path ${edgeDataKind === 'text' ? 'edge-path-text' : 'edge-path-image'}`}
+            className={`edge-path ${getEdgeKindClass(edgeDataKind)} ${edgeHasData ? 'edge-path-has-data' : 'edge-path-empty'}`}
           />
         );
       })}
       {connectionDraft ? (
         <path
-          d={getBezierPath(connectionDraft.start, connectionDraft.current)}
-          className={`edge-path edge-path-draft ${getDraftKind(connectionDraft, nodesById) === 'text' ? 'edge-path-text' : 'edge-path-image'}`}
+          d={getDraftPath(connectionDraft)}
+          className={`edge-path edge-path-draft ${getEdgeKindClass(getDraftKind(connectionDraft, nodesById))}`}
         />
       ) : null}
     </svg>
   );
 }
 
+function getDraftPath(connectionDraft: ConnectionDraft) {
+  if (connectionDraft.startSide === 'input' && !connectionDraft.sourceNodeId) {
+    return getBezierPath(connectionDraft.current, connectionDraft.start);
+  }
+  return getBezierPath(connectionDraft.start, connectionDraft.current);
+}
+
 function getDraftKind(connectionDraft: ConnectionDraft, nodesById: Map<string, ProductionNode>) {
+  if (connectionDraft.kind) {
+    if (connectionDraft.kind === 'subject') return 'subject';
+    if (connectionDraft.kind === 'location') return 'location';
+    if (connectionDraft.kind === 'publication') return 'publication';
+    if (connectionDraft.kind === 'image') return 'image';
+    return 'text';
+  }
+  if (!connectionDraft.sourceNodeId || !connectionDraft.sourcePortId) return 'text';
   const source = nodesById.get(connectionDraft.sourceNodeId);
   const sourcePort = source ? getPortById(source, connectionDraft.sourcePortId) : undefined;
-  return sourcePort?.kind === 'image' ? 'image' : 'text';
+  if (sourcePort?.kind === 'subject') return 'subject';
+  if (sourcePort?.kind === 'location') return 'location';
+  if (sourcePort?.kind === 'publication') return 'publication';
+  if (sourcePort?.kind === 'image') return 'image';
+  return 'text';
+}
+
+function getEdgeKindClass(kind: string) {
+  if (kind === 'image') return 'edge-path-image';
+  if (kind === 'subject') return 'edge-path-subject';
+  if (kind === 'location') return 'edge-path-location';
+  if (kind === 'publication') return 'edge-path-publication';
+  return 'edge-path-text';
 }

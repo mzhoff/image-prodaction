@@ -3,21 +3,31 @@
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { ReactNode } from 'react';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
+import { getPortTop } from '@/entities/production-graph/model/node-port-layout';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import { AdjustmentNode } from './nodes/adjustment-node';
 import { CropNode } from './nodes/crop-node';
+import { CurvesNode } from './nodes/curves-node';
 import { ExportImageNode } from './nodes/export-image-node';
+import { FrequencyRetouchNode } from './nodes/frequency-retouch-node';
 import { GenerateImageNode } from './nodes/generate-image-node';
 import { ImageToTextNode } from './nodes/image-to-text-node';
 import { ImportImageNode } from './nodes/import-image-node';
+import { IteratorNode } from './nodes/iterator-node';
+import { LocationBuilderNode } from './nodes/location-builder-node';
 import { PreviewNode } from './nodes/preview-node';
 import { RefineImageNode } from './nodes/refine-image-node';
 import { ReferenceComposerNode } from './nodes/reference-composer-node';
 import { RemoveBackgroundNode } from './nodes/remove-background-node';
 import { SketchNode } from './nodes/sketch-node';
+import { SubjectBuilderNode } from './nodes/subject-builder-node';
+import { TelegramPublicationNode } from './nodes/telegram-publication-node';
+import { TextConcatNode } from './nodes/text-concat-node';
+import { TextGenerationNode } from './nodes/text-generation-node';
 import { TextPromptNode } from './nodes/text-prompt-node';
-import { getPortTop } from './port-button';
+import { TextSplitterNode } from './nodes/text-splitter-node';
+import { PortButton } from './port-button';
 
 interface NodeCardProps {
   node: ProductionNode;
@@ -34,11 +44,20 @@ type NodeRenderer = (props: NodeCardProps) => ReactNode;
 const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
   importImage: ({ node }) => <ImportImageNode node={node} />,
   textPrompt: ({ node, onStartConnection }) => <TextPromptNode node={node} onStartConnection={onStartConnection} />,
+  textConcat: ({ node, onStartConnection }) => <TextConcatNode node={node} onStartConnection={onStartConnection} />,
+  textGeneration: ({ node, onStartConnection }) => <TextGenerationNode node={node} onStartConnection={onStartConnection} />,
+  textSplitter: ({ node, onStartConnection }) => <TextSplitterNode node={node} onStartConnection={onStartConnection} />,
+  iterator: ({ node, onStartConnection }) => <IteratorNode node={node} onStartConnection={onStartConnection} />,
+  subjectBuilder: ({ node, onStartConnection }) => <SubjectBuilderNode node={node} onStartConnection={onStartConnection} />,
+  locationBuilder: ({ node, onStartConnection }) => <LocationBuilderNode node={node} onStartConnection={onStartConnection} />,
+  telegramPublication: ({ node, onStartConnection }) => <TelegramPublicationNode node={node} onStartConnection={onStartConnection} />,
   imageToText: ({ node, onStartConnection }) => <ImageToTextNode node={node} onStartConnection={onStartConnection} />,
   referenceComposer: ({ node }) => <ReferenceComposerNode node={node} />,
   sketch: ({ node }) => <SketchNode node={node} />,
   cropImage: ({ node }) => <CropNode node={node} />,
   adjustment: ({ node }) => <AdjustmentNode node={node} />,
+  curves: ({ node }) => <CurvesNode node={node} />,
+  frequencyRetouch: ({ node }) => <FrequencyRetouchNode node={node} />,
   refineImage: ({ node }) => <RefineImageNode node={node} />,
   removeBackground: ({ node }) => <RemoveBackgroundNode node={node} />,
   generateImage: ({ node, generateComposingOpen = true, onGenerateComposingOpenChange, onStartConnection }) => (
@@ -67,14 +86,25 @@ export function NodeCard({
   const visiblePorts = ports.filter((port) => {
     if (node.type === 'generateImage' && port.side === 'input') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
-    if (node.type === 'textPrompt' && port.id === 'text') return false;
+    if (node.type === 'textPrompt') return false;
+    if (node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textSplitter' || node.type === 'iterator' || node.type === 'subjectBuilder' || node.type === 'locationBuilder' || node.type === 'telegramPublication') return false;
     return true;
   });
 
   return (
     <article
       data-node-id={node.id}
-      className={cn('production-node', selected && 'production-node-selected')}
+      className={cn(
+        'production-node',
+        `production-node-${node.type}`,
+        (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textSplitter' || node.type === 'iterator') && 'production-node-text-workflow',
+        node.type === 'iterator' && 'production-node-iterator-workflow',
+        node.type === 'subjectBuilder' && 'production-node-text-workflow production-node-subject-workflow',
+        node.type === 'locationBuilder' && 'production-node-text-workflow production-node-location-workflow',
+        node.type === 'telegramPublication' && 'production-node-text-workflow production-node-publication-workflow',
+        node.locked && 'production-node-locked',
+        selected && 'production-node-selected',
+      )}
       style={{ left: node.position.x, top: node.position.y, width: node.size.width }}
       onPointerDown={(event) => onStartDrag(node, event)}
       onContextMenu={(event) => onContextMenu(node, event)}
@@ -82,17 +112,15 @@ export function NodeCard({
       {visiblePorts.map((port) => {
         const sideIndex = ports.filter((item) => item.side === port.side).findIndex((item) => item.id === port.id);
         return (
-          <button
+          <PortButton
             key={`${port.side}:${port.id}`}
-            type="button"
-            className={cn('node-port', `node-port-${port.side}`, `node-port-${port.kind}`)}
+            nodeId={node.id}
+            portId={port.id}
+            side={port.side}
+            kind={port.kind}
+            label={port.label}
             style={{ top: getPortTop(node, port.side, sideIndex) }}
-            data-port-node-id={node.id}
-            data-port-id={port.id}
-            data-port-side={port.side}
-            aria-label={`${port.label} ${port.side}`}
-            title={`${port.label} (${port.kind})`}
-            onPointerDown={(event) => onStartConnection(node.id, port.id, event)}
+            onStartConnection={onStartConnection}
           />
         );
       })}

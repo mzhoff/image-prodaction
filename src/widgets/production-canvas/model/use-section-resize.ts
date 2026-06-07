@@ -24,6 +24,7 @@ interface UseSectionResizeParams {
 export function useSectionResize({ pushHistory, resizeSection, screenToWorld }: UseSectionResizeParams) {
   return useCallback((section: GraphSection, handle: SectionResizeHandle, event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
+    if (section.locked) return;
 
     const startPoint = screenToWorld(event.nativeEvent);
     if (!startPoint) return;

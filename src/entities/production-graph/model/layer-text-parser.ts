@@ -1,5 +1,6 @@
 import { productionLayers } from './production-layers';
 import type { ProductionLayerId } from './production-layers';
+import { getFilteredTextSectionText, parseTextSectionFilters, parseTextSectionSegments } from './text-section-filters';
 
 export interface ParsedLayerSection {
   layerId: ProductionLayerId;
@@ -7,32 +8,29 @@ export interface ParsedLayerSection {
   text: string;
 }
 
-const headerPattern = /^\s*\[([^\]]+)]\s*$/gim;
+export interface LayerTextSegment {
+  header?: string;
+  layerId?: ProductionLayerId;
+  label?: string;
+  text: string;
+  type: 'layer' | 'plain';
+}
+
 const ignoredHeaders = new Set(['selected layers', 'reference exclusions', 'global negative constraints', 'routing']);
 const aliases = buildAliases();
+export const productionLayerTextSectionParseOptions = {
+  cleanupSectionText: cleanupLayerText,
+  resolveSectionId: getLayerIdFromHeader,
+};
 
 export function parseLayerSections(value?: string) {
-  if (!value?.trim()) return [];
-
-  const matches = Array.from(value.matchAll(headerPattern));
-  const sections: ParsedLayerSection[] = [];
-  for (let index = 0; index < matches.length; index += 1) {
-    const match = matches[index];
-    const rawHeader = match[1] ?? '';
-    const layerId = getLayerIdFromHeader(rawHeader);
-    if (!layerId || match.index === undefined) continue;
-
-    const nextMatch = matches[index + 1];
-    const start = match.index + match[0].length;
-    const end = nextMatch?.index ?? value.length;
-    const text = cleanupLayerText(value.slice(start, end));
-    if (!text) continue;
-
-    const layer = productionLayers.find((item) => item.id === layerId);
-    sections.push({ layerId, label: layer?.label ?? layerId, text });
-  }
-
-  return sections;
+  return parseTextSectionFilters(value, productionLayerTextSectionParseOptions)
+    .filter((section) => section.text.trim().length > 0)
+    .map((section) => ({
+      layerId: section.id as ProductionLayerId,
+      label: section.label,
+      text: section.text,
+    }));
 }
 
 export function getParsedLayerIds(value?: string) {
@@ -45,6 +43,39 @@ export function getLayerSectionText(value: string, layerId: ProductionLayerId) {
     .map((section) => section.text)
     .join('\n\n')
     .trim();
+}
+
+export function getFilteredLayerText(value: string | undefined, disabledLayerIds: string[] | undefined) {
+  return getFilteredTextSectionText(value, disabledLayerIds, productionLayerTextSectionParseOptions);
+}
+
+export function getParsedLayerSegments(value?: string) {
+  return parseLayerTextSegments(value);
+}
+
+export function isProductionLayerId(value: string): value is ProductionLayerId {
+  return productionLayers.some((layer) => layer.id === value);
+}
+
+export function normalizeProductionLayerIds(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is ProductionLayerId => typeof item === 'string' && isProductionLayerId(item)) : [];
+}
+
+function parseLayerTextSegments(value?: string): LayerTextSegment[] {
+  return parseTextSectionSegments(value, productionLayerTextSectionParseOptions).map((segment) => (
+    segment.type === 'section'
+      ? {
+        header: segment.header,
+        label: segment.label,
+        layerId: segment.id as ProductionLayerId,
+        text: segment.text,
+        type: 'layer',
+      }
+      : {
+        text: segment.text,
+        type: 'plain',
+      }
+  ));
 }
 
 function getLayerIdFromHeader(header: string) {

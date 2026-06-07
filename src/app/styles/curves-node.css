@@ -1,0 +1,179 @@
+.curves-editor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  user-select: none;
+}
+
+.curves-editor-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.curves-channel-tabs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.curves-channel-button,
+.curves-reset-button {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: #f0f0f0;
+  color: #5c5f6c;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 12px;
+}
+
+.curves-channel-button {
+  min-width: 36px;
+  padding: 0 10px;
+}
+
+.curves-reset-button {
+  width: 30px;
+  padding: 0;
+}
+
+.curves-channel-button:hover,
+.curves-reset-button:hover {
+  background: #e6e6e6;
+}
+
+.curves-channel-button-active {
+  background: #111;
+  color: #fff;
+}
+
+.curves-channel-button-active:hover {
+  background: #111;
+}
+
+.curves-channel-red.curves-channel-button-active {
+  background: #d93a3a;
+}
+
+.curves-channel-green.curves-channel-button-active {
+  background: #16a34a;
+}
+
+.curves-channel-blue.curves-channel-button-active {
+  background: #2458e6;
+}
+
+.curves-graph {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: visible;
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.curves-editor-node .curves-graph {
+  max-height: 280px;
+}
+
+.curves-editor-viewer {
+  width: min(100%, 680px);
+  margin: 0 auto;
+}
+
+.curves-editor-viewer .curves-graph {
+  max-height: 260px;
+}
+
+.curves-graph-bg {
+  fill: #151515;
+}
+
+.curves-grid-line {
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.curves-grid-line-mid {
+  stroke: rgba(255, 255, 255, 0.34);
+}
+
+.curves-diagonal {
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-dasharray: 5 5;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.curves-line {
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.24));
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.curves-graph-red .curves-line {
+  stroke: #ff5a5a;
+}
+
+.curves-graph-green .curves-line {
+  stroke: #32c96a;
+}
+
+.curves-graph-blue .curves-line {
+  stroke: #5d7cff;
+}
+
+.curves-point {
+  fill: #fff;
+  stroke: #111;
+  stroke-width: 1.5;
+  cursor: grab;
+  vector-effect: non-scaling-stroke;
+}
+
+.curves-point:active {
+  cursor: grabbing;
+}
+
+.curves-point-control {
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.24));
+}
+
+.curves-opacity-slider.range-slider-row {
+  grid-template-columns: 76px minmax(0, 1fr);
+  padding: 0;
+}
+
+.curves-editor-viewer .curves-opacity-slider.range-slider-row {
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+
+.curves-viewer-toolbar-label {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  background: #fff;
+  color: #5c5f6c;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 12px;
+}

@@ -3,17 +3,23 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import {
   clearCanvas,
-  drawCanvasSegment,
   getCanvasPoint,
   getPointerTool,
   hasAlphaPixels,
   hideBrushCursorElement,
-  updateBrushCursorElement,
 } from '@/shared/lib/canvas-drawing';
 import { cn } from '@/shared/lib/cn';
+import {
+  drawMaskSegment,
+  getMaskCanvasDataUrl,
+  loadMaskImage,
+  paintStoredMask,
+  updateMaskCursor,
+  type MaskTool,
+} from '../lib/image-mask-canvas';
 import { applyMaskEditorState, getMaskEditorState, type MaskHistoryEntry } from '../lib/mask-editor-state';
 
-export type MaskTool = 'brush' | 'eraser';
+export type { MaskTool } from '../lib/image-mask-canvas';
 
 export interface ImageMaskEditorHandle {
   canRedo: () => boolean;
@@ -30,7 +36,9 @@ interface ImageMaskEditorProps {
   className?: string;
   enabled: boolean;
   height: number;
+  initialMaskDataUrl?: string | null;
   onHistoryChange?: () => void;
+  onMaskChange?: (maskDataUrl: string | null) => void;
   onPreviewToolChange?: (tool: MaskTool | null) => void;
   tool: MaskTool;
   width: number;
@@ -43,7 +51,9 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   className,
   enabled,
   height,
+  initialMaskDataUrl,
   onHistoryChange,
+  onMaskChange,
   onPreviewToolChange,
   tool,
   width,
@@ -56,6 +66,8 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const maskApplyRunRef = useRef(0);
+  const knownMaskDataUrlRef = useRef<string | null>(initialMaskDataUrl ?? null);
   const redoStackRef = useRef<MaskHistoryEntry[]>([]);
   const undoStackRef = useRef<MaskHistoryEntry[]>([]);
 
@@ -72,8 +84,12 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     clearCanvas(visibleCanvas);
     undoStackRef.current = [];
     redoStackRef.current = [];
-    onHistoryChange?.();
-  }, [height, onHistoryChange, width]);
+    void applyInitialMaskDataUrl(initialMaskDataUrl ?? null, true);
+  }, [height, width]);
+
+  useEffect(() => {
+    void applyInitialMaskDataUrl(initialMaskDataUrl ?? null);
+  }, [initialMaskDataUrl]);
 
   useEffect(() => {
     if (!enabled) {
@@ -100,18 +116,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
       clearMask();
     },
     getMaskDataUrl: () => {
-      const maskCanvas = maskCanvasRef.current;
-      if (!maskCanvas || !hasAlphaPixels(maskCanvas)) return null;
-
-      const output = document.createElement('canvas');
-      output.width = maskCanvas.width;
-      output.height = maskCanvas.height;
-      const context = output.getContext('2d');
-      if (!context) return null;
-      context.fillStyle = '#000';
-      context.fillRect(0, 0, output.width, output.height);
-      context.drawImage(maskCanvas, 0, 0);
-      return output.toDataURL('image/png');
+      return getCurrentMaskDataUrl();
     },
     redo: () => {
       restoreNextMaskState();
@@ -123,6 +128,48 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
       restorePreviousMaskState();
     },
   }));
+
+  async function applyInitialMaskDataUrl(maskDataUrl: string | null, force = false) {
+    if (!force && knownMaskDataUrlRef.current === maskDataUrl) return;
+    knownMaskDataUrlRef.current = maskDataUrl;
+    const runId = maskApplyRunRef.current + 1;
+    maskApplyRunRef.current = runId;
+    const visibleCanvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!visibleCanvas || !maskCanvas) return;
+
+    clearCanvas(visibleCanvas);
+    clearCanvas(maskCanvas);
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+
+    if (!maskDataUrl) {
+      onHistoryChange?.();
+      return;
+    }
+
+    try {
+      const image = await loadMaskImage(maskDataUrl);
+      if (maskApplyRunRef.current !== runId) return;
+      paintStoredMask({ image, maskCanvas, visibleCanvas });
+      onHistoryChange?.();
+    } catch {
+      if (maskApplyRunRef.current !== runId) return;
+      clearCanvas(visibleCanvas);
+      clearCanvas(maskCanvas);
+      onHistoryChange?.();
+    }
+  }
+
+  function getCurrentMaskDataUrl() {
+    return getMaskCanvasDataUrl(maskCanvasRef.current);
+  }
+
+  function emitMaskChange() {
+    const maskDataUrl = getCurrentMaskDataUrl();
+    knownMaskDataUrlRef.current = maskDataUrl;
+    onMaskChange?.(maskDataUrl);
+  }
 
   const pushUndoState = () => {
     const visibleCanvas = canvasRef.current;
@@ -146,6 +193,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     clearCanvas(visibleCanvas);
     clearCanvas(maskCanvas);
     onHistoryChange?.();
+    emitMaskChange();
   };
 
   const resetMask = () => {
@@ -154,6 +202,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     undoStackRef.current = [];
     redoStackRef.current = [];
     onHistoryChange?.();
+    emitMaskChange();
   };
 
   const restorePreviousMaskState = () => {
@@ -165,6 +214,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     if (current) redoStackRef.current.push(current);
     applyMaskEditorState(visibleCanvas, maskCanvas, previous);
     onHistoryChange?.();
+    emitMaskChange();
   };
 
   const restoreNextMaskState = () => {
@@ -179,6 +229,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     }
     applyMaskEditorState(visibleCanvas, maskCanvas, next);
     onHistoryChange?.();
+    emitMaskChange();
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -230,6 +281,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     activeCanvasRef.current = null;
     activePointerIdRef.current = null;
     onPreviewToolChange?.(null);
+    emitMaskChange();
   };
 
   const stopDrawing = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -270,41 +322,3 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     </div>
   );
 });
-
-function drawMaskSegment({
-  brushSize,
-  canvas,
-  from,
-  mask,
-  to,
-  tool,
-}: {
-  brushSize: number;
-  canvas: HTMLCanvasElement;
-  from: { x: number; y: number };
-  mask?: boolean;
-  to: { x: number; y: number };
-  tool: MaskTool;
-}) {
-  drawCanvasSegment({
-    brushSize,
-    canvas,
-    color: mask ? '#fff' : 'rgba(31, 98, 255, 0.55)',
-    eraserCompositeOperation: 'destination-out',
-    from,
-    to,
-    tool,
-  });
-}
-
-function updateMaskCursor(
-  canvas: HTMLCanvasElement,
-  cursor: HTMLDivElement | null,
-  clientX: number,
-  clientY: number,
-  brushSize: number,
-  sourceWidth: number,
-  tool: MaskTool,
-) {
-  updateBrushCursorElement({ brushSize, canvas, clientX, clientY, cursor, sourceWidth, tool });
-}

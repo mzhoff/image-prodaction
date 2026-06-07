@@ -29,7 +29,8 @@ export function useNodeDrag({
     if (event.button !== 0) return;
 
     const target = event.target as HTMLElement;
-    if (target.closest('button,input,textarea,select,[data-port-id],[data-node-interactive]')) return;
+    if (target.closest('button,input,textarea,select,[data-port-id]')) return;
+    if (target.closest('[data-node-interactive]') && !target.closest('[data-node-drag-handle]')) return;
 
     const startPoint = screenToWorld(event.nativeEvent);
     if (!startPoint) return;
@@ -39,6 +40,7 @@ export function useNodeDrag({
 
     const alreadySelected = selectedSet.has(node.id);
     if (!alreadySelected) selectNode(node.id, event.shiftKey);
+    if (node.locked) return;
 
     const groupDrag = alreadySelected && selectedSet.size + selectedSectionSet.size > 1;
     const startPosition = node.position;

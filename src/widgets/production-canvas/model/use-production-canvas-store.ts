@@ -8,13 +8,20 @@ export function useProductionCanvasStore() {
   const nodes = useProductionGraphStore((state) => state.nodes);
   const sections = useProductionGraphStore((state) => state.sections);
   const edges = useProductionGraphStore((state) => state.edges);
+  const assets = useProductionGraphStore((state) => state.assets);
   const selectedNodeIds = useProductionGraphStore((state) => state.selectedNodeIds);
   const selectedSectionIds = useProductionGraphStore((state) => state.selectedSectionIds);
   const addNode = useProductionGraphStore((state) => state.addNode);
   const addSection = useProductionGraphStore((state) => state.addSection);
+  const compactDynamicInputSlots = useProductionGraphStore((state) => state.compactDynamicInputSlots);
+  const compactTextConcatInputs = useProductionGraphStore((state) => state.compactTextConcatInputs);
   const connect = useProductionGraphStore((state) => state.connect);
   const deleteEdge = useProductionGraphStore((state) => state.deleteEdge);
+  const deleteSection = useProductionGraphStore((state) => state.deleteSection);
   const deleteSelected = useProductionGraphStore((state) => state.deleteSelected);
+  const clearNodeGenerations = useProductionGraphStore((state) => state.clearNodeGenerations);
+  const duplicateNode = useProductionGraphStore((state) => state.duplicateNode);
+  const duplicateSection = useProductionGraphStore((state) => state.duplicateSection);
   const exportPipelineTemplate = useProductionGraphStore((state) => state.exportPipelineTemplate);
   const exportProjectSnapshot = useProductionGraphStore((state) => state.exportProjectSnapshot);
   const historyPastLength = useProductionGraphStore((state) => state.historyPast.length);
@@ -32,9 +39,13 @@ export function useProductionCanvasStore() {
   const selectNodesInRect = useProductionGraphStore((state) => state.selectNodesInRect);
   const selectSection = useProductionGraphStore((state) => state.selectSection);
   const renameSection = useProductionGraphStore((state) => state.renameSection);
+  const renameNode = useProductionGraphStore((state) => state.renameNode);
   const resizeSection = useProductionGraphStore((state) => state.resizeSection);
   const setNodeUiState = useProductionGraphStore((state) => state.setNodeUiState);
   const setProjectUiViewport = useProductionGraphStore((state) => state.setProjectUiViewport);
+  const setSectionColor = useProductionGraphStore((state) => state.setSectionColor);
+  const toggleSectionLock = useProductionGraphStore((state) => state.toggleSectionLock);
+  const toggleNodeLock = useProductionGraphStore((state) => state.toggleNodeLock);
   const undo = useProductionGraphStore((state) => state.undo);
   const uiState = useProductionGraphStore((state) => state.uiState);
   const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -45,10 +56,17 @@ export function useProductionCanvasStore() {
   return useMemo(() => ({
     addNode,
     addSection,
+    assets,
     bounds,
+    clearNodeGenerations,
+    compactDynamicInputSlots,
+    compactTextConcatInputs,
     connect,
     deleteEdge,
+    deleteSection,
     deleteSelected,
+    duplicateNode,
+    duplicateSection,
     edges,
     exportPipelineTemplate,
     exportProjectSnapshot,
@@ -66,6 +84,7 @@ export function useProductionCanvasStore() {
     redo,
     resetProject,
     renameSection,
+    renameNode,
     resizeSection,
     selectNode,
     selectSection,
@@ -74,16 +93,26 @@ export function useProductionCanvasStore() {
     selectNodesInRect,
     setNodeUiState,
     setProjectUiViewport,
+    setSectionColor,
     sections,
+    toggleSectionLock,
+    toggleNodeLock,
     uiState,
     undo,
   }), [
     addNode,
     addSection,
+    assets,
     bounds,
+    clearNodeGenerations,
+    compactDynamicInputSlots,
+    compactTextConcatInputs,
     connect,
     deleteEdge,
+    deleteSection,
     deleteSelected,
+    duplicateNode,
+    duplicateSection,
     edges,
     exportPipelineTemplate,
     exportProjectSnapshot,
@@ -101,6 +130,7 @@ export function useProductionCanvasStore() {
     redo,
     resetProject,
     renameSection,
+    renameNode,
     resizeSection,
     selectNode,
     selectSection,
@@ -109,7 +139,10 @@ export function useProductionCanvasStore() {
     selectNodesInRect,
     setNodeUiState,
     setProjectUiViewport,
+    setSectionColor,
     sections,
+    toggleSectionLock,
+    toggleNodeLock,
     uiState,
     undo,
   ]);

@@ -1,11 +1,13 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=all';
 const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
+const DEFAULT_OPENROUTER_TIMEOUT_MS = 180_000;
 
 interface OpenRouterFetchOptions extends RequestInit {
   next?: {
     revalidate?: number;
   };
+  timeoutMs?: number;
 }
 
 export class OpenRouterRequestError extends Error {
@@ -44,12 +46,17 @@ export interface OpenRouterImageConfig {
   image_size?: string;
 }
 
+export interface OpenRouterReasoningConfig {
+  effort?: 'low' | 'medium' | 'high';
+}
+
 export async function sendOpenRouterChat({
   model,
   messages,
   modalities,
   imageConfig,
   maxTokens,
+  reasoning,
   temperature,
 }: {
   model: string;
@@ -57,6 +64,7 @@ export async function sendOpenRouterChat({
   modalities?: Array<'text' | 'image'>;
   imageConfig?: OpenRouterImageConfig;
   maxTokens?: number;
+  reasoning?: OpenRouterReasoningConfig;
   temperature?: number;
 }) {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -78,6 +86,7 @@ export async function sendOpenRouterChat({
       modalities,
       image_config: imageConfig,
       max_tokens: maxTokens,
+      reasoning,
       temperature,
       stream: false,
     })),
@@ -108,6 +117,7 @@ export async function fetchOpenRouterModels() {
   const response = await fetchOpenRouter(OPENROUTER_MODELS_URL, {
     headers,
     next: { revalidate: 300 },
+    timeoutMs: 15_000,
   }, 'OpenRouter models request', 1);
 
   if (!response.ok) {
@@ -130,6 +140,7 @@ export async function fetchOpenRouterKey() {
       Authorization: `Bearer ${apiKey}`,
     },
     next: { revalidate: 60 },
+    timeoutMs: 15_000,
   }, 'OpenRouter balance request', 1);
 
   if (!response.ok) {
@@ -160,17 +171,37 @@ export function formatOpenRouterError(error: unknown, fallback: string) {
 
 async function fetchOpenRouter(url: string, options: OpenRouterFetchOptions, label: string, retries = 0) {
   let attempt = 0;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_OPENROUTER_TIMEOUT_MS;
+  const { timeoutMs: _timeoutMs, signal, ...fetchOptions } = options;
 
   while (true) {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    const abortFromOuterSignal = () => controller.abort(signal?.reason);
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+      } else {
+        signal.addEventListener('abort', abortFromOuterSignal, { once: true });
+      }
+    }
+
     try {
-      return await fetch(url, options);
+      return await fetch(url, { ...fetchOptions, signal: controller.signal });
     } catch (error) {
       if (attempt >= retries) {
-        const reason = error instanceof Error ? error.message : 'fetch failed';
+        const reason = timedOut ? `timed out after ${timeoutMs}ms` : error instanceof Error ? error.message : 'fetch failed';
         throw new OpenRouterRequestError(`${label} network error: ${reason}`, 503, 'network_error');
       }
       attempt += 1;
       await delay(400 * attempt);
+    } finally {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', abortFromOuterSignal);
     }
   }
 }

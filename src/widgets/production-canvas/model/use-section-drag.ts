@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { getRenderedNodeSize } from '@/entities/production-graph/model/graph-store-dom';
+import { getNodeIdsInsideSectionTree } from '@/entities/production-graph/model/graph-section-membership';
 import type { GraphPoint, GraphSection, ProductionNode } from '@/entities/production-graph/model/types';
 
 interface UseSectionDragParams {
@@ -15,6 +15,7 @@ interface UseSectionDragParams {
   selectSection: (sectionId: string, additive?: boolean) => void;
   selectedNodeSet: Set<string>;
   selectedSectionSet: Set<string>;
+  sections: GraphSection[];
 }
 
 export function useSectionDrag({
@@ -27,9 +28,11 @@ export function useSectionDrag({
   selectSection,
   selectedNodeSet,
   selectedSectionSet,
+  sections,
 }: UseSectionDragParams) {
   return useCallback((section: GraphSection, event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
+    if (section.locked) return;
 
     const target = event.target as HTMLElement;
     if (target.closest('input,button,textarea,select,[data-node-interactive]')) return;
@@ -45,7 +48,7 @@ export function useSectionDrag({
     if (!wasSelected) selectSection(section.id, event.shiftKey);
 
     const startClient = { x: event.clientX, y: event.clientY };
-    const containedNodeIds = getNodesInsideSection(section, nodes);
+    const containedNodeIds = getNodeIdsInsideSectionTree(section.id, sections, nodes);
     const shouldMoveSelectedItems = wasSelected && (selectedSectionSet.size + selectedNodeSet.size > 1);
     let didStartDrag = false;
     let previousPoint = startPoint;
@@ -96,27 +99,6 @@ export function useSectionDrag({
     selectSection,
     selectedNodeSet,
     selectedSectionSet,
+    sections,
   ]);
-}
-
-function getNodesInsideSection(section: GraphSection, nodes: ProductionNode[]) {
-  return nodes
-    .filter((node) => {
-      const size = getRenderedNodeSize(node);
-      return intersects(
-        section.position.x,
-        section.position.y,
-        section.size.width,
-        section.size.height,
-        node.position.x,
-        node.position.y,
-        size.width,
-        size.height,
-      );
-    })
-    .map((node) => node.id);
-}
-
-function intersects(ax: number, ay: number, aw: number, ah: number, bx: number, by: number, bw: number, bh: number) {
-  return ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by;
 }

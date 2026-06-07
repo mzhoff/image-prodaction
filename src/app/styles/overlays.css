@@ -7,7 +7,7 @@
 .context-menu {
   position: fixed;
   z-index: 9999;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
@@ -43,6 +43,32 @@
   opacity: 0.46;
 }
 
+.context-menu-color-item {
+  cursor: default;
+}
+
+.context-menu-color-item:hover {
+  background: transparent;
+}
+
+.context-menu-color-item input {
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0;
+}
+
+.context-menu-color-item input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.context-menu-color-item input::-webkit-color-swatch {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+}
+
 .context-menu-icon {
   display: grid;
   width: 16px;
@@ -62,6 +88,32 @@
 .context-menu-shortcut {
   color: #999;
   font-size: 11px;
+}
+
+.context-menu-submenu-wrap {
+  position: relative;
+}
+
+.context-menu-submenu-trigger {
+  padding-right: 7px;
+}
+
+.context-menu-submenu-chevron {
+  flex: 0 0 auto;
+  color: #8f8f8b;
+}
+
+.context-menu-submenu {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 8px);
+  display: none;
+  min-width: 220px;
+}
+
+.context-menu-submenu-wrap:hover > .context-menu-submenu,
+.context-menu-submenu-wrap:focus-within > .context-menu-submenu {
+  display: block;
 }
 
 .context-menu-separator {

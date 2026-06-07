@@ -77,11 +77,19 @@ export function usePortPointMeasurement({
     const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(container);
     container.querySelectorAll('[data-node-id]').forEach((element) => observer.observe(element));
+    const mutationObserver = new MutationObserver(scheduleMeasure);
+    mutationObserver.observe(container, {
+      attributeFilter: ['class', 'data-port-id', 'data-port-node-id', 'data-port-side', 'style'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
     scheduleMeasure();
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       observer.disconnect();
+      mutationObserver.disconnect();
     };
   }, [collapsedGenerateComposingNodeIds, containerRef, measurePortPoints, nodePortLayoutSignature]);
 
@@ -102,6 +110,10 @@ function getNodePortLayoutSignature(node: ProductionNode) {
     data.promptOpen,
     data.settingsOpen,
     data.referenceOpen,
+    data.inputCount,
+    data.mediaInputCount,
+    Array.isArray(data.variables) ? data.variables.length : '',
+    Array.isArray(data.items) ? data.items.length : '',
     data.resultAssetId,
   ].join(':');
 }

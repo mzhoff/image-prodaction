@@ -10,7 +10,7 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { cn } from '@/shared/lib/cn';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { ImageViewer } from './image-viewer';
-import type { MaskEditPayload } from './image-viewer-types';
+import type { ImageViewerEditorPanel, MaskEditPayload } from './image-viewer-types';
 
 interface ImagePlateProps {
   activeIndex?: number;
@@ -23,8 +23,11 @@ interface ImagePlateProps {
   mediaStyle?: CSSProperties;
   adaptive?: boolean;
   onActiveIndexChange?: (index: number) => void;
+  maskDataUrl?: string;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
+  onMaskChange?: (maskDataUrl: string | null) => void;
   sourceModel?: string;
+  viewerPanel?: ImageViewerEditorPanel;
 }
 
 export function ImagePlate({
@@ -35,10 +38,13 @@ export function ImagePlate({
   aspectRatio,
   compact,
   loading,
+  maskDataUrl,
   mediaStyle,
   onActiveIndexChange,
+  onMaskChange,
   onMaskEdit,
   sourceModel,
+  viewerPanel,
 }: ImagePlateProps) {
   const historyAssetIds = assetIds?.length ? assetIds : assetId ? [assetId] : [];
   const currentIndex = getSafeIndex(activeIndex, historyAssetIds.length);
@@ -161,14 +167,17 @@ export function ImagePlate({
           currentIndex={currentIndex}
           hasHistory={hasHistory}
           historyAssetIds={historyAssetIds}
+          maskDataUrl={maskDataUrl}
           assetMetadata={assetMetadata}
           onClose={() => setViewerOpen(false)}
+          onMaskChange={onMaskChange}
           onMaskEdit={onMaskEdit}
           onNext={showNext}
           onPrevious={showPrevious}
           onSelectVersion={changeVersion}
           sourceModel={sourceModel}
           url={url}
+          viewerPanel={viewerPanel}
         />,
         document.body,
       ) : null}

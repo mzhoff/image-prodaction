@@ -31,10 +31,10 @@ export function validateGenerateImageReferenceLimit(params: {
       && `${edge.sourceNodeId}:${edge.sourcePortId}` === incomingImageKey
     ));
 
-    if (currentActorImageReferences >= 3 && !alreadyConnected) {
+    if (currentActorImageReferences >= MAX_GENERATE_IMAGE_REFERENCES && !alreadyConnected) {
       return {
         ok: false,
-        reason: 'В Actors можно подключить не больше 3 image reference. Для остальных деталей лучше использовать текстовые Extract-пресеты.',
+        reason: `В Actors можно подключить не больше ${MAX_GENERATE_IMAGE_REFERENCES} image reference. Для остальных деталей лучше использовать текстовые Extract-пресеты.`,
       };
     }
   }

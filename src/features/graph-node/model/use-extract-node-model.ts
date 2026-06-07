@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import type { ExtractPresetId, ImageToTextNodeData, ProductionNode } from '@/entities/production-graph/model/types';
+import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
+import { productionLayerTextSectionParseOptions } from '@/entities/production-graph/model/layer-text-parser';
 import {
   buildExtractPrompt,
   getExtractSelectionLabel,
@@ -15,6 +17,7 @@ import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 import { getSelectedModelId, modelSelectOptions } from '../lib/node-select-options';
+import { useTextSectionFilters } from './use-text-section-filters';
 
 export function useExtractNodeModel(node: ProductionNode) {
   const data = node.data as ImageToTextNodeData;
@@ -28,6 +31,13 @@ export function useExtractNodeModel(node: ProductionNode) {
   const { analysisModels, loading } = useOpenRouterModels();
   const selectedModel = getSelectedModelId(analysisModels, data.model, DEFAULT_ANALYSIS_MODEL);
   const selectedPresets = normalizeExtractPresetSelection(data.presets ?? data.preset);
+  const layerSectionFilters = useTextSectionFilters({
+    disabledFilterIds: data.disabledLayerIds,
+    onDisabledFilterIdsChange: (disabledLayerIds) => updateNodeData(node.id, { disabledLayerIds: disabledLayerIds as ProductionLayerId[] }),
+    parseOptions: productionLayerTextSectionParseOptions,
+    text: data.result,
+  });
+  const disabledLayerIds = layerSectionFilters.disabledFilterIds as ProductionLayerId[];
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [promptOpen, setPromptOpen] = useState(true);
   const [resultOpen, setResultOpen] = useState(true);
@@ -78,7 +88,9 @@ export function useExtractNodeModel(node: ProductionNode) {
   return {
     allSectionsOpen,
     data,
+    disabledLayerIds,
     handleAnalyze,
+    handleLayerToggle: (layerId: ProductionLayerId) => layerSectionFilters.toggleFilter(layerId),
     handleModelChange: (model: string) => updateNodeData(node.id, { model }),
     handlePresetChange,
     handlePromptChange: (prompt: string) => updateNodePrompt(node.id, prompt),

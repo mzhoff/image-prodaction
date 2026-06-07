@@ -79,6 +79,23 @@
   gap: 6px;
 }
 
+.image-editor-custom-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-editor-custom-panel {
+  min-width: 0;
+  padding: 4px 8px 0;
+  animation: image-editor-panel-enter 160ms ease;
+}
+
+.image-editor-panel-curves {
+  width: min(100%, 720px);
+}
+
 .image-editor-button,
 .image-editor-icon-button {
   display: inline-flex;

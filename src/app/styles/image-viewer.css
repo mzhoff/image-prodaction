@@ -88,6 +88,10 @@
   --image-viewer-panel-height: 202px;
 }
 
+.image-viewer-content-with-tools.image-viewer-content-with-local-mask {
+  --image-viewer-panel-height: 44px;
+}
+
 .image-viewer-viewport {
   order: 1;
   display: grid;

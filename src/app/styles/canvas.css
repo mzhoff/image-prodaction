@@ -36,21 +36,36 @@
 
 .edge-path {
   fill: none;
-  stroke: var(--blue);
   stroke-linecap: round;
   stroke-width: 3px;
 }
 
+.edge-path-image {
+  stroke: var(--blue);
+}
+
 .edge-path-text {
+  stroke: #16a34a;
+}
+
+.edge-path-subject {
+  stroke: #7c3aed;
+}
+
+.edge-path-location {
+  stroke: #0f766e;
+}
+
+.edge-path-publication {
+  stroke: #2aabee;
+}
+
+.edge-path-empty {
   stroke-dasharray: 8 7;
 }
 
 .edge-path-draft {
   opacity: 0.72;
-}
-
-.edge-path-draft.edge-path-text {
-  stroke-dasharray: 9 7;
 }
 
 .canvas-toolbar {

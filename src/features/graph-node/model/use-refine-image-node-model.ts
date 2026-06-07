@@ -50,6 +50,9 @@ export function useRefineImageNodeModel(node: ProductionNode) {
     getClosestAspectRatio(sourceAspectRatio, aspectRatios)
   ), [aspectRatios, sourceAspectRatio]);
   const generationHistory = useMemo(() => getGenerationHistory(data), [data]);
+  const activeResultAsset = useMemo(() => (
+    generationHistory.activeAssetId ? assets.find((asset) => asset.id === generationHistory.activeAssetId) : undefined
+  ), [assets, generationHistory.activeAssetId]);
 
   useEffect(() => {
     if (!sourceAsset) {
@@ -170,7 +173,9 @@ export function useRefineImageNodeModel(node: ProductionNode) {
     handleSizeChange: (size: string) => updateNodeData(node.id, { size }),
     loading,
     modelOptions: modelSelectOptions(imageModels),
+    outputSizeLabel: formatAssetSize(activeResultAsset),
     processing,
+    sourceSizeLabel: formatAssetSize(sourceAsset),
     selectedAspectRatio,
     selectedModel,
     selectedSize,
@@ -195,4 +200,8 @@ function getClosestAspectRatio(sourceAspectRatio: number | undefined, available:
 function aspectRatioValue(value: string) {
   const [width, height] = value.split(':').map(Number);
   return width > 0 && height > 0 ? width / height : null;
+}
+
+function formatAssetSize(asset?: { width?: number; height?: number }) {
+  return asset?.width && asset.height ? `${asset.width} × ${asset.height}px` : undefined;
 }

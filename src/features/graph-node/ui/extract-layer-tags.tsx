@@ -1,22 +1,23 @@
 'use client';
 
-import { parseLayerSections } from '@/entities/production-graph/model/layer-text-parser';
+import { productionLayerTextSectionParseOptions } from '@/entities/production-graph/model/layer-text-parser';
+import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
+import { TextSectionFilterTags } from './text-section-filter-tags';
 
 interface ExtractLayerTagsProps {
+  disabledLayerIds?: ProductionLayerId[];
+  onToggle?: (layerId: ProductionLayerId) => void;
   text?: string;
 }
 
-export function ExtractLayerTags({ text }: ExtractLayerTagsProps) {
-  const layers = Array.from(new Map(parseLayerSections(text).map((layer) => [layer.layerId, layer])).values());
-  if (layers.length === 0) return null;
-
+export function ExtractLayerTags({ disabledLayerIds = [], onToggle, text }: ExtractLayerTagsProps) {
   return (
-    <div className="extract-layer-tags" aria-label="Extracted layers">
-      {layers.map((layer) => (
-        <span className="extract-layer-tag" key={`${layer.layerId}-${layer.label}`}>
-          {layer.label}
-        </span>
-      ))}
-    </div>
+    <TextSectionFilterTags
+      className="extract-layer-tags"
+      disabledFilterIds={disabledLayerIds}
+      onToggle={(filterId) => onToggle?.(filterId as ProductionLayerId)}
+      parseOptions={productionLayerTextSectionParseOptions}
+      text={text}
+    />
   );
 }

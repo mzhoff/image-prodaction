@@ -1,5 +1,6 @@
 'use client';
 
+import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
@@ -50,9 +51,11 @@ export function ProductionCanvas() {
           <CanvasSectionLayer
             disabled={model.canvasTool === 'section'}
             onRenameSection={model.renameSection}
+            onSectionContextMenu={model.openSectionMenu}
             onSelectSection={model.selectSection}
             onStartDrag={model.startSectionDrag}
             onStartResize={model.startSectionResize}
+            sectionColorPreviews={model.sectionColorPreviews}
             sections={model.sections}
             selectedSectionSet={model.selectedSectionSet}
           />
@@ -80,6 +83,23 @@ export function ProductionCanvas() {
         {model.boxSelection.rectStyle ? <div className="selection-rect" style={model.boxSelection.rectStyle} /> : null}
         {model.sectionDraftStyle ? <div className="section-draft-rect" style={model.sectionDraftStyle} /> : null}
         <ContextMenu menu={model.contextMenu.menu} onClose={model.closeContextMenu} />
+        {model.imageViewer ? (
+          <ImageViewer
+            asset={model.imageViewer.asset}
+            assetId={model.imageViewer.assetId}
+            assetMetadata={model.imageViewer.assetMetadata}
+            busy={false}
+            currentIndex={model.imageViewer.currentIndex}
+            hasHistory={model.imageViewer.hasHistory}
+            historyAssetIds={model.imageViewer.historyAssetIds}
+            onClose={model.imageViewer.onClose}
+            onNext={model.imageViewer.onNext}
+            onPrevious={model.imageViewer.onPrevious}
+            onSelectVersion={model.imageViewer.onSelectVersion}
+            sourceModel={model.imageViewer.sourceModel}
+            url={model.imageViewer.url}
+          />
+        ) : null}
       </div>
     </div>
   );
