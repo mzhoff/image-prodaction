@@ -5,6 +5,11 @@ import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { getNextPipelineTitle } from '@/entities/production-graph/model/graph-pipelines';
+import {
+  createPipelineOnBackend,
+  deletePipelineFromBackend,
+  importPipelineOnBackend,
+} from '@/entities/production-graph/model/use-pipeline-backend-sync';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { readJsonFile } from '@/shared/lib/json-file';
 import { ProTooltip } from '@/shared/ui/pro-tooltip';
@@ -13,9 +18,7 @@ export function PipelineSwitcher() {
   const router = useRouter();
   const activePipelineId = useProductionGraphStore((state) => state.activePipelineId);
   const pipelines = useProductionGraphStore((state) => state.pipelines);
-  const createPipeline = useProductionGraphStore((state) => state.createPipeline);
   const deletePipeline = useProductionGraphStore((state) => state.deletePipeline);
-  const importPipeline = useProductionGraphStore((state) => state.importPipeline);
   const switchPipeline = useProductionGraphStore((state) => state.switchPipeline);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const activePipeline = pipelines.find((pipeline) => pipeline.id === activePipelineId);
@@ -24,7 +27,16 @@ export function PipelineSwitcher() {
     const fallbackTitle = getNextPipelineTitle(pipelines);
     const title = window.prompt('Pipeline name', fallbackTitle);
     if (title === null) return;
-    router.replace(getPipelineHref(createPipeline(title || fallbackTitle)), { scroll: false });
+    void createPipeline(title || fallbackTitle);
+  };
+
+  const createPipeline = async (title: string) => {
+    try {
+      const pipelineId = await createPipelineOnBackend(title);
+      router.replace(getPipelineHref(pipelineId), { scroll: false });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось создать pipeline.');
+    }
   };
 
   const handlePipelineChange = (pipelineId: string) => {
@@ -38,9 +50,18 @@ export function PipelineSwitcher() {
     const confirmed = window.confirm(`Delete "${activePipeline.title}" pipeline?`);
     if (!confirmed) return;
 
-    const result = deletePipeline(activePipeline.id);
-    if (!result.ok) window.alert(result.reason);
-    else router.replace(getPipelineHref(result.activePipelineId), { scroll: false });
+    void deleteActivePipeline(activePipeline.id);
+  };
+
+  const deleteActivePipeline = async (pipelineId: string) => {
+    try {
+      await deletePipelineFromBackend(pipelineId);
+      const result = deletePipeline(pipelineId);
+      if (!result.ok) window.alert(result.reason);
+      else router.replace(getPipelineHref(result.activePipelineId), { scroll: false });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось удалить pipeline.');
+    }
   };
 
   const handleJsonFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -53,7 +74,7 @@ export function PipelineSwitcher() {
 
   const importPipelineFile = async (file: File) => {
     try {
-      const result = importPipeline(await readJsonFile(file), createPipelineTitleFromFileName(file.name));
+      const result = await importPipelineOnBackend(await readJsonFile(file), createPipelineTitleFromFileName(file.name));
       router.replace(getPipelineHref(result.id), { scroll: false });
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Не удалось импортировать pipeline JSON.');

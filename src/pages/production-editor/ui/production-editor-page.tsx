@@ -1,5 +1,6 @@
 import { ProductionCanvas } from '@/widgets/production-canvas/ui/production-canvas';
 import { PipelineSwitcher } from '@/widgets/production-canvas/ui/pipeline-switcher';
+import { PipelineSyncStatus } from '@/widgets/production-canvas/ui/pipeline-sync-status';
 import { AuthPanel } from '@/features/auth/ui/auth-panel';
 import { PipelineRouteGate } from './pipeline-route-gate';
 
@@ -17,10 +18,7 @@ export function ProductionEditorPage() {
           </div>
           <div className="editor-header-actions">
             <PipelineSwitcher />
-            <div className="editor-status">
-              <span>Local graph</span>
-              <strong>IndexedDB assets</strong>
-            </div>
+            <PipelineSyncStatus />
             <AuthPanel />
           </div>
         </header>

@@ -1,8 +1,7 @@
-import { createUuidV7, isUuidV7 } from '@/shared/lib/id';
+import { isUuidV7 } from '@/shared/lib/id';
 import { initialProject } from './initial-project';
 import { normalizeProject } from './normalize-project';
 import {
-  createEmptyProjectUiState,
   normalizeProjectUiState,
   type PipelineRecord,
   type ProjectUiState,
@@ -28,17 +27,6 @@ interface PipelineSourceState extends GraphProject {
   activePipelineId: string;
   pipelines: PipelineRecord[];
   uiState: ProjectUiState;
-}
-
-export function createInitialPipeline(now = new Date().toISOString()): PipelineRecord {
-  return createPipelineRecord({
-    id: createUuidV7(),
-    title: DEFAULT_PIPELINE_TITLE,
-    project: initialProject,
-    uiState: createEmptyProjectUiState(),
-    createdAt: now,
-    updatedAt: now,
-  });
 }
 
 export function createPipelineRecord(options: {
@@ -123,8 +111,6 @@ export function createPipelineStatePatch(pipeline: PipelineRecord): PipelineStat
 export function normalizePipelineState(
   pipelinesValue: unknown,
   activePipelineIdValue: unknown,
-  fallbackProject: GraphProject,
-  fallbackUiState: ProjectUiState,
 ): PipelineStateSnapshot {
   const now = new Date().toISOString();
   const seenIds = new Set<string>();
@@ -134,23 +120,12 @@ export function normalizePipelineState(
     ? pipelinesValue.flatMap((value, index) => {
       const normalized = normalizePipelineRecord(value, index, now);
       if (!normalized) return [];
-      const id = seenIds.has(normalized.pipeline.id) ? createUuidV7() : normalized.pipeline.id;
-      seenIds.add(id);
-      if (!pipelineIdMap.has(normalized.sourceId)) pipelineIdMap.set(normalized.sourceId, id);
-      return id === normalized.pipeline.id ? [normalized.pipeline] : [{ ...normalized.pipeline, id }];
+      if (seenIds.has(normalized.pipeline.id)) return [];
+      seenIds.add(normalized.pipeline.id);
+      if (!pipelineIdMap.has(normalized.sourceId)) pipelineIdMap.set(normalized.sourceId, normalized.pipeline.id);
+      return [normalized.pipeline];
     })
     : [];
-
-  if (!hasStoredPipelineList && pipelines.length === 0) {
-    pipelines.push(createPipelineRecord({
-      id: createUuidV7(),
-      title: DEFAULT_PIPELINE_TITLE,
-      project: fallbackProject,
-      uiState: fallbackUiState,
-      createdAt: now,
-      updatedAt: now,
-    }));
-  }
 
   if (pipelines.length === 0) return { activePipeline: null, activePipelineId: '', pipelines };
 
@@ -195,6 +170,8 @@ function normalizePipelineRecord(value: unknown, index: number, now: string): { 
   const sourceId = typeof value.id === 'string' && value.id.trim()
     ? value.id.trim().toLowerCase()
     : `pipeline-${index + 1}`;
+  if (!isUuidV7(sourceId)) return null;
+
   return {
     sourceId,
     pipeline: createPipelineRecord({
@@ -217,7 +194,11 @@ function cloneProjectUiState(uiState: ProjectUiState, project: Pick<GraphProject
 }
 
 function normalizePipelineId(value: string) {
-  return isUuidV7(value) ? value.trim().toLowerCase() : createUuidV7();
+  if (!isUuidV7(value)) {
+    throw new Error('Pipeline id must be a UUIDv7.');
+  }
+
+  return value.trim().toLowerCase();
 }
 
 function normalizeIsoString(value: string | undefined, fallback: string) {

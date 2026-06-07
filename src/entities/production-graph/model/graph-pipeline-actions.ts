@@ -1,48 +1,48 @@
-import { createUuidV7 } from '@/shared/lib/id';
 import { createEmptyProjectUiState } from './project-schema';
-import { normalizePortableProjectExport } from './project-portability';
 import { initialProject } from './initial-project';
 import {
-  createPipelineRecord,
   createPipelineStatePatch,
-  getNextPipelineTitle,
   normalizePipelineTitle,
+  normalizePipelineState,
   saveActivePipeline,
-  uniquePipelineTitle,
 } from './graph-pipelines';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
-import type { GraphProject } from './types';
 
 export function createGraphPipelineActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
-  'createPipeline' | 'deletePipeline' | 'importPipeline' | 'switchPipeline'
+  | 'acknowledgePipelineSaved'
+  | 'addPipeline'
+  | 'deletePipeline'
+  | 'loadPipelines'
+  | 'setPipelineSyncState'
+  | 'switchPipeline'
 > {
   return {
-    createPipeline: (title) => {
+    acknowledgePipelineSaved: (savedPipeline) => {
+      set((state) => ({
+        pipelines: state.pipelines.map((pipeline) => (
+          pipeline.id === savedPipeline.id
+            ? {
+              ...pipeline,
+              title: normalizePipelineTitle(savedPipeline.name, pipeline.title),
+              createdAt: savedPipeline.createdAt,
+              updatedAt: savedPipeline.updatedAt,
+            }
+            : pipeline
+        )),
+      }));
+    },
+    addPipeline: (pipeline) => {
       const state = get();
       const now = new Date().toISOString();
-      const id = createUuidV7();
       const savedPipelines = saveActivePipeline(state, now);
-      const pipelineTitle = uniquePipelineTitle(
-        normalizePipelineTitle(title, getNextPipelineTitle(savedPipelines)),
-        savedPipelines,
-      );
-      const pipeline = createPipelineRecord({
-        id,
-        title: pipelineTitle,
-        project: initialProject,
-        uiState: createEmptyProjectUiState(),
-        createdAt: now,
-        updatedAt: now,
-      });
+      const nextPipelines = savedPipelines.filter((item) => item.id !== pipeline.id);
 
       set({
-        pipelines: [...savedPipelines, pipeline],
+        pipelines: [...nextPipelines, pipeline],
         ...createPipelineStatePatch(pipeline),
       });
-
-      return id;
     },
     switchPipeline: (pipelineId) => {
       const state = get();
@@ -95,30 +95,36 @@ export function createGraphPipelineActions(set: StoreSet, get: StoreGet): Pick<
 
       return { ok: true, activePipelineId: nextActivePipeline.id };
     },
-    importPipeline: (payload, title) => {
-      const imported = normalizePortableProjectExport(payload);
-      const state = get();
-      const now = new Date().toISOString();
-      const savedPipelines = saveActivePipeline(state, now);
-      const pipelineTitle = uniquePipelineTitle(
-        normalizePipelineTitle(title, imported.kind === 'pipelineTemplate' ? 'Imported template' : 'Imported project'),
-        savedPipelines,
+    loadPipelines: (pipelines, activePipelineId) => {
+      const pipelineState = normalizePipelineState(
+        pipelines,
+        activePipelineId,
       );
-      const pipeline = createPipelineRecord({
-        id: createUuidV7(),
-        title: pipelineTitle,
-        project: imported.project as GraphProject,
-        uiState: imported.uiState,
-        createdAt: now,
-        updatedAt: now,
-      });
+
+      if (!pipelineState.activePipeline) {
+        set({
+          ...initialProject,
+          activePipelineId: '',
+          historyPast: [],
+          historyFuture: [],
+          pipelines: [],
+          uiState: createEmptyProjectUiState(),
+        });
+        return;
+      }
 
       set({
-        pipelines: [...savedPipelines, pipeline],
-        ...createPipelineStatePatch(pipeline),
+        pipelines: pipelineState.pipelines,
+        ...createPipelineStatePatch(pipelineState.activePipeline),
       });
-
-      return { id: pipeline.id, kind: imported.kind, title: pipeline.title };
+    },
+    setPipelineSyncState: (syncState) => {
+      set((state) => ({
+        pipelineSync: {
+          ...state.pipelineSync,
+          ...syncState,
+        },
+      }));
     },
   };
 }

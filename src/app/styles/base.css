@@ -175,6 +175,64 @@ button {
   font-weight: 720;
 }
 
+.pipeline-index-header-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.pipeline-sync-status {
+  display: flex;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #cdd8d3;
+  border-radius: 999px;
+  background: #eff7f3;
+  color: var(--green);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 32px;
+  white-space: nowrap;
+}
+
+.pipeline-sync-status svg {
+  flex: 0 0 auto;
+}
+
+.pipeline-sync-status-loading,
+.pipeline-sync-status-syncing {
+  border-color: #d1d8e8;
+  background: #eef3ff;
+  color: #355499;
+}
+
+.pipeline-sync-status-pending {
+  border-color: #ded3b4;
+  background: #fff7df;
+  color: #806316;
+}
+
+.pipeline-sync-status-error {
+  border-color: #e1c3c3;
+  background: #fff0f0;
+  color: #9a3838;
+}
+
+.pipeline-sync-status-loading svg,
+.pipeline-sync-status-syncing svg {
+  animation: pipeline-sync-spin 1s linear infinite;
+}
+
+@keyframes pipeline-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .pipeline-switcher {
   display: flex;
   min-width: 0;
@@ -452,11 +510,13 @@ button {
     flex: 1 1 0;
   }
 
-  .editor-status {
+  .editor-status,
+  .pipeline-sync-status {
     display: none;
   }
 
-  .editor-header-actions {
+  .editor-header-actions,
+  .pipeline-index-header-actions {
     gap: 8px;
   }
 

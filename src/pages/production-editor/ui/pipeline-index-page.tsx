@@ -6,6 +6,13 @@ import { ArrowRight, Plus, Trash2, Upload } from 'lucide-react';
 import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { AuthPanel } from '@/features/auth/ui/auth-panel';
+import { PipelineSyncStatus } from '@/widgets/production-canvas/ui/pipeline-sync-status';
+import {
+  createPipelineOnBackend,
+  deletePipelineFromBackend,
+  importPipelineOnBackend,
+  usePipelineBackendSync,
+} from '@/entities/production-graph/model/use-pipeline-backend-sync';
 import { useProductionGraphHydrated } from '@/entities/production-graph/model/use-production-graph-hydrated';
 import { getNextPipelineTitle } from '@/entities/production-graph/model/graph-pipelines';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
@@ -15,24 +22,41 @@ import { ProTooltip } from '@/shared/ui/pro-tooltip';
 export function PipelineIndexPage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  usePipelineBackendSync();
   const hydrated = useProductionGraphHydrated();
   const pipelines = useProductionGraphStore((state) => state.pipelines);
-  const createPipeline = useProductionGraphStore((state) => state.createPipeline);
-  const deletePipeline = useProductionGraphStore((state) => state.deletePipeline);
-  const importPipeline = useProductionGraphStore((state) => state.importPipeline);
+  const deletePipelineAction = useProductionGraphStore((state) => state.deletePipeline);
 
   const handleCreate = () => {
     const fallbackTitle = getNextPipelineTitle(pipelines);
     const title = window.prompt('Pipeline name', fallbackTitle);
     if (title === null) return;
 
-    router.replace(getPipelineHref(createPipeline(title || fallbackTitle)));
+    void createPipeline(title || fallbackTitle);
+  };
+
+  const createPipeline = async (title: string) => {
+    try {
+      const pipelineId = await createPipelineOnBackend(title);
+      router.replace(getPipelineHref(pipelineId));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось создать pipeline.');
+    }
   };
 
   const handleDelete = (pipelineId: string, title: string) => {
     if (!window.confirm(`Delete "${title}" pipeline?`)) return;
-    const result = deletePipeline(pipelineId);
-    if (!result.ok) window.alert(result.reason);
+    void deletePipeline(pipelineId);
+  };
+
+  const deletePipeline = async (pipelineId: string) => {
+    try {
+      await deletePipelineFromBackend(pipelineId);
+      const result = deletePipelineAction(pipelineId);
+      if (!result.ok) window.alert(result.reason);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось удалить pipeline.');
+    }
   };
 
   const handleJsonFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +69,7 @@ export function PipelineIndexPage() {
 
   const importPipelineFile = async (file: File) => {
     try {
-      const result = importPipeline(await readJsonFile(file), createPipelineTitleFromFileName(file.name));
+      const result = await importPipelineOnBackend(await readJsonFile(file), createPipelineTitleFromFileName(file.name));
       router.replace(getPipelineHref(result.id));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Не удалось импортировать pipeline JSON.');
@@ -59,23 +83,26 @@ export function PipelineIndexPage() {
           <span className="editor-brand-mark">R</span>
           <div>
             <h1>Reverie Image Production</h1>
-            <p>Local pipelines</p>
+            <p>Backend pipelines</p>
           </div>
         </div>
-        <AuthPanel />
+        <div className="pipeline-index-header-actions">
+          <PipelineSyncStatus />
+          <AuthPanel />
+        </div>
       </header>
       <section className="pipeline-index-body">
         <div className="pipeline-index-heading">
           <div>
             <h2>Pipelines</h2>
-            <p>Choose a local pipeline or create a new one.</p>
+            <p>Choose a saved pipeline or create a new one.</p>
           </div>
           <div className="pipeline-index-actions">
-            <button type="button" className="pipeline-index-action" onClick={handleCreate}>
+            <button type="button" className="pipeline-index-action" disabled={!hydrated} onClick={handleCreate}>
               <Plus size={16} />
               <span>New</span>
             </button>
-            <button type="button" className="pipeline-index-action" onClick={() => inputRef.current?.click()}>
+            <button type="button" className="pipeline-index-action" disabled={!hydrated} onClick={() => inputRef.current?.click()}>
               <Upload size={16} />
               <span>Import</span>
             </button>

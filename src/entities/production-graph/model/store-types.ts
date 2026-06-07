@@ -3,6 +3,22 @@ import type { PipelineRecord, PipelineTemplateExport, PortableProjectExport, Pro
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'subjects' | 'locations' | 'publications' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
 export type ConnectResult = { ok: true } | { ok: false; reason: string };
+export type PipelineSyncStatus = 'loading' | 'idle' | 'pending' | 'syncing' | 'synced' | 'error';
+
+export interface PipelineSyncState {
+  error: string | null;
+  initialized: boolean;
+  lastSyncedAt: string | null;
+  status: PipelineSyncStatus;
+}
+
+export interface SavedPipelineMetadata {
+  createdAt: string;
+  id: string;
+  name: string;
+  updatedAt: string;
+}
+
 export interface ConnectOptions {
   detachedEdge?: GraphEdge;
 }
@@ -16,8 +32,10 @@ export interface ProductionGraphState extends GraphProject {
   historyPast: GraphSnapshot[];
   historyFuture: GraphSnapshot[];
   pipelines: PipelineRecord[];
+  pipelineSync: PipelineSyncState;
   uiState: ProjectUiState;
-  createPipeline: (title?: string) => string;
+  acknowledgePipelineSaved: (pipeline: SavedPipelineMetadata) => void;
+  addPipeline: (pipeline: PipelineRecord) => void;
   addSection: (rect: { x: number; y: number; width: number; height: number }) => string;
   addNode: (type: ProductionNodeType, position: GraphPoint) => string;
   addAsset: (asset: AssetRecord) => void;
@@ -66,8 +84,9 @@ export interface ProductionGraphState extends GraphProject {
   setNodeUiState: (nodeId: string, nodeUiState: Partial<ProjectNodeUiState>) => void;
   setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
   exportProjectSnapshot: () => ProjectExport;
-  importPipeline: (payload: unknown, title?: string) => { id: string; kind: ProjectExport['kind'] | PipelineTemplateExport['kind']; title: string };
+  loadPipelines: (pipelines: PipelineRecord[], activePipelineId?: string) => void;
   exportPipelineTemplate: () => PipelineTemplateExport;
   importPortableProject: (payload: unknown, expectedKind?: PortableProjectExport['kind']) => { kind: ProjectExport['kind'] | PipelineTemplateExport['kind'] };
+  setPipelineSyncState: (syncState: Partial<PipelineSyncState>) => void;
   switchPipeline: (pipelineId: string) => void;
 }

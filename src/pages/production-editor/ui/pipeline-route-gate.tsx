@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { isUuidV7 } from '@/shared/lib/id';
+import { usePipelineBackendSync } from '@/entities/production-graph/model/use-pipeline-backend-sync';
 import { useProductionGraphHydrated } from '@/entities/production-graph/model/use-production-graph-hydrated';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 
@@ -18,6 +19,7 @@ export function PipelineRouteGate({ children }: PipelineRouteGateProps) {
   const pipelines = useProductionGraphStore((state) => state.pipelines);
   const switchPipeline = useProductionGraphStore((state) => state.switchPipeline);
   const routePipelineId = getRoutePipelineId(params?.pipelineId);
+  usePipelineBackendSync(routePipelineId);
   const routePipeline = routePipelineId
     ? pipelines.find((pipeline) => pipeline.id === routePipelineId)
     : undefined;
