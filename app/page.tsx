@@ -1,5 +1,5 @@
-import { ProductionEditorPage } from '@/pages/production-editor/ui/production-editor-page';
+import { PipelineIndexPage } from '@/pages/production-editor/ui/pipeline-index-page';
 
 export default function Home() {
-  return <ProductionEditorPage />;
+  return <PipelineIndexPage />;
 }

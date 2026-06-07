@@ -58,6 +58,15 @@ export interface PipelineTemplateExport {
 
 export type PortableProjectExport = ProjectExport | PipelineTemplateExport;
 
+export interface PipelineRecord {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  project: GraphProject;
+  uiState: ProjectUiState;
+}
+
 export const DEFAULT_PROJECT_VIEWPORT: ProjectViewportState = {
   x: 445,
   y: 250,

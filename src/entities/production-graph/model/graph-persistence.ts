@@ -1,4 +1,5 @@
 import type { StateStorage } from 'zustand/middleware';
+import { saveActivePipeline } from './graph-pipelines';
 import type { ProductionGraphState } from './store-types';
 
 export const GRAPH_PERSIST_STORAGE_KEY = 'reverie-image-production-project:v1';
@@ -19,7 +20,10 @@ interface PersistedGraphStats {
 }
 
 export function createPersistedGraphState(state: ProductionGraphState) {
+  const pipelines = saveActivePipeline(state);
+
   return {
+    activePipelineId: state.activePipelineId,
     version: state.version,
     nodes: sanitizePersistedValue(state.nodes.map(resetPersistedNodeRuntimeStatus)),
     sections: state.sections,
@@ -33,6 +37,7 @@ export function createPersistedGraphState(state: ProductionGraphState) {
     selectedNodeIds: state.selectedNodeIds,
     selectedSectionIds: state.selectedSectionIds,
     uiState: state.uiState,
+    pipelines: sanitizePersistedValue(pipelines),
   };
 }
 
@@ -50,6 +55,7 @@ export function createGraphPersistStorage(): StateStorage {
       const primaryStats = getPersistedGraphStats(primary);
       const fallback = findBestFallback(storage);
 
+      if (isExplicitEmptyPipelineState(primary)) return primary;
       if (!primaryStats) return fallback?.raw ?? primary;
       if (isDefaultLikeGraph(primaryStats) && fallback && isMeaningfulGraph(fallback)) return fallback.raw;
       return primary;
@@ -124,23 +130,48 @@ function getPersistedGraphStats(raw: string | null): PersistedGraphStats | null 
     const parsed = JSON.parse(raw) as unknown;
     if (!isRecord(parsed)) return null;
     const state = isRecord(parsed.state) ? parsed.state : parsed;
-    const nodes = Array.isArray(state.nodes) ? state.nodes : null;
-    const edges = Array.isArray(state.edges) ? state.edges : null;
-    if (!nodes || !edges) return null;
+    const projectStates = getPersistedProjectStates(state);
+    if (!projectStates.some((projectState) => Array.isArray(projectState.nodes) && Array.isArray(projectState.edges))) return null;
+
+    const nodes = projectStates.flatMap((projectState) => Array.isArray(projectState.nodes) ? projectState.nodes : []);
+    const edges = projectStates.flatMap((projectState) => Array.isArray(projectState.edges) ? projectState.edges : []);
 
     return {
-      assetCount: Array.isArray(state.assets) ? state.assets.length : 0,
+      assetCount: projectStates.reduce((count, projectState) => count + (Array.isArray(projectState.assets) ? projectState.assets.length : 0), 0),
       edgeCount: edges.length,
-      locationCount: Array.isArray(state.locations) ? state.locations.length : 0,
+      locationCount: projectStates.reduce((count, projectState) => count + (Array.isArray(projectState.locations) ? projectState.locations.length : 0), 0),
       nodeCount: nodes.length,
-      publicationCount: Array.isArray(state.publications) ? state.publications.length : 0,
+      publicationCount: projectStates.reduce((count, projectState) => count + (Array.isArray(projectState.publications) ? projectState.publications.length : 0), 0),
       raw,
-      sectionCount: Array.isArray(state.sections) ? state.sections.length : 0,
-      subjectCount: Array.isArray(state.subjects) ? state.subjects.length : 0,
+      sectionCount: projectStates.reduce((count, projectState) => count + (Array.isArray(projectState.sections) ? projectState.sections.length : 0), 0),
+      subjectCount: projectStates.reduce((count, projectState) => count + (Array.isArray(projectState.subjects) ? projectState.subjects.length : 0), 0),
     };
   } catch {
     return null;
   }
+}
+
+function isExplicitEmptyPipelineState(raw: string | null) {
+  if (!raw) return false;
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) return false;
+    const state = isRecord(parsed.state) ? parsed.state : parsed;
+    return isRecord(state) && Array.isArray(state.pipelines) && state.pipelines.length === 0;
+  } catch {
+    return false;
+  }
+}
+
+function getPersistedProjectStates(state: Record<string, unknown>): Record<string, unknown>[] {
+  const projects = Array.isArray(state.pipelines)
+    ? state.pipelines.flatMap((pipeline) => (
+      isRecord(pipeline) && isRecord(pipeline.project) ? [pipeline.project] : []
+    ))
+    : [];
+
+  return projects.length > 0 ? projects : [state];
 }
 
 function isDefaultLikeGraph(stats: PersistedGraphStats) {

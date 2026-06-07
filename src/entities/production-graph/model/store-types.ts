@@ -1,5 +1,5 @@
 import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, LocationRecord, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord, SubjectRecord } from './types';
-import type { PipelineTemplateExport, PortableProjectExport, ProjectExport, ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
+import type { PipelineRecord, PipelineTemplateExport, PortableProjectExport, ProjectExport, ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'subjects' | 'locations' | 'publications' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
 export type ConnectResult = { ok: true } | { ok: false; reason: string };
@@ -12,14 +12,18 @@ export interface DeleteEdgeOptions {
 }
 
 export interface ProductionGraphState extends GraphProject {
+  activePipelineId: string;
   historyPast: GraphSnapshot[];
   historyFuture: GraphSnapshot[];
+  pipelines: PipelineRecord[];
   uiState: ProjectUiState;
+  createPipeline: (title?: string) => string;
   addSection: (rect: { x: number; y: number; width: number; height: number }) => string;
   addNode: (type: ProductionNodeType, position: GraphPoint) => string;
   addAsset: (asset: AssetRecord) => void;
   assignAssetToNode: (nodeId: string, assetId: string) => void;
   clearNodeGenerations: (nodeId: string) => void;
+  deletePipeline: (pipelineId: string) => { ok: true; activePipelineId: string } | { ok: false; reason: string };
   duplicateNode: (nodeId: string) => void;
   pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string) => void;
   renameNode: (nodeId: string, title: string) => void;
@@ -62,6 +66,8 @@ export interface ProductionGraphState extends GraphProject {
   setNodeUiState: (nodeId: string, nodeUiState: Partial<ProjectNodeUiState>) => void;
   setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
   exportProjectSnapshot: () => ProjectExport;
+  importPipeline: (payload: unknown, title?: string) => { id: string; kind: ProjectExport['kind'] | PipelineTemplateExport['kind']; title: string };
   exportPipelineTemplate: () => PipelineTemplateExport;
   importPortableProject: (payload: unknown, expectedKind?: PortableProjectExport['kind']) => { kind: ProjectExport['kind'] | PipelineTemplateExport['kind'] };
+  switchPipeline: (pipelineId: string) => void;
 }

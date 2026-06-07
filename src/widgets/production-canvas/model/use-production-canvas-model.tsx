@@ -45,6 +45,7 @@ export function useProductionCanvasModel() {
   const [sectionColorPreviews, setSectionColorPreviews] = useState<Record<string, string>>({});
   const didInitialFitRef = useRef(false);
   const didApplyRestoredViewportRef = useRef(false);
+  const lastPipelineIdRef = useRef(graph.activePipelineId);
   const lastPointerWorldRef = useRef({ x: 0, y: 0 });
   const hasRestoredViewport = graph.uiState.viewport.x !== DEFAULT_PROJECT_VIEWPORT.x
     || graph.uiState.viewport.y !== DEFAULT_PROJECT_VIEWPORT.y
@@ -75,6 +76,18 @@ export function useProductionCanvasModel() {
     pan: canvas.pan,
     zoom: canvas.zoom,
   });
+
+  useEffect(() => {
+    if (lastPipelineIdRef.current === graph.activePipelineId) return;
+    lastPipelineIdRef.current = graph.activePipelineId;
+    didInitialFitRef.current = false;
+    didApplyRestoredViewportRef.current = false;
+    setContextImageViewer(null);
+    setPendingConnectionMenu(null);
+    setSectionColorPreviews({});
+    canvas.setPan({ x: graph.uiState.viewport.x, y: graph.uiState.viewport.y });
+    canvas.setZoom(graph.uiState.viewport.zoom);
+  }, [canvas, graph.activePipelineId, graph.uiState.viewport.x, graph.uiState.viewport.y, graph.uiState.viewport.zoom]);
 
   useEffect(() => {
     if (!hasRestoredViewport || didApplyRestoredViewportRef.current) return;
