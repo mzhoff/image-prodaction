@@ -5,6 +5,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { ProductionNode, TextPromptNodeData } from '@/entities/production-graph/model/types';
 import { DarkSelect } from '@/shared/ui/dark-select';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { clampTextPromptTextareaHeight, textPromptVariableDisplayOptions, useTextPromptNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
@@ -18,7 +19,7 @@ interface TextPromptNodeProps {
 export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps) {
   const data = node.data as TextPromptNodeData;
   const model = useTextPromptNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState(model.textareaHeight);
   const textareaHeight = Math.max(draftTextareaHeight, getTextPromptTextareaMinHeight(model.variableSlots.length));
 
@@ -27,6 +28,9 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
   }, [model.textareaHeight]);
 
   const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    if (event.target !== event.currentTarget) return;
+
     event.preventDefault();
     event.stopPropagation();
     const startY = event.clientY;
@@ -59,15 +63,15 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
         action={(
           <NodeTitleActions>
             <button
-              type="button"
-              className="node-title-action"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                setCollapsed((value) => !value);
-              }}
-              aria-label={collapsed ? 'Expand node' : 'Collapse node'}
-            >
+                type="button"
+                className="node-title-action"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setCollapsed(!collapsed);
+                }}
+                aria-label={collapsed ? 'Expand node' : 'Collapse node'}
+              >
               {collapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
             </button>
             <NodeTitleOptionsButton />
@@ -110,34 +114,35 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
             style={{ height: textareaHeight }}
             value={data.text}
           />
-          <div className="text-prompt-footer">
-            <button
-              type="button"
-              className="text-concat-add-button text-prompt-add-variable-button"
-              disabled={!model.canAddVariable}
-              onClick={model.handleAddVariable}
-            >
-              <Plus size={16} />
-              <span>Add variable</span>
-            </button>
-            {model.hasVariables ? (
-              <label className="text-prompt-display-control">
-                <span>Display</span>
-                <DarkSelect
-                  value={model.variableDisplayMode}
-                  options={textPromptVariableDisplayOptions}
-                  onChange={model.handleDisplayModeChange}
-                  wide
-                />
-              </label>
-            ) : null}
-          </div>
           <div
-            className="text-prompt-resize-handle"
+            className="text-prompt-footer text-node-bottom-drag-handle"
             data-node-interactive
             onPointerDown={handleResizePointerDown}
             aria-label="Resize prompt text area"
-          />
+          >
+            <div className="text-prompt-footer-controls">
+              <button
+                type="button"
+                className="text-concat-add-button text-prompt-add-variable-button"
+                disabled={!model.canAddVariable}
+                onClick={model.handleAddVariable}
+              >
+                <Plus size={16} />
+                <span>Add variable</span>
+              </button>
+              {model.hasVariables ? (
+                <label className="text-prompt-display-control">
+                  <span>Display</span>
+                  <DarkSelect
+                    value={model.variableDisplayMode}
+                    options={textPromptVariableDisplayOptions}
+                    onChange={model.handleDisplayModeChange}
+                    wide
+                  />
+                </label>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
     </>
@@ -148,7 +153,6 @@ const TEXT_PROMPT_TEXTAREA_TOP = 54;
 const TEXT_PROMPT_PORT_HEIGHT = 24;
 const TEXT_PROMPT_VARIABLE_PORT_STEP = 39;
 const TEXT_PROMPT_FIXED_HEIGHT_WITHOUT_TEXTAREA = 128;
-
 function getTextPromptVariablePortTop(index: number) {
   return TEXT_PROMPT_TEXTAREA_TOP - TEXT_PROMPT_PORT_HEIGHT / 2 + index * TEXT_PROMPT_VARIABLE_PORT_STEP;
 }

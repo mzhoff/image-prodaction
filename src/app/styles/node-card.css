@@ -63,6 +63,30 @@
   gap: 7px;
 }
 
+.node-title-editable-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-title-editable-label[contenteditable='false'],
+.node-title-input {
+  user-select: text;
+}
+
+.node-title-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  outline: none;
+}
+
 .node-title-action {
   display: grid;
   width: 22px;

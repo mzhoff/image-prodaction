@@ -16,7 +16,7 @@ export function AdjustmentNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Adjustments" nodeType={node.type} muted />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted />
       <AdjustmentPreview assetId={model.sourceAsset?.id} aspectRatio={sourceRatio} values={model.values} />
       <button
         type="button"

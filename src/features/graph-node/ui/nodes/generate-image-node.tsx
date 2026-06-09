@@ -31,7 +31,7 @@ export function GenerateImageNode({
   return (
     <>
       <NodeTitle
-        title="Generate Image"
+        title={model.data.title}
         nodeType={node.type}
         muted
         action={(

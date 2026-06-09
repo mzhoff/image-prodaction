@@ -249,7 +249,20 @@ Frontend MVP должен быть готов к переносу:
 - kanban card binding;
 - generation run.
 
-## 9. Priority 6: Video and timeline handoff
+## 9. Priority 6: Visual LUT Builder and color look
+
+Перед video layer нужно закрыть отдельный image/color блок:
+
+- Visual LUT Builder / Color Look node;
+- простая "color warp" сетка вместо профессионального color grading UI;
+- понятные пресеты: clean product, warm editorial, cold tech, cinematic contrast, soft film, brand preset;
+- один базовый контроль `strength`;
+- WebGL preview для интерактивного просмотра;
+- экспорт / импорт LUT в одном выбранном формате после отдельного выбора между `.cube`, `.3dl` и другими форматами.
+
+Этот блок должен быть проще, чем профессиональные LUT-редакторы: пользователь меняет визуальный look быстро и понятно, а технические термины остаются внутри реализации.
+
+## 10. Priority 7: Video and timeline handoff
 
 Когда image / text / publication foundations станут устойчивыми:
 
@@ -262,7 +275,7 @@ Frontend MVP должен быть готов к переносу:
 
 Video layer должен использовать те же principles: graph values, library entities, publication artifacts and backend run metadata.
 
-## 10. Priority 7: Analytics and HADI loop
+## 11. Priority 8: Analytics and HADI loop
 
 После появления publication artifacts и publishing / Kanban integration:
 
@@ -275,7 +288,7 @@ Video layer должен использовать те же principles: graph va
 
 Это не задача текущего frontend MVP, но архитектура должна сохранять traceability от publication artifact к source pipeline.
 
-## 11. Практический порядок ближайших работ
+## 12. Практический порядок ближайших работ
 
 Рекомендуемый порядок после фиксации этого плана:
 
@@ -287,5 +300,6 @@ Video layer должен использовать те же principles: graph va
 6. Сделать первую publication node на Telegram.
 7. Добавить export package / Kanban handoff placeholder.
 8. Вернуться к executable sections как к следующему крупному automation layer.
+9. До перехода к video layer реализовать простой Visual LUT Builder / Color Look node.
 
 Если нужна максимальная быстрая продуктовая демонстрация, можно начинать с Telegram publication node сразу после минимального contract design. Но без пунктов 1-3 publication layer быстро начнет тянуть хаос из builder и storage слоев.

@@ -10,6 +10,7 @@ const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   textPrompt: <TextCursorInput size={14} />,
   textConcat: <TextCursorInput size={14} />,
   textGeneration: <Sparkles size={14} />,
+  textFormatter: <TextCursorInput size={14} />,
   textSplitter: <TextCursorInput size={14} />,
   iterator: <Repeat2 size={14} />,
   subjectBuilder: <Fingerprint size={14} />,
@@ -69,7 +70,7 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     id: 'text',
     label: 'Text',
     icon: <FileText size={14} />,
-    types: ['textPrompt', 'textConcat', 'textGeneration', 'textSplitter'],
+    types: ['textPrompt', 'textConcat', 'textGeneration', 'textFormatter', 'textSplitter'],
   },
   {
     id: 'publication',

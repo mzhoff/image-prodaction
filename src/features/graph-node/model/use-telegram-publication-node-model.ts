@@ -14,7 +14,7 @@ import {
   getPublicationContentUnitDefinition,
   getPublicationPlatformDefinition,
 } from '@/entities/production-graph/model/publication-platforms';
-import { getIncomingImageCollectionInputs, getIncomingTextCollectionInputs, type GraphImageInputItem } from '@/entities/production-graph/model/graph-io';
+import { getIncomingImageCollectionInputs, getIncomingTextCollectionInputs, type GraphImageInputItem, type GraphTextInputItem } from '@/entities/production-graph/model/graph-io';
 import {
   TELEGRAM_MEDIA_MAX_INPUTS,
   TELEGRAM_MEDIA_MIN_INPUTS,
@@ -25,6 +25,10 @@ import type { AssetRecord, ProductionNode, TelegramPublicationNodeData } from '@
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { requestFormatTelegramText } from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
+import {
+  getTelegramMessageCharacterLimit,
+  getTelegramTextLength,
+} from '@/shared/lib/telegram-limits';
 import { TELEGRAM_MAX_MEDIA_ITEMS } from '../lib/telegram-media-layout';
 import {
   assertTelegramFormattingPreservesText,
@@ -67,12 +71,9 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
       .filter((edge) => edge.targetNodeId === node.id && getTelegramMediaInputPortIndex(edge.targetPortId) >= 0)
       .map((edge) => edge.targetPortId)))
   ), [edges, node.id]);
-  const requiredMediaSlotCount = useMemo(() => (
-    getTelegramMediaSlotCount(connectedMediaPortIds)
-  ), [connectedMediaPortIds]);
   const mediaSlotCount = useMemo(() => (
-    getStoredTelegramMediaSlotCount(data.mediaInputCount, requiredMediaSlotCount)
-  ), [data.mediaInputCount, requiredMediaSlotCount]);
+    getTelegramMediaSlotCountFromInputs(connectedMediaPortIds, data.mediaInputCount)
+  ), [connectedMediaPortIds, data.mediaInputCount]);
   const mediaSlotPortIds = useMemo(() => (
     Array.from({ length: mediaSlotCount }, (_, index) => getTelegramMediaInputPortId(index))
   ), [mediaSlotCount]);
@@ -80,6 +81,9 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
     textInputs.map((input) => input.text.trim()).filter(Boolean).join('\n\n')
   ), [textInputs]);
   const connectedMessageText = useMemo(() => normalizeTelegramPlainText(connectedText), [connectedText]);
+  const connectedRichText = useMemo(() => getConnectedRichText(textInputs), [textInputs]);
+  const hasConnectedRichText = Boolean(connectedRichText)
+    && normalizeTelegramPlainText(getPlainTextFromTelegramRichText(connectedRichText)) === connectedMessageText;
   const legacyMessageText = useMemo(() => (
     [data.publicationTitle, data.body, data.caption, data.cta]
       .map((part) => part?.trim() ?? '')
@@ -102,7 +106,11 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
       normalizeTelegramPlainText(data.messageRichTextSource) === messageText
       || storedRichTextPlainText === messageText
     );
-  const messageRichText = hasCurrentRichText ? data.messageRichText ?? '' : '';
+  const messageRichText = hasCurrentRichText
+    ? data.messageRichText ?? ''
+    : hasConnectedRichText && !shouldUseLocalMessage
+      ? connectedRichText
+      : '';
   const uniqueImageInputs = useMemo(() => (
     uniqueByAssetId(imageInputs)
   ), [imageInputs]);
@@ -157,11 +165,19 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
         issues: [],
       }
   ), [artifact]);
+  const hasMedia = orderedImageInputs.length > 0;
+  const telegramCharacterLimit = useMemo(() => (
+    getTelegramMessageCharacterLimit(hasMedia)
+  ), [hasMedia]);
+  const telegramMessageLength = useMemo(() => (
+    getTelegramTextLength(messageText)
+  ), [messageText]);
 
   useEffect(() => {
     const shouldAdoptConnectedText = hasConnectedText && !shouldUseLocalMessage && data.messageText !== messageText;
     const shouldClearStaleRichText = Boolean(data.messageRichText || data.messageRichTextSource)
-      && !hasCurrentRichText;
+      && !hasCurrentRichText
+      && !(shouldAdoptConnectedText && hasConnectedRichText);
     const shouldSync = data.result !== messageText
       || data.mediaInputCount !== mediaSlotCount
       || data.sourceImageCount !== imageInputs.length
@@ -175,9 +191,9 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
       mediaOrder,
       mediaInputCount: mediaSlotCount,
       ...(shouldAdoptConnectedText ? {
-        messageRichText: '',
-        messageRichTextSource: '',
-        messageSourceText: '',
+        messageRichText: hasConnectedRichText ? connectedRichText : '',
+        messageRichTextSource: hasConnectedRichText ? connectedMessageText : '',
+        messageSourceText: connectedMessageText,
         messageText,
       } : null),
       ...(shouldClearStaleRichText ? {
@@ -188,7 +204,7 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
       sourceImageCount: imageInputs.length,
       sourceTextCount: textInputs.length,
     });
-  }, [data.mediaInputCount, data.mediaOrder, data.messageRichText, data.messageRichTextSource, data.messageText, data.result, data.sourceImageCount, data.sourceTextCount, hasConnectedText, hasCurrentRichText, imageInputs.length, mediaOrder, mediaSlotCount, messageText, node.id, shouldUseLocalMessage, textInputs.length, updateNodeDataSilent]);
+  }, [connectedMessageText, connectedRichText, data.mediaInputCount, data.mediaOrder, data.messageRichText, data.messageRichTextSource, data.messageText, data.result, data.sourceImageCount, data.sourceTextCount, hasConnectedRichText, hasConnectedText, hasCurrentRichText, imageInputs.length, mediaOrder, mediaSlotCount, messageText, node.id, shouldUseLocalMessage, textInputs.length, updateNodeDataSilent]);
 
   const handleFormatMessage = useCallback(async () => {
     if (!messageText.trim()) {
@@ -224,6 +240,9 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
     artifact,
     contentUnit: TELEGRAM_CONTENT_UNIT,
     data,
+    hasMedia,
+    telegramCharacterLimit,
+    telegramMessageLength,
     formatDisabled: node.status === 'running' || !messageText.trim(),
     handleFormatMessage,
     handleMessageTextChange: (nextMessage: TelegramMessageEditorValue) => updateNodeData(node.id, {
@@ -272,24 +291,30 @@ function sortTelegramImageInputs<T extends GraphImageInputItem>(items: T[]) {
   });
 }
 
-function getTelegramMediaSlotCount(connectedPortIds: string[]) {
-  const usedSlotCount = connectedPortIds.length;
-  const nextFreeSlotCount = usedSlotCount >= TELEGRAM_MEDIA_MAX_INPUTS
-    ? TELEGRAM_MEDIA_MAX_INPUTS
-    : usedSlotCount + 1;
-  return Math.max(
-    TELEGRAM_MEDIA_MIN_INPUTS,
-    Math.min(TELEGRAM_MEDIA_MAX_INPUTS, nextFreeSlotCount),
-  );
+function getConnectedRichText(textInputs: GraphTextInputItem[]) {
+  return textInputs.find((input) => {
+    if (!input.richText) return false;
+    return normalizeTelegramPlainText(getPlainTextFromTelegramRichText(input.richText)) === normalizeTelegramPlainText(input.text);
+  })?.richText ?? '';
 }
 
-function getStoredTelegramMediaSlotCount(storedInputCount: number | undefined, minimumInputCount: number) {
+function getTelegramMediaSlotCountFromInputs(
+  connectedPortIds: string[],
+  storedInputCount: number | undefined,
+) {
+  const connectedIndices = connectedPortIds
+    .map((portId) => getTelegramMediaInputPortIndex(portId))
+    .filter((index) => index >= 0)
+    .sort((left, right) => left - right);
+  const maxConnectedIndex = connectedIndices.length > 0 ? connectedIndices.at(-1)! : -1;
+  const usedCount = connectedIndices.length;
   const storedCount = Math.floor(Number(storedInputCount) || TELEGRAM_MEDIA_MIN_INPUTS);
-  if (storedCount > minimumInputCount + 1) return minimumInputCount;
-  return Math.max(
-    minimumInputCount,
-    TELEGRAM_MEDIA_MIN_INPUTS,
-    Math.min(TELEGRAM_MEDIA_MAX_INPUTS, storedCount),
+  const baseCount = usedCount === 0
+    ? storedCount
+    : Math.max(storedCount, maxConnectedIndex + 2);
+  return Math.min(
+    TELEGRAM_MEDIA_MAX_INPUTS,
+    Math.max(TELEGRAM_MEDIA_MIN_INPUTS, baseCount),
   );
 }
 

@@ -1,22 +1,26 @@
 import { createId } from '@/shared/lib/id';
 import { validateGenerateImageReferenceLimit } from './connection-rules';
 import {
-  TELEGRAM_MEDIA_MAX_INPUTS,
-  TELEGRAM_MEDIA_MIN_INPUTS,
-  TEXT_CONCAT_MIN_INPUTS,
   canConnectPorts,
   getPortById,
-  getTelegramMediaInputPortId,
-  getTelegramMediaInputPortIndex,
-  getTextConcatInputPortId,
-  getTextConcatInputPortIndex,
-  getTextPromptVariablePortIndex,
 } from './node-definitions';
+import {
+  compactDynamicInputNodeState,
+  getDynamicInputPortIndex,
+  isDynamicInputPort,
+  updateDynamicInputCount,
+} from './dynamic-input-slot';
+import {
+  INPUT_ALREADY_CONNECTED_REASON,
+  PROMPT_VARIABLE_CONNECTED_REASON,
+  isTextPromptVariablePortId,
+  resolveTargetPortConnectionConflict,
+} from './port-contract';
 import { getConnectionErrorMessage } from './graph-store-errors';
 import { withHistory } from './graph-history';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
-import type { GraphEdge, ProductionNode, ProductionNodeData, TelegramPublicationNodeData, TextConcatNodeData } from './types';
+import type { GraphEdge, ProductionNode } from './types';
 
 export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
@@ -25,7 +29,7 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
   return {
     compactDynamicInputSlots: (nodeId) => {
       set((state) => {
-        const nextState = compactDynamicInputSlotsState(state.nodes, state.edges, nodeId);
+        const nextState = compactDynamicInputNodeState(state.nodes, state.edges, nodeId);
         if (nextState.edges === state.edges && nextState.nodes === state.nodes) return state;
         return {
           ...withHistory(state),
@@ -37,11 +41,11 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
       set((state) => {
         const node = state.nodes.find((item) => item.id === nodeId);
         if (node?.type !== 'textConcat') return state;
-        const nextEdges = compactTextConcatEdges(state.edges, nodeId);
+
+        const nextState = compactDynamicInputNodeState(state.nodes, state.edges, nodeId);
         return {
           ...withHistory(state),
-          edges: nextEdges,
-          nodes: updateTextConcatInputCount(state.nodes, nodeId, nextEdges),
+          ...nextState,
         };
       });
     },
@@ -51,8 +55,9 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
         if (node?.type !== 'telegramPublication') return state;
 
         const mediaEdges = state.edges
-          .filter((edge) => edge.targetNodeId === nodeId && getTelegramMediaInputPortIndex(edge.targetPortId) >= 0)
-          .sort((first, second) => getTelegramMediaInputPortIndex(first.targetPortId) - getTelegramMediaInputPortIndex(second.targetPortId));
+          .filter((edge) => edge.targetNodeId === nodeId && getDynamicInputPortIndex('telegramPublication', edge.targetPortId) >= 0)
+          .sort((first, second) => getDynamicInputPortIndex('telegramPublication', first.targetPortId)
+            - getDynamicInputPortIndex('telegramPublication', second.targetPortId));
         const mediaEdgeById = new Map(mediaEdges.map((edge) => [edge.id, edge]));
         const orderedEdgeIds = uniqueEdgeIds(edgeIds).filter((edgeId) => mediaEdgeById.has(edgeId));
         const orderedEdgeIdSet = new Set(orderedEdgeIds);
@@ -63,18 +68,22 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
           }),
           ...mediaEdges.filter((edge) => !orderedEdgeIdSet.has(edge.id)),
         ];
-        const nextPortByEdgeId = new Map(reorderedEdges.map((edge, index) => [edge.id, getTelegramMediaInputPortId(index)]));
+        const nextPortByEdgeId = new Map(reorderedEdges.map((edge, index) => [edge.id, getMediaInputPortId(index)]));
         const nextEdges = state.edges.map((edge) => (
           nextPortByEdgeId.has(edge.id)
             ? { ...edge, targetPortId: nextPortByEdgeId.get(edge.id) ?? edge.targetPortId }
             : edge
         ));
-        const nextNodes = updateTelegramMediaInputCount(
-          state.nodes.map((item) => {
-            if (item.id !== nodeId || item.type !== 'telegramPublication') return item;
-            return { ...item, data: { ...item.data, mediaOrder } as ProductionNodeData };
-          }),
+        const nextNodes = nextStateNodesWithMediaOrder(
+          state.nodes,
           nodeId,
+          {
+            ...node,
+            data: {
+              ...node.data,
+              mediaOrder,
+            },
+          },
           nextEdges,
         );
 
@@ -103,36 +112,25 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
       ));
       if (duplicate) return { ok: true };
 
-      const occupiedTextConcatEdge = getTextConcatSlotEdge(edges, target, targetPortId);
-      const occupiedTelegramMediaEdge = getTelegramMediaSlotEdge(edges, target, targetPortId);
-      const occupiedTextPromptVariableEdge = getTextPromptVariableSlotEdge(edges, target, targetPortId);
-      const isTextConcatSwap = Boolean(
-        occupiedTextConcatEdge
-        && options?.detachedEdge
-        && options.detachedEdge.targetNodeId === targetNodeId
-        && getTextConcatInputPortIndex(options.detachedEdge.targetPortId) >= 0,
-      );
-      const isTelegramMediaSwap = Boolean(
-        occupiedTelegramMediaEdge
-        && options?.detachedEdge
-        && options.detachedEdge.targetNodeId === targetNodeId
-        && getTelegramMediaInputPortIndex(options.detachedEdge.targetPortId) >= 0,
-      );
-      const isTextPromptVariableSwap = Boolean(
-        occupiedTextPromptVariableEdge
-        && options?.detachedEdge
-        && options.detachedEdge.targetNodeId === targetNodeId
-        && getTextPromptVariablePortIndex(options.detachedEdge.targetPortId) >= 0,
-      );
-      if (occupiedTextConcatEdge && !isTextConcatSwap) {
-        return { ok: false, reason: 'This Concatenate input is already connected.' };
+      const targetPortConflict = resolveTargetPortConnectionConflict({
+        edges,
+        targetNode: target,
+        targetPortId,
+        detachedEdge: options?.detachedEdge,
+      });
+      if (targetPortConflict.isBlocked) {
+        return {
+          ok: false,
+          reason: targetPortConflict.reason
+            ?? (isTextPromptVariablePortId(targetPortId)
+              ? PROMPT_VARIABLE_CONNECTED_REASON
+              : INPUT_ALREADY_CONNECTED_REASON),
+        };
       }
-      if (occupiedTelegramMediaEdge && !isTelegramMediaSwap) {
-        return { ok: false, reason: 'This Telegram image slot is already connected.' };
-      }
-      if (occupiedTextPromptVariableEdge && !isTextPromptVariableSwap) {
-        return { ok: false, reason: 'This Prompt variable is already connected.' };
-      }
+
+      const occupiedSwapEdge = targetPortConflict.isSwapAllowed
+        ? targetPortConflict.blockedEdge
+        : undefined;
 
       const limitError = validateGenerateImageReferenceLimit({
         edges,
@@ -149,9 +147,7 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
         ...withHistory(state),
         ...connectEdgeState(state.nodes, state.edges, {
           detachedEdge: options?.detachedEdge,
-          occupiedTelegramMediaEdge,
-          occupiedTextConcatEdge,
-          occupiedTextPromptVariableEdge,
+          occupiedSwapEdge,
           sourceNodeId,
           sourcePortId,
           targetNodeId,
@@ -164,43 +160,37 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
       set((state) => {
         const edge = state.edges.find((item) => item.id === edgeId);
         if (!edge) return state;
-        const target = state.nodes.find((node) => node.id === edge.targetNodeId);
         const preserveDynamicInputSlots = Boolean(options?.preserveDynamicInputSlots || options?.preserveTextConcatSlots);
-        const shouldCompactTextConcat = target?.type === 'textConcat' && !preserveDynamicInputSlots;
-        const shouldCompactTelegramMedia = target?.type === 'telegramPublication' && !preserveDynamicInputSlots;
         const removedEdges = state.edges.filter((item) => item.id !== edgeId);
-        let nextEdges = shouldCompactTextConcat ? compactTextConcatEdges(removedEdges, edge.targetNodeId) : removedEdges;
-        if (shouldCompactTelegramMedia) nextEdges = compactTelegramMediaEdges(nextEdges, edge.targetNodeId);
-        let nextNodes = state.nodes;
-        if (shouldCompactTextConcat) nextNodes = updateTextConcatInputCount(nextNodes, edge.targetNodeId, nextEdges);
-        if (shouldCompactTelegramMedia) nextNodes = updateTelegramMediaInputCount(nextNodes, edge.targetNodeId, nextEdges);
+
+        if (preserveDynamicInputSlots) {
+          return {
+            ...withHistory(state),
+            edges: removedEdges,
+            nodes: state.nodes,
+          };
+        }
+
+        const nextState = compactDynamicInputNodeState(state.nodes, removedEdges, edge.targetNodeId);
         return {
           ...withHistory(state),
-          edges: nextEdges,
-          nodes: nextNodes,
+          ...nextState,
         };
       });
     },
   };
 }
 
-function compactDynamicInputSlotsState(nodes: ProductionNode[], edges: GraphEdge[], nodeId: string) {
-  const node = nodes.find((item) => item.id === nodeId);
-  if (node?.type === 'textConcat') {
-    const nextEdges = compactTextConcatEdges(edges, nodeId);
-    return {
-      edges: nextEdges,
-      nodes: updateTextConcatInputCount(nodes, nodeId, nextEdges),
-    };
-  }
-  if (node?.type === 'telegramPublication') {
-    const nextEdges = compactTelegramMediaEdges(edges, nodeId);
-    return {
-      edges: nextEdges,
-      nodes: updateTelegramMediaInputCount(nodes, nodeId, nextEdges),
-    };
-  }
-  return { edges, nodes };
+function nextStateNodesWithMediaOrder(
+  nodes: ProductionNode[],
+  nodeId: string,
+  nodeWithMediaOrder: ProductionNode,
+  nextEdges: GraphEdge[],
+) {
+  return nodes.map((item) => {
+    if (item.id !== nodeId) return item;
+    return updateDynamicInputCount(nodeWithMediaOrder, nextEdges);
+  });
 }
 
 function uniqueEdgeIds(edgeIds: string[]) {
@@ -212,14 +202,16 @@ function uniqueEdgeIds(edgeIds: string[]) {
   });
 }
 
+function getMediaInputPortId(index: number) {
+  return `media-${index}`;
+}
+
 function connectEdgeState(
   nodes: ProductionNode[],
   edges: GraphEdge[],
   params: {
     detachedEdge?: GraphEdge;
-    occupiedTelegramMediaEdge?: GraphEdge;
-    occupiedTextConcatEdge?: GraphEdge;
-    occupiedTextPromptVariableEdge?: GraphEdge;
+    occupiedSwapEdge?: GraphEdge;
     sourceNodeId: string;
     sourcePortId: string;
     targetNodeId: string;
@@ -235,123 +227,40 @@ function connectEdgeState(
     targetPortId: params.targetPortId,
   };
 
-  if (params.occupiedTextConcatEdge && params.detachedEdge) {
+  if (params.occupiedSwapEdge && params.detachedEdge) {
     nextEdges = nextEdges.map((edge) => (
-      edge.id === params.occupiedTextConcatEdge?.id
-        ? { ...edge, targetPortId: params.detachedEdge?.targetPortId ?? edge.targetPortId }
-        : edge
-    ));
-  }
-  if (params.occupiedTelegramMediaEdge && params.detachedEdge) {
-    nextEdges = nextEdges.map((edge) => (
-      edge.id === params.occupiedTelegramMediaEdge?.id
-        ? { ...edge, targetPortId: params.detachedEdge?.targetPortId ?? edge.targetPortId }
-        : edge
-    ));
-  }
-  if (params.occupiedTextPromptVariableEdge && params.detachedEdge) {
-    nextEdges = nextEdges.map((edge) => (
-      edge.id === params.occupiedTextPromptVariableEdge?.id
-        ? { ...edge, targetPortId: params.detachedEdge?.targetPortId ?? edge.targetPortId }
+      edge.id === params.occupiedSwapEdge?.id
+        ? {
+          ...edge,
+          targetPortId: params.detachedEdge?.targetPortId ?? edge.targetPortId,
+        }
         : edge
     ));
   }
 
   nextEdges = [...nextEdges, connectedEdge];
-  const affectedTextConcatIds = new Set<string>();
-  const affectedTelegramPublicationIds = new Set<string>();
+
+  const affectedNodeIds = new Set<string>([params.targetNodeId]);
   const targetNode = nodes.find((node) => node.id === params.targetNodeId);
-  if (targetNode?.type === 'textConcat') {
-    nextEdges = compactTextConcatEdges(nextEdges, targetNode.id);
-    affectedTextConcatIds.add(targetNode.id);
+  if (targetNode && isDynamicInputPort(targetNode.type, params.targetPortId)) {
+    affectedNodeIds.add(targetNode.id);
   }
-  if (targetNode?.type === 'telegramPublication') {
-    nextEdges = compactTelegramMediaEdges(nextEdges, targetNode.id);
-    affectedTelegramPublicationIds.add(targetNode.id);
-  }
-  if (params.detachedEdge?.targetNodeId && params.detachedEdge.targetNodeId !== params.targetNodeId) {
-    const detachedTarget = nodes.find((node) => node.id === params.detachedEdge?.targetNodeId);
-    if (detachedTarget?.type === 'textConcat') {
-      nextEdges = compactTextConcatEdges(nextEdges, detachedTarget.id);
-      affectedTextConcatIds.add(detachedTarget.id);
-    }
-    if (detachedTarget?.type === 'telegramPublication') {
-      nextEdges = compactTelegramMediaEdges(nextEdges, detachedTarget.id);
-      affectedTelegramPublicationIds.add(detachedTarget.id);
+  const detachedTargetNodeId = params.detachedEdge?.targetNodeId;
+  const detachedTargetPortId = params.detachedEdge?.targetPortId;
+  if (detachedTargetNodeId && detachedTargetPortId && detachedTargetNodeId !== params.targetNodeId) {
+    const detachedTarget = nodes.find((node) => node.id === detachedTargetNodeId);
+    if (detachedTarget && isDynamicInputPort(detachedTarget.type, detachedTargetPortId)) {
+      affectedNodeIds.add(detachedTarget.id);
     }
   }
 
-  let nextNodes = nodes;
-  affectedTextConcatIds.forEach((nodeId) => {
-    nextNodes = updateTextConcatInputCount(nextNodes, nodeId, nextEdges);
-  });
-  affectedTelegramPublicationIds.forEach((nodeId) => {
-    nextNodes = updateTelegramMediaInputCount(nextNodes, nodeId, nextEdges);
-  });
+  let nextState = {
+    edges: nextEdges,
+    nodes,
+  };
+  for (const nodeId of affectedNodeIds) {
+    nextState = compactDynamicInputNodeState(nextState.nodes, nextState.edges, nodeId);
+  }
 
-  return { edges: nextEdges, nodes: nextNodes };
-}
-
-function getTextConcatSlotEdge(edges: GraphEdge[], target: ProductionNode | undefined, targetPortId: string) {
-  if (target?.type !== 'textConcat' || getTextConcatInputPortIndex(targetPortId) < 0) return undefined;
-  return edges.find((edge) => edge.targetNodeId === target.id && edge.targetPortId === targetPortId);
-}
-
-function getTelegramMediaSlotEdge(edges: GraphEdge[], target: ProductionNode | undefined, targetPortId: string) {
-  if (target?.type !== 'telegramPublication' || getTelegramMediaInputPortIndex(targetPortId) < 0) return undefined;
-  return edges.find((edge) => edge.targetNodeId === target.id && edge.targetPortId === targetPortId);
-}
-
-function getTextPromptVariableSlotEdge(edges: GraphEdge[], target: ProductionNode | undefined, targetPortId: string) {
-  if (target?.type !== 'textPrompt' || getTextPromptVariablePortIndex(targetPortId) < 0) return undefined;
-  return edges.find((edge) => edge.targetNodeId === target.id && edge.targetPortId === targetPortId);
-}
-
-function compactTextConcatEdges(edges: GraphEdge[], nodeId: string) {
-  const inputEdges = edges
-    .filter((edge) => edge.targetNodeId === nodeId && getTextConcatInputPortIndex(edge.targetPortId) >= 0)
-    .sort((first, second) => getTextConcatInputPortIndex(first.targetPortId) - getTextConcatInputPortIndex(second.targetPortId));
-  const nextPortByEdgeId = new Map(inputEdges.map((edge, index) => [edge.id, getTextConcatInputPortId(index)]));
-  return edges.map((edge) => (
-    nextPortByEdgeId.has(edge.id)
-      ? { ...edge, targetPortId: nextPortByEdgeId.get(edge.id) ?? edge.targetPortId }
-      : edge
-  ));
-}
-
-function compactTelegramMediaEdges(edges: GraphEdge[], nodeId: string) {
-  const inputEdges = edges
-    .filter((edge) => edge.targetNodeId === nodeId && getTelegramMediaInputPortIndex(edge.targetPortId) >= 0)
-    .sort((first, second) => getTelegramMediaInputPortIndex(first.targetPortId) - getTelegramMediaInputPortIndex(second.targetPortId));
-  const nextPortByEdgeId = new Map(inputEdges.map((edge, index) => [edge.id, getTelegramMediaInputPortId(index)]));
-  return edges.map((edge) => (
-    nextPortByEdgeId.has(edge.id)
-      ? { ...edge, targetPortId: nextPortByEdgeId.get(edge.id) ?? edge.targetPortId }
-      : edge
-  ));
-}
-
-function updateTextConcatInputCount(nodes: ProductionNode[], nodeId: string, edges: GraphEdge[]) {
-  const usedCount = edges.filter((edge) => edge.targetNodeId === nodeId && getTextConcatInputPortIndex(edge.targetPortId) >= 0).length;
-  const inputCount = Math.max(TEXT_CONCAT_MIN_INPUTS, usedCount + 1);
-  return nodes.map((node) => {
-    if (node.id !== nodeId || node.type !== 'textConcat') return node;
-    const data = node.data as TextConcatNodeData;
-    if (data.inputCount === inputCount) return node;
-    return { ...node, data: { ...node.data, inputCount } as ProductionNodeData };
-  });
-}
-
-function updateTelegramMediaInputCount(nodes: ProductionNode[], nodeId: string, edges: GraphEdge[]) {
-  const usedCount = edges.filter((edge) => edge.targetNodeId === nodeId && getTelegramMediaInputPortIndex(edge.targetPortId) >= 0).length;
-  const inputCount = Math.max(
-    TELEGRAM_MEDIA_MIN_INPUTS,
-    Math.min(TELEGRAM_MEDIA_MAX_INPUTS, usedCount + 1),
-  );
-  return nodes.map((node) => {
-    if (node.id !== nodeId || node.type !== 'telegramPublication') return node;
-    const data = node.data as TelegramPublicationNodeData;
-    if (data.mediaInputCount === inputCount) return node;
-    return { ...node, data: { ...node.data, mediaInputCount: inputCount } as ProductionNodeData };
-  });
+  return { edges: nextState.edges, nodes: nextState.nodes };
 }

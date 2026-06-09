@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SetStateAction } from 'react';
+import { hasOpenFloatingContextMenu, requestCloseFloatingContextMenus } from './floating-context-menu';
 
 export interface CanvasPoint {
   x: number;
@@ -137,6 +138,9 @@ export function useCanvasNavigation({
       if (event.button !== 1) return;
       event.preventDefault();
       event.stopPropagation();
+      if (hasOpenFloatingContextMenu()) {
+        requestCloseFloatingContextMenus();
+      }
 
       middlePanRef.current = {
         active: true,
@@ -162,6 +166,12 @@ export function useCanvasNavigation({
     };
 
     const handleWheel = (event: WheelEvent) => {
+      if (hasOpenFloatingContextMenu()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
       if (shouldLetScrollableInputHandleWheel(event)) return;
 
       event.preventDefault();

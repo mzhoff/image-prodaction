@@ -33,6 +33,9 @@ The local `.env.local` file is ignored by git and must not be committed.
 - [Phase 2 plan](./docs/phase-2-plan.md)
 - [Phase 3 plan](./docs/phase-3-plan.md)
 - [Phase 4 plan](./docs/phase-4-plan.md)
+- [Coding standards](./docs/coding-standards.md)
+- [Workflow contracts](./docs/workflow-contracts.md)
+- [Quality gates](./docs/quality-gates.md)
 
 ## Useful Scripts
 
@@ -40,6 +43,8 @@ The local `.env.local` file is ignored by git and must not be committed.
 npm run dev:local   # Start local app on port 3004
 npm run dev         # Start Next.js on default port 3000
 npm run typecheck   # Run TypeScript checks
+npm run test        # Run focused unit tests
+npm run test:workflow-contract  # Contract-level tests
 npm run build       # Build production bundle
 ```
 

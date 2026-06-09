@@ -127,16 +127,56 @@
   vector-effect: non-scaling-stroke;
 }
 
+.curves-histogram-area {
+  fill: rgba(255, 255, 255, 0.11);
+  fill-rule: evenodd;
+  pointer-events: none;
+}
+
+.curves-histogram-line {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.24);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
 .curves-graph-red .curves-line {
   stroke: #ff5a5a;
+}
+
+.curves-graph-red .curves-histogram-line {
+  stroke: rgba(255, 90, 90, 0.28);
+}
+
+.curves-graph-red .curves-histogram-area {
+  fill: rgba(255, 90, 90, 0.14);
 }
 
 .curves-graph-green .curves-line {
   stroke: #32c96a;
 }
 
+.curves-graph-green .curves-histogram-line {
+  stroke: rgba(50, 201, 106, 0.28);
+}
+
+.curves-graph-green .curves-histogram-area {
+  fill: rgba(50, 201, 106, 0.14);
+}
+
 .curves-graph-blue .curves-line {
   stroke: #5d7cff;
+}
+
+.curves-graph-blue .curves-histogram-line {
+  stroke: rgba(93, 124, 255, 0.28);
+}
+
+.curves-graph-blue .curves-histogram-area {
+  fill: rgba(93, 124, 255, 0.14);
 }
 
 .curves-point {

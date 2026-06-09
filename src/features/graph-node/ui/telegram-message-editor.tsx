@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { $forEachSelectedTextNode, $patchStyleText } from '@lexical/selection';
+import type { CSSProperties } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -10,38 +9,62 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { $patchStyleText } from '@lexical/selection';
 import {
   $createParagraphNode,
   $createTextNode,
-  $getSelection,
+  $createRangeSelection,
   $getRoot,
   $isRangeSelection,
+  $isTextNode,
   $setSelection,
-  type RangeSelection,
+  $getSelection,
   type LexicalEditor,
-  type TextFormatType,
+  type LexicalNode,
+  type RangeSelection,
+  type TextNode,
 } from 'lexical';
 import {
   normalizeTelegramPlainText,
   normalizeTelegramRichText,
-  TELEGRAM_TEXT_FORMAT,
-  TELEGRAM_TEXT_STYLE,
   type TelegramMessageEditorValue,
 } from '../lib/telegram-rich-text';
+import { splitTelegramMessageParagraphs } from '../lib/telegram-message-blocks';
+import { cn } from '@/shared/lib/cn';
+import { TelegramTextContextMenuPlugin, type TelegramTextContextMenuFeature } from './telegram-message-editor-context-menu';
 
 interface TelegramMessageEditorProps {
+  contextMenuFeatures?: readonly TelegramTextContextMenuFeature[];
+  editorClassName?: string;
+  minHeight?: number;
+  namespace?: string;
   onChange?: (value: TelegramMessageEditorValue) => void;
+  characterLimit?: number;
+  placeholder?: string;
   richText?: string;
+  shellClassName?: string;
   value?: string;
 }
 
-export function TelegramMessageEditor({ onChange, richText, value }: TelegramMessageEditorProps) {
+export function TelegramMessageEditor({
+  contextMenuFeatures,
+  editorClassName,
+  minHeight,
+  namespace = 'TelegramMessageEditor',
+  onChange,
+  characterLimit,
+  placeholder = 'Message',
+  richText,
+  shellClassName,
+  value,
+}: TelegramMessageEditorProps) {
   const initialValueRef = useRef(value);
   const initialRichTextRef = useRef(richText);
+  const editorStyle = minHeight ? { '--telegram-editor-min-height': `${minHeight}px` } as CSSProperties : undefined;
   const editorConfig = useMemo(() => ({
     editorState: getInitialRichEditorState(initialRichTextRef.current)
       || (() => rebuildEditorState(initialValueRef.current)),
-    namespace: 'TelegramMessageEditor',
+    namespace,
     onError: (error: Error, editor: LexicalEditor) => {
       console.error('Telegram message editor failed', { editor, error });
     },
@@ -55,27 +78,33 @@ export function TelegramMessageEditor({ onChange, richText, value }: TelegramMes
         underline: 'telegram-message-editor-underline',
       },
     },
-  }), []);
+  }), [namespace]);
 
   return (
-    <div className="telegram-message-editor-shell" data-canvas-wheel-scroll="true" data-node-interactive>
+    <div
+      className={cn('telegram-message-editor-shell', shellClassName)}
+      data-canvas-wheel-scroll="true"
+      data-node-interactive
+      style={editorStyle}
+    >
       <LexicalComposer initialConfig={editorConfig}>
         <RichTextPlugin
           contentEditable={(
             <ContentEditable
               aria-label="Telegram message"
-              className="telegram-message-editor"
+              className={cn('telegram-message-editor', editorClassName)}
               data-node-interactive
               spellCheck={false}
             />
           )}
-          placeholder={<div className="telegram-message-editor-placeholder">Message</div>}
+          placeholder={<div className="telegram-message-editor-placeholder">{placeholder}</div>}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
         <TelegramMessageSyncPlugin richText={richText} value={value} />
+        <TelegramMessageCharacterLimitPlugin characterLimit={characterLimit} />
         <TelegramMessageChangePlugin onChange={onChange} />
-        <TelegramTextContextMenuPlugin />
+        <TelegramTextContextMenuPlugin features={contextMenuFeatures} />
       </LexicalComposer>
     </div>
   );
@@ -91,7 +120,7 @@ function TelegramMessageChangePlugin({ onChange }: { onChange?: (value: Telegram
         const richText = JSON.stringify(editorState.toJSON());
         editorState.read(() => {
           onChange?.({
-            plainText: normalizeEditorText($getRoot().getTextContent()),
+            plainText: normalizeTelegramPlainText($getRoot().getTextContent()),
             richText,
           });
         });
@@ -108,10 +137,10 @@ function TelegramMessageSyncPlugin({ richText, value }: Pick<TelegramMessageEdit
     const editorState = editor.getEditorState();
     const currentRichText = JSON.stringify(editorState.toJSON());
     editorState.read(() => {
-      currentText = normalizeEditorText($getRoot().getTextContent());
+      currentText = normalizeTelegramPlainText($getRoot().getTextContent());
     });
 
-    const nextText = normalizeEditorText(value);
+    const nextText = normalizeTelegramPlainText(value);
     const nextRichText = normalizeTelegramRichText(richText);
     if (nextRichText) {
       if (currentText === nextText && currentRichText === nextRichText) return;
@@ -131,6 +160,41 @@ function TelegramMessageSyncPlugin({ richText, value }: Pick<TelegramMessageEdit
   }, [editor, richText, value]);
 
   return null;
+}
+
+function TelegramMessageCharacterLimitPlugin({ characterLimit }: { characterLimit?: number }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (typeof characterLimit !== 'number') {
+      clearCharacterLimit(editor);
+      return;
+    }
+
+    if (characterLimit <= 0) {
+      clearCharacterLimit(editor);
+      return;
+    }
+
+    applyCharacterLimit(editor, characterLimit);
+  }, [characterLimit, editor]);
+
+  return (
+    <OnChangePlugin
+      ignoreHistoryMergeTagChange
+      ignoreSelectionChange
+      onChange={(_editorState, editor, tags) => {
+        if (typeof characterLimit !== 'number' || tags.has('character-limit-highlight')) return;
+
+        if (characterLimit <= 0) {
+          clearCharacterLimit(editor);
+          return;
+        }
+
+        applyCharacterLimit(editor, characterLimit);
+      }}
+    />
+  );
 }
 
 function parseRichEditorState(editor: LexicalEditor, richText: string | undefined) {
@@ -158,7 +222,7 @@ function getInitialRichEditorState(richText: string | undefined) {
 
 function rebuildEditorState(value: string | undefined) {
   const root = $getRoot();
-  const blocks = normalizeEditorText(value).split(/\n{2,}/);
+  const blocks = splitTelegramMessageParagraphs(normalizeTelegramPlainText(value), { trimParagraphs: true, removeEmptyParagraphs: false });
   root.clear();
 
   if (blocks.length === 0 || blocks.every((block) => !block.trim())) {
@@ -173,402 +237,115 @@ function rebuildEditorState(value: string | undefined) {
   }
 }
 
-function normalizeEditorText(value: string | undefined) {
-  return normalizeTelegramPlainText(value);
-}
-
-interface TelegramContextMenuState {
-  x: number;
-  y: number;
-}
-
-interface TelegramLinkDialogState {
-  x: number;
-  y: number;
-  url: string;
-}
-
-type ClipboardTextState = 'empty' | 'has-text' | 'unknown';
-
-const LEXICAL_TEXT_FORMAT_MASK: Partial<Record<TextFormatType, number>> = {
-  bold: TELEGRAM_TEXT_FORMAT.bold,
-  code: TELEGRAM_TEXT_FORMAT.code,
-  italic: TELEGRAM_TEXT_FORMAT.italic,
-  strikethrough: TELEGRAM_TEXT_FORMAT.strike,
-  underline: TELEGRAM_TEXT_FORMAT.underline,
-};
-
-function TelegramTextContextMenuPlugin() {
-  const [editor] = useLexicalComposerContext();
-  const savedSelectionRef = useRef<RangeSelection | null>(null);
-  const [clipboardTextState, setClipboardTextState] = useState<ClipboardTextState>('unknown');
-  const [linkDialog, setLinkDialog] = useState<TelegramLinkDialogState | null>(null);
-  const [menu, setMenu] = useState<TelegramContextMenuState | null>(null);
-
-  useEffect(() => {
-    const root = editor.getRootElement();
-    if (!root) return undefined;
-
-    const handleContextMenu = (event: MouseEvent) => {
-      let hasSelectedText = false;
-      editor.getEditorState().read(() => {
-        const selection = $getSelection();
-        hasSelectedText = Boolean($isRangeSelection(selection) && !selection.isCollapsed() && selection.getTextContent().trim());
-      });
-
-      if (!hasSelectedText) {
-        setMenu(null);
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      setMenu(getMenuPosition(event.clientX, event.clientY));
-      setClipboardTextState('unknown');
-      void readClipboardText().then((text) => {
-        if (text === null) {
-          setClipboardTextState('unknown');
-          return;
-        }
-        setClipboardTextState(text.trim() ? 'has-text' : 'empty');
-      });
-    };
-
-    root.addEventListener('contextmenu', handleContextMenu);
-    return () => root.removeEventListener('contextmenu', handleContextMenu);
-  }, [editor]);
-
-  useEffect(() => {
-    if (!menu && !linkDialog) return undefined;
-
-    const closeFloatingUi = () => {
-      setMenu(null);
-      setLinkDialog(null);
-      savedSelectionRef.current = null;
-    };
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Element && target.closest('.telegram-editor-context-menu, .telegram-editor-link-popover')) return;
-      closeFloatingUi();
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeFloatingUi();
-    };
-
-    window.addEventListener('pointerdown', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', closeFloatingUi, true);
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', closeFloatingUi, true);
-    };
-  }, [linkDialog, menu]);
-
-  if ((!menu && !linkDialog) || typeof document === 'undefined') return null;
-
-  const runAction = (action: () => void | Promise<void>) => {
-    void Promise.resolve(action()).finally(() => {
-      editor.focus();
-    });
-    setMenu(null);
-  };
-
-  const openLinkDialog = () => {
-    if (!menu) return;
-    savedSelectionRef.current = getSelectedRangeClone(editor);
-    setLinkDialog({ ...getLinkDialogPosition(menu.x, menu.y), url: '' });
-    setMenu(null);
-  };
-
-  return (
-    <>
-      {menu ? createPortal(
-        <div
-          className="telegram-editor-context-menu"
-          style={{ left: menu.x, top: menu.y }}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          onClick={(event) => event.stopPropagation()}
-          data-node-interactive
-        >
-          <TelegramContextMenuButton label="Копировать" shortcut="⌘C" onClick={() => runAction(() => copySelectedText(editor))} />
-          <TelegramContextMenuButton label="Вырезать" shortcut="⌘X" onClick={() => runAction(() => cutSelectedText(editor))} />
-          <TelegramContextMenuButton
-            label="Вставить"
-            shortcut="⌘V"
-            disabled={clipboardTextState === 'empty'}
-            onClick={() => runAction(() => pasteClipboardText(editor))}
-          />
-          <div className="telegram-editor-context-menu-separator" />
-          <TelegramContextMenuButton label="Убрать форматирование" onClick={() => runAction(() => removeSelectedFormatting(editor))} />
-          <div className="telegram-editor-context-menu-separator" />
-          <TelegramContextMenuButton label="Зачёркнутый" shortcut="⇧⌘X" onClick={() => runAction(() => applyTextFormat(editor, 'strikethrough'))} />
-          <TelegramContextMenuButton label="Подчёркнутый" shortcut="⇧⌘U" onClick={() => runAction(() => applyTextFormat(editor, 'underline'))} />
-          <TelegramContextMenuButton label="Скрытый" shortcut="⇧⌘P" onClick={() => runAction(() => applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.spoiler, '1'))} />
-          <TelegramContextMenuButton label="Моноширинный" shortcut="⇧⌘K" onClick={() => runAction(() => applyTextFormat(editor, 'code'))} />
-          <TelegramContextMenuButton label="Курсив" shortcut="⌘I" onClick={() => runAction(() => applyTextFormat(editor, 'italic'))} />
-          <TelegramContextMenuButton label="Жирный" shortcut="⌘B" onClick={() => runAction(() => applyTextFormat(editor, 'bold'))} />
-          <TelegramContextMenuButton label="Добавить ссылку" shortcut="⌘U" onClick={openLinkDialog} />
-          <TelegramContextMenuButton label="Цитата" shortcut="⇧⌘I" onClick={() => runAction(() => applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.quote, '1'))} />
-          <div className="telegram-editor-context-menu-separator" />
-          <TelegramContextMenuButton label="Прописные" prefix="АБВ" onClick={() => runAction(() => transformSelectedText(editor, (text) => text.toLocaleUpperCase()))} />
-          <TelegramContextMenuButton label="Строчные" prefix="абв" onClick={() => runAction(() => transformSelectedText(editor, (text) => text.toLocaleLowerCase()))} />
-          <TelegramContextMenuButton label="С заглавной буквы" prefix="Абв" onClick={() => runAction(() => transformSelectedText(editor, capitalizeText))} />
-        </div>,
-        document.body,
-      ) : null}
-      {linkDialog ? createPortal(
-        <TelegramLinkPopover
-          dialog={linkDialog}
-          onCancel={() => {
-            setLinkDialog(null);
-            savedSelectionRef.current = null;
-          }}
-          onSubmit={(url) => {
-            applyLink(editor, url, savedSelectionRef.current);
-            savedSelectionRef.current = null;
-            setLinkDialog(null);
-            editor.focus();
-          }}
-        />,
-        document.body,
-      ) : null}
-    </>
-  );
-}
-
-function TelegramContextMenuButton({
-  label,
-  onClick,
-  disabled = false,
-  prefix,
-  shortcut,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  prefix?: string;
-  shortcut?: string;
-}) {
-  return (
-    <button
-      type="button"
-      className="telegram-editor-context-menu-item"
-      disabled={disabled}
-      onClick={onClick}
-      data-node-interactive
-    >
-      <span className={prefix ? 'telegram-editor-context-menu-prefix' : 'telegram-editor-context-menu-prefix telegram-editor-context-menu-prefix-empty'}>{prefix}</span>
-      <span>{label}</span>
-      {shortcut ? <kbd>{shortcut}</kbd> : null}
-    </button>
-  );
-}
-
-function TelegramLinkPopover({
-  dialog,
-  onCancel,
-  onSubmit,
-}: {
-  dialog: TelegramLinkDialogState;
-  onCancel: () => void;
-  onSubmit: (url: string) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [url, setUrl] = useState(dialog.url);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  return (
-    <form
-      className="telegram-editor-link-popover"
-      style={{ left: dialog.x, top: dialog.y }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const normalizedUrl = normalizeLinkUrl(url);
-        if (!normalizedUrl) return;
-        onSubmit(normalizedUrl);
-      }}
-      data-node-interactive
-    >
-      <label htmlFor="telegram-editor-link-input">Ссылка</label>
-      <input
-        id="telegram-editor-link-input"
-        ref={inputRef}
-        type="url"
-        inputMode="url"
-        value={url}
-        placeholder="https://example.com"
-        onChange={(event) => setUrl(event.target.value)}
-      />
-      <div className="telegram-editor-link-actions">
-        <button type="button" onClick={onCancel}>Отмена</button>
-        <button type="submit">Применить</button>
-      </div>
-    </form>
-  );
-}
-
-function applyTextFormat(editor: LexicalEditor, format: TextFormatType) {
-  const mask = LEXICAL_TEXT_FORMAT_MASK[format];
-  if (!mask) return;
-
+function applyCharacterLimit(editor: LexicalEditor, characterLimit: number) {
   editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
+  const textNodes = getAllTextNodes($getRoot(), []);
+    const totalCharacters = textNodes.reduce((sum, node) => sum + node.node.getTextContent().length, 0);
 
-    $forEachSelectedTextNode((textNode) => {
-      textNode.setFormat(textNode.getFormat() | mask);
-    });
-    selection.setFormat(selection.format | mask);
-  });
+    if (totalCharacters <= characterLimit) {
+      clearOverLimitStyle(textNodes);
+      return;
+    }
+
+    const previousSelection = saveSelection();
+    clearOverLimitStyle(textNodes);
+    applyOverLimitStyle(textNodes, characterLimit);
+    restoreSelection(previousSelection);
+  }, { tag: 'character-limit-highlight' });
 }
 
-function applyTelegramStyle(editor: LexicalEditor, property: string, value: string, savedSelection?: RangeSelection | null) {
+function clearCharacterLimit(editor: LexicalEditor) {
   editor.update(() => {
-    restoreSelection(savedSelection);
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-    $patchStyleText(selection, { [property]: value });
-  });
+    clearOverLimitStyle(getAllTextNodes($getRoot(), []));
+  }, { tag: 'character-limit-highlight' });
 }
 
-function applyLink(editor: LexicalEditor, url: string, savedSelection?: RangeSelection | null) {
-  applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.link, encodeURIComponent(url), savedSelection);
-}
+function applyOverLimitStyle(textNodes: TextNodeEntry[], characterLimit: number) {
+  let position = 0;
+  for (const node of textNodes) {
+    const textLength = node.node.getTextContent().length;
+    if (textLength === 0) {
+      continue;
+    }
 
-function copySelectedText(editor: LexicalEditor) {
-  const text = getSelectedText(editor);
-  if (!text) return;
-  void writeClipboardText(text);
-}
+    const start = position;
+    const end = position + textLength;
+    if (end <= characterLimit) {
+      position = end;
+      continue;
+    }
 
-function cutSelectedText(editor: LexicalEditor) {
-  const text = getSelectedText(editor);
-  if (!text) return;
+    const overflowStart = Math.max(characterLimit - start, 0);
+    if (overflowStart <= 0) {
+      applyOverLimitStyleToTextNode(node.node, 0, textLength);
+    } else if (overflowStart < textLength) {
+      applyOverLimitStyleToTextNode(node.node, overflowStart, textLength);
+    }
 
-  void writeClipboardText(text);
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-    selection.removeText();
-  });
-}
+    if (start >= characterLimit) {
+      position = end;
+      continue;
+    }
 
-async function pasteClipboardText(editor: LexicalEditor) {
-  const text = await readClipboardText();
-  if (!text) return;
-
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection)) return;
-    selection.insertText(text);
-  });
-}
-
-function removeSelectedFormatting(editor: LexicalEditor) {
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-
-    selection.setFormat(0);
-    selection.setStyle('');
-    $forEachSelectedTextNode((textNode) => {
-      textNode.setFormat(0);
-      textNode.setStyle('');
-    });
-  });
-}
-
-function getSelectedText(editor: LexicalEditor) {
-  let text = '';
-  editor.getEditorState().read(() => {
-    const selection = $getSelection();
-    text = $isRangeSelection(selection) && !selection.isCollapsed() ? selection.getTextContent() : '';
-  });
-  return text;
-}
-
-function getSelectedRangeClone(editor: LexicalEditor) {
-  let clonedSelection: RangeSelection | null = null;
-  editor.getEditorState().read(() => {
-    const selection = $getSelection();
-    clonedSelection = $isRangeSelection(selection) && !selection.isCollapsed() ? selection.clone() : null;
-  });
-  return clonedSelection;
-}
-
-function restoreSelection(selection: RangeSelection | null | undefined) {
-  if (selection) $setSelection(selection.clone());
-}
-
-async function readClipboardText() {
-  try {
-    return await navigator.clipboard?.readText() ?? '';
-  } catch {
-    return null;
+    position = end;
   }
 }
 
-async function writeClipboardText(text: string) {
-  try {
-    await navigator.clipboard?.writeText(text);
-  } catch {
-    // Clipboard permissions vary by browser; formatting commands should not fail because of that.
+function applyOverLimitStyleToTextNode(node: TextNodeEntry['node'], start: number, end: number) {
+  const rangeSelection = $createRangeSelection();
+  rangeSelection.setTextNodeRange(node, start, node, end);
+  $patchStyleText(rangeSelection, { '--telegram-over-limit': '1' });
+}
+
+function clearOverLimitStyle(textNodes: TextNodeEntry[]) {
+  for (const node of textNodes) {
+    const style = node.node.getStyle();
+    const nextStyle = stripTextStyleProperty(style, '--telegram-over-limit');
+    if (nextStyle !== style) {
+      node.node.setStyle(nextStyle);
+    }
   }
 }
 
-function transformSelectedText(editor: LexicalEditor, transform: (text: string) => string) {
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-
-    $forEachSelectedTextNode((textNode) => {
-      textNode.setTextContent(transform(textNode.getTextContent()));
-    });
-  });
+function saveSelection() {
+  const selection = $getSelection();
+  return $isRangeSelection(selection) ? selection.clone() : null;
 }
 
-function capitalizeText(value: string) {
-  return value.toLocaleLowerCase().replace(/\p{L}[\p{L}\p{M}]*/gu, (word) => {
-    const [firstCharacter = '', ...rest] = Array.from(word);
-    return `${firstCharacter.toLocaleUpperCase()}${rest.join('')}`;
-  });
+function restoreSelection(selection: RangeSelection | null) {
+  if ($isRangeSelection(selection)) {
+    $setSelection(selection);
+  }
 }
 
-function normalizeLinkUrl(value: string | null | undefined) {
-  const trimmed = value?.trim();
-  if (!trimmed) return '';
-  if (/^(https?:|mailto:|tel:)/i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
+function getAllTextNodes(node: LexicalNode, nodes: TextNodeEntry[]): TextNodeEntry[] {
+  if ($isTextNode(node)) {
+    nodes.push({ node });
+    return nodes;
+  }
+
+  const getChildren = (node as { getChildren?: () => LexicalNode[] }).getChildren;
+  if (!getChildren) {
+    return nodes;
+  }
+
+  for (const child of getChildren.call(node)) {
+    getAllTextNodes(child, nodes);
+  }
+
+  return nodes;
 }
 
-function getMenuPosition(x: number, y: number): TelegramContextMenuState {
-  const width = 278;
-  const height = 480;
-  return {
-    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - width - 8)),
-    y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8)),
-  };
+function stripTextStyleProperty(style: string, property: string) {
+  if (!style) return '';
+  return style
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .filter((part) => !part.startsWith(`${property}:`))
+    .join('; ');
 }
 
-function getLinkDialogPosition(x: number, y: number): TelegramLinkDialogState {
-  const width = 292;
-  const height = 126;
-  return {
-    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - width - 8)),
-    y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8)),
-    url: '',
-  };
+interface TextNodeEntry {
+  node: TextNode;
 }

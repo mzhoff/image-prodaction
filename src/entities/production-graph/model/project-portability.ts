@@ -78,7 +78,7 @@ export function normalizePortableProjectExport(payload: unknown): PortableProjec
 }
 
 function createPipelineTemplateProject(project: GraphProject): PipelineTemplateExport['project'] {
-  return normalizeProject({
+  const normalized = normalizeProject({
     ...project,
     nodes: project.nodes.map(toPipelineTemplateNode),
     assets: [],
@@ -89,7 +89,30 @@ function createPipelineTemplateProject(project: GraphProject): PipelineTemplateE
     runs: [],
     selectedNodeIds: [],
     selectedSectionIds: [],
-  }) as PipelineTemplateExport['project'];
+  });
+
+  return {
+    ...normalized,
+    nodes: normalized.nodes.map(stripTemplateRuntimeNodeFields),
+  } as PipelineTemplateExport['project'];
+}
+
+function stripTemplateRuntimeNodeFields(node: ProductionNode): ProductionNode {
+  const data = { ...node.data } as unknown as Record<string, unknown>;
+  if (node.type !== 'generateImage' && node.type !== 'refineImage') {
+    delete data.activeItemIndex;
+    delete data.activeResultIndex;
+    delete data.resultAssetIds;
+  }
+  delete data.imageAssetIds;
+  delete data.result;
+  delete data.resultAssetId;
+  delete data.sourceNodeId;
+
+  return {
+    ...node,
+    data: data as unknown as ProductionNodeData,
+  };
 }
 
 function toPipelineTemplateNode(node: ProductionNode): ProductionNode {
@@ -111,6 +134,7 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.activeText;
   delete data.items;
   delete data.imageCount;
+  delete data.imageAssetIds;
   delete data.result;
   delete data.resultAssetId;
   delete data.resultAssetIds;
@@ -119,6 +143,7 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.sourceAssetId;
   delete data.sourceAspectRatio;
   delete data.sourceText;
+  delete data.sourceNodeId;
   delete data.textCount;
   delete data.cropStateVersion;
   delete data.maskDataUrl;

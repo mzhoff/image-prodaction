@@ -1,6 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo } from 'react';
+import {
+  FORMATTED_TEXT_PRESETS,
+  getFormattedTextPresetDefinition,
+  normalizeFormattedTextPresetId,
+} from '@/entities/production-graph/model/formatted-text';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
 import {
   TEXT_SPLITTER_MAX_ITEMS,
@@ -16,6 +21,7 @@ import type {
   ProductionNode,
   TextConcatNodeData,
   TextConcatSeparator,
+  TextFormatterNodeData,
   TextGenerationNodeData,
   TextGenerationOutputStyle,
   TextGenerationReasoning,
@@ -30,6 +36,12 @@ import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { composeTextPromptResult, normalizeTextPromptVariableDisplayMode } from '../lib/text-prompt-variables';
 import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
+import {
+  getPlainTextFromTelegramRichText,
+  normalizeTelegramPlainText,
+  normalizeTelegramRichText,
+  serializeTelegramPlainText,
+} from '../lib/telegram-rich-text';
 import { useTextSectionFilters } from './use-text-section-filters';
 
 export const textConcatSeparatorOptions: DarkSelectOption[] = [
@@ -64,9 +76,20 @@ export const textPromptVariableDisplayOptions: DarkSelectOption[] = [
   { value: 'source', label: 'Source' },
 ];
 
+export const textFormatterPresetOptions: DarkSelectOption[] = FORMATTED_TEXT_PRESETS.map((preset) => ({
+  value: preset.id,
+  label: preset.label,
+}));
+
 export const TEXT_PROMPT_TEXTAREA_DEFAULT_HEIGHT = 248;
 export const TEXT_PROMPT_TEXTAREA_MIN_HEIGHT = 64;
 export const TEXT_PROMPT_TEXTAREA_MAX_HEIGHT = 560;
+export const TEXT_FORMATTER_EDITOR_DEFAULT_HEIGHT = 360;
+export const TEXT_FORMATTER_EDITOR_MIN_HEIGHT = 180;
+export const TEXT_FORMATTER_EDITOR_MAX_HEIGHT = 760;
+export const TEXT_CONCAT_OPTIONAL_TEXTAREA_DEFAULT_HEIGHT = 95;
+export const TEXT_CONCAT_OPTIONAL_TEXTAREA_MIN_HEIGHT = 72;
+export const TEXT_CONCAT_OPTIONAL_TEXTAREA_MAX_HEIGHT = 420;
 
 export function useTextPromptNodeModel(node: ProductionNode) {
   const data = node.data as TextPromptNodeData;
@@ -150,6 +173,7 @@ export function useTextConcatNodeModel(node: ProductionNode) {
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const inputCount = getTextConcatInputCount(node);
+  const optionalTextHeight = clampTextConcatOptionalHeight(data.optionalTextHeight);
   const inputSlots = useMemo(() => (
     Array.from({ length: inputCount }, (_, index) => {
       const portId = getTextConcatInputPortId(index);
@@ -166,16 +190,22 @@ export function useTextConcatNodeModel(node: ProductionNode) {
   const result = useMemo(() => composeConcatText(data, inputSlots.map((input) => input.text)), [data, inputSlots]);
 
   useEffect(() => {
-    if (data.result === result && data.sourceCount === sourceCount) return;
-    updateNodeDataSilent(node.id, { result, sourceCount });
-  }, [data.result, data.sourceCount, node.id, result, sourceCount, updateNodeDataSilent]);
+    const nextData: Partial<TextConcatNodeData> = {};
+    if (data.result !== result) nextData.result = result;
+    if (data.sourceCount !== sourceCount) nextData.sourceCount = sourceCount;
+    if (data.optionalTextHeight !== optionalTextHeight) nextData.optionalTextHeight = optionalTextHeight;
+    if (Object.keys(nextData).length === 0) return;
+    updateNodeDataSilent(node.id, nextData);
+  }, [data.optionalTextHeight, data.result, data.sourceCount, node.id, result, sourceCount, optionalTextHeight, updateNodeDataSilent]);
 
   return {
     data,
     handleAddInput: () => updateNodeData(node.id, { inputCount: inputCount + 1 }),
     handleOptionalTextChange: (suffix: string) => updateNodeData(node.id, { suffix }),
+    handleOptionalTextHeightChange: (nextHeight: number) => updateNodeData(node.id, { optionalTextHeight: clampTextConcatOptionalHeight(nextHeight) }),
     inputSlots,
     optionalText: data.suffix,
+    optionalTextHeight,
     result,
     sourceCount,
   };
@@ -267,6 +297,66 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
   };
 }
 
+export function useTextFormatterNodeModel(node: ProductionNode) {
+  const data = node.data as TextFormatterNodeData;
+  const edges = useProductionGraphStore((state) => state.edges);
+  const nodes = useProductionGraphStore((state) => state.nodes);
+  const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
+  const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
+  const sourceText = useMemo(() => (
+    getIncomingTextInputs(node.id, 'text', { edges, nodes }).map((input) => input.text).join('\n\n')
+  ), [edges, node.id, nodes]);
+  const normalizedSourceText = normalizeTelegramPlainText(sourceText);
+  const presetId = normalizeFormattedTextPresetId(data.presetId);
+  const preset = getFormattedTextPresetDefinition(presetId);
+  const editorHeight = clampTextFormatterEditorHeight(data.editorHeight);
+  const storedPlainText = normalizeTelegramPlainText(data.plainText);
+  const richTextPlainText = normalizeTelegramPlainText(getPlainTextFromTelegramRichText(data.richText));
+  const hasIncomingText = normalizedSourceText.length > 0;
+  const shouldAdoptSourceText = hasIncomingText && normalizeTelegramPlainText(data.sourceText) !== normalizedSourceText;
+  const plainText = shouldAdoptSourceText
+    ? normalizedSourceText
+    : storedPlainText || richTextPlainText || normalizedSourceText;
+  const richText = shouldAdoptSourceText
+    ? serializeTelegramPlainText(normalizedSourceText)
+    : normalizeTelegramRichText(data.richText) || serializeTelegramPlainText(plainText);
+  const sourceCount = hasIncomingText ? 1 : 0;
+
+  useEffect(() => {
+    const nextData: Partial<TextFormatterNodeData> = {};
+    if (data.editorHeight !== editorHeight) nextData.editorHeight = editorHeight;
+    if (data.presetId !== presetId) nextData.presetId = presetId;
+    if (data.result !== plainText) nextData.result = plainText;
+    if (data.sourceCount !== sourceCount) nextData.sourceCount = sourceCount;
+    if (shouldAdoptSourceText || data.sourceText !== normalizedSourceText) nextData.sourceText = normalizedSourceText;
+    if (shouldAdoptSourceText || data.plainText !== plainText) nextData.plainText = plainText;
+    if (shouldAdoptSourceText || normalizeTelegramRichText(data.richText) !== richText) nextData.richText = richText;
+    if (Object.keys(nextData).length === 0) return;
+    updateNodeDataSilent(node.id, nextData);
+  }, [data.editorHeight, data.plainText, data.presetId, data.result, data.richText, data.sourceCount, data.sourceText, editorHeight, node.id, normalizedSourceText, plainText, presetId, richText, shouldAdoptSourceText, sourceCount, updateNodeDataSilent]);
+
+  return {
+    data,
+    editorHeight,
+    handleEditorChange: (value: { plainText: string; richText: string }) => updateNodeData(node.id, {
+      plainText: value.plainText,
+      result: value.plainText,
+      richText: value.richText,
+      sourceText: normalizedSourceText,
+    }),
+    handleEditorHeightChange: (nextHeight: number) => updateNodeData(node.id, { editorHeight: clampTextFormatterEditorHeight(nextHeight) }),
+    handlePresetChange: (value: string) => updateNodeData(node.id, { presetId: normalizeFormattedTextPresetId(value) }),
+    hasIncomingText,
+    plainText,
+    preset,
+    presetId,
+    presetOptions: textFormatterPresetOptions,
+    richText,
+    sourceCount,
+    sourceText: normalizedSourceText,
+  };
+}
+
 export function useTextSplitterNodeModel(node: ProductionNode) {
   const data = node.data as TextSplitterNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
@@ -340,6 +430,16 @@ function getCustomTextPromptSourceAlias(sourceNode: ProductionNode | undefined) 
 export function clampTextPromptTextareaHeight(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return TEXT_PROMPT_TEXTAREA_DEFAULT_HEIGHT;
   return Math.min(Math.max(Math.round(value), TEXT_PROMPT_TEXTAREA_MIN_HEIGHT), TEXT_PROMPT_TEXTAREA_MAX_HEIGHT);
+}
+
+export function clampTextConcatOptionalHeight(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return TEXT_CONCAT_OPTIONAL_TEXTAREA_DEFAULT_HEIGHT;
+  return Math.min(Math.max(Math.round(value), TEXT_CONCAT_OPTIONAL_TEXTAREA_MIN_HEIGHT), TEXT_CONCAT_OPTIONAL_TEXTAREA_MAX_HEIGHT);
+}
+
+export function clampTextFormatterEditorHeight(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return TEXT_FORMATTER_EDITOR_DEFAULT_HEIGHT;
+  return Math.min(Math.max(Math.round(value), TEXT_FORMATTER_EDITOR_MIN_HEIGHT), TEXT_FORMATTER_EDITOR_MAX_HEIGHT);
 }
 
 function getSeparator(separator: TextConcatSeparator, customSeparator: string) {

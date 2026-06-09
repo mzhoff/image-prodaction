@@ -2,7 +2,6 @@
 
 import { Loader2, MapPin, Sparkles } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
@@ -12,6 +11,7 @@ import {
   locationTypeOptions,
   useLocationBuilderNodeModel,
 } from '../../model/use-location-builder-node-model';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { EntityBuilderInputRow } from '../entity-builder-input-row';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
@@ -24,12 +24,12 @@ interface LocationBuilderNodeProps {
 
 export function LocationBuilderNode({ node, onStartConnection }: LocationBuilderNodeProps) {
   const model = useLocationBuilderNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
 
   return (
     <>
       <NodeTitle
-        title="Location Builder"
+        title={model.data.title}
         nodeType={node.type}
         muted
         action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />}

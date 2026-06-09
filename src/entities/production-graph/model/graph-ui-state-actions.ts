@@ -1,6 +1,7 @@
 import type { ProjectNodeUiState, ProjectSectionUiState } from './project-schema';
 import type { ProductionGraphState } from './store-types';
 import type { StoreSet } from './store-action-types';
+import { applyNodeDisplayState } from './project-schema';
 
 export function createGraphUiStateActions(set: StoreSet): Pick<
   ProductionGraphState,
@@ -16,10 +17,11 @@ export function createGraphUiStateActions(set: StoreSet): Pick<
       }));
     },
     setNodeUiState: (nodeId, nodeUiState) => {
+      const nextNodeState = applyNodeDisplayState(nodeUiState);
       set((state) => ({
         uiState: {
           ...state.uiState,
-          nodes: setRecordPatch(state.uiState.nodes, nodeId, nodeUiState),
+          nodes: setRecordPatch(state.uiState.nodes, nodeId, nextNodeState),
         },
       }));
     },

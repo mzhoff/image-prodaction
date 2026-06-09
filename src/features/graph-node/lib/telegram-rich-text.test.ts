@@ -7,6 +7,7 @@ import {
   getPlainTextFromTelegramRichText,
   getTelegramRichTextBlocks,
   getTelegramRichTextRunText,
+  splitTelegramRichTextRunsByQuote,
   parseTelegramFormatSegmentsPayload,
 } from './telegram-rich-text.ts';
 
@@ -270,4 +271,21 @@ test('getTelegramRichTextBlocks keeps quote metadata across nested bold and plai
   assert.equal(getTelegramRichTextRunText(blocks[0].runs), plainText);
   assert.deepEqual(blocks[0].runs.map((run) => run.quote), [true, true]);
   assert.deepEqual(blocks[0].runs.map((run) => run.format), [TELEGRAM_TEXT_FORMAT.bold, 0]);
+});
+
+test('splitTelegramRichTextRunsByQuote groups adjacent quote runs', () => {
+  const groups = splitTelegramRichTextRunsByQuote([
+    { format: 0, text: 'Обычный', quote: false },
+    { format: 0, text: ' цитата', quote: true },
+    { format: 0, text: ' продолжается', quote: true },
+    { format: 0, text: ' снова обычный', quote: false },
+  ] satisfies Array<Parameters<typeof splitTelegramRichTextRunsByQuote>[0][number]>);
+
+  assert.equal(groups.length, 3);
+  assert.equal(groups[0].quote, false);
+  assert.equal(groups[0].runs[0].quote, false);
+  assert.equal(groups[1].quote, true);
+  assert.equal(groups[1].runs.length, 2);
+  assert.equal(groups[1].runs[0].quote, false);
+  assert.equal(groups[2].quote, false);
 });

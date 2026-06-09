@@ -9,6 +9,7 @@ import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { PromptBox } from '@/shared/ui/prompt-box';
 import { RangeSlider } from '@/shared/ui/range-slider';
 import { SettingRow } from '@/shared/ui/setting-row';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { useTextGenerationNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
@@ -22,12 +23,12 @@ interface TextGenerationNodeProps {
 
 export function TextGenerationNode({ node, onStartConnection }: TextGenerationNodeProps) {
   const model = useTextGenerationNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
   const [scrollTargetStart, setScrollTargetStart] = useState<number | null>(null);
 
   return (
     <>
-      <NodeTitle title="Text Generate (LLM)" nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
       <PortButton
         nodeId={node.id}
         portId="text"
@@ -35,6 +36,7 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
         kind="text"
         label="Text"
         className="text-node-header-input-port"
+        style={{ top: collapsed ? 20 : undefined }}
         onStartConnection={onStartConnection}
       />
       <PortButton
@@ -44,6 +46,7 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
         kind="text"
         label="Result"
         className="text-node-header-output-port"
+        style={{ top: collapsed ? 20 : undefined }}
         onStartConnection={onStartConnection}
       />
       {!collapsed ? (

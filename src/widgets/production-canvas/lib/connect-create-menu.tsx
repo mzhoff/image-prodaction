@@ -48,7 +48,7 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
     : sourceKind === 'location'
     ? ['background']
     : sourceKind === 'image'
-    ? ['media-0', 'media', 'image', 'imageCollection', 'reference', ...layerPortIds]
+    ? ['media-0', 'media', 'image-0', 'image', 'imageCollection', 'reference', ...layerPortIds]
     : ['body', 'text', 'textCollection', 'text-0', 'prompt', ...layerPortIds, 'image'];
 
   return priority.find((portId) => {

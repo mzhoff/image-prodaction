@@ -2,11 +2,12 @@
 
 import { Plus } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
-import { useTextConcatNodeModel } from '../../model/use-text-workflow-node-models';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
+import { clampTextConcatOptionalHeight, useTextConcatNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
 
@@ -17,11 +18,43 @@ interface TextConcatNodeProps {
 
 export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps) {
   const model = useTextConcatNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
+  const [draftOptionalHeight, setDraftOptionalHeight] = useState(model.optionalTextHeight);
+
+  useEffect(() => {
+    setDraftOptionalHeight(model.optionalTextHeight);
+  }, [model.optionalTextHeight]);
+
+  const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    if (event.target !== event.currentTarget) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const startY = event.clientY;
+    const startHeight = draftOptionalHeight;
+    let nextHeight = startHeight;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      nextHeight = clampTextConcatOptionalHeight(startHeight + moveEvent.clientY - startY);
+      setDraftOptionalHeight(nextHeight);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      if (nextHeight !== model.optionalTextHeight) {
+        model.handleOptionalTextHeightChange(nextHeight);
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp, { once: true });
+  };
 
   return (
     <>
-      <NodeTitle title="Concatenate" nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
       {model.inputSlots.map((slot, index) => (
         <PortButton
           key={slot.portId}
@@ -31,7 +64,7 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
           kind="text"
           label={`Input ${index + 1}`}
           className="text-concat-input-port"
-          style={{ top: 40 + index * 40 }}
+          style={{ top: collapsed ? 20 : 40 + index * 40 }}
           onStartConnection={onStartConnection}
         />
       ))}
@@ -42,6 +75,7 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
         kind="text"
         label="Result"
         className="text-node-header-output-port"
+        style={{ top: collapsed ? 20 : 40 }}
         onStartConnection={onStartConnection}
       />
       {!collapsed ? (
@@ -53,9 +87,19 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
             <PromptBox value={model.result} readonly className="text-node-result-box text-concat-result-box" />
           </CollapsibleSection>
           <CollapsibleSection title="Optional Text" className="text-node-section text-node-optional-section">
-            <PromptBox value={model.optionalText} onChange={model.handleOptionalTextChange} className="text-node-optional-box" />
+            <PromptBox
+              value={model.optionalText}
+              onChange={model.handleOptionalTextChange}
+              className="text-node-optional-box"
+              style={{ height: draftOptionalHeight }}
+            />
           </CollapsibleSection>
-          <div className="text-concat-add-container">
+          <div
+            className="text-concat-add-container text-node-bottom-drag-handle"
+            data-node-interactive
+            onPointerDown={handleResizePointerDown}
+            aria-label="Resize optional text box"
+          >
             <button type="button" className="text-concat-add-button" onClick={model.handleAddInput}>
               <Plus size={16} />
               <span>Add new input</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CurvesNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
@@ -11,6 +11,7 @@ import {
   type CurveChannelId,
   type CurvePoint,
 } from '@/shared/lib/image-renderer/curves';
+import { buildImageHistogramFromBlob, type ImageHistogram } from '@/shared/lib/image-renderer/image-histogram';
 import { curvesImageBlob, type CurvesAdjustmentValues } from '../lib/curves-image';
 
 export const defaultCurvesOpacity = 100;
@@ -20,6 +21,7 @@ export function useCurvesNodeModel(node: ProductionNode) {
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const assets = useProductionGraphStore((state) => state.assets);
+  const [histogram, setHistogram] = useState<ImageHistogram | undefined>(undefined);
   const addAsset = useProductionGraphStore((state) => state.addAsset);
   const pushHistory = useProductionGraphStore((state) => state.pushHistory);
   const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
@@ -113,6 +115,31 @@ export function useCurvesNodeModel(node: ProductionNode) {
     return () => window.clearTimeout(timer);
   }, [addAsset, data.maskDataUrl, node.id, setNodeStatus, sourceAsset, updateNodeDataSilent, values]);
 
+  useEffect(() => {
+    if (!sourceAsset) {
+      setHistogram(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const sourceBlob = await loadAssetBlob(sourceAsset);
+      if (cancelled || !sourceBlob) return;
+
+      try {
+        const imageHistogram = await buildImageHistogramFromBlob(sourceBlob);
+        if (cancelled) return;
+        setHistogram(imageHistogram);
+      } catch {
+        if (!cancelled) setHistogram(undefined);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceAsset]);
+
   const handleInteractionStart = useCallback(() => {
     pushHistory();
   }, [pushHistory]);
@@ -180,6 +207,7 @@ export function useCurvesNodeModel(node: ProductionNode) {
     opacity,
     processing: node.status === 'running',
     resultAsset: validResultAsset,
+    histogram,
     sourceAsset,
   };
 }

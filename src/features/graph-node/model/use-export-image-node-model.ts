@@ -54,7 +54,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
   const assets = useProductionGraphStore((state) => state.assets);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const sourceItems = useMemo(() => (
-    getIncomingImageCollectionInputs(node.id, 'image', { edges, nodes, assets })
+    getIncomingImageCollectionInputs(node.id, undefined, { edges, nodes, assets })
       .sort((first, second) => {
         const firstY = first.sourceNode.position.y;
         const secondY = second.sourceNode.position.y;

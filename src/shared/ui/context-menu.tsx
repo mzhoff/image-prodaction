@@ -5,12 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/shared/lib/cn';
 import type { ContextMenuAction, ContextMenuColorAction, ContextMenuState } from './context-menu-types';
+import { FLOATING_CONTEXT_MENU_CLOSE_EVENT } from './floating-context-menu';
 
 function getMenuPosition(menu: ContextMenuState) {
-  const minWidth = menu.minWidth ?? 220;
+  const minWidth = menu.minWidth ?? 188;
   const estimatedHeight = 12
-    + menu.actions.reduce((height, action) => height + (action.kind === 'color' ? 42 : 36), 0)
-    + menu.actions.filter((action) => action.separatorBefore).length * 9;
+    + menu.actions.reduce((height, action) => height + (action.kind === 'color' ? 32 : 28), 0)
+    + menu.actions.filter((action) => action.separatorBefore).length * 8;
   const pad = 8;
   const bottomSafe = 24;
   let left = menu.x;
@@ -33,6 +34,13 @@ export function ContextMenu({
   menu: ContextMenuState | null;
   onClose: () => void;
 }) {
+  useEffect(() => {
+    if (!menu) return undefined;
+
+    document.addEventListener(FLOATING_CONTEXT_MENU_CLOSE_EVENT, onClose);
+    return () => document.removeEventListener(FLOATING_CONTEXT_MENU_CLOSE_EVENT, onClose);
+  }, [menu, onClose]);
+
   if (!menu) return null;
 
   return createPortal(
@@ -41,6 +49,7 @@ export function ContextMenu({
       <div
         className="context-menu"
         style={getMenuPosition(menu)}
+        data-floating-context-menu="true"
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
         onContextMenu={(event) => event.preventDefault()}

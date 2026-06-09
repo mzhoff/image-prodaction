@@ -27,7 +27,7 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
   return (
     <>
       <NodeTitle
-        title="Extract"
+        title={model.data.title}
         nodeType={node.type}
         muted
         action={(

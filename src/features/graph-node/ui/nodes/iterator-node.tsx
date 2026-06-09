@@ -2,12 +2,12 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useIteratorNodeModel } from '../../model/use-iterator-node-model';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { EntityBuilderInputRow } from '../entity-builder-input-row';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
@@ -20,17 +20,61 @@ interface IteratorNodeProps {
 
 export function IteratorNode({ node, onStartConnection }: IteratorNodeProps) {
   const model = useIteratorNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
   const countLabel = model.activeItemsCount > 0 ? `${model.activeIndex + 1}/${model.activeItemsCount}` : '0/0';
 
   return (
     <>
       <NodeTitle
-        title="Iterator"
+        title={model.data.title}
         nodeType={node.type}
         muted
         action={<TextNodeTitleActions collapsed={collapsed} count={countLabel} onCollapsedChange={setCollapsed} />}
       />
+      {collapsed ? (
+        <>
+          <PortButton
+            nodeId={node.id}
+            portId="imageCollection"
+            side="input"
+            kind="image"
+            label="Image collection"
+            className="text-node-header-input-port"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+          <PortButton
+            nodeId={node.id}
+            portId="textCollection"
+            side="input"
+            kind="text"
+            label="Text collection"
+            className="text-node-header-input-port"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+          <PortButton
+            nodeId={node.id}
+            portId="imageItem"
+            side="output"
+            kind="image"
+            label="Image item"
+            className="text-node-header-output-port"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+          <PortButton
+            nodeId={node.id}
+            portId="textItem"
+            side="output"
+            kind="text"
+            label="Text item"
+            className="text-node-header-output-port"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+        </>
+      ) : null}
       {!collapsed ? (
         <>
           <CollapsibleSection title="Input" className="text-node-section iterator-node-input-section">

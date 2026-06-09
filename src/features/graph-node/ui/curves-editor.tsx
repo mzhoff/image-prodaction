@@ -12,6 +12,7 @@ import {
   type CurvePoint,
   type CurvePointMap,
 } from '@/shared/lib/image-renderer/curves';
+import type { ImageHistogram } from '@/shared/lib/image-renderer/image-histogram';
 import { cn } from '@/shared/lib/cn';
 import { RangeSlider } from '@/shared/ui/range-slider';
 
@@ -23,6 +24,7 @@ interface CurvesEditorProps {
   onCurveChange: (channel: CurveChannelId, points: CurvePoint[]) => void;
   onInteractionStart?: () => void;
   onOpacityChange: (opacity: number) => void;
+  histogram?: ImageHistogram;
   onResetChannel: (channel: CurveChannelId) => void;
   opacity: number;
   variant?: 'node' | 'viewer';
@@ -43,6 +45,7 @@ export function CurvesEditor({
   onCurveChange,
   onInteractionStart,
   onOpacityChange,
+  histogram,
   onResetChannel,
   opacity,
   variant = 'node',
@@ -50,7 +53,9 @@ export function CurvesEditor({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const draggingPointIdRef = useRef<string | null>(null);
   const activePoints = useMemo(() => normalizeCurvePoints(curves[activeChannel]), [activeChannel, curves]);
+  const activeHistogram = useMemo(() => histogram?.[activeChannel], [activeChannel, histogram]);
   const activePath = useMemo(() => getCurvePath(activePoints), [activePoints]);
+  const histogramPaths = useMemo(() => getHistogramPaths(activeHistogram), [activeHistogram]);
 
   const handleGraphPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) return;
@@ -142,6 +147,8 @@ export function CurvesEditor({
         onDoubleClick={(event) => event.stopPropagation()}
       >
         <rect className="curves-graph-bg" x="0" y="0" width="256" height="256" rx="0" />
+        {histogramPaths?.areaPath ? <path className="curves-histogram-area" d={histogramPaths.areaPath} /> : null}
+        {histogramPaths?.linePath ? <path className="curves-histogram-line" d={histogramPaths.linePath} /> : null}
         {[64, 128, 192].map((position) => (
           <line key={`v-${position}`} className={cn('curves-grid-line', position === 128 && 'curves-grid-line-mid')} x1={position} x2={position} y1="0" y2="256" />
         ))}
@@ -179,6 +186,34 @@ export function CurvesEditor({
 function getCurvePath(points: CurvePoint[]) {
   const lut = buildCurveLut(points);
   return Array.from(lut, (value, index) => `${index === 0 ? 'M' : 'L'} ${index} ${256 - (value / 255) * 256}`).join(' ');
+}
+
+function getHistogramPaths(histogram?: number[]) {
+  if (!histogram || histogram.length === 0) return null;
+  const maxCount = histogram.reduce((max, count) => (count > max ? count : max), 0);
+  if (maxCount <= 0) return null;
+
+  const pointCount = histogram.length;
+  const graphHeight = 256;
+  const topPadding = 8;
+  const usableHeight = 240;
+  const baseline = topPadding + usableHeight;
+  const linePoints = histogram.map((count, index) => {
+    const x = pointCount > 1 ? (index / (pointCount - 1)) * graphHeight : graphHeight / 2;
+    const y = topPadding + (1 - count / maxCount) * usableHeight;
+    return { x, y };
+  });
+
+  const linePath = linePoints
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(' ');
+
+  const areaPath = `${linePath} L ${graphHeight} ${baseline.toFixed(2)} L 0 ${baseline.toFixed(2)} Z`;
+
+  return {
+    areaPath,
+    linePath,
+  };
 }
 
 function movePoint(points: CurvePoint[], pointId: string, point: { x: number; y: number }) {

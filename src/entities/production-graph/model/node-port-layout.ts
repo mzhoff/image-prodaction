@@ -23,7 +23,6 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'refineImage' && (side === 'input' || side === 'output')) return 126;
   if (node.type === 'removeBackground' && side === 'input') return 126;
   if (node.type === 'removeBackground' && side === 'output') return 126;
-  if (node.type === 'exportImage' && side === 'input') return 126;
   if (node.type === 'preview' && side === 'input') return getPreviewPortTop(node);
   if (node.type === 'importImage' && side === 'output') return 132;
   return Math.max(52, 120 + index * 54);

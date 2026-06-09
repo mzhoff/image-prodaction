@@ -1,0 +1,81 @@
+import { normalizeLocationPreserveStrength, normalizeLocationType } from './location';
+import type { ProductionNodeDefinitionMap } from './node-registry-types';
+import { normalizeSubjectPreserveStrength, normalizeSubjectType } from './subject';
+
+export const contextNodeDefinitions = {
+  iterator: {
+    type: 'iterator',
+    title: 'Iterator',
+    menuLabel: 'Iterator',
+    collapsible: true,
+    defaultHeight: 430,
+    ports: [
+      { id: 'imageCollection', label: 'Image collection', kind: 'image', side: 'input' },
+      { id: 'textCollection', label: 'Text collection', kind: 'text', side: 'input' },
+      { id: 'imageItem', label: 'Image item', kind: 'image', side: 'output' },
+      { id: 'textItem', label: 'Text item', kind: 'text', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Iterator',
+      activeKind: 'image',
+      activeIndex: 0,
+      activeText: '',
+      imageCount: 0,
+      textCount: 0,
+    }),
+  },
+  subjectBuilder: {
+    type: 'subjectBuilder',
+    title: 'Subject',
+    menuLabel: 'Subject builder',
+    collapsible: true,
+    defaultHeight: 694,
+    ports: [
+      { id: 'image', label: 'Image refs', kind: 'image', side: 'input' },
+      { id: 'text', label: 'Text notes', kind: 'text', side: 'input' },
+      { id: 'subject', label: 'Subject', kind: 'subject', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Subject',
+      name: '',
+      subjectType: normalizeSubjectType('person'),
+      preserveStrength: normalizeSubjectPreserveStrength('balanced'),
+      referenceModel: 'google/gemini-2.5-flash-image',
+      identitySummary: '',
+      immutableTraits: '',
+      mutableAttributes: '',
+      negativeConstraints: '',
+      notes: '',
+      result: '',
+      libraryImageAssetIds: [],
+      sourceCount: 0,
+    }),
+  },
+  locationBuilder: {
+    type: 'locationBuilder',
+    title: 'Location',
+    menuLabel: 'Location builder',
+    collapsible: true,
+    defaultHeight: 694,
+    ports: [
+      { id: 'image', label: 'Image refs', kind: 'image', side: 'input' },
+      { id: 'text', label: 'Text notes', kind: 'text', side: 'input' },
+      { id: 'location', label: 'Location', kind: 'location', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Location',
+      atmosphere: '',
+      description: '',
+      locationType: normalizeLocationType('interior'),
+      preserveStrength: normalizeLocationPreserveStrength('balanced'),
+      mutableAttributes: '',
+      name: '',
+      negativeConstraints: '',
+      notes: '',
+      result: '',
+      spatialLayout: '',
+      libraryImageAssetIds: [],
+      sourceCount: 0,
+    }),
+  },
+} satisfies ProductionNodeDefinitionMap<'iterator' | 'subjectBuilder' | 'locationBuilder'>;

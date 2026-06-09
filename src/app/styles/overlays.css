@@ -9,32 +9,41 @@
   z-index: 9999;
   overflow: visible;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.96);
   padding: 6px;
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(14px);
 }
 
 .context-menu-item {
-  display: flex;
+  display: grid;
   width: 100%;
-  min-height: 34px;
+  min-height: 26px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #222;
-  padding: 0 9px;
+  color: #202020;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 16px;
   text-align: left;
 }
 
 .context-menu-item:hover {
-  background: #f2f2f2;
+  background: #eef4ff;
 }
 
 .context-menu-item-danger {
+  color: #be123c;
+}
+
+.context-menu-item-danger .context-menu-icon {
   color: #be123c;
 }
 
@@ -52,8 +61,8 @@
 }
 
 .context-menu-color-item input {
-  width: 26px;
-  height: 24px;
+  width: 24px;
+  height: 22px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -73,21 +82,20 @@
   display: grid;
   width: 16px;
   place-items: center;
+  color: #4b5563;
 }
 
 .context-menu-label {
   min-width: 0;
-  flex: 1;
   overflow: hidden;
-  font-size: 12px;
-  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .context-menu-shortcut {
-  color: #999;
-  font-size: 11px;
+  color: #b3b3b3;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .context-menu-submenu-wrap {
@@ -100,15 +108,15 @@
 
 .context-menu-submenu-chevron {
   flex: 0 0 auto;
-  color: #8f8f8b;
+  color: #b3b3b3;
 }
 
 .context-menu-submenu {
   position: absolute;
   top: -6px;
-  left: calc(100% + 8px);
+  left: calc(100% + 6px);
   display: none;
-  min-width: 220px;
+  min-width: 188px;
 }
 
 .context-menu-submenu-wrap:hover > .context-menu-submenu,
@@ -118,8 +126,8 @@
 
 .context-menu-separator {
   height: 1px;
-  margin: 5px 6px;
-  background: #e7e7e4;
+  margin: 4px 6px;
+  background: #e6e6e6;
 }
 
 .pro-tooltip-trigger {

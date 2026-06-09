@@ -20,13 +20,14 @@ export function CurvesNode({ node }: { node: ProductionNode }) {
     onCurveChange: model.handleCurveChange,
     onInteractionStart: model.handleInteractionStart,
     onOpacityChange: model.handleOpacityChange,
+    histogram: model.histogram,
     onResetChannel: model.handleResetChannel,
     opacity: model.opacity,
   };
 
   return (
     <>
-      <NodeTitle title="Curves" nodeType={node.type} muted />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted />
       <ImagePlate
         assetId={model.displayAsset?.id}
         aspectRatio={sourceRatio}

@@ -1,27 +1,130 @@
 'use client';
 
-import { Crop, Download, Ellipsis, Eye, FileInput, ImageIcon, ListPlus, Minimize2, Paintbrush, Repeat2, Scissors, Send, Slice, SlidersHorizontal, Text, WandSparkles } from 'lucide-react';
-import type { ReactNode } from 'react';
+import {
+  Crop,
+  Download,
+  Ellipsis,
+  Eye,
+  FileInput,
+  ImageIcon,
+  ListPlus,
+  Minimize2,
+  Paintbrush,
+  Repeat2,
+  Scissors,
+  Send,
+  Slice,
+  SlidersHorizontal,
+  Text,
+  WandSparkles,
+} from 'lucide-react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
+import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
+
+const NodeTitleRenameNodeContext = createContext<string | null>(null);
+
+export function NodeTitleNodeIdProvider({ nodeId, children }: { nodeId: string; children: ReactNode }) {
+  return <NodeTitleRenameNodeContext.Provider value={nodeId}>{children}</NodeTitleRenameNodeContext.Provider>;
+}
 
 export function NodeTitle({
   title,
   muted,
   action,
   nodeType,
+  onRename,
 }: {
   title: string;
   muted?: boolean;
   action?: ReactNode;
   nodeType?: ProductionNodeType;
+  onRename?: (title: string) => void;
 }) {
+  const renameNode = useProductionGraphStore((state) => state.renameNode);
+  const nodeId = useContext(NodeTitleRenameNodeContext);
+  const onRenameNode = onRename ?? (nodeId ? (nextTitle: string) => renameNode(nodeId, nextTitle) : undefined);
+
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraftTitle(title);
+    }
+  }, [title, editing]);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  const commitTitle = () => {
+    setEditing(false);
+    if (!onRenameNode) return;
+
+    const nextTitle = draftTitle.trim();
+    if (!nextTitle) {
+      setDraftTitle(title);
+      return;
+    }
+    if (nextTitle !== title) onRenameNode(nextTitle);
+  };
+
   const Icon = getNodeIcon(title, nodeType);
+
   return (
     <h2 className={cn('node-title', muted && 'node-title-muted')}>
       <span className="node-title-main">
         {Icon ? <Icon size={16} /> : null}
-        <span>{title}</span>
+        {editing ? (
+          <input
+            ref={inputRef}
+            className="node-title-input"
+            value={draftTitle}
+            onBlur={commitTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onDoubleClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitTitle();
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setDraftTitle(title);
+                setEditing(false);
+              }
+            }}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+          />
+        ) : (
+          <span
+            className={onRenameNode ? 'node-title-editable-label' : undefined}
+            onDoubleClick={(event) => {
+              if (!onRenameNode) return;
+              event.preventDefault();
+              event.stopPropagation();
+              setDraftTitle(title);
+              setEditing(true);
+            }}
+          >
+            {title}
+          </span>
+        )}
       </span>
       {action ?? (
         <NodeTitleActions>
@@ -88,6 +191,7 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'textPrompt') return Text;
     if (nodeType === 'textConcat') return ListPlus;
     if (nodeType === 'textGeneration') return Text;
+    if (nodeType === 'textFormatter') return Text;
     if (nodeType === 'textSplitter') return Slice;
     if (nodeType === 'iterator') return Repeat2;
     if (nodeType === 'subjectBuilder') return WandSparkles;
@@ -108,6 +212,7 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
   if (title === 'Generate Image') return ImageIcon;
   if (title === 'Concatenate') return ListPlus;
   if (title === 'Text Generate (LLM)' || title === 'Text Gen') return Text;
+  if (title === 'Formatter') return Text;
   if (title === 'Text Split' || title === 'Splitter') return Slice;
   if (title === 'Iterator') return Repeat2;
   if (title === 'Telegram Post') return Send;

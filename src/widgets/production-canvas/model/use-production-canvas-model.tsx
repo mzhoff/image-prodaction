@@ -3,22 +3,21 @@
 import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, RotateCcw, Trash2, Unlock } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
-import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import { getNodeCurrentImageAssetId, getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
-import { getPortById } from '@/entities/production-graph/model/node-definitions';
+import { getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
 import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
-import type { PortableProjectExport } from '@/entities/production-graph/model/project-schema';
-import type { AssetRecord, GenerationResultMetadata, GraphSection, ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
-import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
+import type { GraphSection, ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { hasImageFileInDataTransfer, getImageFilesFromDataTransfer } from '@/shared/lib/image-file';
-import { createDatedJsonFileName, downloadJsonFile, readJsonFile } from '@/shared/lib/json-file';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
+import { normalizeNodeDisplayState } from '@/entities/production-graph/model/project-schema';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
 import { useCanvasClipboard } from './use-canvas-clipboard';
 import { useCanvasImageImport } from './use-canvas-image-import';
+import { useCanvasImageViewer } from './use-canvas-image-viewer';
+import { useCanvasProjectTransfer } from './use-canvas-project-transfer';
 import { useCanvasToast } from './use-canvas-toast';
 import { type ConnectionDropOnEmpty, useConnectionDraft } from './use-connection-draft';
 import { useNodeDrag } from './use-node-drag';
@@ -39,8 +38,8 @@ export function useProductionCanvasModel() {
     initialPan: { x: graph.uiState.viewport.x, y: graph.uiState.viewport.y },
     initialZoom: graph.uiState.viewport.zoom,
   });
+  const { showToast, toastMessage } = useCanvasToast();
   const [canvasTool, setCanvasTool] = useState<CanvasTool>('select');
-  const [contextImageViewer, setContextImageViewer] = useState<{ nodeId: string; index: number } | null>(null);
   const [pendingConnectionMenu, setPendingConnectionMenu] = useState<ConnectionDropOnEmpty | null>(null);
   const [sectionColorPreviews, setSectionColorPreviews] = useState<Record<string, string>>({});
   const didInitialFitRef = useRef(false);
@@ -51,15 +50,17 @@ export function useProductionCanvasModel() {
     || graph.uiState.viewport.zoom !== DEFAULT_PROJECT_VIEWPORT.zoom;
   const collapsedGenerateComposingNodeIds = useMemo(() => new Set(
     graph.nodes
-      .filter((node) => node.type === 'generateImage' && graph.uiState.nodes[node.id]?.collapsed)
+      .filter((node) => (
+        node.type === 'generateImage'
+        && normalizeNodeDisplayState(graph.uiState.nodes[node.id]) === 'Collapsed'
+      ))
       .map((node) => node.id),
   ), [graph.nodes, graph.uiState.nodes]);
-  const imageViewerNode = contextImageViewer ? graph.nodesById.get(contextImageViewer.nodeId) : undefined;
-  const imageViewerAssetIds = useMemo(() => getNodeImageAssetIds(imageViewerNode), [imageViewerNode]);
-  const imageViewerCurrentIndex = getSafeImageIndex(contextImageViewer?.index, imageViewerAssetIds.length);
-  const imageViewerAssetId = imageViewerCurrentIndex >= 0 ? imageViewerAssetIds[imageViewerCurrentIndex] : undefined;
-  const imageViewerAsset = imageViewerAssetId ? graph.assets.find((asset) => asset.id === imageViewerAssetId) : undefined;
-  const imageViewerUrl = useAssetUrl(imageViewerAssetId);
+  const { downloadAssets, imageViewer, openImageViewer } = useCanvasImageViewer({
+    assets: graph.assets,
+    nodesById: graph.nodesById,
+    showToast,
+  });
   const boxSelection = useCanvasBoxSelection({ screenToWorld: canvas.screenToWorld, onSelect: graph.selectNodesInRect });
   const finishSectionDrawing = useCallback(() => setCanvasTool('select'), []);
   const sectionDrawing = useSectionDrawing({
@@ -107,29 +108,17 @@ export function useProductionCanvasModel() {
   }, [canvas]);
 
   const { importImageFile, importImageFiles } = useCanvasImageImport({ getFallbackPastePosition, pasteImageAsset: graph.pasteImageAsset });
-  const { showToast, toastMessage } = useCanvasToast();
-  const exportProjectSnapshot = useCallback(() => {
-    downloadJsonFile(graph.exportProjectSnapshot(), createDatedJsonFileName('reverie-project'));
-    showToast('Project snapshot exported.');
-  }, [graph, showToast]);
-  const exportPipelineTemplate = useCallback(() => {
-    downloadJsonFile(graph.exportPipelineTemplate(), createDatedJsonFileName('reverie-pipeline-template'));
-    showToast('Pipeline template exported.');
-  }, [graph, showToast]);
-  const importPortableProjectFile = useCallback(async (file: File, expectedKind: PortableProjectExport['kind']) => {
-    try {
-      const result = graph.importPortableProject(await readJsonFile(file), expectedKind);
-      showToast(result.kind === 'pipelineTemplate' ? 'Pipeline template imported.' : 'Project snapshot imported.');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Не удалось импортировать JSON.');
-    }
-  }, [graph, showToast]);
-  const importProjectSnapshotFile = useCallback((file: File) => {
-    void importPortableProjectFile(file, 'projectSnapshot');
-  }, [importPortableProjectFile]);
-  const importPipelineTemplateFile = useCallback((file: File) => {
-    void importPortableProjectFile(file, 'pipelineTemplate');
-  }, [importPortableProjectFile]);
+  const {
+    exportPipelineTemplate,
+    exportProjectSnapshot,
+    importPipelineTemplateFile,
+    importProjectSnapshotFile,
+  } = useCanvasProjectTransfer({
+    exportPipelineTemplate: graph.exportPipelineTemplate,
+    exportProjectSnapshot: graph.exportProjectSnapshot,
+    importPortableProject: graph.importPortableProject,
+    showToast,
+  });
   useCanvasClipboard({
     deleteSelected: graph.deleteSelected,
     importImageFile,
@@ -170,7 +159,7 @@ export function useProductionCanvasModel() {
   const createNode = useCallback((type: ProductionNodeType, position: { x: number; y: number }) => {
     const nodeId = graph.addNode(type, position);
     if (type === 'generateImage') {
-      graph.setNodeUiState(nodeId, { collapsed: true });
+      graph.setNodeUiState(nodeId, { state: 'Collapsed' });
     }
     return nodeId;
   }, [graph]);
@@ -223,62 +212,6 @@ export function useProductionCanvasModel() {
     setSectionColorPreviews({});
     contextMenu.closeContextMenu();
   }, [clearConnectionDraft, contextMenu, pendingConnectionMenu]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
-      if (isTyping || event.metaKey || event.ctrlKey || event.altKey || target?.closest('.image-viewer-overlay')) return;
-
-      if (event.shiftKey && event.code === 'KeyS') {
-        event.preventDefault();
-        setCanvasTool('section');
-        closeContextMenu();
-        return;
-      }
-
-      if (!event.shiftKey && event.code === 'KeyV') {
-        event.preventDefault();
-        setCanvasTool('select');
-        closeContextMenu();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeContextMenu]);
-
-  const closeImageViewer = useCallback(() => setContextImageViewer(null), []);
-  const selectImageViewerVersion = useCallback((index: number) => {
-    setContextImageViewer((viewer) => (viewer ? { ...viewer, index: getSafeImageIndex(index, imageViewerAssetIds.length) } : viewer));
-  }, [imageViewerAssetIds.length]);
-  const showPreviousImageViewerVersion = useCallback(() => {
-    setContextImageViewer((viewer) => (viewer ? { ...viewer, index: wrapImageIndex(viewer.index - 1, imageViewerAssetIds.length) } : viewer));
-  }, [imageViewerAssetIds.length]);
-  const showNextImageViewerVersion = useCallback(() => {
-    setContextImageViewer((viewer) => (viewer ? { ...viewer, index: wrapImageIndex(viewer.index + 1, imageViewerAssetIds.length) } : viewer));
-  }, [imageViewerAssetIds.length]);
-  const downloadAssets = useCallback(async (assetIds: string[]) => {
-    const assets = uniqueStrings(assetIds)
-      .map((assetId) => graph.assets.find((asset) => asset.id === assetId))
-      .filter((asset): asset is AssetRecord => Boolean(asset));
-
-    if (assets.length === 0) {
-      showToast('No image files to download.');
-      return;
-    }
-
-    try {
-      for (const asset of assets) {
-        const blob = await loadAssetBlob(asset);
-        if (!blob) continue;
-        downloadBlob(blob, asset.name || `${asset.id}.png`);
-      }
-      showToast(assets.length === 1 ? 'Image download started.' : `${assets.length} image downloads started.`);
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Could not download image files.');
-    }
-  }, [graph.assets, showToast]);
 
   const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => [
     {
@@ -371,7 +304,7 @@ export function useProductionCanvasModel() {
         label: 'Expand fullscreen',
         icon: <Maximize2 size={14} />,
         separatorBefore: true,
-        onSelect: () => setContextImageViewer({ nodeId: node.id, index: currentIndex >= 0 ? currentIndex : 0 }),
+        onSelect: () => openImageViewer(node.id, currentIndex >= 0 ? currentIndex : 0),
       },
       {
         id: 'download-current-node-image',
@@ -439,7 +372,54 @@ export function useProductionCanvasModel() {
         onSelect: graph.deleteSelected,
       },
     ], 244);
-  }, [closeContextMenu, contextMenu, downloadAssets, graph, showToast]);
+  }, [closeContextMenu, contextMenu, downloadAssets, graph, openImageViewer, showToast]);
+
+  const toggleCollapsedStateForSelectedNodes = useCallback(() => {
+    const candidateNodeIds = Array.from(graph.selectedSet).flatMap((nodeId) => {
+      const node = graph.nodesById.get(nodeId);
+      if (!node || !isNodeCollapsible(node.type)) return [];
+      return [node.id];
+    });
+
+    if (candidateNodeIds.length === 0) return;
+
+    const shouldCollapse = !candidateNodeIds.every((nodeId) => normalizeNodeDisplayState(graph.uiState.nodes[nodeId]) === 'Collapsed');
+    const nextState = shouldCollapse ? 'Collapsed' : 'Expanded';
+    candidateNodeIds.forEach((nodeId) => graph.setNodeUiState(nodeId, { state: nextState }));
+  }, [graph.selectedSet, graph.nodesById, graph.setNodeUiState, graph.uiState.nodes]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isTyping || target?.closest('.image-viewer-overlay')) return;
+
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        if (event.shiftKey && event.code === 'KeyH') {
+          event.preventDefault();
+          toggleCollapsedStateForSelectedNodes();
+          return;
+        }
+        return;
+      }
+
+      if (event.shiftKey && event.code === 'KeyS') {
+        event.preventDefault();
+        setCanvasTool('section');
+        closeContextMenu();
+        return;
+      }
+
+      if (!event.shiftKey && event.code === 'KeyV') {
+        event.preventDefault();
+        setCanvasTool('select');
+        closeContextMenu();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeContextMenu, setCanvasTool, toggleCollapsedStateForSelectedNodes]);
 
   const openSectionMenu = useCallback((section: GraphSection, event: ReactMouseEvent) => {
     closeContextMenu();
@@ -492,27 +472,12 @@ export function useProductionCanvasModel() {
   };
 
   const toggleGenerateComposing = useCallback((nodeId: string, open: boolean) => {
-    graph.setNodeUiState(nodeId, { collapsed: open ? false : true });
+    graph.setNodeUiState(nodeId, { state: open ? 'Expanded' : 'Collapsed' });
   }, [graph]);
 
   const cursor = canvas.isPanning || sectionDrawing.isDrawingSection
     ? canvas.isPanning ? 'grabbing' : 'crosshair'
     : canvasTool === 'section' || boxSelection.isSelecting ? 'crosshair' : undefined;
-  const imageViewer = imageViewerNode && imageViewerAsset && imageViewerAssetId && imageViewerUrl ? {
-    asset: imageViewerAsset,
-    assetId: imageViewerAssetId,
-    assetMetadata: getNodeAssetMetadata(imageViewerNode),
-    currentIndex: imageViewerCurrentIndex,
-    hasHistory: imageViewerAssetIds.length > 1,
-    historyAssetIds: imageViewerAssetIds,
-    onClose: closeImageViewer,
-    onNext: showNextImageViewerVersion,
-    onPrevious: showPreviousImageViewerVersion,
-    onSelectVersion: selectImageViewerVersion,
-    sourceModel: getNodeSourceModel(imageViewerNode),
-    url: imageViewerUrl,
-  } : null;
-
   return {
     bounds: graph.bounds,
     boxSelection,
@@ -572,18 +537,6 @@ function getDropTargetImportNodeId(event: ReactDragEvent<HTMLElement>, nodesById
   return node?.type === 'importImage' ? node.id : undefined;
 }
 
-function getNodeAssetMetadata(node: ProductionNode): Record<string, GenerationResultMetadata> | undefined {
-  const data = node.data as unknown as Record<string, unknown>;
-  return data.resultMetadata && typeof data.resultMetadata === 'object'
-    ? data.resultMetadata as Record<string, GenerationResultMetadata>
-    : undefined;
-}
-
-function getNodeSourceModel(node: ProductionNode) {
-  const data = node.data as unknown as Record<string, unknown>;
-  return typeof data.model === 'string' ? data.model : undefined;
-}
-
 function hasClearableGenerationData(node: ProductionNode) {
   const data = node.data as unknown as Record<string, unknown>;
   if (node.type === 'generateImage' || node.type === 'refineImage') {
@@ -596,30 +549,4 @@ function hasClearableGenerationData(node: ProductionNode) {
     return Array.isArray(data.libraryImageAssetIds) && data.libraryImageAssetIds.length > 0;
   }
   return Boolean(data.resultAssetId);
-}
-
-function getSafeImageIndex(index: number | undefined, length: number) {
-  if (length <= 0) return -1;
-  if (typeof index !== 'number' || Number.isNaN(index)) return 0;
-  return Math.min(Math.max(index, 0), length - 1);
-}
-
-function wrapImageIndex(index: number, length: number) {
-  if (length <= 0) return -1;
-  return (index + length) % length;
-}
-
-function uniqueStrings(values: Array<string | undefined>) {
-  return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }

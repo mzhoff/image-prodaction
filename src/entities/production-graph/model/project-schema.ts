@@ -9,8 +9,11 @@ export interface ProjectViewportState {
   zoom: number;
 }
 
+export type ProjectNodeDisplayState = 'Collapsed' | 'Expanded';
+
 export interface ProjectNodeUiState {
   collapsed?: boolean;
+  state?: ProjectNodeDisplayState;
   selectedTab?: string;
 }
 
@@ -72,13 +75,32 @@ export function createEmptyProjectUiState(): ProjectUiState {
   };
 }
 
+export function normalizeNodeDisplayState(uiState?: ProjectNodeUiState): ProjectNodeDisplayState {
+  if (uiState?.state === 'Collapsed') return 'Collapsed';
+  if (uiState?.state === 'Expanded') return 'Expanded';
+  if (typeof uiState?.collapsed === 'boolean') return uiState.collapsed ? 'Collapsed' : 'Expanded';
+  return 'Expanded';
+}
+
+export function applyNodeDisplayState(nodeUiState: ProjectNodeUiState): ProjectNodeUiState {
+  const next: ProjectNodeUiState = { ...nodeUiState };
+  const state = normalizeNodeDisplayState(next);
+  next.state = state;
+  next.collapsed = state === 'Collapsed';
+  return next;
+}
+
 export function normalizeProjectUiState(uiState?: Partial<ProjectUiState>, project?: Pick<GraphProject, 'nodes' | 'sections'>): ProjectUiState {
   const nodeIds = project ? new Set(project.nodes.map((node) => node.id)) : null;
   const sectionIds = project ? new Set(project.sections.map((section) => section.id)) : null;
+  const rawNodeUiState = filterRecord(uiState?.nodes, nodeIds);
+  const normalizedNodeUiState = Object.fromEntries(
+    Object.entries(rawNodeUiState).map(([id, value]) => [id, applyNodeDisplayState(value)]),
+  ) as Record<string, ProjectNodeUiState>;
 
   return {
     viewport: normalizeViewport(uiState?.viewport),
-    nodes: filterRecord(uiState?.nodes, nodeIds),
+    nodes: normalizedNodeUiState,
     sections: filterRecord(uiState?.sections, sectionIds),
   };
 }
@@ -122,6 +144,7 @@ function finiteOrDefault(value: unknown, fallback: number) {
 function filterRecord<T extends object>(record: Record<string, T> | undefined, allowedIds: Set<string> | null) {
   if (!record) return {};
   return Object.fromEntries(
-    Object.entries(record).filter(([id]) => !allowedIds || allowedIds.has(id)),
+    Object.entries(record)
+      .filter(([id]) => !allowedIds || allowedIds.has(id)),
   ) as Record<string, T>;
 }

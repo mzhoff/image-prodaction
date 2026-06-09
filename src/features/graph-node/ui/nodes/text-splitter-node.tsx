@@ -1,8 +1,8 @@
 'use client';
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { useTextSplitterNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
@@ -14,11 +14,11 @@ interface TextSplitterNodeProps {
 
 export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodeProps) {
   const model = useTextSplitterNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
 
   return (
     <>
-      <NodeTitle title="Text Split" nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} count={`${model.items.length}/30`} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} count={`${model.items.length}/30`} onCollapsedChange={setCollapsed} />} />
       <PortButton
         nodeId={node.id}
         portId="text"
@@ -26,6 +26,7 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
         kind="text"
         label="Text"
         className="text-node-header-input-port"
+        style={{ top: collapsed ? 20 : undefined }}
         onStartConnection={onStartConnection}
       />
       <PortButton
@@ -35,8 +36,24 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
         kind="text"
         label="Items"
         className="text-node-header-output-port"
+        style={{ top: collapsed ? 20 : undefined }}
         onStartConnection={onStartConnection}
       />
+      {collapsed ? (
+        model.items.map((item, index) => (
+          <PortButton
+            key={`item-collapsed-${index}:${item.slice(0, 20)}`}
+            nodeId={node.id}
+            portId={`item-${index}`}
+            side="output"
+            kind="text"
+            label={`Item ${index + 1}`}
+            className="node-port-row"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+        ))
+      ) : null}
       {!collapsed ? (
         <>
           <div className="text-split-rule-row">

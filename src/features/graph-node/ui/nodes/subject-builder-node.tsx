@@ -2,11 +2,11 @@
 
 import { Fingerprint, Loader2, Sparkles } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
+import { useNodeDisplayState } from '../../model/use-node-display-state';
 import {
   subjectPreserveStrengthOptions,
   subjectTypeOptions,
@@ -24,12 +24,12 @@ interface SubjectBuilderNodeProps {
 
 export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNodeProps) {
   const model = useSubjectBuilderNodeModel(node);
-  const [collapsed, setCollapsed] = useState(false);
+  const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
 
   return (
     <>
       <NodeTitle
-        title="Subject Builder"
+        title={model.data.title}
         nodeType={node.type}
         muted
         action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />}

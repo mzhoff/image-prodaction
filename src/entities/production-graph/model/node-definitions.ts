@@ -1,11 +1,13 @@
 import type { GraphPort, ProductionNode, ProductionNodeType, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
 import { NODE_DEFINITIONS } from './node-registry';
+export { isNodeCollapsible } from './node-registry';
 
 export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   importImage: NODE_DEFINITIONS.importImage.ports,
   textPrompt: NODE_DEFINITIONS.textPrompt.ports,
   textConcat: NODE_DEFINITIONS.textConcat.ports,
   textGeneration: NODE_DEFINITIONS.textGeneration.ports,
+  textFormatter: NODE_DEFINITIONS.textFormatter.ports,
   textSplitter: NODE_DEFINITIONS.textSplitter.ports,
   iterator: NODE_DEFINITIONS.iterator.ports,
   subjectBuilder: NODE_DEFINITIONS.subjectBuilder.ports,
@@ -30,6 +32,7 @@ export function getNodePorts(node: ProductionNode) {
   if (node.type === 'textConcat') return getTextConcatPorts(node);
   if (node.type === 'textSplitter') return getTextSplitterPorts(node);
   if (node.type === 'telegramPublication') return getTelegramPublicationPorts(node);
+  if (node.type === 'exportImage') return getExportImagePorts(node);
   return NODE_PORTS[node.type];
 }
 
@@ -55,6 +58,9 @@ export function canConnectPorts(source: ProductionNode, sourcePortId: string, ta
 
 export const TEXT_CONCAT_MIN_INPUTS = 2;
 export const TEXT_CONCAT_PORT_PREFIX = 'text-';
+export const EXPORT_IMAGE_MAX_INPUTS = 10;
+export const EXPORT_IMAGE_MIN_INPUTS = 1;
+export const EXPORT_IMAGE_PORT_PREFIX = 'image-';
 export const TEXT_PROMPT_VARIABLE_MAX_INPUTS = 10;
 export const TEXT_PROMPT_VARIABLE_PORT_PREFIX = 'variable-';
 export const TELEGRAM_MEDIA_MAX_INPUTS = 10;
@@ -103,6 +109,16 @@ export function getTextSplitterItemPortIndex(portId: string) {
   return Number.isInteger(index) && index >= 0 ? index : -1;
 }
 
+export function getExportImageInputPortId(index: number) {
+  return `${EXPORT_IMAGE_PORT_PREFIX}${index}`;
+}
+
+export function getExportImageInputPortIndex(portId: string) {
+  if (!portId.startsWith(EXPORT_IMAGE_PORT_PREFIX)) return -1;
+  const index = Number(portId.slice(EXPORT_IMAGE_PORT_PREFIX.length));
+  return Number.isInteger(index) && index >= 0 ? index : -1;
+}
+
 export function getTextConcatInputCount(node: ProductionNode) {
   const data = node.data as TextConcatNodeData;
   return Math.max(TEXT_CONCAT_MIN_INPUTS, Math.floor(Number(data.inputCount) || TEXT_CONCAT_MIN_INPUTS));
@@ -147,6 +163,14 @@ function getTextConcatPorts(node: ProductionNode): GraphPort[] {
   ];
 }
 
+export function getExportImageInputCount(node: ProductionNode) {
+  const data = node.data as { imageInputCount?: number };
+  return Math.max(
+    EXPORT_IMAGE_MIN_INPUTS,
+    Math.min(EXPORT_IMAGE_MAX_INPUTS, Math.floor(Number(data.imageInputCount) || EXPORT_IMAGE_MIN_INPUTS)),
+  );
+}
+
 function getTelegramPublicationPorts(node: ProductionNode): GraphPort[] {
   const data = node.data as TelegramPublicationNodeData;
   const inputCount = Math.max(
@@ -163,6 +187,18 @@ function getTelegramPublicationPorts(node: ProductionNode): GraphPort[] {
     })),
     { id: 'formatRules', label: 'Format rules', kind: 'text', side: 'input' },
     { id: 'checkRules', label: 'Check rules', kind: 'text', side: 'input' },
+  ];
+}
+
+function getExportImagePorts(node: ProductionNode): GraphPort[] {
+  const inputCount = getExportImageInputCount(node);
+  return [
+    ...Array.from({ length: inputCount }, (_, index) => ({
+      id: getExportImageInputPortId(index),
+      label: `Image ${index + 1}`,
+      kind: 'image' as const,
+      side: 'input' as const,
+    })),
   ];
 }
 

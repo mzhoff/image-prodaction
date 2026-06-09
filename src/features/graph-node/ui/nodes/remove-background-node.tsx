@@ -13,7 +13,7 @@ export function RemoveBackgroundNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Remove BG" nodeType={node.type} muted />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted />
       <ImagePlate assetId={model.displayAsset?.id} />
       <PrimaryActionButton
         icon={model.processing ? <Loader2 className="spin" size={17} /> : <Scissors size={17} />}

@@ -13,7 +13,7 @@ export function FrequencyRetouchNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Retouch" nodeType={node.type} muted />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted />
       <ImagePlate
         assetId={model.displayAsset?.id}
         loading={model.processing}

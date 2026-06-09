@@ -26,6 +26,7 @@ import type {
   SubjectBuilderNodeData,
   TelegramPublicationNodeData,
   TextConcatNodeData,
+  TextFormatterNodeData,
   TextGenerationNodeData,
   TextPromptNodeData,
   TextSplitterNodeData,
@@ -56,6 +57,7 @@ export interface GraphImageInputItem extends GraphIncomingSource {
 
 export interface GraphTextInputItem extends GraphIncomingSource {
   collectionIndex?: number;
+  richText?: string;
   sourceCollectionSize?: number;
   text: string;
   sourceLabel?: string;
@@ -200,6 +202,10 @@ export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
     const data = node.data as TextGenerationNodeData;
     return getFilteredTextSectionText(data.result, data.disabledResultFilterIds);
   }
+  if (node.type === 'textFormatter') {
+    const data = node.data as TextFormatterNodeData;
+    return (data.result || data.plainText || data.sourceText || '').trim();
+  }
   if (node.type === 'iterator') {
     const data = node.data as IteratorNodeData;
     return data.activeKind === 'text' ? data.activeText?.trim() ?? '' : '';
@@ -215,6 +221,13 @@ export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
     return (data.composedPrompt || data.prompt || '').trim();
   }
   return '';
+}
+
+export function getNodeRichTextResult(node: ProductionNode, sourcePortId?: string) {
+  if (node.type !== 'textFormatter') return '';
+  if (sourcePortId && sourcePortId !== 'result') return '';
+  const data = node.data as TextFormatterNodeData;
+  return typeof data.richText === 'string' ? data.richText.trim() : '';
 }
 
 export function getNodeTextResults(node: ProductionNode, sourcePortId?: string) {
@@ -310,6 +323,7 @@ export function getIncomingTextInputs(targetNodeId: string, targetPortId: string
 
     return [{
       ...source,
+      richText: getNodeRichTextResult(source.sourceNode, source.sourcePortId),
       text,
       sourceLabel: source.sourceNode.data.title,
     }];
@@ -323,6 +337,7 @@ export function getIncomingTextCollectionInputs(targetNodeId: string, targetPort
     return texts.map((text, collectionIndex) => ({
       ...source,
       collectionIndex,
+      richText: getNodeRichTextResult(source.sourceNode, source.sourcePortId),
       sourceCollectionSize,
       text,
       sourceLabel: source.sourceNode.data.title,

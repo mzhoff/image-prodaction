@@ -1,417 +1,47 @@
-import { defaultExtractPrompt } from './extract-presets';
-import { normalizeLocationPreserveStrength, normalizeLocationType } from './location';
-import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from './node-defaults';
-import { DEFAULT_PUBLICATION_CONTENT_UNIT_ID } from './publication-platforms';
-import { productionLayers } from './production-layers';
-import { normalizeSubjectPreserveStrength, normalizeSubjectType } from './subject';
-import type { GraphPort, ProductionNodeData, ProductionNodeType } from './types';
-import { createDefaultCurves } from '@/shared/lib/image-renderer/curves';
+import { contextNodeDefinitions } from './node-registry-context';
+import { imageNodeDefinitions } from './node-registry-image';
+import { publicationNodeDefinitions } from './node-registry-publication';
+import { textNodeDefinitions } from './node-registry-text';
+import type { ProductionNodeDefinition } from './node-registry-types';
+import type { ProductionNodeData, ProductionNodeType } from './types';
 
-interface ProductionNodeDefinition {
-  type: ProductionNodeType;
-  title: string;
-  menuLabel: string;
-  defaultHeight: number;
-  ports: GraphPort[];
-  createData: () => ProductionNodeData;
-}
-
-const layerPresetInputPorts = productionLayers.map((layer) => ({
-  id: layer.id,
-  label: layer.label,
-  kind: 'preset' as const,
-  side: 'input' as const,
-})) satisfies GraphPort[];
-
-const layerReferenceInputPorts = productionLayers.map((layer) => ({
-  id: layer.id,
-  label: layer.label,
-  kind: 'reference' as const,
-  side: 'input' as const,
-})) satisfies GraphPort[];
+export type { ProductionNodeDefinition } from './node-registry-types';
 
 export const NODE_DEFINITIONS = {
-  importImage: {
-    type: 'importImage',
-    title: 'Import',
-    menuLabel: 'Import image',
-    defaultHeight: 300,
-    ports: [{ id: 'image', label: 'Image', kind: 'image', side: 'output' }],
-    createData: () => ({ title: 'Import' }),
-  },
-  textPrompt: {
-    type: 'textPrompt',
-    title: 'Prompt',
-    menuLabel: 'Text prompt',
-    defaultHeight: 370,
-    ports: [{ id: 'text', label: 'Text', kind: 'text', side: 'output' }],
-    createData: () => ({
-      title: 'Prompt',
-      result: '',
-      sourceCount: 0,
-      text: '',
-      textareaHeight: 248,
-      variableDisplayMode: 'source-value',
-      variables: [],
-    }),
-  },
-  textConcat: {
-    type: 'textConcat',
-    title: 'Concat',
-    menuLabel: 'Text concat',
-    defaultHeight: 637,
-    ports: [
-      { id: 'text-0', label: 'Input 1', kind: 'text', side: 'input' },
-      { id: 'text-1', label: 'Input 2', kind: 'text', side: 'input' },
-      { id: 'result', label: 'Result', kind: 'text', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Concat',
-      separator: 'double-newline',
-      customSeparator: '',
-      inputCount: 2,
-      prefix: '',
-      suffix: '',
-      result: '',
-      sourceCount: 0,
-    }),
-  },
-  textGeneration: {
-    type: 'textGeneration',
-    title: 'Text Gen',
-    menuLabel: 'Text generation',
-    defaultHeight: 757,
-    ports: [
-      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
-      { id: 'result', label: 'Result', kind: 'text', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Text Gen',
-      model: 'google/gemini-2.5-flash',
-      instruction: 'Rewrite the connected text into a concise production-ready image prompt.',
-      outputStyle: 'plain',
-      reasoning: 'low',
-      temperature: 1,
-      activeResultIndex: -1,
-      disabledResultFilterIds: [],
-      result: '',
-      resultTexts: [],
-    }),
-  },
-  textSplitter: {
-    type: 'textSplitter',
-    title: 'Splitter',
-    menuLabel: 'Text splitter',
-    defaultHeight: 422,
-    ports: [
-      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
-      { id: 'items', label: 'Items', kind: 'text', side: 'output' },
-      { id: 'item-0', label: 'Item 1', kind: 'text', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Splitter',
-      mode: 'delimiter',
-      delimiter: '*',
-      activeItemIndex: 0,
-      items: [],
-      result: '',
-      sourceText: '',
-    }),
-  },
-  iterator: {
-    type: 'iterator',
-    title: 'Iterator',
-    menuLabel: 'Iterator',
-    defaultHeight: 430,
-    ports: [
-      { id: 'imageCollection', label: 'Image collection', kind: 'image', side: 'input' },
-      { id: 'textCollection', label: 'Text collection', kind: 'text', side: 'input' },
-      { id: 'imageItem', label: 'Image item', kind: 'image', side: 'output' },
-      { id: 'textItem', label: 'Text item', kind: 'text', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Iterator',
-      activeKind: 'image',
-      activeIndex: 0,
-      activeText: '',
-      imageCount: 0,
-      textCount: 0,
-    }),
-  },
-  subjectBuilder: {
-    type: 'subjectBuilder',
-    title: 'Subject',
-    menuLabel: 'Subject builder',
-    defaultHeight: 694,
-    ports: [
-      { id: 'image', label: 'Image refs', kind: 'image', side: 'input' },
-      { id: 'text', label: 'Text notes', kind: 'text', side: 'input' },
-      { id: 'subject', label: 'Subject', kind: 'subject', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Subject',
-      name: '',
-      subjectType: normalizeSubjectType('person'),
-      preserveStrength: normalizeSubjectPreserveStrength('balanced'),
-      referenceModel: 'google/gemini-2.5-flash-image',
-      identitySummary: '',
-      immutableTraits: '',
-      mutableAttributes: '',
-      negativeConstraints: '',
-      notes: '',
-      result: '',
-      libraryImageAssetIds: [],
-      sourceCount: 0,
-    }),
-  },
-  locationBuilder: {
-    type: 'locationBuilder',
-    title: 'Location',
-    menuLabel: 'Location builder',
-    defaultHeight: 694,
-    ports: [
-      { id: 'image', label: 'Image refs', kind: 'image', side: 'input' },
-      { id: 'text', label: 'Text notes', kind: 'text', side: 'input' },
-      { id: 'location', label: 'Location', kind: 'location', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Location',
-      atmosphere: '',
-      description: '',
-      locationType: normalizeLocationType('interior'),
-      preserveStrength: normalizeLocationPreserveStrength('balanced'),
-      mutableAttributes: '',
-      name: '',
-      negativeConstraints: '',
-      notes: '',
-      result: '',
-      spatialLayout: '',
-      libraryImageAssetIds: [],
-      sourceCount: 0,
-    }),
-  },
-  telegramPublication: {
-    type: 'telegramPublication',
-    title: 'Telegram Post',
-    menuLabel: 'Telegram post',
-    defaultHeight: 640,
-    ports: [
-      { id: 'body', label: 'Text blocks', kind: 'text', side: 'input' },
-      { id: 'media-0', label: 'Image 1', kind: 'image', side: 'input' },
-      { id: 'formatRules', label: 'Format rules', kind: 'text', side: 'input' },
-      { id: 'checkRules', label: 'Check rules', kind: 'text', side: 'input' },
-    ],
-    createData: () => ({
-      title: 'Telegram Post',
-      artifactId: '',
-      contentUnitId: DEFAULT_PUBLICATION_CONTENT_UNIT_ID,
-      mediaInputCount: 1,
-      mediaOrder: [],
-      messageRichText: '',
-      messageRichTextSource: '',
-      messageSourceText: '',
-      messageText: '',
-      platformId: 'telegram',
-      result: '',
-      sourceImageCount: 0,
-      sourceTextCount: 0,
-    }),
-  },
-  imageToText: {
-    type: 'imageToText',
-    title: 'Extract',
-    menuLabel: 'Extract',
-    defaultHeight: 468,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Result', kind: 'text', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Extract',
-      model: 'google/gemini-2.5-flash',
-      preset: 'default',
-      presets: ['default'],
-      prompt: defaultExtractPrompt,
-    }),
-  },
-  referenceComposer: {
-    type: 'referenceComposer',
-    title: 'Generate Image',
-    menuLabel: 'Reference composer',
-    defaultHeight: 650,
-    ports: [
-      ...layerPresetInputPorts,
-      { id: 'prompt', label: 'Prompt', kind: 'text', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Generate Image',
-      model: 'google/gemini-2.5-flash-image',
-      aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
-      size: '1K',
-      prompt: '',
-      slots: productionLayers.map((layer) => ({ id: layer.id, label: layer.label })),
-    }),
-  },
-  generateImage: {
-    type: 'generateImage',
-    title: 'Generate Image',
-    menuLabel: 'Generate image',
-    defaultHeight: 720,
-    ports: [
-      { id: 'prompt', label: 'Prompt', kind: 'text', side: 'input' },
-      { id: 'reference', label: 'Reference', kind: 'image', side: 'input' },
-      ...layerReferenceInputPorts,
-      { id: 'image', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Generate Image',
-      model: 'google/gemini-2.5-flash-image',
-      aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
-      size: '1K',
-      prompt: '',
-      activeResultIndex: -1,
-      resultAssetIds: [],
-    }),
-  },
-  sketch: {
-    type: 'sketch',
-    title: 'Sketch',
-    menuLabel: 'Sketch',
-    defaultHeight: 390,
-    ports: [{ id: 'image', label: 'Image', kind: 'image', side: 'output' }],
-    createData: () => ({
-      title: 'Sketch',
-      aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
-      brushColor: '#111111',
-      brushSize: '48',
-    }),
-  },
-  cropImage: {
-    type: 'cropImage',
-    title: 'Crop',
-    menuLabel: 'Crop',
-    defaultHeight: 638,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({ title: 'Crop', aspectRatio: 'Custom', locked: false }),
-  },
-  adjustment: {
-    type: 'adjustment',
-    title: 'Adjustments',
-    menuLabel: 'Adjustments',
-    defaultHeight: 720,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Adjustments',
-      exposure: 0,
-      gamma: 0,
-      contrast: 0,
-      saturation: 0,
-      temperature: 0,
-      tint: 0,
-      highlights: 0,
-      shadows: 0,
-    }),
-  },
-  curves: {
-    type: 'curves',
-    title: 'Curves',
-    menuLabel: 'Curves',
-    defaultHeight: 690,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Curves',
-      activeChannel: 'master',
-      curves: createDefaultCurves(),
-      opacity: 100,
-    }),
-  },
-  frequencyRetouch: {
-    type: 'frequencyRetouch',
-    title: 'Retouch',
-    menuLabel: 'Frequency retouch',
-    defaultHeight: 500,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Retouch',
-      radius: 8,
-      rednessReduction: 20,
-      textureAmount: 100,
-      toneSmoothing: 45,
-    }),
-  },
-  refineImage: {
-    type: 'refineImage',
-    title: 'Refine',
-    menuLabel: 'Refine / Enhance',
-    defaultHeight: 542,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({
-      title: 'Refine',
-      model: 'google/gemini-2.5-flash-image',
-      mode: 'reference-cleanup',
-      preserveStrength: 'strict',
-      size: '2K',
-      instruction: '',
-      activeResultIndex: -1,
-      resultAssetIds: [],
-    }),
-  },
-  removeBackground: {
-    type: 'removeBackground',
-    title: 'Remove BG',
-    menuLabel: 'Remove BG',
-    defaultHeight: 360,
-    ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
-      { id: 'result', label: 'Image', kind: 'image', side: 'output' },
-    ],
-    createData: () => ({ title: 'Remove BG' }),
-  },
-  exportImage: {
-    type: 'exportImage',
-    title: 'Export',
-    menuLabel: 'Export image',
-    defaultHeight: 400,
-    ports: [{ id: 'image', label: 'Image', kind: 'image', side: 'input' }],
-    createData: () => ({
-      title: 'Export',
-      format: 'png',
-      quality: '90',
-      scale: '1',
-      background: 'transparent',
-    }),
-  },
-  preview: {
-    type: 'preview',
-    title: 'Preview',
-    menuLabel: 'Preview',
-    defaultHeight: 360,
-    ports: [{ id: 'image', label: 'Image', kind: 'image', side: 'input' }],
-    createData: () => ({ title: 'Preview' }),
-  },
+  importImage: imageNodeDefinitions.importImage,
+  textPrompt: textNodeDefinitions.textPrompt,
+  textConcat: textNodeDefinitions.textConcat,
+  textGeneration: textNodeDefinitions.textGeneration,
+  textFormatter: textNodeDefinitions.textFormatter,
+  textSplitter: textNodeDefinitions.textSplitter,
+  iterator: contextNodeDefinitions.iterator,
+  subjectBuilder: contextNodeDefinitions.subjectBuilder,
+  locationBuilder: contextNodeDefinitions.locationBuilder,
+  telegramPublication: publicationNodeDefinitions.telegramPublication,
+  imageToText: imageNodeDefinitions.imageToText,
+  referenceComposer: imageNodeDefinitions.referenceComposer,
+  generateImage: imageNodeDefinitions.generateImage,
+  sketch: imageNodeDefinitions.sketch,
+  cropImage: imageNodeDefinitions.cropImage,
+  adjustment: imageNodeDefinitions.adjustment,
+  curves: imageNodeDefinitions.curves,
+  frequencyRetouch: imageNodeDefinitions.frequencyRetouch,
+  refineImage: imageNodeDefinitions.refineImage,
+  removeBackground: imageNodeDefinitions.removeBackground,
+  exportImage: imageNodeDefinitions.exportImage,
+  preview: imageNodeDefinitions.preview,
 } satisfies Record<ProductionNodeType, ProductionNodeDefinition>;
 
 export const PRODUCTION_NODE_TYPES = Object.keys(NODE_DEFINITIONS) as ProductionNodeType[];
 
 export function getNodeDefinition(type: ProductionNodeType) {
-  return NODE_DEFINITIONS[type];
+  return NODE_DEFINITIONS[type] as ProductionNodeDefinition;
 }
 
-export function createDefaultNodeData(type: ProductionNodeType) {
+export function isNodeCollapsible(type: ProductionNodeType) {
+  return Boolean(getNodeDefinition(type).collapsible);
+}
+
+export function createDefaultNodeData(type: ProductionNodeType): ProductionNodeData {
   return getNodeDefinition(type).createData();
 }

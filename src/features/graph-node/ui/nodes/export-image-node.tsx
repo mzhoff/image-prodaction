@@ -19,7 +19,7 @@ export function ExportImageNode({ node }: { node: ProductionNode }) {
 
   return (
     <>
-      <NodeTitle title="Export" nodeType={node.type} muted />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted />
       <ImagePlate
         activeIndex={model.activeIndex}
         assetId={model.sourceAsset?.id}

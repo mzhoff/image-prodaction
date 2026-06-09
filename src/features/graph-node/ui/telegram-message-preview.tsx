@@ -4,27 +4,18 @@ import { ImageIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
+import { getTelegramQuoteText, parseTelegramMessageBlocks } from '../lib/telegram-message-blocks';
 import { getTelegramMediaLayout } from '../lib/telegram-media-layout';
-import { getTelegramRichTextBlocks, getTelegramRichTextRunText, TELEGRAM_TEXT_FORMAT, type TelegramRichTextRun } from '../lib/telegram-rich-text';
+import {
+  getTelegramRichTextBlocks,
+  getTelegramRichTextRunText,
+  parseTelegramInlineText,
+  splitTelegramRichTextRunsByQuote,
+  TELEGRAM_TEXT_FORMAT,
+  type TelegramInlineTokenType,
+  type TelegramRichTextRun,
+} from '../lib/telegram-rich-text';
 import type { TelegramPreviewMediaItem } from '../model/use-telegram-publication-node-model';
-
-type InlineTokenType = 'bold' | 'code' | 'hashtag' | 'italic' | 'link' | 'spoiler' | 'strike' | 'underline';
-
-interface InlineRule {
-  type: InlineTokenType;
-  regex: RegExp;
-}
-
-const INLINE_RULES: InlineRule[] = [
-  { type: 'link', regex: /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/ },
-  { type: 'bold', regex: /\*\*([^*]+)\*\*/ },
-  { type: 'underline', regex: /__([^_]+)__/ },
-  { type: 'strike', regex: /~~([^~]+)~~/ },
-  { type: 'spoiler', regex: /\|\|([^|]+)\|\|/ },
-  { type: 'italic', regex: /_([^_]+)_/ },
-  { type: 'code', regex: /`([^`]+)`/ },
-  { type: 'hashtag', regex: /(#[\p{L}\p{N}_]{1,64})/u },
-];
 
 interface TelegramMessagePreviewProps {
   mediaItems: TelegramPreviewMediaItem[];
@@ -170,10 +161,16 @@ function renderTelegramMessageBlocks(messageText: string, messageRichText: strin
 }
 
 function renderRichTextBlock(runs: TelegramRichTextRun[], index: number) {
-  const blockText = getTelegramRichTextRunText(runs).trim();
-  if (!blockText) return [];
+  const blockText = getTelegramRichTextRunText(runs);
+  if (blockText.length === 0) {
+    return [
+      <p key={`paragraph-${index}`} className="telegram-message-paragraph">
+        {renderBlankLine()}
+      </p>,
+    ];
+  }
 
-  const quoteText = getQuoteText(blockText);
+  const quoteText = getTelegramQuoteText(blockText);
   if (quoteText) {
     return [(
       <blockquote key={`rich-quote-${index}`} className="telegram-message-quote">
@@ -182,19 +179,19 @@ function renderRichTextBlock(runs: TelegramRichTextRun[], index: number) {
     )];
   }
 
-  return splitRichRunsByQuote(runs).map((group, groupIndex) => {
-    const groupText = getTelegramRichTextRunText(group.runs).trim();
-    if (!groupText) return null;
+  return splitTelegramRichTextRunsByQuote(runs).map((group, groupIndex) => {
     const key = `rich-${group.quote ? 'quote' : 'paragraph'}-${index}-${groupIndex}`;
-    const content = group.runs.map((run, runIndex) => renderRichTextRun(run, `${key}-${runIndex}`));
+    const groupContent = group.runs.length
+      ? group.runs.map((run, runIndex) => renderRichTextRun(run, `${key}-${runIndex}`))
+      : renderParagraphContent('');
 
     return group.quote ? (
       <blockquote key={key} className="telegram-message-quote">
-        {content}
+        {groupContent}
       </blockquote>
     ) : (
       <p key={key} className="telegram-message-paragraph">
-        {content}
+        {groupContent}
       </p>
     );
   });
@@ -222,84 +219,48 @@ function renderRichTextRun(run: TelegramRichTextRun, key: string): ReactNode {
   return content;
 }
 
-function splitRichRunsByQuote(runs: TelegramRichTextRun[]) {
-  return runs.reduce<Array<{ quote: boolean; runs: TelegramRichTextRun[] }>>((groups, run) => {
-    const quote = Boolean(run.quote);
-    const previousGroup = groups[groups.length - 1];
-    const runWithoutQuote = quote ? { ...run, quote: false } : run;
-    if (previousGroup && previousGroup.quote === quote) {
-      previousGroup.runs.push(runWithoutQuote);
-      return groups;
+function renderMessageBlocks(messageText: string) {
+  const blocks = parseTelegramMessageBlocks(messageText);
+  return blocks.map((block, index) => {
+    if (block.kind === 'quote') {
+      return (
+        <blockquote key={`quote-${index}`} className="telegram-message-quote">
+          {renderInlineText(block.text, `quote-${index}`)}
+        </blockquote>
+      );
     }
 
-    groups.push({ quote, runs: [runWithoutQuote] });
-    return groups;
-  }, []);
+    return (
+      <p key={`paragraph-${index}`} className="telegram-message-paragraph">
+        {block.text ? renderParagraphContent(block.text, `paragraph-${index}`) : renderBlankLine(`paragraph-empty-${index}`)}
+      </p>
+    );
+  });
 }
 
-function renderMessageBlocks(messageText: string) {
-  return messageText
-    .trim()
-    .split(/\n{2,}/)
-    .map((block, index) => {
-      const trimmedBlock = block.trim();
-      if (!trimmedBlock) return null;
-      const quoteText = getQuoteText(trimmedBlock);
-      if (quoteText) {
-        return (
-          <blockquote key={`quote-${index}`} className="telegram-message-quote">
-            {renderInlineText(quoteText, `quote-${index}`)}
-          </blockquote>
-        );
-      }
+function renderParagraphContent(block: string, keyPrefix = '') {
+  if (!block) {
+    return renderBlankLine(keyPrefix ? `${keyPrefix}-empty` : undefined);
+  }
 
-      return (
-        <p key={`paragraph-${index}`} className="telegram-message-paragraph">
-          {renderInlineText(trimmedBlock, `paragraph-${index}`)}
-        </p>
-      );
-    });
+  return renderInlineText(block, keyPrefix);
 }
 
-function getQuoteText(block: string) {
-  const lines = block.split('\n');
-  if (!lines.every((line) => line.trimStart().startsWith('>'))) return '';
-  return lines.map((line) => line.trimStart().replace(/^>\s?/, '')).join('\n').trim();
+function renderBlankLine(keyPrefix?: string) {
+  return <span key={keyPrefix} className="telegram-message-blank-line">{'\u00A0'}</span>;
 }
 
 function renderInlineText(text: string, keyPrefix: string): ReactNode[] {
-  const match = findNextInlineMatch(text);
-  if (!match) return [text];
-
-  const before = text.slice(0, match.index);
-  const matchedText = match.match[0];
-  const content = match.match[1] ?? '';
-  const url = match.type === 'link' ? match.match[2] : undefined;
-  const after = text.slice(match.index + matchedText.length);
-  const nodes: ReactNode[] = [];
-
-  if (before) nodes.push(before);
-  nodes.push(renderInlineToken(match.type, content, url, `${keyPrefix}-${match.index}`));
-  if (after) nodes.push(...renderInlineText(after, `${keyPrefix}-after-${match.index}`));
-  return nodes;
+  const tokens = parseTelegramInlineText(text);
+  return tokens.map((token, index) => renderInlineToken(
+    token.type,
+    token.content,
+    token.type === 'link' ? token.href : undefined,
+    `${keyPrefix}-${index}`,
+  ));
 }
 
-function findNextInlineMatch(text: string) {
-  return INLINE_RULES.reduce<{
-    index: number;
-    match: RegExpMatchArray;
-    type: InlineTokenType;
-  } | null>((bestMatch, rule) => {
-    const match = text.match(rule.regex);
-    if (!match || match.index === undefined) return bestMatch;
-    if (!bestMatch || match.index < bestMatch.index) {
-      return { index: match.index, match, type: rule.type };
-    }
-    return bestMatch;
-  }, null);
-}
-
-function renderInlineToken(type: InlineTokenType, content: string, url: string | undefined, key: string) {
+function renderInlineToken(type: TelegramInlineTokenType, content: string, url: string | undefined, key: string) {
   if (type === 'bold') return <strong key={key}>{content}</strong>;
   if (type === 'hashtag') return <span key={key} className="telegram-message-hashtag">{content}</span>;
   if (type === 'italic') return <em key={key}>{content}</em>;
