@@ -61,6 +61,7 @@ export interface TextPromptVariable {
 }
 
 export interface TextPromptNodeData extends BaseNodeData {
+  disabledResultFilterIds?: string[];
   result?: string;
   sourceCount?: number;
   text: string;
@@ -73,6 +74,7 @@ export type TextConcatSeparator = 'newline' | 'double-newline' | 'space' | 'cust
 
 export interface TextConcatNodeData extends BaseNodeData {
   customSeparator: string;
+  disabledResultFilterIds?: string[];
   inputCount?: number;
   prefix: string;
   result?: string;
@@ -128,6 +130,7 @@ export interface IteratorNodeData extends BaseNodeData {
   activeIndex: number;
   activeKind: IteratorActiveKind;
   activeText?: string;
+  disabledResultFilterIds?: string[];
   imageCount?: number;
   message?: string;
   textCount?: number;

@@ -95,6 +95,8 @@ export function useTextPromptNodeModel(node: ProductionNode) {
   const data = node.data as TextPromptNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
+  const redo = useProductionGraphStore((state) => state.redo);
+  const undo = useProductionGraphStore((state) => state.undo);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const variables = useMemo(() => getTextPromptVariables(node), [node]);
@@ -120,6 +122,11 @@ export function useTextPromptNodeModel(node: ProductionNode) {
   }), [edges, node.id, nodes, variables]);
   const sourceCount = variableSlots.filter((slot) => slot.value.trim()).length;
   const result = useMemo(() => composeTextPromptResult(data.text, variableSlots), [data.text, variableSlots]);
+  const resultSectionFilters = useTextSectionFilters({
+    disabledFilterIds: data.disabledResultFilterIds,
+    onDisabledFilterIdsChange: (disabledResultFilterIds) => updateNodeData(node.id, { disabledResultFilterIds }),
+    text: result,
+  });
   const hasVariables = variables.length > 0;
   const textareaHeight = clampTextPromptTextareaHeight(data.textareaHeight);
 
@@ -154,10 +161,15 @@ export function useTextPromptNodeModel(node: ProductionNode) {
     data,
     handleAddVariable,
     handleDisplayModeChange: (value: string) => updateNodeData(node.id, { variableDisplayMode: normalizeTextPromptVariableDisplayMode(value) }),
+    handleResultFilterToggle: resultSectionFilters.toggleFilter,
+    handleRedo: redo,
     handleTextareaHeightChange: (nextHeight: number) => updateNodeData(node.id, { textareaHeight: clampTextPromptTextareaHeight(nextHeight) }),
     handleTextChange: (text: string) => updateNodeData(node.id, { text }),
+    handleUndo: undo,
     hasVariables,
     result,
+    disabledResultFilterIds: resultSectionFilters.disabledFilterIds,
+    resultFilterIssues: resultSectionFilters.duplicateIssues,
     sourceCount,
     textareaHeight,
     variableDisplayMode,
@@ -188,6 +200,11 @@ export function useTextConcatNodeModel(node: ProductionNode) {
   ), [edges, inputCount, node.id, nodes]);
   const sourceCount = inputSlots.filter((slot) => slot.text.trim()).length;
   const result = useMemo(() => composeConcatText(data, inputSlots.map((input) => input.text)), [data, inputSlots]);
+  const resultSectionFilters = useTextSectionFilters({
+    disabledFilterIds: data.disabledResultFilterIds,
+    onDisabledFilterIdsChange: (disabledResultFilterIds) => updateNodeData(node.id, { disabledResultFilterIds }),
+    text: result,
+  });
 
   useEffect(() => {
     const nextData: Partial<TextConcatNodeData> = {};
@@ -203,10 +220,13 @@ export function useTextConcatNodeModel(node: ProductionNode) {
     handleAddInput: () => updateNodeData(node.id, { inputCount: inputCount + 1 }),
     handleOptionalTextChange: (suffix: string) => updateNodeData(node.id, { suffix }),
     handleOptionalTextHeightChange: (nextHeight: number) => updateNodeData(node.id, { optionalTextHeight: clampTextConcatOptionalHeight(nextHeight) }),
+    handleResultFilterToggle: resultSectionFilters.toggleFilter,
     inputSlots,
     optionalText: data.suffix,
     optionalTextHeight,
     result,
+    disabledResultFilterIds: resultSectionFilters.disabledFilterIds,
+    resultFilterIssues: resultSectionFilters.duplicateIssues,
     sourceCount,
   };
 }
@@ -236,12 +256,12 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
   });
 
   const handleGenerate = useCallback(async () => {
-    if (!inputText.trim()) {
-      updateNodeData(node.id, { message: 'Подключи text output ко входу Text Gen.' });
-      return;
-    }
-    if (!data.instruction.trim()) {
-      updateNodeData(node.id, { message: 'Добавь инструкцию для генерации текста.' });
+    const connectedPrompt = inputText.trim();
+    const localPrompt = data.instruction.trim();
+    const prompt = [connectedPrompt, localPrompt].filter(Boolean).join('\n\n');
+
+    if (!prompt) {
+      updateNodeData(node.id, { message: 'Добавь prompt в ноде или подключи текст ко входу Prompt.' });
       return;
     }
 
@@ -249,8 +269,8 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
       setNodeStatus(node.id, 'running');
       updateNodeDataSilent(node.id, { message: '' });
       const result = await requestGenerateText({
-        inputText,
-        instruction: data.instruction,
+        inputText: '',
+        instruction: prompt,
         model: selectedModel,
         outputStyle: data.outputStyle,
         reasoning: supportsReasoning ? reasoning : undefined,

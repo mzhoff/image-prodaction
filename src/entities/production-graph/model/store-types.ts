@@ -63,5 +63,7 @@ export interface ProductionGraphState extends GraphProject {
   setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
   exportProjectSnapshot: () => ProjectExport;
   exportPipelineTemplate: () => PipelineTemplateExport;
+  exportPipelineTemplateForSection: (sectionId: string) => PipelineTemplateExport;
+  importPipelineTemplateAt: (payload: unknown, position: GraphPoint) => { kind: PipelineTemplateExport['kind']; nodeCount: number };
   importPortableProject: (payload: unknown, expectedKind?: PortableProjectExport['kind']) => { kind: ProjectExport['kind'] | PipelineTemplateExport['kind'] };
 }

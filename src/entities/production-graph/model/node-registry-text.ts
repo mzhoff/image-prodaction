@@ -10,6 +10,7 @@ export const textNodeDefinitions = {
     ports: [{ id: 'text', label: 'Text', kind: 'text', side: 'output' }],
     createData: () => ({
       title: 'Prompt',
+      disabledResultFilterIds: [],
       result: '',
       sourceCount: 0,
       text: '',
@@ -33,6 +34,7 @@ export const textNodeDefinitions = {
       title: 'Concat',
       separator: 'double-newline',
       customSeparator: '',
+      disabledResultFilterIds: [],
       inputCount: 2,
       prefix: '',
       optionalTextHeight: 95,
@@ -48,7 +50,7 @@ export const textNodeDefinitions = {
     collapsible: true,
     defaultHeight: 757,
     ports: [
-      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+      { id: 'text', label: 'Prompt', kind: 'text', side: 'input' },
       { id: 'result', label: 'Result', kind: 'text', side: 'output' },
     ],
     createData: () => ({

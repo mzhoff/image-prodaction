@@ -37,6 +37,7 @@ interface NodeCardProps {
   onStartDrag: (node: ProductionNode, event: ReactPointerEvent<HTMLElement>) => void;
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
   onContextMenu: (node: ProductionNode, event: ReactMouseEvent) => void;
+  onOptionsMenu: (node: ProductionNode, event: ReactMouseEvent<HTMLButtonElement>) => void;
   generateComposingOpen?: boolean;
   onGenerateComposingOpenChange?: (open: boolean) => void;
 }
@@ -81,6 +82,7 @@ export function NodeCard({
   onStartDrag,
   onStartConnection,
   onContextMenu,
+  onOptionsMenu,
   generateComposingOpen = true,
   onGenerateComposingOpenChange,
 }: NodeCardProps) {
@@ -127,13 +129,14 @@ export function NodeCard({
           />
         );
       })}
-      <NodeTitleNodeIdProvider nodeId={node.id}>
+      <NodeTitleNodeIdProvider nodeId={node.id} onOpenOptionsMenu={(event) => onOptionsMenu(node, event)}>
         {renderNode({
           node,
           selected,
           onStartDrag,
           onStartConnection,
           onContextMenu,
+          onOptionsMenu,
           generateComposingOpen,
           onGenerateComposingOpenChange,
         })}

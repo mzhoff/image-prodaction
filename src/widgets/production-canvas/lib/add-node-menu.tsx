@@ -62,7 +62,7 @@ export interface AddNodeMenuGroup {
 const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: ProductionNodeType[] }> = [
   {
     id: 'general',
-    label: 'Import / Export',
+    label: 'Tools',
     icon: <Archive size={14} />,
     types: ['importImage', 'iterator', 'exportImage', 'preview'],
   },
@@ -73,16 +73,22 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     types: ['textPrompt', 'textConcat', 'textGeneration', 'textFormatter', 'textSplitter'],
   },
   {
-    id: 'publication',
-    label: 'Publication',
-    icon: <Send size={14} />,
-    types: [],
-  },
-  {
     id: 'image',
     label: 'Image',
     icon: <Images size={14} />,
     types: ['generateImage', 'imageToText', 'sketch', 'cropImage', 'adjustment', 'curves', 'frequencyRetouch', 'refineImage', 'removeBackground'],
+  },
+  {
+    id: 'video',
+    label: 'Video',
+    icon: <Clapperboard size={14} />,
+    types: [],
+  },
+  {
+    id: 'publication',
+    label: 'Publication',
+    icon: <Send size={14} />,
+    types: [],
   },
   {
     id: 'library',
@@ -103,6 +109,18 @@ function createNodeMenuItem(type: ProductionNodeType): AddNodeMenuItem {
 function disabledPublicationItem(id: string, label: string, icon?: ReactNode): AddNodeMenuDisabledItem {
   return { id, label, icon, disabled: true };
 }
+
+function disabledVideoItem(id: string, label: string, icon?: ReactNode): AddNodeMenuDisabledItem {
+  return { id, label, icon, disabled: true };
+}
+
+const videoMenuItems: AddNodeMenuEntry[] = [
+  disabledVideoItem('video-generate', 'Generate video', <Clapperboard size={14} />),
+  disabledVideoItem('video-first-last-frame', 'First / last frame', <SquarePlay size={14} />),
+  disabledVideoItem('video-timeline-handoff', 'Timeline handoff', <PanelsTopLeft size={14} />),
+  disabledVideoItem('video-export', 'Export video', <Download size={14} />),
+  disabledVideoItem('video-history', 'Video history', <Archive size={14} />),
+];
 
 const publicationMenuItems: AddNodeMenuEntry[] = [
   {
@@ -187,7 +205,11 @@ const publicationMenuItems: AddNodeMenuEntry[] = [
 
 export const addNodeMenuGroups: AddNodeMenuGroup[] = addNodeTypesByGroup.map((group) => ({
   ...group,
-  items: group.id === 'publication' ? publicationMenuItems : group.types.map(createNodeMenuItem),
+  items: group.id === 'publication'
+    ? publicationMenuItems
+    : group.id === 'video'
+      ? videoMenuItems
+      : group.types.map(createNodeMenuItem),
 }));
 
 export const addNodeMenu: AddNodeMenuItem[] = addNodeMenuGroups.flatMap((group) => getEnabledNodeMenuItems(group.items));

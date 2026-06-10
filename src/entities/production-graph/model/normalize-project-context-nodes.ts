@@ -9,6 +9,7 @@ export function normalizeContextNode(node: ProductionNode): ProductionNode | nul
     const data = node.data as ProductionNodeData & {
       activeIndex?: unknown;
       activeKind?: unknown;
+      disabledResultFilterIds?: unknown;
       imageCount?: unknown;
       textCount?: unknown;
     };
@@ -21,6 +22,7 @@ export function normalizeContextNode(node: ProductionNode): ProductionNode | nul
         activeIndex: typeof data.activeIndex === 'number' && Number.isFinite(data.activeIndex) ? Math.max(0, Math.floor(data.activeIndex)) : 0,
         activeKind: data.activeKind === 'text' ? 'text' : 'image',
         activeText: '',
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         imageCount: typeof data.imageCount === 'number' && Number.isFinite(data.imageCount) ? Math.max(0, Math.floor(data.imageCount)) : 0,
         message: '',
         textCount: typeof data.textCount === 'number' && Number.isFinite(data.textCount) ? Math.max(0, Math.floor(data.textCount)) : 0,

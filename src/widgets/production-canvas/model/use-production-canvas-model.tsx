@@ -1,12 +1,13 @@
 'use client';
 
-import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, RotateCcw, Trash2, Unlock } from 'lucide-react';
+import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, RotateCcw, Trash2, Unlock, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { getNodeCurrentImageAssetId, getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import { getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
 import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
 import type { GraphSection, ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
+import { requestNodeTitleRename } from '@/features/graph-node/ui/node-title';
 import { hasImageFileInDataTransfer, getImageFilesFromDataTransfer } from '@/shared/lib/image-file';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
@@ -109,13 +110,14 @@ export function useProductionCanvasModel() {
 
   const { importImageFile, importImageFiles } = useCanvasImageImport({ getFallbackPastePosition, pasteImageAsset: graph.pasteImageAsset });
   const {
-    exportPipelineTemplate,
+    exportSectionPipelineTemplate,
     exportProjectSnapshot,
-    importPipelineTemplateFile,
+    importPipelineTemplateAt,
     importProjectSnapshotFile,
   } = useCanvasProjectTransfer({
-    exportPipelineTemplate: graph.exportPipelineTemplate,
+    exportPipelineTemplateForSection: graph.exportPipelineTemplateForSection,
     exportProjectSnapshot: graph.exportProjectSnapshot,
+    importPipelineTemplateAt: graph.importPipelineTemplateAt,
     importPortableProject: graph.importPortableProject,
     showToast,
   });
@@ -215,6 +217,12 @@ export function useProductionCanvasModel() {
 
   const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => [
     {
+      id: 'export-section-pipeline',
+      label: 'Export Pipeline',
+      icon: <Download size={14} />,
+      onSelect: () => exportSectionPipelineTemplate(section.id, section.title),
+    },
+    {
       id: 'rename-section',
       label: 'Rename group',
       icon: <Pencil size={14} />,
@@ -261,9 +269,15 @@ export function useProductionCanvasModel() {
       separatorBefore: true,
       onSelect: () => graph.deleteSection(section.id),
     },
-  ], [graph, sectionColorPreviews]);
+  ], [exportSectionPipelineTemplate, graph, sectionColorPreviews]);
 
   const getCanvasMenuActions = useCallback((worldPoint: { x: number; y: number }): ContextMenuAction[] => [
+    {
+      id: 'import-pipeline',
+      label: 'Import Pipeline',
+      icon: <Upload size={14} />,
+      onSelect: () => importPipelineTemplateAt(worldPoint),
+    },
     ...addNodeMenuGroups.map((group) => ({
       id: `add-group-${group.id}`,
       kind: 'submenu' as const,
@@ -286,7 +300,7 @@ export function useProductionCanvasModel() {
       destructive: true,
       onSelect: graph.resetProject,
     },
-  ], [canvas, createNode, graph]);
+  ], [canvas, createNode, graph, importPipelineTemplateAt]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {
     const worldPoint = canvas.screenToWorld(event.nativeEvent) ?? { x: 0, y: 0 };
@@ -294,7 +308,7 @@ export function useProductionCanvasModel() {
     contextMenu.openContextMenu(event, getCanvasMenuActions(worldPoint));
   }, [canvas, closeContextMenu, contextMenu, getCanvasMenuActions]);
 
-  const openNodeMenu = useCallback((node: ProductionNode, event: ReactMouseEvent) => {
+  const getNodeMenuActions = useCallback((node: ProductionNode): ContextMenuAction[] => {
     const assetIds = getNodeImageAssetIds(node);
     const currentAssetId = getNodeCurrentImageAssetId(node);
     const currentIndex = currentAssetId ? Math.max(0, assetIds.indexOf(currentAssetId)) : -1;
@@ -331,9 +345,7 @@ export function useProductionCanvasModel() {
       },
     ] : [];
 
-    graph.selectNode(node.id);
-    closeContextMenu();
-    contextMenu.openContextMenu(event, [
+    return [
       {
         id: 'ask-ai-node',
         label: 'Ask AI',
@@ -344,10 +356,7 @@ export function useProductionCanvasModel() {
         id: 'rename-node',
         label: 'Rename',
         icon: <Pencil size={14} />,
-        onSelect: () => {
-          const title = window.prompt('Node name', getNodeTitle(node));
-          if (title) graph.renameNode(node.id, title);
-        },
+        onSelect: () => requestNodeTitleRename(node.id),
       },
       {
         id: 'copy-node',
@@ -371,8 +380,27 @@ export function useProductionCanvasModel() {
         separatorBefore: true,
         onSelect: graph.deleteSelected,
       },
-    ], 244);
-  }, [closeContextMenu, contextMenu, downloadAssets, graph, openImageViewer, showToast]);
+    ];
+  }, [downloadAssets, graph, openImageViewer, showToast]);
+
+  const openNodeMenuAt = useCallback((node: ProductionNode, x: number, y: number) => {
+    graph.selectNode(node.id);
+    closeContextMenu();
+    contextMenu.openContextMenuAt(x, y, getNodeMenuActions(node), 244);
+  }, [closeContextMenu, contextMenu, getNodeMenuActions, graph]);
+
+  const openNodeMenu = useCallback((node: ProductionNode, event: ReactMouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openNodeMenuAt(node, event.clientX, event.clientY);
+  }, [openNodeMenuAt]);
+
+  const openNodeOptionsMenu = useCallback((node: ProductionNode, event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    openNodeMenuAt(node, rect.right - 4, rect.bottom + 4);
+  }, [openNodeMenuAt]);
 
   const toggleCollapsedStateForSelectedNodes = useCallback(() => {
     const candidateNodeIds = Array.from(graph.selectedSet).flatMap((nodeId) => {
@@ -496,15 +524,14 @@ export function useProductionCanvasModel() {
     historyFutureLength: graph.historyFutureLength,
     historyPastLength: graph.historyPastLength,
     imageViewer,
-    importPipelineTemplateFile,
     importProjectSnapshotFile,
     measuredPortPoints,
     nodes: graph.nodes,
     nodesById: graph.nodesById,
     openCanvasMenu,
     openNodeMenu,
+    openNodeOptionsMenu,
     openSectionMenu,
-    exportPipelineTemplate,
     exportProjectSnapshot,
     redo: graph.redo,
     renameSection: graph.renameSection,

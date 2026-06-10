@@ -1,5 +1,6 @@
 import { normalizeNodeSize } from './node-layout';
 import { normalizeFormattedTextPresetId } from './formatted-text';
+import { normalizeStringArray } from './normalize-project-values';
 import {
   normalizeTextPromptTextareaHeight,
   normalizeTextPromptVariableDisplayMode,
@@ -9,7 +10,12 @@ import type { ProductionNode, ProductionNodeData } from './types';
 
 export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   if (node.type === 'textPrompt') {
-    const data = node.data as ProductionNodeData & { textareaHeight?: unknown; variableDisplayMode?: unknown; variables?: unknown };
+    const data = node.data as ProductionNodeData & {
+      disabledResultFilterIds?: unknown;
+      textareaHeight?: unknown;
+      variableDisplayMode?: unknown;
+      variables?: unknown;
+    };
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
@@ -18,6 +24,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         sourceCount: 0,
         text: '',
         ...data,
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         textareaHeight: normalizeTextPromptTextareaHeight(data.textareaHeight),
         title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Prompt',
         variableDisplayMode: normalizeTextPromptVariableDisplayMode(data.variableDisplayMode),
@@ -41,6 +48,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         result: '',
         sourceCount: 0,
         ...node.data,
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         title: 'Concat',
         optionalTextHeight,
       },
@@ -48,6 +56,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   }
 
   if (node.type === 'textGeneration') {
+    const data = node.data as ProductionNodeData & { disabledResultFilterIds?: unknown };
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
@@ -58,10 +67,10 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         reasoning: 'low',
         temperature: 1,
         activeResultIndex: -1,
-        disabledResultFilterIds: [],
         result: '',
         resultTexts: [],
-        ...node.data,
+        ...data,
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         title: 'Text Gen',
       },
     } as ProductionNode;

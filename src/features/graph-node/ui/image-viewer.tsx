@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Mic, RotateCcw, WandSparkles, X } from 'lucide-react';
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import { DarkSelect } from '@/shared/ui/dark-select';
@@ -65,6 +65,12 @@ export function ImageViewer({
   const contentStyle = customPanelOpen && viewerPanel?.height
     ? { '--image-viewer-panel-height': `${viewerPanel.height}px` } as CSSProperties
     : undefined;
+  const closeOnEmptyPreviewArea = (event: ReactMouseEvent<HTMLElement>) => {
+    if (editorOpen) return;
+    if (event.button !== 0) return;
+    if (event.target !== event.currentTarget) return;
+    onClose();
+  };
 
   useEffect(() => {
     if (!hasHistory) return undefined;
@@ -107,11 +113,12 @@ export function ImageViewer({
           maskModel.localMaskMode && 'image-viewer-content-with-local-mask',
         )}
         style={contentStyle}
+        onMouseDown={closeOnEmptyPreviewArea}
       >
         <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={onClose}>
           <X size={18} />
         </button>
-        <div className="image-viewer-viewport">
+        <div className="image-viewer-viewport" onMouseDown={closeOnEmptyPreviewArea}>
           <div className="image-viewer-stage" style={stageStyle}>
             <Image
               src={url}

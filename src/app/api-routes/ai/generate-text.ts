@@ -4,9 +4,23 @@ import { DEFAULT_ANALYSIS_MODEL, PREFERRED_ANALYSIS_MODEL_IDS } from '@/shared/a
 
 export const runtime = 'nodejs';
 
+const DEFAULT_TEXT_GENERATION_MAX_TOKENS = 64_000;
+const TEXT_GENERATION_MAX_TOKENS_BY_MODEL: Record<string, number> = {
+  'google/gemini-3.5-flash': 64_000,
+  'google/gemini-2.5-flash': 64_000,
+  'google/gemini-2.5-pro': 64_000,
+  'openai/gpt-5.5': 128_000,
+  'openai/gpt-5.5-pro': 128_000,
+  'openai/gpt-5-mini': 128_000,
+  'openai/gpt-5-pro': 128_000,
+  'anthropic/claude-sonnet-4.6': 128_000,
+  'anthropic/claude-sonnet-4.5': 64_000,
+  'anthropic/claude-sonnet-4': 64_000,
+};
+
 const textGenerationSchema = z.object({
   inputText: z.string().default(''),
-  instruction: z.string().min(1),
+  instruction: z.string().default(''),
   model: z.string().min(1).default(DEFAULT_ANALYSIS_MODEL),
   outputStyle: z.enum(['plain', 'markdown', 'numbered-list']).default('plain'),
   reasoning: z.enum(['low', 'medium', 'high']).optional(),
@@ -19,14 +33,14 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  if (!parsed.data.inputText.trim()) {
-    return Response.json({ error: 'Connect text input before running text generation.' }, { status: 400 });
+  if (!parsed.data.inputText.trim() && !parsed.data.instruction.trim()) {
+    return Response.json({ error: 'Add a prompt or connect text input before running text generation.' }, { status: 400 });
   }
 
   if (!process.env.OPENROUTER_API_KEY) {
     return Response.json({
       provider: 'mock',
-      text: parsed.data.inputText,
+      text: parsed.data.inputText.trim() || parsed.data.instruction.trim(),
       message: 'Mock text generation: OPENROUTER_API_KEY is not configured.',
     });
   }
@@ -39,7 +53,7 @@ export async function POST(request: Request) {
     const result = await sendOpenRouterChat({
       model: parsed.data.model,
       messages: [{ role: 'user', content: composeTextGenerationPrompt(parsed.data) }],
-      maxTokens: 2200,
+      maxTokens: getTextGenerationMaxTokens(parsed.data.model),
       reasoning: parsed.data.reasoning ? { effort: parsed.data.reasoning } : undefined,
       temperature: parsed.data.temperature,
     });
@@ -66,17 +80,25 @@ function composeTextGenerationPrompt({
     'numbered-list': 'Return a numbered list. Put each item on its own line.',
   }[outputStyle];
 
-  return [
+  const sections = [
     'You are a production text assistant for an AI image pipeline.',
     styleInstruction,
     'Do not add explanations outside the requested output.',
-    '',
-    'Instruction:',
-    instruction.trim(),
-    '',
-    'Input text:',
-    inputText.trim(),
-  ].join('\n');
+  ];
+
+  if (instruction.trim()) {
+    sections.push('', 'Instruction:', instruction.trim());
+  }
+
+  if (inputText.trim()) {
+    sections.push('', 'Input text:', inputText.trim());
+  }
+
+  return sections.join('\n');
+}
+
+function getTextGenerationMaxTokens(model: string) {
+  return TEXT_GENERATION_MAX_TOKENS_BY_MODEL[model] ?? DEFAULT_TEXT_GENERATION_MAX_TOKENS;
 }
 
 function extractText(result: Awaited<ReturnType<typeof sendOpenRouterChat>>) {

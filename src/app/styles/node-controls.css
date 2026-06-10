@@ -138,6 +138,7 @@
 .iterator-node-stepper,
 .iterator-node-preview,
 .iterator-node-text-preview,
+.iterator-node-filter-tags,
 .iterator-node-message {
   width: calc(100% - 32px);
   margin-right: 16px;
@@ -172,6 +173,12 @@
   max-height: 240px;
   margin-top: 4px;
   margin-bottom: 8px;
+}
+
+.iterator-node-filter-tags {
+  margin-top: 8px;
+  margin-bottom: 6px;
+  padding: 0;
 }
 
 .iterator-output-row {

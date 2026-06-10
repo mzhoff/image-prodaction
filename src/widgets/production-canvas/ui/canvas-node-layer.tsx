@@ -7,6 +7,7 @@ interface CanvasNodeLayerProps {
   nodes: ProductionNode[];
   onGenerateComposingOpenChange: (nodeId: string, open: boolean) => void;
   onNodeContextMenu: (node: ProductionNode, event: ReactMouseEvent) => void;
+  onNodeOptionsMenu: (node: ProductionNode, event: ReactMouseEvent<HTMLButtonElement>) => void;
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
   onStartDrag: (node: ProductionNode, event: ReactPointerEvent<HTMLElement>) => void;
   selectedSet: Set<string>;
@@ -17,6 +18,7 @@ export function CanvasNodeLayer({
   nodes,
   onGenerateComposingOpenChange,
   onNodeContextMenu,
+  onNodeOptionsMenu,
   onStartConnection,
   onStartDrag,
   selectedSet,
@@ -31,6 +33,7 @@ export function CanvasNodeLayer({
           onStartDrag={onStartDrag}
           onStartConnection={onStartConnection}
           onContextMenu={onNodeContextMenu}
+          onOptionsMenu={onNodeOptionsMenu}
           generateComposingOpen={!collapsedGenerateComposingNodeIds.has(node.id)}
           onGenerateComposingOpenChange={(open) => onGenerateComposingOpenChange(node.id, open)}
         />

@@ -2,6 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 9998;
+  pointer-events: none;
 }
 
 .context-menu {
@@ -114,7 +115,7 @@
 .context-menu-submenu {
   position: absolute;
   top: -6px;
-  left: calc(100% + 6px);
+  left: calc(100% - 2px);
   display: none;
   min-width: 188px;
 }

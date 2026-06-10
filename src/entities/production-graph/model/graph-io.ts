@@ -195,9 +195,12 @@ export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
   }
   if (node.type === 'textPrompt') {
     const data = node.data as TextPromptNodeData;
-    return (data.result || data.text || '').trim();
+    return getFilteredTextSectionText(data.result || data.text, data.disabledResultFilterIds);
   }
-  if (node.type === 'textConcat') return (node.data as TextConcatNodeData).result?.trim() ?? '';
+  if (node.type === 'textConcat') {
+    const data = node.data as TextConcatNodeData;
+    return getFilteredTextSectionText(data.result, data.disabledResultFilterIds);
+  }
   if (node.type === 'textGeneration') {
     const data = node.data as TextGenerationNodeData;
     return getFilteredTextSectionText(data.result, data.disabledResultFilterIds);
@@ -208,7 +211,7 @@ export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
   }
   if (node.type === 'iterator') {
     const data = node.data as IteratorNodeData;
-    return data.activeKind === 'text' ? data.activeText?.trim() ?? '' : '';
+    return data.activeKind === 'text' ? getFilteredTextSectionText(data.activeText, data.disabledResultFilterIds) : '';
   }
   if (node.type === 'textSplitter') {
     const data = node.data as TextSplitterNodeData;
@@ -237,6 +240,27 @@ export function getNodeTextResults(node: ProductionNode, sourcePortId?: string) 
       ...(Array.isArray(data.resultTexts) ? data.resultTexts : []),
       data.result,
     ]).map((text) => getFilteredTextSectionText(text, data.disabledResultFilterIds)).filter(Boolean);
+  }
+
+  if (node.type === 'textPrompt') {
+    const data = node.data as TextPromptNodeData;
+    return uniqueStrings([data.result, data.text])
+      .map((text) => getFilteredTextSectionText(text, data.disabledResultFilterIds))
+      .filter(Boolean);
+  }
+
+  if (node.type === 'textConcat') {
+    const data = node.data as TextConcatNodeData;
+    return uniqueStrings([data.result])
+      .map((text) => getFilteredTextSectionText(text, data.disabledResultFilterIds))
+      .filter(Boolean);
+  }
+
+  if (node.type === 'iterator') {
+    const data = node.data as IteratorNodeData;
+    return data.activeKind === 'text'
+      ? uniqueStrings([data.activeText]).map((text) => getFilteredTextSectionText(text, data.disabledResultFilterIds)).filter(Boolean)
+      : [];
   }
 
   if (node.type === 'textSplitter' && (!sourcePortId || sourcePortId === 'items')) {

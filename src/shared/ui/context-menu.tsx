@@ -7,6 +7,8 @@ import { cn } from '@/shared/lib/cn';
 import type { ContextMenuAction, ContextMenuColorAction, ContextMenuState } from './context-menu-types';
 import { FLOATING_CONTEXT_MENU_CLOSE_EVENT } from './floating-context-menu';
 
+const COLOR_PREVIEW_DEBOUNCE_MS = 300;
+
 function getMenuPosition(menu: ContextMenuState) {
   const minWidth = menu.minWidth ?? 188;
   const estimatedHeight = 12
@@ -37,15 +39,28 @@ export function ContextMenu({
   useEffect(() => {
     if (!menu) return undefined;
 
+    const closeOnOutsidePointer = (event: PointerEvent | MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('[data-floating-context-menu="true"]')) return;
+      onClose();
+    };
+
     document.addEventListener(FLOATING_CONTEXT_MENU_CLOSE_EVENT, onClose);
-    return () => document.removeEventListener(FLOATING_CONTEXT_MENU_CLOSE_EVENT, onClose);
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    document.addEventListener('contextmenu', closeOnOutsidePointer, true);
+
+    return () => {
+      document.removeEventListener(FLOATING_CONTEXT_MENU_CLOSE_EVENT, onClose);
+      document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+      document.removeEventListener('contextmenu', closeOnOutsidePointer, true);
+    };
   }, [menu, onClose]);
 
   if (!menu) return null;
 
   return createPortal(
     <>
-      <div className="context-menu-backdrop" onClick={onClose} onContextMenu={(event) => event.preventDefault()} />
+      <div className="context-menu-backdrop" aria-hidden="true" />
       <div
         className="context-menu"
         style={getMenuPosition(menu)}
@@ -72,7 +87,7 @@ function ContextMenuActionList({
     <div key={action.id} className={action.kind === 'submenu' ? 'context-menu-submenu-wrap' : undefined}>
       {action.separatorBefore ? <div className="context-menu-separator" /> : null}
       {action.kind === 'color' ? (
-        <ContextMenuColorItem action={action} />
+        <ContextMenuColorItem action={action} onClose={onClose} />
       ) : action.kind === 'submenu' ? (
         <>
           <button
@@ -118,38 +133,68 @@ function ContextMenuActionList({
   ));
 }
 
-function ContextMenuColorItem({ action }: { action: ContextMenuColorAction }) {
+function ContextMenuColorItem({ action, onClose }: { action: ContextMenuColorAction; onClose: () => void }) {
   const [value, setValue] = useState(action.value);
   const latestValueRef = useRef(action.value);
   const committedValueRef = useRef(action.value);
+  const previewTimerRef = useRef<number | null>(null);
   const removeCommitListenersRef = useRef<(() => void) | null>(null);
+  const selectingRef = useRef(false);
+  const onCommitRef = useRef(action.onCommit);
+  const onPreviewRef = useRef(action.onPreview);
+
+  onCommitRef.current = action.onCommit;
+  onPreviewRef.current = action.onPreview;
 
   useEffect(() => {
+    if (selectingRef.current) return;
     setValue(action.value);
     latestValueRef.current = action.value;
     committedValueRef.current = action.value;
   }, [action.value]);
 
   useEffect(() => {
-    return () => removeCommitListenersRef.current?.();
+    return () => {
+      commitLatestValue();
+      removeCommitListenersRef.current?.();
+    };
   }, []);
 
-  const previewValue = (nextValue: string) => {
-    latestValueRef.current = nextValue;
-    setValue(nextValue);
-    action.onPreview?.(nextValue);
+  const clearPreviewTimer = () => {
+    if (!previewTimerRef.current) return;
+    window.clearTimeout(previewTimerRef.current);
+    previewTimerRef.current = null;
+  };
+
+  const schedulePreview = (nextValue: string) => {
+    clearPreviewTimer();
+    if (!onPreviewRef.current) return;
+    previewTimerRef.current = window.setTimeout(() => {
+      previewTimerRef.current = null;
+      onPreviewRef.current?.(latestValueRef.current);
+    }, COLOR_PREVIEW_DEBOUNCE_MS);
   };
 
   const commitLatestValue = () => {
+    clearPreviewTimer();
     removeCommitListenersRef.current?.();
     removeCommitListenersRef.current = null;
+    selectingRef.current = false;
     const nextValue = latestValueRef.current;
     if (nextValue === committedValueRef.current) return;
     committedValueRef.current = nextValue;
-    action.onCommit(nextValue);
+    onCommitRef.current(nextValue);
+  };
+
+  const previewValue = (nextValue: string) => {
+    selectingRef.current = true;
+    latestValueRef.current = nextValue;
+    setValue(nextValue);
+    schedulePreview(nextValue);
   };
 
   const beginSelection = () => {
+    selectingRef.current = true;
     removeCommitListenersRef.current?.();
 
     const handlePointerUp = () => commitLatestValue();
@@ -172,9 +217,15 @@ function ContextMenuColorItem({ action }: { action: ContextMenuColorAction }) {
         onPointerDown={beginSelection}
         onInput={(event) => previewValue(event.currentTarget.value)}
         onChange={(event) => previewValue(event.currentTarget.value)}
-        onBlur={commitLatestValue}
+        onBlur={() => {
+          commitLatestValue();
+          onClose();
+        }}
         onKeyUp={(event) => {
-          if (event.key === 'Enter' || event.key === 'Escape') commitLatestValue();
+          if (event.key === 'Enter' || event.key === 'Escape') {
+            commitLatestValue();
+            onClose();
+          }
         }}
       />
     </label>
