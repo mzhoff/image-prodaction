@@ -238,3 +238,46 @@ test('normalizeProject migrates legacy export image target image port to image-0
     ['image-0', 'image-1', 'image-2'],
   );
 });
+
+test('normalizeProject keeps renamed text generation node title after reload', () => {
+  const project = createProject([]);
+  const node = project.nodes.find((item) => item.id === 'text-generation-target');
+
+  assert.equal(node?.data.title, 'Text Generation');
+});
+
+test('normalizeProject keeps markdown formatter preset and clamps formatter width', () => {
+  const project = normalizeProject({
+    version: 1,
+    nodes: [{
+      id: 'formatter',
+      type: 'textFormatter',
+      position: { x: 0, y: 0 },
+      size: { width: 1200, height: 520 },
+      status: 'idle',
+      data: {
+        title: 'Article formatter',
+        editorHeight: 360,
+        plainText: '# Заголовок',
+        presetId: 'markdown',
+        result: '',
+        richText: '',
+      },
+    } as never],
+    edges: [],
+    sections: [],
+    assets: [],
+    presets: [],
+    subjects: [],
+    locations: [],
+    publications: [],
+    runs: [],
+    selectedNodeIds: [],
+    selectedSectionIds: [],
+  });
+  const formatter = project.nodes.find((node) => node.id === 'formatter');
+
+  assert.equal(formatter?.size.width, 800);
+  assert.equal(formatter?.data.title, 'Article formatter');
+  assert.equal((formatter?.data as { presetId?: string } | undefined)?.presetId, 'markdown');
+});

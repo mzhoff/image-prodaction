@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Text,
   Type,
+  Volume2,
   WandSparkles,
 } from 'lucide-react';
 import {
@@ -242,6 +243,7 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'textPrompt') return Type;
     if (nodeType === 'textConcat') return ListPlus;
     if (nodeType === 'textGeneration') return Text;
+    if (nodeType === 'textToSpeech') return Volume2;
     if (nodeType === 'textFormatter') return Text;
     if (nodeType === 'textSplitter') return Slice;
     if (nodeType === 'iterator') return Repeat2;

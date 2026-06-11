@@ -17,6 +17,7 @@ import {
   getTextConcatInputPortId,
 } from '@/entities/production-graph/model/node-definitions';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
+import { saveAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import type {
   ProductionNode,
   TextConcatNodeData,
@@ -25,13 +26,18 @@ import type {
   TextGenerationNodeData,
   TextGenerationOutputStyle,
   TextGenerationReasoning,
+  TextToSpeechLanguage,
+  TextToSpeechNodeData,
+  TextToSpeechResponseFormat,
   TextPromptNodeData,
   TextSplitterMode,
   TextSplitterNodeData,
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestGenerateText } from '@/shared/api/ai-client';
-import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
+import { requestGenerateSpeech, requestGenerateText } from '@/shared/api/ai-client';
+import { DEFAULT_ANALYSIS_MODEL, DEFAULT_SPEECH_MODEL } from '@/shared/api/openrouter-models';
+import { getOpenRouterSpeechCapabilities, getSafeSpeechResponseFormat, getSafeSpeechVoice } from '@/shared/api/openrouter-speech-capabilities';
+import { getPlainTextFromArticleRichText, normalizeArticleRichText } from '@/shared/editor-core';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { composeTextPromptResult, normalizeTextPromptVariableDisplayMode } from '../lib/text-prompt-variables';
@@ -76,6 +82,20 @@ export const textPromptVariableDisplayOptions: DarkSelectOption[] = [
   { value: 'source', label: 'Source' },
 ];
 
+export const textToSpeechLanguageOptions: DarkSelectOption[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'ru', label: 'Russian' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'German' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'zh', label: 'Chinese' },
+];
+
+const textToSpeechResponseFormatLabels: Record<TextToSpeechResponseFormat, string> = {
+  mp3: 'MP3',
+  pcm: 'PCM',
+};
+
 export const textFormatterPresetOptions: DarkSelectOption[] = FORMATTED_TEXT_PRESETS.map((preset) => ({
   value: preset.id,
   label: preset.label,
@@ -84,9 +104,12 @@ export const textFormatterPresetOptions: DarkSelectOption[] = FORMATTED_TEXT_PRE
 export const TEXT_PROMPT_TEXTAREA_DEFAULT_HEIGHT = 248;
 export const TEXT_PROMPT_TEXTAREA_MIN_HEIGHT = 64;
 export const TEXT_PROMPT_TEXTAREA_MAX_HEIGHT = 560;
-export const TEXT_FORMATTER_EDITOR_DEFAULT_HEIGHT = 360;
+export const TEXT_FORMATTER_EDITOR_DEFAULT_HEIGHT = 260;
 export const TEXT_FORMATTER_EDITOR_MIN_HEIGHT = 180;
-export const TEXT_FORMATTER_EDITOR_MAX_HEIGHT = 760;
+export const TEXT_FORMATTER_EDITOR_MAX_HEIGHT = 2400;
+export const TEXT_FORMATTER_NODE_DEFAULT_WIDTH = 400;
+export const TEXT_FORMATTER_NODE_MIN_WIDTH = 400;
+export const TEXT_FORMATTER_NODE_MAX_WIDTH = 800;
 export const TEXT_CONCAT_OPTIONAL_TEXTAREA_DEFAULT_HEIGHT = 95;
 export const TEXT_CONCAT_OPTIONAL_TEXTAREA_MIN_HEIGHT = 72;
 export const TEXT_CONCAT_OPTIONAL_TEXTAREA_MAX_HEIGHT = 420;
@@ -317,29 +340,163 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
   };
 }
 
+export function useTextToSpeechNodeModel(node: ProductionNode) {
+  const data = node.data as TextToSpeechNodeData;
+  const edges = useProductionGraphStore((state) => state.edges);
+  const nodes = useProductionGraphStore((state) => state.nodes);
+  const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
+  const addAsset = useProductionGraphStore((state) => state.addAsset);
+  const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
+  const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
+  const { loading, speechModels } = useOpenRouterModels();
+  const selectedModel = getSelectedModelId(speechModels, data.model, DEFAULT_SPEECH_MODEL);
+  const capabilities = getOpenRouterSpeechCapabilities(selectedModel);
+  const language = normalizeTextToSpeechLanguage(data.language);
+  const voiceOptions = getTextToSpeechVoiceOptions(selectedModel, data.voice);
+  const selectedVoice = getSafeSpeechVoice(selectedModel, data.voice, language);
+  const responseFormat = getSafeSpeechResponseFormat(selectedModel, data.responseFormat);
+  const responseFormatOptions = capabilities.formats.map((format) => ({ value: format, label: textToSpeechResponseFormatLabels[format] }));
+  const speed = clampSpeechSpeed(data.speed ?? 1);
+  const temperature = clampTemperature(data.temperature ?? 1);
+  const topP = clampTopP(data.topP ?? 1);
+  const seed = typeof data.seed === 'number' && Number.isInteger(data.seed) ? data.seed : undefined;
+  const inputText = useMemo(() => (
+    getIncomingTextInputs(node.id, 'text', { edges, nodes }).map((input) => input.text).join('\n\n')
+  ), [edges, node.id, nodes]);
+  const effectiveText = inputText.trim() || data.localText?.trim() || '';
+  const history = getSpeechHistory(data);
+  const activeAssetId = history.activeAssetId;
+  const activeMetadata = activeAssetId ? data.resultMetadata?.[activeAssetId] : undefined;
+
+  useEffect(() => {
+    const nextData: Partial<TextToSpeechNodeData> = {};
+    if (data.sourceText !== inputText) nextData.sourceText = inputText;
+    if (data.language !== language) nextData.language = language;
+    if (data.responseFormat !== responseFormat) nextData.responseFormat = responseFormat;
+    if (data.speed !== speed) nextData.speed = speed;
+    if (data.voice !== selectedVoice) nextData.voice = selectedVoice;
+    if (Object.keys(nextData).length === 0) return;
+    updateNodeDataSilent(node.id, nextData);
+  }, [data.language, data.responseFormat, data.sourceText, data.speed, data.voice, inputText, language, node.id, responseFormat, selectedVoice, speed, updateNodeDataSilent]);
+
+  const handleGenerate = useCallback(async () => {
+    const text = effectiveText.trim();
+    if (!text) {
+      updateNodeData(node.id, { message: 'Подключи текст ко входу Text или добавь текст в поле ноды.' });
+      return;
+    }
+
+    const resolvedLanguage = language === 'auto' ? detectSpeechLanguage(text) : language;
+
+    try {
+      setNodeStatus(node.id, 'running');
+      updateNodeDataSilent(node.id, { message: '' });
+      const result = await requestGenerateSpeech({
+        inputText: text,
+        language: resolvedLanguage,
+        model: selectedModel,
+        responseFormat,
+        seed: capabilities.supportsSeed ? seed : undefined,
+        speed: capabilities.supportsSpeed ? speed : undefined,
+        temperature: capabilities.supportsTemperature ? temperature : undefined,
+        topP: capabilities.supportsTopP ? topP : undefined,
+        voice: selectedVoice,
+      });
+      const extension = result.mimeType.includes('wav') ? 'wav' : responseFormat === 'mp3' ? 'mp3' : 'pcm';
+      const asset = await saveAssetBlob(result.blob, {
+        kind: 'audio',
+        mimeType: result.mimeType,
+        name: `voice-${Date.now()}.${extension}`,
+      });
+      addAsset(asset);
+      updateNodeData(node.id, appendSpeechResult(data, asset.id, {
+        createdAt: asset.createdAt,
+        generationId: result.generationId,
+        language: resolvedLanguage,
+        mimeType: result.mimeType,
+        model: selectedModel,
+        sizeBytes: result.blob.size,
+        voice: selectedVoice,
+      }));
+      setNodeStatus(node.id, 'success');
+    } catch (error) {
+      setNodeStatus(node.id, 'error');
+      updateNodeDataSilent(node.id, {
+        message: error instanceof Error ? error.message : 'OpenRouter speech generation failed',
+      });
+    }
+  }, [addAsset, capabilities.supportsSeed, capabilities.supportsSpeed, capabilities.supportsTemperature, capabilities.supportsTopP, data, effectiveText, language, node.id, responseFormat, seed, selectedModel, selectedVoice, setNodeStatus, speed, temperature, topP, updateNodeData, updateNodeDataSilent]);
+
+  return {
+    activeAssetId,
+    activeMetadata,
+    data,
+    effectiveText,
+    handleGenerate,
+    handleLanguageChange: (nextLanguage: string) => updateNodeData(node.id, { language: normalizeTextToSpeechLanguage(nextLanguage) }),
+    handleLocalTextChange: (localText: string) => updateNodeData(node.id, { localText }),
+    handleModelChange: (model: string) => updateNodeData(node.id, {
+      model,
+      responseFormat: getSafeSpeechResponseFormat(model, data.responseFormat),
+      voice: getSafeSpeechVoice(model, data.voice, language),
+    }),
+    handleResponseFormatChange: (value: string) => updateNodeData(node.id, { responseFormat: getSafeSpeechResponseFormat(selectedModel, value === 'pcm' ? 'pcm' : 'mp3') }),
+    handleResultHistoryChange: (index: number) => updateNodeDataSilent(node.id, selectSpeechResult(data, index)),
+    handleSeedChange: (nextSeed: string) => updateNodeData(node.id, { seed: parseOptionalInteger(nextSeed) }),
+    handleSpeedChange: (nextSpeed: number) => updateNodeData(node.id, { speed: clampSpeechSpeed(nextSpeed) }),
+    handleTemperatureChange: (nextTemperature: number) => updateNodeData(node.id, { temperature: clampTemperature(nextTemperature) }),
+    handleTopPChange: (nextTopP: number) => updateNodeData(node.id, { topP: clampTopP(nextTopP) }),
+    handleVoiceChange: (voice: string) => updateNodeData(node.id, { voice }),
+    history,
+    inputText,
+    language,
+    languageOptions: textToSpeechLanguageOptions,
+    loading,
+    modelOptions: modelSelectOptions(speechModels),
+    responseFormat,
+    responseFormatOptions,
+    seed,
+    selectedModel,
+    selectedVoice,
+    showFormat: Boolean(capabilities.supportsResponseFormat) && responseFormatOptions.length > 1,
+    showSeed: Boolean(capabilities.supportsSeed),
+    showSpeed: Boolean(capabilities.supportsSpeed),
+    showTemperature: Boolean(capabilities.supportsTemperature),
+    showTopP: Boolean(capabilities.supportsTopP),
+    speed,
+    temperature,
+    topP,
+    voiceOptions,
+  };
+}
+
 export function useTextFormatterNodeModel(node: ProductionNode) {
   const data = node.data as TextFormatterNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
+  const resizeNode = useProductionGraphStore((state) => state.resizeNode);
   const sourceText = useMemo(() => (
     getIncomingTextInputs(node.id, 'text', { edges, nodes }).map((input) => input.text).join('\n\n')
   ), [edges, node.id, nodes]);
   const normalizedSourceText = normalizeTelegramPlainText(sourceText);
   const presetId = normalizeFormattedTextPresetId(data.presetId);
   const preset = getFormattedTextPresetDefinition(presetId);
+  const usesArticleEditor = presetId === 'markdown' || presetId === 'blog-article' || presetId === 'universal';
+  const shouldParseMarkdown = presetId === 'markdown';
   const editorHeight = clampTextFormatterEditorHeight(data.editorHeight);
   const storedPlainText = normalizeTelegramPlainText(data.plainText);
-  const richTextPlainText = normalizeTelegramPlainText(getPlainTextFromTelegramRichText(data.richText));
+  const normalizedStoredRichText = usesArticleEditor ? normalizeArticleRichText(data.richText) : normalizeTelegramRichText(data.richText);
+  const richTextPlainText = normalizeTelegramPlainText(usesArticleEditor ? getPlainTextFromArticleRichText(data.richText) : getPlainTextFromTelegramRichText(data.richText));
   const hasIncomingText = normalizedSourceText.length > 0;
   const shouldAdoptSourceText = hasIncomingText && normalizeTelegramPlainText(data.sourceText) !== normalizedSourceText;
   const plainText = shouldAdoptSourceText
     ? normalizedSourceText
     : storedPlainText || richTextPlainText || normalizedSourceText;
   const richText = shouldAdoptSourceText
-    ? serializeTelegramPlainText(normalizedSourceText)
-    : normalizeTelegramRichText(data.richText) || serializeTelegramPlainText(plainText);
+    ? shouldParseMarkdown ? '' : serializeTelegramPlainText(normalizedSourceText)
+    : normalizedStoredRichText || (usesArticleEditor ? '' : serializeTelegramPlainText(plainText));
   const sourceCount = hasIncomingText ? 1 : 0;
 
   useEffect(() => {
@@ -350,10 +507,10 @@ export function useTextFormatterNodeModel(node: ProductionNode) {
     if (data.sourceCount !== sourceCount) nextData.sourceCount = sourceCount;
     if (shouldAdoptSourceText || data.sourceText !== normalizedSourceText) nextData.sourceText = normalizedSourceText;
     if (shouldAdoptSourceText || data.plainText !== plainText) nextData.plainText = plainText;
-    if (shouldAdoptSourceText || normalizeTelegramRichText(data.richText) !== richText) nextData.richText = richText;
+    if (shouldAdoptSourceText || normalizedStoredRichText !== richText) nextData.richText = richText;
     if (Object.keys(nextData).length === 0) return;
     updateNodeDataSilent(node.id, nextData);
-  }, [data.editorHeight, data.plainText, data.presetId, data.result, data.richText, data.sourceCount, data.sourceText, editorHeight, node.id, normalizedSourceText, plainText, presetId, richText, shouldAdoptSourceText, sourceCount, updateNodeDataSilent]);
+  }, [data.editorHeight, data.plainText, data.presetId, data.result, data.sourceCount, data.sourceText, editorHeight, node.id, normalizedSourceText, normalizedStoredRichText, plainText, presetId, richText, shouldAdoptSourceText, sourceCount, updateNodeDataSilent]);
 
   return {
     data,
@@ -365,15 +522,23 @@ export function useTextFormatterNodeModel(node: ProductionNode) {
       sourceText: normalizedSourceText,
     }),
     handleEditorHeightChange: (nextHeight: number) => updateNodeData(node.id, { editorHeight: clampTextFormatterEditorHeight(nextHeight) }),
-    handlePresetChange: (value: string) => updateNodeData(node.id, { presetId: normalizeFormattedTextPresetId(value) }),
+    handleNodeWidthChange: (nextWidth: number) => resizeNode(node.id, { width: clampTextFormatterNodeWidth(nextWidth) }),
+    handlePresetChange: (value: string) => {
+      const nextPresetId = normalizeFormattedTextPresetId(value);
+      updateNodeData(node.id, nextPresetId === 'markdown'
+        ? { presetId: nextPresetId, richText: '', sourceText: '' }
+        : { presetId: nextPresetId });
+    },
     hasIncomingText,
     plainText,
     preset,
     presetId,
     presetOptions: textFormatterPresetOptions,
     richText,
+    shouldParseMarkdown,
     sourceCount,
     sourceText: normalizedSourceText,
+    usesArticleEditor,
   };
 }
 
@@ -462,6 +627,11 @@ export function clampTextFormatterEditorHeight(value: unknown) {
   return Math.min(Math.max(Math.round(value), TEXT_FORMATTER_EDITOR_MIN_HEIGHT), TEXT_FORMATTER_EDITOR_MAX_HEIGHT);
 }
 
+export function clampTextFormatterNodeWidth(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return TEXT_FORMATTER_NODE_DEFAULT_WIDTH;
+  return Math.min(Math.max(Math.round(value), TEXT_FORMATTER_NODE_MIN_WIDTH), TEXT_FORMATTER_NODE_MAX_WIDTH);
+}
+
 function getSeparator(separator: TextConcatSeparator, customSeparator: string) {
   if (separator === 'newline') return '\n';
   if (separator === 'space') return ' ';
@@ -474,6 +644,43 @@ function getTextHistory(data: TextGenerationNodeData) {
   if (items.length === 0) return { activeIndex: -1, activeText: '', items };
   const activeIndex = clampIndex(data.activeResultIndex ?? items.length - 1, items.length);
   return { activeIndex, activeText: items[activeIndex] ?? '', items };
+}
+
+function getSpeechHistory(data: TextToSpeechNodeData) {
+  const items = uniqueStrings([...(data.resultAssetIds ?? []), data.resultAssetId]);
+  if (items.length === 0) return { activeAssetId: undefined, activeIndex: -1, items };
+  const activeIndex = clampIndex(data.activeResultIndex ?? items.length - 1, items.length);
+  return { activeAssetId: items[activeIndex], activeIndex, items };
+}
+
+function appendSpeechResult(
+  data: TextToSpeechNodeData,
+  assetId: string,
+  metadata: NonNullable<TextToSpeechNodeData['resultMetadata']>[string],
+): Partial<TextToSpeechNodeData> {
+  const items = uniqueStrings([...getSpeechHistory(data).items, assetId]);
+  const activeIndex = items.length - 1;
+  return {
+    activeResultIndex: activeIndex,
+    message: '',
+    resultAssetId: assetId,
+    resultAssetIds: items,
+    resultMetadata: {
+      ...(data.resultMetadata ?? {}),
+      [assetId]: metadata,
+    },
+  };
+}
+
+function selectSpeechResult(data: TextToSpeechNodeData, index: number): Partial<TextToSpeechNodeData> {
+  const items = getSpeechHistory(data).items;
+  if (items.length === 0) return { activeResultIndex: -1, resultAssetId: undefined, resultAssetIds: [] };
+  const activeIndex = clampIndex(index, items.length);
+  return {
+    activeResultIndex: activeIndex,
+    resultAssetId: items[activeIndex],
+    resultAssetIds: items,
+  };
 }
 
 function appendTextResult(data: TextGenerationNodeData, text: string): Partial<TextGenerationNodeData> {
@@ -527,6 +734,14 @@ function clampTemperature(value: number) {
   return Math.min(2, Math.max(0, Math.round(value * 10) / 10));
 }
 
+function clampSpeechSpeed(value: number) {
+  return Math.min(2, Math.max(0.5, Math.round(value * 10) / 10));
+}
+
+function clampTopP(value: number) {
+  return Math.min(1, Math.max(0, Math.round(value * 100) / 100));
+}
+
 function modelSupportsParameter(parameters: string[] | undefined, parameter: string) {
   return Boolean(parameters?.includes(parameter));
 }
@@ -535,9 +750,38 @@ function uniqueTexts(items: Array<string | undefined>) {
   return Array.from(new Set(items.map((item) => item?.trim()).filter((item): item is string => Boolean(item))));
 }
 
+function uniqueStrings(items: Array<string | undefined>) {
+  return Array.from(new Set(items.map((item) => item?.trim()).filter((item): item is string => Boolean(item))));
+}
+
 function clampIndex(index: number, length: number) {
   if (length <= 0) return -1;
   return Math.min(Math.max(index, 0), length - 1);
+}
+
+function normalizeTextToSpeechLanguage(value: unknown): TextToSpeechLanguage {
+  return value === 'ru' || value === 'en' || value === 'de' || value === 'es' || value === 'zh' ? value : 'auto';
+}
+
+function getTextToSpeechVoiceOptions(model: string, currentVoice?: string) {
+  const options = getOpenRouterSpeechCapabilities(model).voices.map((voice) => ({ value: voice, label: voice }));
+  if (!currentVoice || options.some((option) => option.value === currentVoice)) return options;
+  return [{ value: currentVoice, label: currentVoice }, ...options];
+}
+
+function parseOptionalInteger(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
+function detectSpeechLanguage(text: string): Exclude<TextToSpeechLanguage, 'auto'> {
+  if (/[А-Яа-яЁё]/.test(text)) return 'ru';
+  if (/[\u3400-\u9FFF]/.test(text)) return 'zh';
+  if (/[ÄÖÜäöüß]/.test(text)) return 'de';
+  if (/[ÁÉÍÓÚÑáéíóúñ¿¡]/.test(text)) return 'es';
+  return 'en';
 }
 
 function arraysEqual(first: string[], second: string[]) {

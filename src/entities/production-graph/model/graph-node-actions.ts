@@ -15,6 +15,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
   | 'duplicateNode'
   | 'pasteImageAsset'
   | 'renameNode'
+  | 'resizeNode'
   | 'setNodeStatus'
   | 'toggleNodeLock'
   | 'updateNodeData'
@@ -133,6 +134,20 @@ export function createGraphNodeActions(set: StoreSet): Pick<
         )),
       }));
     },
+    resizeNode: (nodeId, size) => {
+      set((state) => {
+        const node = state.nodes.find((item) => item.id === nodeId);
+        if (!node || node.locked) return {};
+        return {
+          ...withHistory(state),
+          nodes: state.nodes.map((item) => (
+            item.id === nodeId
+              ? { ...item, size: { ...item.size, ...size } }
+              : item
+          )),
+        };
+      });
+    },
     toggleNodeLock: (nodeId) => {
       set((state) => ({
         ...withHistory(state),
@@ -187,6 +202,9 @@ function hasClearableGenerationData(node: ProductionNode) {
   if (node.type === 'textGeneration') {
     return Boolean(data.result) || (Array.isArray(data.resultTexts) && data.resultTexts.length > 0);
   }
+  if (node.type === 'textToSpeech') {
+    return Boolean(data.resultAssetId) || (Array.isArray(data.resultAssetIds) && data.resultAssetIds.length > 0);
+  }
   if (node.type === 'subjectBuilder' || node.type === 'locationBuilder') {
     return Array.isArray(data.libraryImageAssetIds) && data.libraryImageAssetIds.length > 0;
   }
@@ -209,6 +227,15 @@ function getClearedGenerationData(node: ProductionNode): Partial<ProductionNodeD
       disabledResultFilterIds: [],
       result: '',
       resultTexts: [],
+      message: '',
+    } as Partial<ProductionNodeData>;
+  }
+  if (node.type === 'textToSpeech') {
+    return {
+      activeResultIndex: -1,
+      resultAssetId: undefined,
+      resultAssetIds: [],
+      resultMetadata: {},
       message: '',
     } as Partial<ProductionNodeData>;
   }

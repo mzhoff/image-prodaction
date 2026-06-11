@@ -48,6 +48,7 @@ export function useProductionCanvasStore() {
   const toggleSectionLock = useProductionGraphStore((state) => state.toggleSectionLock);
   const toggleNodeLock = useProductionGraphStore((state) => state.toggleNodeLock);
   const undo = useProductionGraphStore((state) => state.undo);
+  const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const uiState = useProductionGraphStore((state) => state.uiState);
   const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const selectedSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
@@ -101,6 +102,7 @@ export function useProductionCanvasStore() {
     toggleNodeLock,
     uiState,
     undo,
+    updateNodeDataSilent,
   }), [
     addNode,
     addSection,
@@ -148,5 +150,6 @@ export function useProductionCanvasStore() {
     toggleNodeLock,
     uiState,
     undo,
+    updateNodeDataSilent,
   ]);
 }

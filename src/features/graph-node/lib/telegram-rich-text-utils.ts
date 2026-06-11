@@ -12,7 +12,14 @@ export function normalizeTelegramPlainText(value: string | undefined) {
 
 export function normalizeTelegramRichText(value: string | undefined) {
   const nextValue = value?.trim() ?? '';
-  return nextValue.startsWith('{') ? nextValue : '';
+  if (!nextValue.startsWith('{')) return '';
+
+  try {
+    const parsedState = JSON.parse(nextValue) as { root?: SerializedTelegramEditorNode };
+    return isTelegramEditorRoot(parsedState.root) ? nextValue : '';
+  } catch {
+    return '';
+  }
 }
 
 export function assertTelegramFormattingPreservesText(sourceText: string, formattedPlainText: string) {
@@ -117,6 +124,30 @@ export function serializeTelegramParagraphs(paragraphs: SerializedParagraphNode[
       version: 1,
     },
   });
+}
+
+interface SerializedTelegramEditorNode {
+  children?: SerializedTelegramEditorNode[];
+  text?: string;
+  type?: string;
+}
+
+function isTelegramEditorRoot(node: SerializedTelegramEditorNode | undefined) {
+  return node?.type === 'root'
+    && Array.isArray(node.children)
+    && node.children.every(isTelegramEditorNode);
+}
+
+function isTelegramEditorNode(node: SerializedTelegramEditorNode): boolean {
+  if (node.type === 'paragraph') {
+    return Array.isArray(node.children) && node.children.every(isTelegramEditorNode);
+  }
+
+  if (node.type === 'text') {
+    return typeof node.text === 'string';
+  }
+
+  return node.type === 'linebreak';
 }
 
 function parseInlineFormatRuns(text: string, inheritedFormat: number): Array<{ format: number; text: string }> {

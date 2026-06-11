@@ -28,6 +28,7 @@ import { TextFormatterNode } from './nodes/text-formatter-node';
 import { TextGenerationNode } from './nodes/text-generation-node';
 import { TextPromptNode } from './nodes/text-prompt-node';
 import { TextSplitterNode } from './nodes/text-splitter-node';
+import { TextToSpeechNode } from './nodes/text-to-speech-node';
 import { PortButton } from './port-button';
 import { NodeTitleNodeIdProvider } from './node-title';
 
@@ -49,6 +50,7 @@ const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
   textPrompt: ({ node, onStartConnection }) => <TextPromptNode node={node} onStartConnection={onStartConnection} />,
   textConcat: ({ node, onStartConnection }) => <TextConcatNode node={node} onStartConnection={onStartConnection} />,
   textGeneration: ({ node, onStartConnection }) => <TextGenerationNode node={node} onStartConnection={onStartConnection} />,
+  textToSpeech: ({ node, onStartConnection }) => <TextToSpeechNode node={node} onStartConnection={onStartConnection} />,
   textFormatter: ({ node, onStartConnection }) => <TextFormatterNode node={node} onStartConnection={onStartConnection} />,
   textSplitter: ({ node, onStartConnection }) => <TextSplitterNode node={node} onStartConnection={onStartConnection} />,
   iterator: ({ node, onStartConnection }) => <IteratorNode node={node} onStartConnection={onStartConnection} />,
@@ -92,7 +94,7 @@ export function NodeCard({
     if (node.type === 'generateImage' && port.side === 'input') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
     if (node.type === 'textPrompt') return false;
-    if (node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'iterator' || node.type === 'subjectBuilder' || node.type === 'locationBuilder' || node.type === 'telegramPublication') return false;
+    if (node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'iterator' || node.type === 'subjectBuilder' || node.type === 'locationBuilder' || node.type === 'telegramPublication') return false;
     return true;
   });
 
@@ -102,7 +104,7 @@ export function NodeCard({
       className={cn(
         'production-node',
         `production-node-${node.type}`,
-        (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'iterator') && 'production-node-text-workflow',
+        (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'iterator') && 'production-node-text-workflow',
         node.type === 'iterator' && 'production-node-iterator-workflow',
         node.type === 'subjectBuilder' && 'production-node-text-workflow production-node-subject-workflow',
         node.type === 'locationBuilder' && 'production-node-text-workflow production-node-location-workflow',

@@ -48,6 +48,18 @@ export interface GenerateTextRequest {
   temperature?: number;
 }
 
+export interface GenerateSpeechRequest {
+  inputText: string;
+  language: 'auto' | 'ru' | 'en' | 'de' | 'es' | 'zh';
+  model: string;
+  responseFormat: 'mp3' | 'pcm';
+  seed?: number;
+  speed?: number;
+  temperature?: number;
+  topP?: number;
+  voice: string;
+}
+
 export interface FormatTelegramTextRequest {
   inputText: string;
   model: string;
@@ -150,6 +162,26 @@ export async function requestGenerateText(payload: GenerateTextRequest) {
   if (!response.ok) throw new Error(formatApiError(result.error));
   if (!result.text) throw new Error(result.message || 'OpenRouter не вернул текст.');
   return { message: result.message, text: result.text };
+}
+
+export async function requestGenerateSpeech(payload: GenerateSpeechRequest) {
+  const response = await fetch('/api/ai/generate-speech', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({})) as { error?: unknown; message?: string };
+    throw new Error(formatApiError(result.error ?? result.message ?? 'OpenRouter не вернул аудио.'));
+  }
+
+  const blob = await response.blob();
+  if (blob.size === 0) throw new Error('OpenRouter вернул пустой аудиофайл.');
+  return {
+    blob,
+    generationId: response.headers.get('x-generation-id') ?? undefined,
+    mimeType: (response.headers.get('content-type') ?? blob.type) || 'audio/mpeg',
+  };
 }
 
 export async function requestFormatTelegramText(payload: FormatTelegramTextRequest) {

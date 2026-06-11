@@ -100,6 +100,37 @@ export interface TextGenerationNodeData extends BaseNodeData {
   temperature?: number;
 }
 
+export type TextToSpeechLanguage = 'auto' | 'ru' | 'en' | 'de' | 'es' | 'zh';
+export type TextToSpeechResponseFormat = 'mp3' | 'pcm';
+
+export interface TextToSpeechResultMetadata {
+  createdAt: string;
+  generationId?: string;
+  language: TextToSpeechLanguage;
+  mimeType: string;
+  model: string;
+  sizeBytes: number;
+  voice: string;
+}
+
+export interface TextToSpeechNodeData extends BaseNodeData {
+  activeResultIndex?: number;
+  language: TextToSpeechLanguage;
+  localText?: string;
+  message?: string;
+  model: string;
+  responseFormat: TextToSpeechResponseFormat;
+  resultAssetId?: string;
+  resultAssetIds?: string[];
+  resultMetadata?: Record<string, TextToSpeechResultMetadata>;
+  seed?: number;
+  sourceText?: string;
+  speed?: number;
+  temperature?: number;
+  topP?: number;
+  voice: string;
+}
+
 export interface TextFormatterNodeData extends BaseNodeData {
   editorHeight?: number;
   message?: string;
@@ -350,6 +381,7 @@ export type ProductionNodeData =
   | TextPromptNodeData
   | TextConcatNodeData
   | TextGenerationNodeData
+  | TextToSpeechNodeData
   | TextFormatterNodeData
   | TextSplitterNodeData
   | IteratorNodeData

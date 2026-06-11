@@ -71,7 +71,35 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         resultTexts: [],
         ...data,
         disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
-        title: 'Text Gen',
+        title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Text Gen',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'textToSpeech') {
+    const data = node.data as ProductionNodeData & {
+      language?: unknown;
+      responseFormat?: unknown;
+      resultAssetIds?: unknown;
+      resultMetadata?: unknown;
+    };
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        activeResultIndex: -1,
+        localText: '',
+        message: '',
+        model: 'x-ai/grok-voice-tts-1.0',
+        sourceText: '',
+        speed: 1,
+        voice: 'Eve',
+        ...data,
+        language: normalizeTextToSpeechLanguage(data.language),
+        responseFormat: data.responseFormat === 'pcm' ? 'pcm' : 'mp3',
+        resultAssetIds: normalizeStringArray(data.resultAssetIds),
+        resultMetadata: isRecord(data.resultMetadata) ? data.resultMetadata : {},
+        title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Voice',
       },
     } as ProductionNode;
   }
@@ -117,6 +145,10 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   return null;
 }
 
+function normalizeTextToSpeechLanguage(value: unknown) {
+  return value === 'ru' || value === 'en' || value === 'de' || value === 'es' || value === 'zh' ? value : 'auto';
+}
+
 function normalizeTextConcatOptionalHeight(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 95;
   return Math.min(Math.max(Math.round(value), 72), 420);
@@ -125,4 +157,8 @@ function normalizeTextConcatOptionalHeight(value: unknown) {
 function normalizeTextFormatterEditorHeight(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 360;
   return Math.min(Math.max(Math.round(value), 180), 760);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

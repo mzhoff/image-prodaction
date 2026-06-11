@@ -4,7 +4,7 @@ import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, RotateCcw
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { getNodeCurrentImageAssetId, getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
-import { getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
+import { getTextPromptVariablePortIndex, getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
 import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
 import type { GraphSection, ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { requestNodeTitleRename } from '@/features/graph-node/ui/node-title';
@@ -182,6 +182,15 @@ export function useProductionCanvasModel() {
     setPendingConnectionMenu(drop);
     contextMenu.openContextMenuAt(drop.screenPoint.x, drop.screenPoint.y, createConnectMenuActions(options, (option) => {
       const nodeId = createNode(option.type, drop.worldPoint);
+      if (drop.direction === 'from-output' && option.type === 'textPrompt' && option.targetPortId) {
+        const variableIndex = getTextPromptVariablePortIndex(option.targetPortId);
+        graph.updateNodeDataSilent(nodeId, {
+          variables: [{
+            id: option.targetPortId,
+            alias: `Variable ${variableIndex >= 0 ? variableIndex + 1 : 1}`,
+          }],
+        });
+      }
       const result = drop.direction === 'from-output'
         ? drop.sourceNodeId && drop.sourcePortId && option.targetPortId
           ? graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, option.targetPortId)
