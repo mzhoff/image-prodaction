@@ -61,6 +61,7 @@ export interface TextPromptVariable {
 }
 
 export interface TextPromptNodeData extends BaseNodeData {
+  disabledResultFilterIds?: string[];
   result?: string;
   sourceCount?: number;
   text: string;
@@ -73,6 +74,7 @@ export type TextConcatSeparator = 'newline' | 'double-newline' | 'space' | 'cust
 
 export interface TextConcatNodeData extends BaseNodeData {
   customSeparator: string;
+  disabledResultFilterIds?: string[];
   inputCount?: number;
   prefix: string;
   result?: string;
@@ -96,6 +98,37 @@ export interface TextGenerationNodeData extends BaseNodeData {
   result?: string;
   resultTexts?: string[];
   temperature?: number;
+}
+
+export type TextToSpeechLanguage = 'auto' | 'ru' | 'en' | 'de' | 'es' | 'zh';
+export type TextToSpeechResponseFormat = 'mp3' | 'pcm';
+
+export interface TextToSpeechResultMetadata {
+  createdAt: string;
+  generationId?: string;
+  language: TextToSpeechLanguage;
+  mimeType: string;
+  model: string;
+  sizeBytes: number;
+  voice: string;
+}
+
+export interface TextToSpeechNodeData extends BaseNodeData {
+  activeResultIndex?: number;
+  language: TextToSpeechLanguage;
+  localText?: string;
+  message?: string;
+  model: string;
+  responseFormat: TextToSpeechResponseFormat;
+  resultAssetId?: string;
+  resultAssetIds?: string[];
+  resultMetadata?: Record<string, TextToSpeechResultMetadata>;
+  seed?: number;
+  sourceText?: string;
+  speed?: number;
+  temperature?: number;
+  topP?: number;
+  voice: string;
 }
 
 export interface TextFormatterNodeData extends BaseNodeData {
@@ -128,6 +161,7 @@ export interface IteratorNodeData extends BaseNodeData {
   activeIndex: number;
   activeKind: IteratorActiveKind;
   activeText?: string;
+  disabledResultFilterIds?: string[];
   imageCount?: number;
   message?: string;
   textCount?: number;
@@ -347,6 +381,7 @@ export type ProductionNodeData =
   | TextPromptNodeData
   | TextConcatNodeData
   | TextGenerationNodeData
+  | TextToSpeechNodeData
   | TextFormatterNodeData
   | TextSplitterNodeData
   | IteratorNodeData

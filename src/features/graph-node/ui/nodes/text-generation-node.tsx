@@ -24,31 +24,36 @@ interface TextGenerationNodeProps {
 export function TextGenerationNode({ node, onStartConnection }: TextGenerationNodeProps) {
   const model = useTextGenerationNodeModel(node);
   const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
+  const [resultOpen, setResultOpen] = useState(true);
   const [scrollTargetStart, setScrollTargetStart] = useState<number | null>(null);
 
   return (
     <>
       <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
-      <PortButton
-        nodeId={node.id}
-        portId="text"
-        side="input"
-        kind="text"
-        label="Text"
-        className="text-node-header-input-port"
-        style={{ top: collapsed ? 20 : undefined }}
-        onStartConnection={onStartConnection}
-      />
-      <PortButton
-        nodeId={node.id}
-        portId="result"
-        side="output"
-        kind="text"
-        label="Result"
-        className="text-node-header-output-port"
-        style={{ top: collapsed ? 20 : undefined }}
-        onStartConnection={onStartConnection}
-      />
+      {collapsed ? (
+        <>
+          <PortButton
+            nodeId={node.id}
+            portId="text"
+            side="input"
+            kind="text"
+            label="Prompt"
+            className="text-node-header-input-port"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+          <PortButton
+            nodeId={node.id}
+            portId="result"
+            side="output"
+            kind="text"
+            label="Result"
+            className="text-node-header-output-port"
+            style={{ top: 20 }}
+            onStartConnection={onStartConnection}
+          />
+        </>
+      ) : null}
       {!collapsed ? (
         <>
           <CollapsibleSection title="Settings" className="text-node-section text-node-settings-section">
@@ -68,7 +73,12 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
               <SettingRow label="Reasoning" value={model.reasoning} options={model.reasoningOptions} onChange={model.handleReasoningChange} />
             ) : null}
           </CollapsibleSection>
-          <CollapsibleSection title="Prompt" className="text-node-section text-generation-prompt-section">
+          <CollapsibleSection
+            title="Prompt"
+            className="text-node-section text-generation-prompt-section"
+            dropTarget={{ nodeId: node.id, portId: 'text' }}
+            sidePort={<PortButton nodeId={node.id} portId="text" side="input" kind="text" label="Prompt" className="node-port-section" onStartConnection={onStartConnection} />}
+          >
             <PromptBox value={model.data.instruction} onChange={model.handleInstructionChange} className="text-generation-prompt-box" />
           </CollapsibleSection>
           <PrimaryActionButton
@@ -82,6 +92,9 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
           <CollapsibleSection
             title="Result"
             className="text-node-section text-generation-result-section"
+            open={resultOpen}
+            onOpenChange={setResultOpen}
+            sidePort={!resultOpen ? <PortButton nodeId={node.id} portId="result" side="output" kind="text" label="Result" className="node-port-section" onStartConnection={onStartConnection} /> : null}
           >
             {model.history.items.length > 1 ? (
               <TextResultVersionControl
@@ -96,14 +109,17 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
               onToggle={model.handleResultFilterToggle}
               text={model.history.activeText}
             />
-            <TextSectionResultBox
-              ariaLabel="Text generation result"
-              value={model.history.activeText}
-              className="text-generation-result-box"
-              disabledFilterIds={model.disabledResultFilterIds}
-              onChange={model.handleResultChange}
-              scrollToStart={scrollTargetStart}
-            />
+            <div className="text-generation-result-port-anchor">
+              <PortButton nodeId={node.id} portId="result" side="output" kind="text" label="Result" className="text-generation-result-output-port" onStartConnection={onStartConnection} />
+              <TextSectionResultBox
+                ariaLabel="Text generation result"
+                value={model.history.activeText}
+                className="text-generation-result-box"
+                disabledFilterIds={model.disabledResultFilterIds}
+                onChange={model.handleResultChange}
+                scrollToStart={scrollTargetStart}
+              />
+            </div>
           </CollapsibleSection>
           <TextSectionDuplicateWarnings
             issues={model.resultFilterIssues}

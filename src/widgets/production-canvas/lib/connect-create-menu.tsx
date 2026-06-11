@@ -1,4 +1,4 @@
-import { NODE_PORTS } from '@/entities/production-graph/model/node-definitions';
+import { getTextPromptVariablePortId, NODE_PORTS } from '@/entities/production-graph/model/node-definitions';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { PortKind, ProductionNodeType } from '@/entities/production-graph/model/types';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
@@ -42,6 +42,8 @@ export function createConnectMenuActions(
 }
 
 function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) {
+  if (type === 'textPrompt' && sourceKind === 'text') return getTextPromptVariablePortId(0);
+
   const inputPorts = NODE_PORTS[type].filter((port) => port.side === 'input');
   const priority = sourceKind === 'subject'
     ? ['actors']

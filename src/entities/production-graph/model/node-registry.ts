@@ -12,6 +12,7 @@ export const NODE_DEFINITIONS = {
   textPrompt: textNodeDefinitions.textPrompt,
   textConcat: textNodeDefinitions.textConcat,
   textGeneration: textNodeDefinitions.textGeneration,
+  textToSpeech: textNodeDefinitions.textToSpeech,
   textFormatter: textNodeDefinitions.textFormatter,
   textSplitter: textNodeDefinitions.textSplitter,
   iterator: contextNodeDefinitions.iterator,

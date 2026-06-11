@@ -1,7 +1,8 @@
 'use client';
 
-import type { CSSProperties, RefObject, WheelEvent as ReactWheelEvent } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { useScrollableWheel } from './use-scrollable-wheel';
 
 interface PromptBoxProps {
   className?: string;
@@ -25,6 +26,7 @@ export function PromptBox({
   onChange,
 }: PromptBoxProps) {
   const textareaPlaceholder = readonly && placeholder === DEFAULT_PROMPT_PLACEHOLDER ? '' : placeholder;
+  const handleWheel = useScrollableWheel<HTMLTextAreaElement>();
 
   return (
     <textarea
@@ -36,16 +38,9 @@ export function PromptBox({
       onChange={(event) => {
         if (!readonly) onChange?.(event.target.value);
       }}
-      onWheel={handleTextareaWheel}
+      onWheelCapture={handleWheel}
       placeholder={textareaPlaceholder}
       data-node-interactive
     />
   );
-}
-
-function handleTextareaWheel(event: ReactWheelEvent<HTMLTextAreaElement>) {
-  const textarea = event.currentTarget;
-  if (textarea.scrollHeight > textarea.clientHeight || textarea.scrollWidth > textarea.clientWidth) {
-    event.stopPropagation();
-  }
 }

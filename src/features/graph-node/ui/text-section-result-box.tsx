@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type WheelEvent as ReactWheelEvent } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -24,6 +24,7 @@ import {
   type ParseTextSectionOptions,
 } from '@/entities/production-graph/model/text-section-filters';
 import { cn } from '@/shared/lib/cn';
+import { useScrollableWheel } from '@/shared/ui/use-scrollable-wheel';
 
 interface TextSectionResultBoxProps {
   ariaLabel?: string;
@@ -31,6 +32,7 @@ interface TextSectionResultBoxProps {
   disabledFilterIds?: string[];
   onChange?: (value: string) => void;
   parseOptions?: ParseTextSectionOptions;
+  readOnly?: boolean;
   scrollToStart?: number | null;
   value?: string;
 }
@@ -102,6 +104,7 @@ export function TextSectionResultBox({
   disabledFilterIds = [],
   onChange,
   parseOptions,
+  readOnly = false,
   scrollToStart,
   value,
 }: TextSectionResultBoxProps) {
@@ -109,9 +112,11 @@ export function TextSectionResultBox({
   const initialDisabledFilterIdsRef = useRef(disabledFilterIds);
   const parseOptionsRef = useRef(parseOptions);
   parseOptionsRef.current = parseOptions;
+  const handleWheel = useScrollableWheel<HTMLDivElement>();
 
   const editorConfig = useMemo(() => ({
     editorState: () => rebuildEditorState(initialValueRef.current, initialDisabledFilterIdsRef.current, parseOptionsRef.current),
+    editable: !readOnly,
     namespace: 'TextSectionResultBox',
     nodes: [TextSectionParagraphNode],
     onError: (error: Error, editor: LexicalEditor) => {
@@ -127,7 +132,7 @@ export function TextSectionResultBox({
       className={cn('prompt-box text-section-result-box', className)}
       data-canvas-wheel-scroll="true"
       data-node-interactive
-      onWheelCapture={handleResultWheel}
+      onWheelCapture={handleWheel}
     >
       <LexicalComposer initialConfig={editorConfig}>
         <RichTextPlugin
@@ -147,11 +152,22 @@ export function TextSectionResultBox({
           parseOptions={parseOptions}
           value={value}
         />
+        <TextSectionEditablePlugin readOnly={readOnly} />
         <TextSectionScrollPlugin scrollToStart={scrollToStart} />
         <TextSectionChangePlugin onChange={onChange} />
       </LexicalComposer>
     </div>
   );
+}
+
+function TextSectionEditablePlugin({ readOnly }: { readOnly: boolean }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
+
+  return null;
 }
 
 function TextSectionChangePlugin({ onChange }: { onChange?: (value: string) => void }) {
@@ -263,29 +279,4 @@ function normalizeEditorText(value: string | undefined) {
 
 function getDisabledKey(disabledFilterIds: string[] | undefined) {
   return [...(disabledFilterIds ?? [])].sort().join('|');
-}
-
-function handleResultWheel(event: ReactWheelEvent<HTMLDivElement>) {
-  const box = event.currentTarget;
-  const canScrollY = box.scrollHeight > box.clientHeight;
-  const canScrollX = box.scrollWidth > box.clientWidth;
-  if (!canScrollY && !canScrollX) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  const scale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
-    ? 16
-    : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-      ? box.clientHeight
-      : 1;
-  const deltaY = event.deltaY * scale;
-  const deltaX = event.deltaX * scale;
-
-  if (canScrollX && (event.shiftKey || Math.abs(deltaX) > Math.abs(deltaY))) {
-    box.scrollLeft += deltaX || deltaY;
-    return;
-  }
-
-  if (canScrollY) box.scrollTop += deltaY;
 }

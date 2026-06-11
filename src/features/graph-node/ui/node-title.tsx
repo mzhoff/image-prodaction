@@ -16,14 +16,18 @@ import {
   Slice,
   SlidersHorizontal,
   Text,
+  Type,
+  Volume2,
   WandSparkles,
 } from 'lucide-react';
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
@@ -31,9 +35,30 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 import { cn } from '@/shared/lib/cn';
 
 const NodeTitleRenameNodeContext = createContext<string | null>(null);
+const NodeTitleOptionsMenuContext = createContext<((event: ReactMouseEvent<HTMLButtonElement>) => void) | null>(null);
+const NODE_TITLE_RENAME_REQUEST_EVENT = 'production-node-title-rename-request';
 
-export function NodeTitleNodeIdProvider({ nodeId, children }: { nodeId: string; children: ReactNode }) {
-  return <NodeTitleRenameNodeContext.Provider value={nodeId}>{children}</NodeTitleRenameNodeContext.Provider>;
+export function requestNodeTitleRename(nodeId: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(NODE_TITLE_RENAME_REQUEST_EVENT, { detail: { nodeId } }));
+}
+
+export function NodeTitleNodeIdProvider({
+  children,
+  nodeId,
+  onOpenOptionsMenu,
+}: {
+  children: ReactNode;
+  nodeId: string;
+  onOpenOptionsMenu?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <NodeTitleRenameNodeContext.Provider value={nodeId}>
+      <NodeTitleOptionsMenuContext.Provider value={onOpenOptionsMenu ?? null}>
+        {children}
+      </NodeTitleOptionsMenuContext.Provider>
+    </NodeTitleRenameNodeContext.Provider>
+  );
 }
 
 export function NodeTitle({
@@ -69,6 +94,28 @@ export function NodeTitle({
       inputRef.current?.select();
     }
   }, [editing]);
+
+  const beginEditing = useCallback(() => {
+    setDraftTitle(title);
+    setEditing(true);
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+  }, [title]);
+
+  useEffect(() => {
+    if (!nodeId || !onRenameNode) return undefined;
+
+    const handleRenameRequest = (event: Event) => {
+      const detail = (event as CustomEvent<{ nodeId?: string }>).detail;
+      if (detail?.nodeId !== nodeId) return;
+      beginEditing();
+    };
+
+    window.addEventListener(NODE_TITLE_RENAME_REQUEST_EVENT, handleRenameRequest);
+    return () => window.removeEventListener(NODE_TITLE_RENAME_REQUEST_EVENT, handleRenameRequest);
+  }, [beginEditing, nodeId, onRenameNode]);
 
   const commitTitle = () => {
     setEditing(false);
@@ -118,8 +165,7 @@ export function NodeTitle({
               if (!onRenameNode) return;
               event.preventDefault();
               event.stopPropagation();
-              setDraftTitle(title);
-              setEditing(true);
+              beginEditing();
             }}
           >
             {title}
@@ -140,13 +186,19 @@ export function NodeTitleActions({ children }: { children: ReactNode }) {
 }
 
 export function NodeTitleOptionsButton() {
+  const openOptionsMenu = useContext(NodeTitleOptionsMenuContext);
+
   return (
     <button
       type="button"
       className="node-title-action"
       aria-label="Node options"
       onPointerDown={(event) => event.stopPropagation()}
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openOptionsMenu?.(event);
+      }}
     >
       <Ellipsis size={16} />
     </button>
@@ -188,9 +240,10 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'imageToText') return WandSparkles;
     if (nodeType === 'referenceComposer') return ImageIcon;
     if (nodeType === 'generateImage') return ImageIcon;
-    if (nodeType === 'textPrompt') return Text;
+    if (nodeType === 'textPrompt') return Type;
     if (nodeType === 'textConcat') return ListPlus;
     if (nodeType === 'textGeneration') return Text;
+    if (nodeType === 'textToSpeech') return Volume2;
     if (nodeType === 'textFormatter') return Text;
     if (nodeType === 'textSplitter') return Slice;
     if (nodeType === 'iterator') return Repeat2;

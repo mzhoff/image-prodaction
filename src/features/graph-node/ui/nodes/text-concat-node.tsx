@@ -8,6 +8,7 @@ import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { clampTextConcatOptionalHeight, useTextConcatNodeModel } from '../../model/use-text-workflow-node-models';
+import { FilteredTextSectionOutput } from '../filtered-text-section-output';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
 
@@ -84,7 +85,16 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
             title="Result"
             className="text-node-section text-node-result-section"
           >
-            <PromptBox value={model.result} readonly className="text-node-result-box text-concat-result-box" />
+            <FilteredTextSectionOutput
+              ariaLabel="Concat result"
+              boxClassName="text-node-result-box text-concat-result-box"
+              disabledFilterIds={model.disabledResultFilterIds}
+              issues={model.resultFilterIssues}
+              onToggle={model.handleResultFilterToggle}
+              readOnly
+              tagsClassName="text-node-result-filter-tags"
+              value={model.result}
+            />
           </CollapsibleSection>
           <CollapsibleSection title="Optional Text" className="text-node-section text-node-optional-section">
             <PromptBox

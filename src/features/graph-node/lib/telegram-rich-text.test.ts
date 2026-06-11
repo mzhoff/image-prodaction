@@ -7,6 +7,7 @@ import {
   getPlainTextFromTelegramRichText,
   getTelegramRichTextBlocks,
   getTelegramRichTextRunText,
+  normalizeTelegramRichText,
   splitTelegramRichTextRunsByQuote,
   parseTelegramFormatSegmentsPayload,
 } from './telegram-rich-text.ts';
@@ -101,6 +102,37 @@ test('getTelegramRichTextBlocks keeps formatting on exact text nodes, not entire
   assert.equal(blocks.length, 1);
   assert.equal(getTelegramRichTextRunText(blocks[0].runs), plainText);
   assert.deepEqual(blocks[0].runs.map((run) => run.format), [TELEGRAM_TEXT_FORMAT.bold, 0]);
+});
+
+test('normalizeTelegramRichText rejects non-telegram lexical nodes', () => {
+  const articleRichText = JSON.stringify({
+    root: {
+      children: [{
+        children: [{
+          detail: 0,
+          format: 0,
+          mode: 'normal',
+          style: '',
+          text: 'Article heading',
+          type: 'text',
+          version: 1,
+        }],
+        direction: null,
+        format: '',
+        indent: 0,
+        tag: 'h2',
+        type: 'heading',
+        version: 1,
+      }],
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'root',
+      version: 1,
+    },
+  });
+
+  assert.equal(normalizeTelegramRichText(articleRichText), '');
 });
 
 test('getTelegramRichTextBlocks renders editor state even when plain backup is stale', () => {

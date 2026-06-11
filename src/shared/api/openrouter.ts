@@ -1,5 +1,7 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=all';
+const OPENROUTER_SPEECH_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=speech';
+const OPENROUTER_SPEECH_URL = 'https://openrouter.ai/api/v1/audio/speech';
 const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 180_000;
 
@@ -127,6 +129,75 @@ export async function fetchOpenRouterModels() {
   return response.json() as Promise<{
     data?: unknown[];
   }>;
+}
+
+export async function fetchOpenRouterSpeechModels() {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const headers: HeadersInit = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+  const response = await fetchOpenRouter(OPENROUTER_SPEECH_MODELS_URL, {
+    headers,
+    next: { revalidate: 300 },
+    timeoutMs: 15_000,
+  }, 'OpenRouter speech models request', 1);
+
+  if (!response.ok) {
+    throw await createOpenRouterResponseError(response, 'OpenRouter speech models request');
+  }
+
+  return response.json() as Promise<{
+    data?: unknown[];
+  }>;
+}
+
+export async function sendOpenRouterSpeech({
+  input,
+  model,
+  responseFormat,
+  seed,
+  speed,
+  temperature,
+  topP,
+  voice,
+}: {
+  input: string;
+  model: string;
+  responseFormat?: 'mp3' | 'pcm';
+  seed?: number;
+  speed?: number;
+  temperature?: number;
+  topP?: number;
+  voice: string;
+}) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is not configured');
+  }
+
+  const response = await fetchOpenRouter(OPENROUTER_SPEECH_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.OPENROUTER_SITE_URL ?? 'http://localhost:3000',
+      'X-Title': process.env.OPENROUTER_APP_NAME ?? 'Reverie Image Production Pipeline',
+    },
+    body: JSON.stringify(removeUndefined({
+      model,
+      input,
+      voice,
+      response_format: responseFormat,
+      speed,
+      temperature,
+      top_p: topP,
+      seed,
+    })),
+  }, 'OpenRouter speech request');
+
+  if (!response.ok) {
+    throw await createOpenRouterResponseError(response, 'OpenRouter speech request');
+  }
+
+  return response;
 }
 
 export async function fetchOpenRouterKey() {

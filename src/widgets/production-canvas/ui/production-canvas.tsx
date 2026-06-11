@@ -19,9 +19,7 @@ export function ProductionCanvas() {
         activeTool={model.canvasTool}
         canRedo={model.historyFutureLength > 0}
         canUndo={model.historyPastLength > 0}
-        onExportPipelineTemplate={model.exportPipelineTemplate}
         onExportProject={model.exportProjectSnapshot}
-        onImportPipelineTemplate={model.importPipelineTemplateFile}
         onImportProject={model.importProjectSnapshotFile}
         onDeleteSelected={model.deleteSelected}
         onRedo={model.redo}
@@ -72,6 +70,7 @@ export function ProductionCanvas() {
             nodes={model.nodes}
             onGenerateComposingOpenChange={model.toggleGenerateComposing}
             onNodeContextMenu={model.openNodeMenu}
+            onNodeOptionsMenu={model.openNodeOptionsMenu}
             onStartConnection={model.startConnection}
             onStartDrag={model.startNodeDrag}
             selectedSet={model.selectedSet}

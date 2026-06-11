@@ -10,6 +10,7 @@ export type ProductionNodeType =
   | 'textPrompt'
   | 'textConcat'
   | 'textGeneration'
+  | 'textToSpeech'
   | 'textFormatter'
   | 'textSplitter'
   | 'iterator'

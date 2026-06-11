@@ -9,6 +9,7 @@ import {
 } from '@/entities/production-graph/model/graph-io';
 import type { IteratorActiveKind, IteratorNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { useTextSectionFilters } from './use-text-section-filters';
 
 export function useIteratorNodeModel(node: ProductionNode) {
   const data = node.data as IteratorNodeData;
@@ -33,6 +34,11 @@ export function useIteratorNodeModel(node: ProductionNode) {
   const activeImageAssetId = activeImageItem?.assetId;
   const activeText = activeTextItem?.text ?? '';
   const message = getIteratorMessage(activeKind, imageItems.length, textItems.length);
+  const activeTextSectionFilters = useTextSectionFilters({
+    disabledFilterIds: data.disabledResultFilterIds,
+    onDisabledFilterIdsChange: (disabledResultFilterIds) => updateNodeData(node.id, { disabledResultFilterIds }),
+    text: activeKind === 'text' ? activeText : '',
+  });
 
   useEffect(() => {
     if (
@@ -117,8 +123,10 @@ export function useIteratorNodeModel(node: ProductionNode) {
     activeKind,
     activeText,
     data,
+    disabledResultFilterIds: activeTextSectionFilters.disabledFilterIds,
     handleIndexChange,
     handleIndexSelectChange,
+    handleResultFilterToggle: activeTextSectionFilters.toggleFilter,
     handleKindChange,
     handleNext,
     handlePrevious,
@@ -127,6 +135,7 @@ export function useIteratorNodeModel(node: ProductionNode) {
     indexOptions,
     kindOptions,
     message,
+    resultFilterIssues: activeTextSectionFilters.duplicateIssues,
     textCount: textItems.length,
   };
 }

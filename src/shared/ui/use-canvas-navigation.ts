@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SetStateAction } from 'react';
 import { hasOpenFloatingContextMenu, requestCloseFloatingContextMenus } from './floating-context-menu';
+import { hasScrollableOverflow } from './use-scrollable-wheel';
 
 export interface CanvasPoint {
   x: number;
@@ -247,5 +248,5 @@ function shouldLetScrollableInputHandleWheel(event: WheelEvent) {
   const scrollable = target.closest('textarea.prompt-box, [data-canvas-wheel-scroll="true"]');
   if (!(scrollable instanceof HTMLElement)) return false;
 
-  return scrollable.scrollHeight > scrollable.clientHeight || scrollable.scrollWidth > scrollable.clientWidth;
+  return hasScrollableOverflow(scrollable);
 }

@@ -22,10 +22,11 @@ export function useProductionCanvasStore() {
   const clearNodeGenerations = useProductionGraphStore((state) => state.clearNodeGenerations);
   const duplicateNode = useProductionGraphStore((state) => state.duplicateNode);
   const duplicateSection = useProductionGraphStore((state) => state.duplicateSection);
-  const exportPipelineTemplate = useProductionGraphStore((state) => state.exportPipelineTemplate);
+  const exportPipelineTemplateForSection = useProductionGraphStore((state) => state.exportPipelineTemplateForSection);
   const exportProjectSnapshot = useProductionGraphStore((state) => state.exportProjectSnapshot);
   const historyPastLength = useProductionGraphStore((state) => state.historyPast.length);
   const historyFutureLength = useProductionGraphStore((state) => state.historyFuture.length);
+  const importPipelineTemplateAt = useProductionGraphStore((state) => state.importPipelineTemplateAt);
   const importPortableProject = useProductionGraphStore((state) => state.importPortableProject);
   const moveNode = useProductionGraphStore((state) => state.moveNode);
   const moveSelectedNodesBy = useProductionGraphStore((state) => state.moveSelectedNodesBy);
@@ -47,6 +48,7 @@ export function useProductionCanvasStore() {
   const toggleSectionLock = useProductionGraphStore((state) => state.toggleSectionLock);
   const toggleNodeLock = useProductionGraphStore((state) => state.toggleNodeLock);
   const undo = useProductionGraphStore((state) => state.undo);
+  const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const uiState = useProductionGraphStore((state) => state.uiState);
   const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const selectedSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
@@ -68,10 +70,11 @@ export function useProductionCanvasStore() {
     duplicateNode,
     duplicateSection,
     edges,
-    exportPipelineTemplate,
+    exportPipelineTemplateForSection,
     exportProjectSnapshot,
     historyFutureLength,
     historyPastLength,
+    importPipelineTemplateAt,
     importPortableProject,
     moveNode,
     moveSelectedNodesBy,
@@ -99,6 +102,7 @@ export function useProductionCanvasStore() {
     toggleNodeLock,
     uiState,
     undo,
+    updateNodeDataSilent,
   }), [
     addNode,
     addSection,
@@ -114,10 +118,11 @@ export function useProductionCanvasStore() {
     duplicateNode,
     duplicateSection,
     edges,
-    exportPipelineTemplate,
+    exportPipelineTemplateForSection,
     exportProjectSnapshot,
     historyFutureLength,
     historyPastLength,
+    importPipelineTemplateAt,
     importPortableProject,
     moveNode,
     moveSelectedNodesBy,
@@ -145,5 +150,6 @@ export function useProductionCanvasStore() {
     toggleNodeLock,
     uiState,
     undo,
+    updateNodeDataSilent,
   ]);
 }

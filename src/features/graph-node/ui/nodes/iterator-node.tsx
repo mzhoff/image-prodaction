@@ -4,11 +4,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { PromptBox } from '@/shared/ui/prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useIteratorNodeModel } from '../../model/use-iterator-node-model';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { EntityBuilderInputRow } from '../entity-builder-input-row';
+import { FilteredTextSectionOutput } from '../filtered-text-section-output';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
@@ -130,7 +130,16 @@ export function IteratorNode({ node, onStartConnection }: IteratorNodeProps) {
                 />
               </div>
             ) : (
-              <PromptBox value={model.activeText} readonly className="iterator-node-text-preview" />
+              <FilteredTextSectionOutput
+                ariaLabel="Iterator text item"
+                boxClassName="iterator-node-text-preview"
+                disabledFilterIds={model.disabledResultFilterIds}
+                issues={model.resultFilterIssues}
+                onToggle={model.handleResultFilterToggle}
+                readOnly
+                tagsClassName="iterator-node-filter-tags"
+                value={model.activeText}
+              />
             )}
           </CollapsibleSection>
 

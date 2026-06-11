@@ -7,6 +7,7 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   textPrompt: NODE_DEFINITIONS.textPrompt.ports,
   textConcat: NODE_DEFINITIONS.textConcat.ports,
   textGeneration: NODE_DEFINITIONS.textGeneration.ports,
+  textToSpeech: NODE_DEFINITIONS.textToSpeech.ports,
   textFormatter: NODE_DEFINITIONS.textFormatter.ports,
   textSplitter: NODE_DEFINITIONS.textSplitter.ports,
   iterator: NODE_DEFINITIONS.iterator.ports,

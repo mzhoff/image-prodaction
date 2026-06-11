@@ -1,5 +1,6 @@
 import { normalizeNodeSize } from './node-layout';
 import { normalizeFormattedTextPresetId } from './formatted-text';
+import { normalizeStringArray } from './normalize-project-values';
 import {
   normalizeTextPromptTextareaHeight,
   normalizeTextPromptVariableDisplayMode,
@@ -9,7 +10,12 @@ import type { ProductionNode, ProductionNodeData } from './types';
 
 export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   if (node.type === 'textPrompt') {
-    const data = node.data as ProductionNodeData & { textareaHeight?: unknown; variableDisplayMode?: unknown; variables?: unknown };
+    const data = node.data as ProductionNodeData & {
+      disabledResultFilterIds?: unknown;
+      textareaHeight?: unknown;
+      variableDisplayMode?: unknown;
+      variables?: unknown;
+    };
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
@@ -18,6 +24,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         sourceCount: 0,
         text: '',
         ...data,
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         textareaHeight: normalizeTextPromptTextareaHeight(data.textareaHeight),
         title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Prompt',
         variableDisplayMode: normalizeTextPromptVariableDisplayMode(data.variableDisplayMode),
@@ -41,6 +48,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         result: '',
         sourceCount: 0,
         ...node.data,
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         title: 'Concat',
         optionalTextHeight,
       },
@@ -48,6 +56,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   }
 
   if (node.type === 'textGeneration') {
+    const data = node.data as ProductionNodeData & { disabledResultFilterIds?: unknown };
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
@@ -58,11 +67,39 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         reasoning: 'low',
         temperature: 1,
         activeResultIndex: -1,
-        disabledResultFilterIds: [],
         result: '',
         resultTexts: [],
-        ...node.data,
-        title: 'Text Gen',
+        ...data,
+        disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
+        title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Text Gen',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'textToSpeech') {
+    const data = node.data as ProductionNodeData & {
+      language?: unknown;
+      responseFormat?: unknown;
+      resultAssetIds?: unknown;
+      resultMetadata?: unknown;
+    };
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        activeResultIndex: -1,
+        localText: '',
+        message: '',
+        model: 'x-ai/grok-voice-tts-1.0',
+        sourceText: '',
+        speed: 1,
+        voice: 'Eve',
+        ...data,
+        language: normalizeTextToSpeechLanguage(data.language),
+        responseFormat: data.responseFormat === 'pcm' ? 'pcm' : 'mp3',
+        resultAssetIds: normalizeStringArray(data.resultAssetIds),
+        resultMetadata: isRecord(data.resultMetadata) ? data.resultMetadata : {},
+        title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Voice',
       },
     } as ProductionNode;
   }
@@ -108,6 +145,10 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   return null;
 }
 
+function normalizeTextToSpeechLanguage(value: unknown) {
+  return value === 'ru' || value === 'en' || value === 'de' || value === 'es' || value === 'zh' ? value : 'auto';
+}
+
 function normalizeTextConcatOptionalHeight(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 95;
   return Math.min(Math.max(Math.round(value), 72), 420);
@@ -116,4 +157,8 @@ function normalizeTextConcatOptionalHeight(value: unknown) {
 function normalizeTextFormatterEditorHeight(value: unknown) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 360;
   return Math.min(Math.max(Math.round(value), 180), 760);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

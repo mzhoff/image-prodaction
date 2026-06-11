@@ -20,6 +20,7 @@ export const contextNodeDefinitions = {
       activeKind: 'image',
       activeIndex: 0,
       activeText: '',
+      disabledResultFilterIds: [],
       imageCount: 0,
       textCount: 0,
     }),

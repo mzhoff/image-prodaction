@@ -1,4 +1,4 @@
-export type FormattedTextPresetId = 'universal' | 'telegram-post' | 'blog-article';
+export type FormattedTextPresetId = 'universal' | 'telegram-post' | 'blog-article' | 'markdown';
 
 export type FormattedTextFeature =
   | 'bold'
@@ -11,7 +11,9 @@ export type FormattedTextFeature =
   | 'quote'
   | 'spoiler'
   | 'heading'
+  | 'image'
   | 'list'
+  | 'markdown'
   | 'table';
 
 export interface FormattedTextPresetDefinition {
@@ -34,13 +36,19 @@ export const FORMATTED_TEXT_PRESETS: FormattedTextPresetDefinition[] = [
     id: 'blog-article',
     label: 'Blog Article',
     description: 'Article text preset for blog/CMS publishing.',
-    features: ['bold', 'italic', 'underline', 'strikethrough', 'code', 'link', 'hashtag', 'quote', 'heading', 'list', 'table'],
+    features: ['bold', 'italic', 'underline', 'strikethrough', 'code', 'link', 'hashtag', 'quote', 'heading', 'image', 'list', 'table'],
+  },
+  {
+    id: 'markdown',
+    label: 'Markdown',
+    description: 'Parse Markdown into article editor blocks.',
+    features: ['markdown', 'bold', 'italic', 'underline', 'strikethrough', 'code', 'link', 'quote', 'heading', 'image', 'list', 'table'],
   },
   {
     id: 'universal',
     label: 'Universal',
     description: 'General rich-text formatter with broad editing affordances.',
-    features: ['bold', 'italic', 'underline', 'strikethrough', 'code', 'link', 'hashtag', 'quote', 'spoiler', 'heading', 'list', 'table'],
+    features: ['bold', 'italic', 'underline', 'strikethrough', 'code', 'link', 'hashtag', 'quote', 'spoiler', 'heading', 'image', 'list', 'table'],
   },
 ];
 

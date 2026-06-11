@@ -1,13 +1,15 @@
 'use client';
 
-import { FileText, Maximize2, Minimize2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { FileText, Maximize2, Minimize2, Scan, X } from 'lucide-react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { FormattedTextFeature } from '@/entities/production-graph/model/formatted-text';
 import type { ProductionNode, TextFormatterNodeData } from '@/entities/production-graph/model/types';
+import { ArticleRichTextEditor } from '@/shared/editor-core';
 import { DarkSelect } from '@/shared/ui/dark-select';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
-import { clampTextFormatterEditorHeight, useTextFormatterNodeModel } from '../../model/use-text-workflow-node-models';
+import { clampTextFormatterEditorHeight, clampTextFormatterNodeWidth, useTextFormatterNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
 import { TelegramMessageEditor } from '../telegram-message-editor';
@@ -23,10 +25,20 @@ export function TextFormatterNode({ node, onStartConnection }: TextFormatterNode
   const model = useTextFormatterNodeModel(node);
   const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
   const [draftEditorHeight, setDraftEditorHeight] = useState(model.editorHeight);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     setDraftEditorHeight(model.editorHeight);
   }, [model.editorHeight]);
+
+  useEffect(() => {
+    if (!previewOpen) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewOpen]);
 
   const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -44,6 +56,29 @@ export function TextFormatterNode({ node, onStartConnection }: TextFormatterNode
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       if (nextHeight !== model.editorHeight) model.handleEditorHeightChange(nextHeight);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp, { once: true });
+  };
+
+  const handleWidthResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const card = event.currentTarget.closest<HTMLElement>('[data-node-id]');
+    const startX = event.clientX;
+    const startWidth = node.size.width;
+    let nextWidth = startWidth;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      nextWidth = clampTextFormatterNodeWidth(startWidth + moveEvent.clientX - startX);
+      if (card) card.style.width = `${nextWidth}px`;
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      if (nextWidth !== node.size.width) model.handleNodeWidthChange(nextWidth);
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -110,18 +145,44 @@ export function TextFormatterNode({ node, onStartConnection }: TextFormatterNode
               <FileText size={13} />
               <span>{model.preset.description}</span>
             </div>
+            <button
+              type="button"
+              className="text-formatter-preview-button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setPreviewOpen(true);
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Scan size={14} />
+              <span>Open document</span>
+            </button>
           </div>
-          <TelegramMessageEditor
-            contextMenuFeatures={getContextMenuFeatures(model.preset.features)}
-            editorClassName="text-formatter-editor"
-            minHeight={draftEditorHeight}
-            namespace={`FormatterEditor-${node.id}`}
-            onChange={model.handleEditorChange}
-            placeholder="Format text..."
-            richText={model.richText}
-            shellClassName="text-formatter-editor-shell"
-            value={model.plainText}
-          />
+          {model.usesArticleEditor ? (
+            <ArticleRichTextEditor
+              className="text-formatter-editor-shell"
+              editorClassName="text-formatter-article-editor"
+              minHeight={draftEditorHeight}
+              namespace={`FormatterArticleEditor-${node.id}`}
+              onChange={model.handleEditorChange}
+              parseMarkdown={model.shouldParseMarkdown}
+              placeholder="Format article..."
+              richText={model.richText}
+              value={model.plainText}
+            />
+          ) : (
+            <TelegramMessageEditor
+              contextMenuFeatures={getContextMenuFeatures(model.preset.features)}
+              editorClassName="text-formatter-editor"
+              minHeight={draftEditorHeight}
+              namespace={`FormatterEditor-${node.id}`}
+              onChange={model.handleEditorChange}
+              placeholder="Format text..."
+              richText={model.richText}
+              shellClassName="text-formatter-editor-shell"
+              value={model.plainText}
+            />
+          )}
           <div className="text-formatter-meta-row">
             <span>{model.plainText.length} chars</span>
             <span>{model.sourceCount} input</span>
@@ -134,7 +195,41 @@ export function TextFormatterNode({ node, onStartConnection }: TextFormatterNode
             onPointerDown={handleResizePointerDown}
             aria-label="Resize formatter editor"
           />
+          <div
+            className="text-formatter-width-resize-handle"
+            data-node-interactive
+            onPointerDown={handleWidthResizePointerDown}
+            aria-label="Resize formatter node width"
+          />
         </div>
+      ) : null}
+      {previewOpen && typeof document !== 'undefined' ? createPortal(
+        <div
+          className="text-formatter-document-overlay"
+          onClick={() => setPreviewOpen(false)}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <div className="text-formatter-document-sheet" onClick={(event) => event.stopPropagation()} data-node-interactive>
+            <div className="text-formatter-document-header">
+              <strong>{data.title}</strong>
+              <button type="button" aria-label="Close document preview" onClick={() => setPreviewOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <ArticleRichTextEditor
+              className="text-formatter-document-editor"
+              fullscreen
+              minHeight={720}
+              namespace={`FormatterArticlePreview-${node.id}`}
+              onChange={model.handleEditorChange}
+              parseMarkdown={model.shouldParseMarkdown}
+              placeholder="Format article..."
+              richText={model.richText}
+              value={model.plainText}
+            />
+          </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   );

@@ -23,6 +23,7 @@ export interface ProductionGraphState extends GraphProject {
   duplicateNode: (nodeId: string) => void;
   pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string) => void;
   renameNode: (nodeId: string, title: string) => void;
+  resizeNode: (nodeId: string, size: Partial<ProductionNode['size']>) => void;
   toggleNodeLock: (nodeId: string) => void;
   compactDynamicInputSlots: (nodeId: string) => void;
   compactTextConcatInputs: (nodeId: string) => void;
@@ -63,5 +64,7 @@ export interface ProductionGraphState extends GraphProject {
   setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
   exportProjectSnapshot: () => ProjectExport;
   exportPipelineTemplate: () => PipelineTemplateExport;
+  exportPipelineTemplateForSection: (sectionId: string) => PipelineTemplateExport;
+  importPipelineTemplateAt: (payload: unknown, position: GraphPoint) => { kind: PipelineTemplateExport['kind']; nodeCount: number };
   importPortableProject: (payload: unknown, expectedKind?: PortableProjectExport['kind']) => { kind: ProjectExport['kind'] | PipelineTemplateExport['kind'] };
 }

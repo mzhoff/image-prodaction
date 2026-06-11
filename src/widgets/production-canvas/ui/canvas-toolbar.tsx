@@ -12,9 +12,7 @@ interface CanvasToolbarProps {
   canRedo: boolean;
   canUndo: boolean;
   onDeleteSelected: () => void;
-  onExportPipelineTemplate: () => void;
   onExportProject: () => void;
-  onImportPipelineTemplate: (file: File) => void;
   onImportProject: (file: File) => void;
   onRedo: () => void;
   onSelectTool: (tool: CanvasTool) => void;
@@ -27,9 +25,7 @@ export function CanvasToolbar({
   canRedo,
   canUndo,
   onDeleteSelected,
-  onExportPipelineTemplate,
   onExportProject,
-  onImportPipelineTemplate,
   onImportProject,
   onRedo,
   onSelectTool,
@@ -37,7 +33,6 @@ export function CanvasToolbar({
   onZoomToFit,
 }: CanvasToolbarProps) {
   const projectInputRef = useRef<HTMLInputElement | null>(null);
-  const templateInputRef = useRef<HTMLInputElement | null>(null);
   const handleJsonFileChange = (event: ChangeEvent<HTMLInputElement>, onFile: (file: File) => void) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -82,23 +77,13 @@ export function CanvasToolbar({
         </button>
       </ProTooltip>
       <span className="canvas-toolbar-separator" aria-hidden="true" />
-      <ProTooltip label="Export project snapshot">
-        <button type="button" aria-label="Export project snapshot" onClick={onExportProject}>
+      <ProTooltip label="Export document">
+        <button type="button" aria-label="Export document" onClick={onExportProject}>
           <Download size={16} />
         </button>
       </ProTooltip>
-      <ProTooltip label="Import project snapshot">
-        <button type="button" aria-label="Import project snapshot" onClick={() => projectInputRef.current?.click()}>
-          <Upload size={16} />
-        </button>
-      </ProTooltip>
-      <ProTooltip label="Export pipeline template">
-        <button type="button" aria-label="Export pipeline template" onClick={onExportPipelineTemplate}>
-          <Download size={16} />
-        </button>
-      </ProTooltip>
-      <ProTooltip label="Import pipeline template">
-        <button type="button" aria-label="Import pipeline template" onClick={() => templateInputRef.current?.click()}>
+      <ProTooltip label="Import document">
+        <button type="button" aria-label="Import document" onClick={() => projectInputRef.current?.click()}>
           <Upload size={16} />
         </button>
       </ProTooltip>
@@ -108,13 +93,6 @@ export function CanvasToolbar({
         accept="application/json,.json"
         hidden
         onChange={(event) => handleJsonFileChange(event, onImportProject)}
-      />
-      <input
-        ref={templateInputRef}
-        type="file"
-        accept="application/json,.json"
-        hidden
-        onChange={(event) => handleJsonFileChange(event, onImportPipelineTemplate)}
       />
       <span className="canvas-toolbar-separator" aria-hidden="true" />
       <ProTooltip label="Delete selected" shortcut="Del">

@@ -9,6 +9,7 @@ import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { clampTextPromptTextareaHeight, textPromptVariableDisplayOptions, useTextPromptNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
+import { TextSectionDuplicateWarnings, TextSectionFilterTags } from '../text-section-filter-tags';
 import { TextPromptVariableEditor } from '../text-prompt-variable-editor';
 
 interface TextPromptNodeProps {
@@ -109,16 +110,26 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
             displayMode={model.variableDisplayMode}
             onAddVariable={model.handleAddVariable}
             onChange={model.handleTextChange}
+            onRedo={model.handleRedo}
+            onUndo={model.handleUndo}
             placeholder="Write prompt. Type @ to insert a variable."
             slots={model.variableSlots}
             style={{ height: textareaHeight }}
             value={data.text}
           />
+          <TextSectionFilterTags
+            className="text-prompt-filter-tags"
+            disabledFilterIds={model.disabledResultFilterIds}
+            onToggle={model.handleResultFilterToggle}
+            text={model.result}
+          />
+          <TextSectionDuplicateWarnings
+            className="text-prompt-filter-warnings"
+            issues={model.resultFilterIssues}
+          />
           <div
-            className="text-prompt-footer text-node-bottom-drag-handle"
+            className="text-prompt-footer"
             data-node-interactive
-            onPointerDown={handleResizePointerDown}
-            aria-label="Resize prompt text area"
           >
             <div className="text-prompt-footer-controls">
               <button
@@ -142,6 +153,11 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
                 </label>
               ) : null}
             </div>
+            <div
+              className="text-prompt-resize-zone text-node-bottom-drag-handle"
+              onPointerDown={handleResizePointerDown}
+              aria-label="Resize prompt text area"
+            />
           </div>
         </div>
       ) : null}

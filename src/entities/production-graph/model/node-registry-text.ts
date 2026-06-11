@@ -10,6 +10,7 @@ export const textNodeDefinitions = {
     ports: [{ id: 'text', label: 'Text', kind: 'text', side: 'output' }],
     createData: () => ({
       title: 'Prompt',
+      disabledResultFilterIds: [],
       result: '',
       sourceCount: 0,
       text: '',
@@ -33,6 +34,7 @@ export const textNodeDefinitions = {
       title: 'Concat',
       separator: 'double-newline',
       customSeparator: '',
+      disabledResultFilterIds: [],
       inputCount: 2,
       prefix: '',
       optionalTextHeight: 95,
@@ -48,7 +50,7 @@ export const textNodeDefinitions = {
     collapsible: true,
     defaultHeight: 757,
     ports: [
-      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+      { id: 'text', label: 'Prompt', kind: 'text', side: 'input' },
       { id: 'result', label: 'Result', kind: 'text', side: 'output' },
     ],
     createData: () => ({
@@ -64,19 +66,43 @@ export const textNodeDefinitions = {
       resultTexts: [],
     }),
   },
+  textToSpeech: {
+    type: 'textToSpeech',
+    title: 'Voice',
+    menuLabel: 'Text to speech',
+    collapsible: true,
+    defaultHeight: 420,
+    ports: [
+      { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+    ],
+    createData: () => ({
+      title: 'Voice',
+      activeResultIndex: -1,
+      language: 'auto',
+      localText: '',
+      message: '',
+      model: 'x-ai/grok-voice-tts-1.0',
+      responseFormat: 'mp3',
+      resultAssetIds: [],
+      resultMetadata: {},
+      sourceText: '',
+      speed: 1,
+      voice: 'Eve',
+    }),
+  },
   textFormatter: {
     type: 'textFormatter',
     title: 'Formatter',
     menuLabel: 'Formatter',
     collapsible: true,
-    defaultHeight: 520,
+    defaultHeight: 420,
     ports: [
       { id: 'text', label: 'Text', kind: 'text', side: 'input' },
       { id: 'result', label: 'Formatted', kind: 'text', side: 'output' },
     ],
     createData: () => ({
       title: 'Formatter',
-      editorHeight: 360,
+      editorHeight: 260,
       plainText: '',
       presetId: 'telegram-post',
       result: '',
@@ -106,4 +132,4 @@ export const textNodeDefinitions = {
       sourceText: '',
     }),
   },
-} satisfies ProductionNodeDefinitionMap<'textPrompt' | 'textConcat' | 'textGeneration' | 'textFormatter' | 'textSplitter'>;
+} satisfies ProductionNodeDefinitionMap<'textPrompt' | 'textConcat' | 'textGeneration' | 'textToSpeech' | 'textFormatter' | 'textSplitter'>;
