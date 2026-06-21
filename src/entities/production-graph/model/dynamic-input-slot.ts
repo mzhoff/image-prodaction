@@ -1,11 +1,12 @@
 import {
+  getCompositionLayerPortId,
   getExportImageInputPortId,
   getTelegramMediaInputPortId,
   getTextConcatInputPortId,
 } from './node-definitions';
 import type { ProductionNode, GraphEdge } from './types';
 
-export type DynamicInputSlotNodeType = 'textConcat' | 'telegramPublication' | 'exportImage';
+export type DynamicInputSlotNodeType = 'textConcat' | 'telegramPublication' | 'exportImage' | 'composition';
 
 export interface DynamicInputSlotSpec {
   nodeType: DynamicInputSlotNodeType;
@@ -13,7 +14,7 @@ export interface DynamicInputSlotSpec {
   getPortId: (index: number) => string;
   minCount: number;
   maxCount?: number;
-  countField: 'inputCount' | 'mediaInputCount' | 'imageInputCount';
+  countField: 'inputCount' | 'mediaInputCount' | 'imageInputCount' | 'layerInputCount';
   preservePortIds?: boolean;
 }
 
@@ -42,6 +43,15 @@ const DYNAMIC_INPUT_SLOT_SPECS: ReadonlyArray<DynamicInputSlotSpec> = [
     maxCount: 10,
     countField: 'imageInputCount',
   },
+  {
+    nodeType: 'composition',
+    portPrefix: 'layer-',
+    getPortId: getCompositionLayerPortId,
+    minCount: 2,
+    maxCount: 12,
+    countField: 'layerInputCount',
+    preservePortIds: true,
+  },
 ];
 
 const PORT_PREFIX_BY_NODE_TYPE = new Map<DynamicInputSlotNodeType, DynamicInputSlotSpec>(
@@ -55,7 +65,7 @@ function getPortIndexFromPrefix(portId: string, prefix: string) {
 }
 
 export function getDynamicInputSlotSpec(nodeType: string) {
-  if (nodeType !== 'textConcat' && nodeType !== 'telegramPublication' && nodeType !== 'exportImage') return undefined;
+  if (nodeType !== 'textConcat' && nodeType !== 'telegramPublication' && nodeType !== 'exportImage' && nodeType !== 'composition') return undefined;
   return PORT_PREFIX_BY_NODE_TYPE.get(nodeType);
 }
 

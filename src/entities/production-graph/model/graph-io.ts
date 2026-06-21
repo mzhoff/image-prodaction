@@ -7,10 +7,12 @@ import { getFilteredTextSectionText } from './text-section-filters';
 import type {
   AdjustmentNodeData,
   AssetRecord,
+  BannerNodeData,
   CropImageNodeData,
   CurvesNodeData,
   GenerateImageNodeData,
   FrequencyRetouchNodeData,
+  CompositionNodeData,
   GraphValueKind,
   GraphEdge,
   ImageToTextNodeData,
@@ -71,6 +73,8 @@ export interface GraphObjectInputItem extends GraphIncomingSource {
   valueKind?: GraphValueKind;
 }
 
+export type RoutedDataKind = 'audio' | 'image' | 'location' | 'publication' | 'subject' | 'text' | 'video' | 'empty';
+
 export function getIncomingSources(targetNodeId: string, targetPortId: string | undefined, context: Pick<GraphIoContext, 'edges' | 'nodes'>) {
   const nodesById = new Map(context.nodes.map((node) => [node.id, node]));
   return context.edges.flatMap((edge): GraphIncomingSource[] => {
@@ -89,14 +93,19 @@ export function getIncomingSources(targetNodeId: string, targetPortId: string | 
   });
 }
 
-export function getNodeImageAssetId(node?: ProductionNode) {
+export function getNodeImageAssetId(node?: ProductionNode, context?: GraphIoContext, visited = new Set<string>()): string | undefined {
   if (!node) return undefined;
+  if (node.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeImageAssetId(source.sourceNode, context, visited) : undefined;
+  }
   if (node.type === 'importImage') return (node.data as ImportImageNodeData).assetId;
   if (node.type === 'iterator') {
     const data = node.data as IteratorNodeData;
     return data.activeKind === 'image' ? data.activeImageAssetId : undefined;
   }
   if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
+  if (node.type === 'composition') return (node.data as CompositionNodeData).resultAssetId;
   if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
   if (node.type === 'cropImage') return (node.data as CropImageNodeData).resultAssetId;
   if (node.type === 'adjustment') {
@@ -114,6 +123,7 @@ export function getNodeImageAssetId(node?: ProductionNode) {
   if (node.type === 'refineImage') return getGenerationHistory(node.data as RefineImageNodeData).activeAssetId;
   if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
+  if (node.type === 'banner') return (node.data as BannerNodeData).assetId;
   return undefined;
 }
 
@@ -130,6 +140,11 @@ export function getNodeImageAssetIds(node?: ProductionNode) {
     return node.type === 'refineImage' && typeof data.sourceAssetId === 'string' ? [data.sourceAssetId] : [];
   }
 
+  if (node.type === 'composition') {
+    const data = node.data as CompositionNodeData;
+    return data.resultAssetId ? [data.resultAssetId] : [];
+  }
+
   if (node.type === 'subjectBuilder' || node.type === 'locationBuilder') {
     return Array.isArray(data.libraryImageAssetIds)
       ? data.libraryImageAssetIds.filter((item): item is string => typeof item === 'string')
@@ -142,7 +157,7 @@ export function getNodeImageAssetIds(node?: ProductionNode) {
     return assetId ? [assetId] : [];
   }
 
-  if (node.type === 'importImage' || node.type === 'sketch' || node.type === 'preview') {
+  if (node.type === 'importImage' || node.type === 'sketch' || node.type === 'preview' || node.type === 'banner') {
     return typeof data.assetId === 'string' ? [data.assetId] : [];
   }
 
@@ -163,8 +178,12 @@ export function getNodeCurrentImageAssetId(node?: ProductionNode) {
   return index >= 0 ? assetIds[index] : assetIds[0];
 }
 
-export function getNodeImageOutputAssetIds(node?: ProductionNode) {
+export function getNodeImageOutputAssetIds(node?: ProductionNode, context?: GraphIoContext, visited = new Set<string>()): string[] {
   if (!node) return [];
+  if (node.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeImageOutputAssetIds(source.sourceNode, context, visited) : [];
+  }
 
   if (node.type === 'generateImage' || node.type === 'refineImage') {
     const history = getGenerationHistory(node.data as GenerateImageNodeData);
@@ -174,21 +193,30 @@ export function getNodeImageOutputAssetIds(node?: ProductionNode) {
       : [];
   }
 
+  if (node.type === 'composition') {
+    const resultAssetId = (node.data as CompositionNodeData).resultAssetId;
+    return resultAssetId ? [resultAssetId] : [];
+  }
+
   if (node.type === 'iterator') {
     const data = node.data as IteratorNodeData;
     const assetId = data.activeKind === 'image' ? data.activeImageAssetId : undefined;
     return assetId ? [assetId] : [];
   }
 
-  if (node.type === 'importImage' || node.type === 'sketch' || node.type === 'preview') {
-    const assetId = (node.data as ImportImageNodeData | SketchNodeData | PreviewNodeData).assetId;
+  if (node.type === 'importImage' || node.type === 'sketch' || node.type === 'preview' || node.type === 'banner') {
+    const assetId = (node.data as ImportImageNodeData | SketchNodeData | PreviewNodeData | BannerNodeData).assetId;
     return assetId ? [assetId] : [];
   }
 
   return uniqueStrings([getNodeImageAssetId(node)]);
 }
 
-export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
+export function getNodeTextResult(node: ProductionNode, sourcePortId?: string, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): string {
+  if (node.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeTextResult(source.sourceNode, source.sourcePortId, context, visited) : '';
+  }
   if (node.type === 'imageToText') {
     const data = node.data as ImageToTextNodeData;
     return getFilteredLayerText(data.result, data.disabledLayerIds);
@@ -226,14 +254,22 @@ export function getNodeTextResult(node: ProductionNode, sourcePortId?: string) {
   return '';
 }
 
-export function getNodeRichTextResult(node: ProductionNode, sourcePortId?: string) {
+export function getNodeRichTextResult(node: ProductionNode, sourcePortId?: string, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): string {
+  if (node.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeRichTextResult(source.sourceNode, source.sourcePortId, context, visited) : '';
+  }
   if (node.type !== 'textFormatter') return '';
   if (sourcePortId && sourcePortId !== 'result') return '';
   const data = node.data as TextFormatterNodeData;
   return typeof data.richText === 'string' ? data.richText.trim() : '';
 }
 
-export function getNodeTextResults(node: ProductionNode, sourcePortId?: string) {
+export function getNodeTextResults(node: ProductionNode, sourcePortId?: string, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): string[] {
+  if (node.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeTextResults(source.sourceNode, source.sourcePortId, context, visited) : [];
+  }
   if (node.type === 'textGeneration') {
     const data = node.data as TextGenerationNodeData;
     return uniqueStrings([
@@ -272,30 +308,63 @@ export function getNodeTextResults(node: ProductionNode, sourcePortId?: string) 
   return text ? [text] : [];
 }
 
-export function getNodeSubjectResult(node?: ProductionNode) {
+export function getNodeSubjectResult(node?: ProductionNode, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): string {
+  if (node?.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeSubjectResult(source.sourceNode, context, visited) : '';
+  }
   if (node?.type !== 'subjectBuilder') return '';
   const data = node.data as SubjectBuilderNodeData;
   return (data.result || buildSubjectPassportText(data)).trim();
 }
 
-export function getNodeLocationResult(node?: ProductionNode) {
+export function getNodeLocationResult(node?: ProductionNode, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): string {
+  if (node?.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodeLocationResult(source.sourceNode, context, visited) : '';
+  }
   if (node?.type !== 'locationBuilder') return '';
   const data = node.data as LocationBuilderNodeData;
   return (data.result || buildLocationPassportText(data)).trim();
 }
 
-export function getNodePublicationResult(node?: ProductionNode) {
+export function getNodePublicationResult(node?: ProductionNode, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): string {
+  if (node?.type === 'router') {
+    const source = getRouterIncomingSource(node, context, visited);
+    return source ? getNodePublicationResult(source.sourceNode, context, visited) : '';
+  }
   if (node?.type !== 'telegramPublication') return '';
   const data = node.data as TelegramPublicationNodeData;
   return (data.result || data.messageText || [data.publicationTitle, data.body, data.caption, data.cta].filter(Boolean).join('\n\n')).trim();
 }
 
+export function getRouterDataKind(node: ProductionNode | undefined, context: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()): RoutedDataKind {
+  if (!node || node.type !== 'router') return 'empty';
+  const source = getRouterIncomingSource(node, context, visited);
+  if (!source) return 'empty';
+  const sourcePort = getPortById(source.sourceNode, source.sourcePortId);
+  if (sourcePort?.kind === 'any' && source.sourceNode.type === 'router') return getRouterDataKind(source.sourceNode, context, visited);
+  if (sourcePort?.kind === 'image' || sourcePort?.kind === 'subject' || sourcePort?.kind === 'location' || sourcePort?.kind === 'publication' || sourcePort?.kind === 'video' || sourcePort?.kind === 'audio') return sourcePort.kind;
+  return 'text';
+}
+
 export function getIncomingImageInputs(targetNodeId: string, targetPortId: string | undefined, context: GraphIoContext): GraphImageInputItem[] {
   return getIncomingSources(targetNodeId, targetPortId, context).flatMap((source): GraphImageInputItem[] => {
     const sourcePort = getPortById(source.sourceNode, source.sourcePortId);
+    if (source.sourceNode.type === 'router') {
+      return getIncomingImageInputs(source.sourceNode.id, 'input', context).slice(0, 1).map((item) => ({
+        ...item,
+        ...getTransparentRouterSource(source, item),
+        asset: item.asset,
+        assetId: item.assetId,
+        filename: item.filename,
+        sourceLabel: item.sourceLabel ?? item.sourceNode.data.title,
+        valueKind: item.valueKind,
+      }));
+    }
     if (sourcePort?.kind !== 'image') return [];
 
-    const assetId = getNodeImageAssetId(source.sourceNode);
+    const assetId = getNodeImageAssetId(source.sourceNode, context);
     if (!assetId) return [];
 
     const asset = context.assets.find((item) => item.id === assetId);
@@ -318,9 +387,22 @@ export function getFirstIncomingImageAsset(targetNodeId: string, targetPortId: s
 export function getIncomingImageCollectionInputs(targetNodeId: string, targetPortId: string | undefined, context: GraphIoContext): GraphImageInputItem[] {
   return getIncomingSources(targetNodeId, targetPortId, context).flatMap((source): GraphImageInputItem[] => {
     const sourcePort = getPortById(source.sourceNode, source.sourcePortId);
+    if (source.sourceNode.type === 'router') {
+      return getIncomingImageCollectionInputs(source.sourceNode.id, 'input', context).map((item) => ({
+        ...item,
+        ...getTransparentRouterSource(source, item),
+        asset: item.asset,
+        assetId: item.assetId,
+        collectionIndex: item.collectionIndex,
+        filename: item.filename,
+        sourceCollectionSize: item.sourceCollectionSize,
+        sourceLabel: item.sourceLabel ?? item.sourceNode.data.title,
+        valueKind: item.valueKind,
+      }));
+    }
     if (sourcePort?.kind !== 'image') return [];
 
-    const assetIds = getNodeImageOutputAssetIds(source.sourceNode);
+    const assetIds = getNodeImageOutputAssetIds(source.sourceNode, context);
     const sourceCollectionSize = assetIds.length;
     return assetIds.flatMap((assetId, collectionIndex): GraphImageInputItem[] => {
       const asset = context.assets.find((item) => item.id === assetId);
@@ -342,12 +424,20 @@ export function getIncomingImageCollectionInputs(targetNodeId: string, targetPor
 
 export function getIncomingTextInputs(targetNodeId: string, targetPortId: string | undefined, context: Pick<GraphIoContext, 'edges' | 'nodes'>): GraphTextInputItem[] {
   return getIncomingSources(targetNodeId, targetPortId, context).flatMap((source): GraphTextInputItem[] => {
-    const text = getNodeTextResult(source.sourceNode, source.sourcePortId);
+    if (source.sourceNode.type === 'router') {
+      return getIncomingTextInputs(source.sourceNode.id, 'input', context).slice(0, 1).map((item) => ({
+        ...item,
+        ...getTransparentRouterSource(source, item),
+        sourceLabel: item.sourceLabel ?? item.sourceNode.data.title,
+      }));
+    }
+
+    const text = getNodeTextResult(source.sourceNode, source.sourcePortId, context);
     if (!text) return [];
 
     return [{
       ...source,
-      richText: getNodeRichTextResult(source.sourceNode, source.sourcePortId),
+      richText: getNodeRichTextResult(source.sourceNode, source.sourcePortId, context),
       text,
       sourceLabel: source.sourceNode.data.title,
     }];
@@ -356,12 +446,20 @@ export function getIncomingTextInputs(targetNodeId: string, targetPortId: string
 
 export function getIncomingTextCollectionInputs(targetNodeId: string, targetPortId: string | undefined, context: Pick<GraphIoContext, 'edges' | 'nodes'>): GraphTextInputItem[] {
   return getIncomingSources(targetNodeId, targetPortId, context).flatMap((source): GraphTextInputItem[] => {
-    const texts = getNodeTextResults(source.sourceNode, source.sourcePortId);
+    if (source.sourceNode.type === 'router') {
+      return getIncomingTextCollectionInputs(source.sourceNode.id, 'input', context).map((item) => ({
+        ...item,
+        ...getTransparentRouterSource(source, item),
+        sourceLabel: item.sourceLabel ?? item.sourceNode.data.title,
+      }));
+    }
+
+    const texts = getNodeTextResults(source.sourceNode, source.sourcePortId, context);
     const sourceCollectionSize = texts.length;
     return texts.map((text, collectionIndex) => ({
       ...source,
       collectionIndex,
-      richText: getNodeRichTextResult(source.sourceNode, source.sourcePortId),
+      richText: getNodeRichTextResult(source.sourceNode, source.sourcePortId, context),
       sourceCollectionSize,
       text,
       sourceLabel: source.sourceNode.data.title,
@@ -372,9 +470,17 @@ export function getIncomingTextCollectionInputs(targetNodeId: string, targetPort
 
 export function getIncomingObjectInputs(targetNodeId: string, targetPortId: string | undefined, context: Pick<GraphIoContext, 'edges' | 'nodes'>): GraphObjectInputItem[] {
   return getIncomingSources(targetNodeId, targetPortId, context).flatMap((source): GraphObjectInputItem[] => {
+    if (source.sourceNode.type === 'router') {
+      return getIncomingObjectInputs(source.sourceNode.id, 'input', context).slice(0, 1).map((item) => ({
+        ...item,
+        ...getTransparentRouterSource(source, item),
+        sourceLabel: item.sourceLabel ?? item.sourceNode.data.title,
+      }));
+    }
+
     const sourcePort = getPortById(source.sourceNode, source.sourcePortId);
     if (sourcePort?.kind === 'subject') {
-      const text = getNodeSubjectResult(source.sourceNode);
+      const text = getNodeSubjectResult(source.sourceNode, context);
       return text ? [{
         ...source,
         objectKind: 'subject',
@@ -384,7 +490,7 @@ export function getIncomingObjectInputs(targetNodeId: string, targetPortId: stri
       }] : [];
     }
     if (sourcePort?.kind === 'location') {
-      const text = getNodeLocationResult(source.sourceNode);
+      const text = getNodeLocationResult(source.sourceNode, context);
       return text ? [{
         ...source,
         objectKind: 'location',
@@ -395,6 +501,21 @@ export function getIncomingObjectInputs(targetNodeId: string, targetPortId: stri
     }
     return [];
   });
+}
+
+function getRouterIncomingSource(node: ProductionNode, context?: Pick<GraphIoContext, 'edges' | 'nodes'>, visited = new Set<string>()) {
+  if (!context || visited.has(node.id)) return undefined;
+  visited.add(node.id);
+  return getIncomingSources(node.id, 'input', context)[0];
+}
+
+function getTransparentRouterSource(routerOutput: GraphIncomingSource, originalInput: GraphIncomingSource): GraphIncomingSource {
+  return {
+    edge: routerOutput.edge,
+    sourceNode: originalInput.sourceNode,
+    sourcePortId: originalInput.sourcePortId,
+    targetPortId: routerOutput.targetPortId,
+  };
 }
 
 function uniqueStrings(values: Array<string | undefined>) {

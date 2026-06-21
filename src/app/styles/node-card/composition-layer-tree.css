@@ -1,0 +1,193 @@
+.composition-layer-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.composition-layer-children {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 18px;
+}
+
+.composition-layer-children-drop-inside::before {
+  position: absolute;
+  z-index: 2;
+  top: -1px;
+  right: 0;
+  left: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: #111;
+  content: "";
+  pointer-events: none;
+}
+
+.composition-layer-row {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #4b5563;
+  cursor: grab;
+  padding: 0 4px;
+  text-align: left;
+}
+
+.composition-layer-row:active {
+  cursor: grabbing;
+}
+
+.composition-layer-row:hover {
+  background: #f3f3f3;
+  color: #111;
+}
+
+.composition-layer-row-active {
+  background: #e8f0ff;
+  color: #0d44d9;
+}
+
+.composition-layer-row-active:hover {
+  background: #dde9ff;
+}
+
+.composition-layer-row-hidden {
+  color: #a1a1aa;
+}
+
+.composition-layer-row-drop-before::before,
+.composition-layer-row-drop-after::after,
+.composition-layer-row-drop-inside::after {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: #111;
+  content: "";
+  pointer-events: none;
+}
+
+.composition-layer-row-drop-before::before {
+  top: -2px;
+}
+
+.composition-layer-row-drop-after::after,
+.composition-layer-row-drop-inside::after {
+  bottom: -2px;
+}
+
+.composition-layer-collapse,
+.composition-layer-collapse-spacer {
+  display: grid;
+  width: 18px;
+  height: 22px;
+  place-items: center;
+}
+
+.composition-layer-collapse {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.composition-layer-collapse:hover {
+  background: #e8e8e5;
+  color: #111;
+}
+
+.composition-layer-main {
+  display: grid;
+  min-width: 0;
+  height: 100%;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0 3px;
+  text-align: left;
+}
+
+.composition-layer-main-editing {
+  padding-right: 2px;
+}
+
+.composition-layer-row-icon {
+  display: grid;
+  place-items: center;
+}
+
+.composition-layer-row-label {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composition-layer-rename-input {
+  min-width: 0;
+  width: 100%;
+  height: 22px;
+  border: 1px solid #0d44d9;
+  border-radius: 3px;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 16px;
+  outline: none;
+  padding: 0 4px;
+}
+
+.composition-layer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.composition-layer-row:hover .composition-layer-action,
+.composition-layer-row-active .composition-layer-action,
+.composition-layer-action-persistent {
+  opacity: 1;
+}
+
+.composition-layer-action {
+  display: grid;
+  width: 20px;
+  height: 22px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.composition-layer-action:hover {
+  background: #e8e8e5;
+  color: #111;
+}

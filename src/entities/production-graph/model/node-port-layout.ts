@@ -9,7 +9,12 @@ import type {
   SketchNodeData,
 } from './types';
 
+const PORT_CONTAINER_HALF_HEIGHT = 12;
+
 export function getPortTop(node: ProductionNode, side: 'input' | 'output', index: number) {
+  if (node.type === 'router') return Math.max(0, node.size.height / 2 - PORT_CONTAINER_HALF_HEIGHT);
+  if (node.type === 'composition' && side === 'input') return 138 + index * 39;
+  if (node.type === 'composition' && side === 'output') return 168;
   if (node.type === 'referenceComposer' && side === 'input') return 304 + index * 38;
   if (node.type === 'generateImage' && side === 'input') return 610 + index * 39;
   if (node.type === 'generateImage' && side === 'output') return 127;

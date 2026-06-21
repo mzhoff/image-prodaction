@@ -32,7 +32,6 @@ export interface ConnectionDropOnEmpty {
 }
 
 interface UseConnectionDraftParams {
-  compactDynamicInputSlots: (nodeId: string) => void;
   connect: (sourceNodeId: string, sourcePortId: string, targetNodeId: string, targetPortId: string, options?: ConnectOptions) => { ok: true } | { ok: false; reason: string };
   deleteEdge: (edgeId: string, options?: DeleteEdgeOptions) => void;
   edges: GraphEdge[];
@@ -44,7 +43,6 @@ interface UseConnectionDraftParams {
 }
 
 export function useConnectionDraft({
-  compactDynamicInputSlots,
   connect,
   deleteEdge,
   edges,
@@ -105,7 +103,6 @@ export function useConnectionDraft({
 
     event.preventDefault();
     event.stopPropagation();
-    if (detachedEdge) deleteEdge(detachedEdge.id, { preserveDynamicInputSlots: true });
     setConnectionDraft(draft);
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
@@ -129,7 +126,7 @@ export function useConnectionDraft({
       if (!dropResult) {
         const worldPoint = screenToWorld(upEvent);
         if (draft.detached && draft.targetNodeId) {
-          compactDynamicInputSlots(draft.targetNodeId);
+          if (draft.detachedEdge) deleteEdge(draft.detachedEdge.id, { preserveDynamicInputSlots: false });
         }
         if (worldPoint && onDropOnEmpty && !draft.detached) {
           setConnectionDraft((draft) => (draft ? { ...draft, current: worldPoint } : draft));
@@ -150,14 +147,13 @@ export function useConnectionDraft({
       }
       setConnectionDraft(null);
       if (!dropResult.ok) {
-        if (draft.detached && draft.targetNodeId) compactDynamicInputSlots(draft.targetNodeId);
         onConnectionError?.(dropResult.reason);
       }
     };
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
-  }, [compactDynamicInputSlots, connect, deleteEdge, edges, measuredPortPoints, nodesById, onConnectionError, onDropOnEmpty, screenToWorld]);
+  }, [connect, deleteEdge, edges, measuredPortPoints, nodesById, onConnectionError, onDropOnEmpty, screenToWorld]);
 
   return { clearConnectionDraft: () => setConnectionDraft(null), connectionDraft, startConnection };
 }

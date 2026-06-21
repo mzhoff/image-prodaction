@@ -1,0 +1,53 @@
+.composition-fill-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px 28px 28px;
+  align-items: center;
+  gap: 8px;
+}
+
+.composition-fill-color {
+  display: grid;
+  min-width: 0;
+  height: 28px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-radius: 5px;
+  background: #f3f3f3;
+  padding: 0 8px;
+  color: #111;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+}
+
+.composition-fill-color input {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.composition-fill-color span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composition-fill-opacity {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0 7px;
+}
+
+.composition-fill-icon-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #111;
+}

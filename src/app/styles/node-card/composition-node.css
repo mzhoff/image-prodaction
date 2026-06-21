@@ -1,0 +1,223 @@
+.production-node-composition {
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+.composition-node-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.composition-settings-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.composition-settings-row label,
+.composition-number-control,
+.composition-color-control,
+.composition-control-row {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  color: #8aa0a5;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.composition-settings-row input,
+.composition-number-control input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f3f3;
+  color: #4b5563;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 650;
+  outline: none;
+}
+
+.composition-settings-row .dark-select-trigger {
+  width: 100%;
+}
+
+.composition-preview {
+  --composition-frame-accent: #2f5bff;
+  --composition-frame-dark: rgba(13, 20, 38, 0.72);
+  --composition-frame-light: rgba(255, 255, 255, 0.94);
+  --composition-outside-veil: rgba(246, 246, 244, 0.72);
+  position: relative;
+  overflow: hidden;
+  border-radius: 9px;
+  background-color: #eee;
+  background-image:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.08) 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+  container-type: inline-size;
+}
+
+.composition-preview::before {
+  pointer-events: none;
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  box-shadow: 0 0 0 100vmax var(--composition-outside-veil);
+  content: "";
+}
+
+.composition-preview-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #c7c7c1;
+}
+
+.composition-preview-layer {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0;
+  transform-origin: center;
+}
+
+.composition-preview-layer-hovered {
+  border-color: transparent;
+}
+
+.composition-preview-layer-selected-underlay {
+  border-color: transparent;
+}
+
+.composition-preview-layer-label {
+  position: absolute;
+  z-index: 3;
+  left: -1px;
+  top: -18px;
+  color: #eaff9c;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 14px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.composition-preview-layer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+.composition-preview-text {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  line-height: 1.2;
+  white-space: pre-wrap;
+}
+
+.composition-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
+  gap: 8px;
+}
+
+.composition-add-layer-button,
+.composition-open-editor-button,
+.composition-render-button {
+  min-height: 34px;
+}
+
+.composition-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.2fr);
+  gap: 10px;
+}
+
+.composition-layer-list,
+.composition-layer-controls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.composition-layer-list > strong,
+.composition-layer-controls > strong,
+.composition-result > span {
+  color: #111;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 16px;
+}
+
+.composition-layer-item {
+  display: flex;
+  min-width: 0;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 7px;
+  background: #f3f3f3;
+  color: #4b5563;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.composition-layer-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composition-layer-item-active {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.composition-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.composition-color-control input {
+  width: 100%;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f3f3;
+  padding: 3px 6px;
+}
+
+.composition-result {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.composition-result .image-plate {
+  max-height: 180px;
+}
+
+.composition-message {
+  margin-top: 0;
+}

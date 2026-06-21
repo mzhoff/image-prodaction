@@ -145,6 +145,25 @@ const exportImageTarget: ProductionNode = {
   },
 } as ProductionNode;
 
+const compositionTarget: ProductionNode = {
+  id: 'composition-target',
+  type: 'composition',
+  position: { x: 180, y: 0 },
+  size: { width: 320, height: 430 },
+  status: 'success',
+  data: {
+    title: 'Composition target',
+    aspectRatio: '1:1',
+    canvasHeight: 1080,
+    canvasWidth: 1080,
+    layerInputCount: 2,
+    layers: [],
+    resultAssetId: 'composition-result',
+    resultSignature: 'old-signature',
+    size: '1K',
+  },
+} as ProductionNode;
+
 const telegramTarget: ProductionNode = {
   id: 'telegram-target',
   type: 'telegramPublication',
@@ -346,6 +365,206 @@ test('export image delete edge compacts dynamic ports and keeps image inputs ali
   const updatedExportImage = useProductionGraphStore.getState().nodes.find((item) => item.id === 'export-target');
   assert.ok(updatedExportImage);
   assert.equal((updatedExportImage.data as { imageInputCount?: number }).imageInputCount, 2);
+});
+
+test('composition invalidates rendered result when image input edge changes', () => {
+  resetState({
+    nodes: [
+      imageSourceA,
+      imageSourceB,
+      compositionTarget,
+    ],
+  });
+
+  const state = useProductionGraphStore.getState();
+  state.connect('image-source-a', 'image', 'composition-target', 'layer-0');
+
+  const afterConnect = useProductionGraphStore.getState().nodes.find((item) => item.id === 'composition-target');
+  assert.ok(afterConnect);
+  assert.equal((afterConnect.data as { resultAssetId?: string; resultSignature?: string }).resultAssetId, undefined);
+  assert.equal((afterConnect.data as { resultAssetId?: string; resultSignature?: string }).resultSignature, undefined);
+
+  useProductionGraphStore.setState((current) => ({
+    nodes: current.nodes.map((node) => (
+      node.id === 'composition-target'
+        ? {
+          ...node,
+          data: {
+            ...node.data,
+            resultAssetId: 'composition-result',
+            resultSignature: 'old-signature',
+          },
+        } as ProductionNode
+        : node
+    )),
+  }));
+
+  const edge = useProductionGraphStore.getState().edges.find((item) => item.targetNodeId === 'composition-target');
+  assert.ok(edge);
+  useProductionGraphStore.getState().deleteEdge(edge.id, { preserveDynamicInputSlots: true });
+
+  const afterDelete = useProductionGraphStore.getState().nodes.find((item) => item.id === 'composition-target');
+  assert.ok(afterDelete);
+  assert.equal((afterDelete.data as { resultAssetId?: string; resultSignature?: string }).resultAssetId, undefined);
+  assert.equal((afterDelete.data as { resultAssetId?: string; resultSignature?: string }).resultSignature, undefined);
+});
+
+test('composition clears linked layer content on external edge delete', () => {
+  resetState({
+    nodes: [
+      textSourceA,
+      {
+        ...compositionTarget,
+        data: {
+          ...compositionTarget.data,
+          layers: [
+            {
+              id: 'layer-0',
+              text: 'Stale linked text',
+            },
+          ],
+        },
+      } as ProductionNode,
+    ],
+  });
+
+  const state = useProductionGraphStore.getState();
+  state.connect('text-source-a', 'text', 'composition-target', 'layer-0');
+  const edge = useProductionGraphStore.getState().edges.find((item) => item.targetNodeId === 'composition-target');
+  assert.ok(edge);
+
+  useProductionGraphStore.getState().deleteEdge(edge.id, { preserveDynamicInputSlots: true });
+
+  const afterDelete = useProductionGraphStore.getState().nodes.find((item) => item.id === 'composition-target');
+  assert.ok(afterDelete);
+  const layer = (afterDelete.data as { layers?: Array<{ id: string; text?: string; assetId?: string }> }).layers?.find((item) => item.id === 'layer-0');
+  assert.equal(layer?.text, undefined);
+  assert.equal(layer?.assetId, undefined);
+});
+
+test('composition keeps layer content when local detach requests preservation', () => {
+  resetState({
+    nodes: [
+      textSourceA,
+      {
+        ...compositionTarget,
+        data: {
+          ...compositionTarget.data,
+          layers: [
+            {
+              id: 'layer-0',
+              text: 'Local copy',
+            },
+          ],
+        },
+      } as ProductionNode,
+    ],
+  });
+
+  const state = useProductionGraphStore.getState();
+  state.connect('text-source-a', 'text', 'composition-target', 'layer-0');
+  const edge = useProductionGraphStore.getState().edges.find((item) => item.targetNodeId === 'composition-target');
+  assert.ok(edge);
+
+  useProductionGraphStore.getState().deleteEdge(edge.id, {
+    preserveCompositionLayerContent: true,
+    preserveDynamicInputSlots: true,
+  });
+
+  const afterDelete = useProductionGraphStore.getState().nodes.find((item) => item.id === 'composition-target');
+  assert.ok(afterDelete);
+  const layer = (afterDelete.data as { layers?: Array<{ id: string; text?: string }> }).layers?.find((item) => item.id === 'layer-0');
+  assert.equal(layer?.text, 'Local copy');
+});
+
+test('composition reconnect keeps layer identity with source instead of port', () => {
+  resetState({
+    nodes: [
+      imageSourceA,
+      imageSourceB,
+      {
+        ...compositionTarget,
+        data: {
+          ...compositionTarget.data,
+          layerOrder: ['layer-0', 'layer-1'],
+          layers: [
+            {
+              id: 'layer-0',
+              name: 'Source A layer',
+              x: 120,
+              y: 240,
+            },
+            {
+              id: 'layer-1',
+              name: 'Source B layer',
+              x: 640,
+              y: 720,
+            },
+          ],
+          selectedLayerId: 'layer-0',
+          selectedLayerIds: ['layer-0'],
+        },
+      } as ProductionNode,
+    ],
+  });
+
+  const state = useProductionGraphStore.getState();
+  state.connect('image-source-a', 'image', 'composition-target', 'layer-0');
+  state.connect('image-source-b', 'image', 'composition-target', 'layer-1');
+  useProductionGraphStore.setState((current) => ({
+    nodes: current.nodes.map((node) => (
+      node.id === 'composition-target'
+        ? {
+          ...node,
+          data: {
+            ...node.data,
+            resultAssetId: 'composition-result',
+            resultSignature: 'old-signature',
+          },
+        } as ProductionNode
+        : node
+    )),
+  }));
+  const edgeA = useProductionGraphStore.getState().edges.find((item) => item.sourceNodeId === 'image-source-a');
+  assert.ok(edgeA);
+
+  useProductionGraphStore.getState().connect('image-source-a', 'image', 'composition-target', 'layer-1', {
+    detachedEdge: edgeA,
+  });
+
+  const nextState = useProductionGraphStore.getState();
+  const nextEdgeA = nextState.edges.find((item) => item.sourceNodeId === 'image-source-a');
+  const nextEdgeB = nextState.edges.find((item) => item.sourceNodeId === 'image-source-b');
+  assert.equal(nextEdgeA?.targetPortId, 'layer-1');
+  assert.equal(nextEdgeB?.targetPortId, 'layer-0');
+
+  const composition = nextState.nodes.find((item) => item.id === 'composition-target');
+  assert.ok(composition);
+  const data = composition.data as {
+    layerOrder?: string[];
+    layers?: Array<{ id: string; name?: string; x?: number; y?: number }>;
+    resultAssetId?: string;
+    resultSignature?: string;
+    selectedLayerId?: string;
+    selectedLayerIds?: string[];
+  };
+  assert.equal(data.resultAssetId, 'composition-result');
+  assert.equal(data.resultSignature, 'old-signature');
+  assert.deepEqual(data.layerOrder, ['layer-1', 'layer-0']);
+  assert.deepEqual(data.selectedLayerIds, ['layer-1']);
+  assert.equal(data.selectedLayerId, 'layer-1');
+  assert.deepEqual(data.layers?.find((item) => item.id === 'layer-1'), {
+    id: 'layer-1',
+    name: 'Source A layer',
+    x: 120,
+    y: 240,
+  });
+  assert.deepEqual(data.layers?.find((item) => item.id === 'layer-0'), {
+    id: 'layer-0',
+    name: 'Source B layer',
+    x: 640,
+    y: 720,
+  });
 });
 
 test('telegram publication keeps distinct media ports and does not remap IDs on drag reconnect', () => {

@@ -20,7 +20,7 @@ import { getConnectionErrorMessage } from './graph-store-errors';
 import { withHistory } from './graph-history';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
-import type { GraphEdge, ProductionNode } from './types';
+import type { CompositionNodeData, GraphEdge, ProductionNode, ProductionNodeData } from './types';
 
 export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
@@ -143,17 +143,32 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
       });
       if (limitError) return limitError;
 
-      set((state) => ({
-        ...withHistory(state),
-        ...connectEdgeState(state.nodes, state.edges, {
+      set((state) => {
+        const nextState = connectEdgeState(state.nodes, state.edges, {
           detachedEdge: options?.detachedEdge,
           occupiedSwapEdge,
           sourceNodeId,
           sourcePortId,
           targetNodeId,
           targetPortId,
-        }),
-      }));
+        });
+        const nextNodes = preserveCompositionLayerIdentityOnReconnect(nextState.nodes, {
+          fromPortId: options?.detachedEdge?.targetPortId,
+          nodeId: targetNodeId,
+          toPortId: targetPortId,
+        });
+        const keepCompositionResult = isCompositionLayerIdentityReconnect(state.nodes, {
+          fromNodeId: options?.detachedEdge?.targetNodeId,
+          fromPortId: options?.detachedEdge?.targetPortId,
+          nodeId: targetNodeId,
+          toPortId: targetPortId,
+        });
+        return {
+          ...withHistory(state),
+          edges: nextState.edges,
+          nodes: keepCompositionResult ? nextNodes : invalidateCompositionResult(nextNodes, targetNodeId),
+        };
+      });
       return { ok: true };
     },
     deleteEdge: (edgeId, options) => {
@@ -167,18 +182,98 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
           return {
             ...withHistory(state),
             edges: removedEdges,
-            nodes: state.nodes,
+            nodes: invalidateCompositionResult(state.nodes, edge.targetNodeId, {
+              clearLayerContent: !options?.preserveCompositionLayerContent,
+              targetPortId: edge.targetPortId,
+            }),
           };
         }
 
         const nextState = compactDynamicInputNodeState(state.nodes, removedEdges, edge.targetNodeId);
         return {
           ...withHistory(state),
-          ...nextState,
+          edges: nextState.edges,
+          nodes: invalidateCompositionResult(nextState.nodes, edge.targetNodeId, {
+            clearLayerContent: !options?.preserveCompositionLayerContent,
+            targetPortId: edge.targetPortId,
+          }),
         };
       });
     },
   };
+}
+
+function invalidateCompositionResult(
+  nodes: ProductionNode[],
+  nodeId: string,
+  options: { clearLayerContent?: boolean; targetPortId?: string } = {},
+) {
+  return nodes.map((node) => {
+    if (node.id !== nodeId || node.type !== 'composition') return node;
+    const data = node.data as CompositionNodeData;
+    const layers = options.clearLayerContent && options.targetPortId
+      ? data.layers?.map((layer) => (
+        layer.id === options.targetPortId
+          ? {
+            ...layer,
+            assetId: undefined,
+            text: undefined,
+          }
+          : layer
+      ))
+      : data.layers;
+    return {
+      ...node,
+      data: {
+        ...data,
+        layers,
+        resultAssetId: undefined,
+        resultSignature: undefined,
+      } as ProductionNodeData,
+    };
+  });
+}
+
+function preserveCompositionLayerIdentityOnReconnect(
+  nodes: ProductionNode[],
+  params: { fromPortId?: string; nodeId: string; toPortId: string },
+) {
+  if (!params.fromPortId || params.fromPortId === params.toPortId) return nodes;
+  return nodes.map((node) => {
+    if (node.id !== params.nodeId || node.type !== 'composition') return node;
+    const data = node.data as CompositionNodeData;
+    const swapLayerId = (layerId: string) => {
+      if (layerId === params.fromPortId) return params.toPortId;
+      if (layerId === params.toPortId) return params.fromPortId;
+      return layerId;
+    };
+    return {
+      ...node,
+      data: {
+        ...data,
+        groups: data.groups?.map((group) => ({
+          ...group,
+          itemIds: group.itemIds?.map(swapLayerId),
+          layerIds: group.layerIds.map(swapLayerId),
+        })),
+        layerOrder: data.layerOrder?.map(swapLayerId),
+        layers: data.layers?.map((layer) => ({
+          ...layer,
+          id: swapLayerId(layer.id),
+        })),
+        selectedLayerId: data.selectedLayerId ? swapLayerId(data.selectedLayerId) : undefined,
+        selectedLayerIds: data.selectedLayerIds?.map(swapLayerId),
+      } as ProductionNodeData,
+    };
+  });
+}
+
+function isCompositionLayerIdentityReconnect(
+  nodes: ProductionNode[],
+  params: { fromNodeId?: string; fromPortId?: string; nodeId: string; toPortId: string },
+) {
+  if (!params.fromPortId || params.fromPortId === params.toPortId || params.fromNodeId !== params.nodeId) return false;
+  return nodes.some((node) => node.id === params.nodeId && node.type === 'composition');
 }
 
 function nextStateNodesWithMediaOrder(

@@ -11,11 +11,13 @@ export function createGraphNodeActions(set: StoreSet): Pick<
   | 'addAsset'
   | 'addNode'
   | 'assignAssetToNode'
+  | 'assignBannerAssetToNode'
   | 'clearNodeGenerations'
   | 'duplicateNode'
   | 'pasteImageAsset'
   | 'renameNode'
   | 'resizeNode'
+  | 'resizeNodeFrame'
   | 'setNodeStatus'
   | 'toggleNodeLock'
   | 'updateNodeData'
@@ -55,6 +57,31 @@ export function createGraphNodeActions(set: StoreSet): Pick<
           return node;
         }),
       }));
+    },
+    assignBannerAssetToNode: (nodeId, asset) => {
+      set((state) => {
+        const targetNode = state.nodes.find((node) => node.id === nodeId && node.type === 'banner');
+        if (!targetNode) return {};
+        const nextAssets = state.assets.some((item) => item.id === asset.id) ? state.assets : [...state.assets, asset];
+        const aspectRatio = asset.width && asset.height ? asset.width / asset.height : targetNode.size.width / targetNode.size.height;
+        const nextWidth = Math.min(Math.max(asset.width ?? targetNode.size.width, 120), 920);
+        const nextHeight = Math.min(Math.max(Math.round(nextWidth / Math.max(aspectRatio, 0.1)), 48), 520);
+        return {
+          ...withHistory(state),
+          assets: nextAssets,
+          nodes: state.nodes.map((node) => (
+            node.id === targetNode.id
+              ? {
+                ...node,
+                size: { width: Math.round(nextWidth), height: nextHeight },
+                data: { ...node.data, assetId: asset.id, message: '' } as ProductionNodeData,
+              }
+              : node
+          )),
+          selectedNodeIds: [targetNode.id],
+          selectedSectionIds: [],
+        };
+      });
     },
     clearNodeGenerations: (nodeId) => {
       set((state) => {
@@ -143,6 +170,20 @@ export function createGraphNodeActions(set: StoreSet): Pick<
           nodes: state.nodes.map((item) => (
             item.id === nodeId
               ? { ...item, size: { ...item.size, ...size } }
+              : item
+          )),
+        };
+      });
+    },
+    resizeNodeFrame: (nodeId, frame) => {
+      set((state) => {
+        const node = state.nodes.find((item) => item.id === nodeId);
+        if (!node || node.locked) return {};
+        return {
+          ...withHistory(state),
+          nodes: state.nodes.map((item) => (
+            item.id === nodeId
+              ? { ...item, position: frame.position, size: frame.size }
               : item
           )),
         };

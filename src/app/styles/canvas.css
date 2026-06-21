@@ -60,6 +60,18 @@
   stroke: #2aabee;
 }
 
+.edge-path-video {
+  stroke: #f97316;
+}
+
+.edge-path-audio {
+  stroke: #22c55e;
+}
+
+.edge-path-empty-kind {
+  stroke: #9ca3af;
+}
+
 .edge-path-empty {
   stroke-dasharray: 8 7;
 }

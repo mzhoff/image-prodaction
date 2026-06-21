@@ -1,0 +1,79 @@
+.composition-align-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 34px;
+}
+
+.composition-align-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.composition-align-grid button {
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: #f3f3f3;
+  color: #111;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.composition-align-grid button:disabled {
+  color: #6b7280;
+  opacity: 0.55;
+}
+
+.composition-inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 0;
+  margin-right: -18px;
+  margin-left: -18px;
+  border-top: 1px solid #dedede;
+  background: #fff;
+  color: #111;
+  padding: 14px 16px 16px;
+}
+
+.composition-layer-controls {
+  gap: 0;
+  padding-top: 44px;
+}
+
+.composition-inspector-section + .composition-inspector-section {
+  margin-top: 0;
+}
+
+.composition-inspector-section-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.composition-inspector-section-title strong {
+  color: #111;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 16px;
+}
+
+.composition-inspector-drag-icon,
+.composition-fill-title-actions {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, 4px);
+  gap: 3px;
+  color: #111;
+}
+
+.composition-fill-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}

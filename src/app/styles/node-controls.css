@@ -656,12 +656,12 @@
   z-index: 10020;
   max-height: 240px;
   overflow-y: auto;
-  border: 1px solid #374151;
+  border: 1px solid #dfdfdc;
   border-radius: 12px;
-  background: #111827;
-  color: #e5e7eb;
+  background: #fff;
+  color: #111;
   padding: 6px;
-  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 22px 54px rgba(17, 24, 39, 0.16);
 }
 
 .dark-select-item {
@@ -674,7 +674,7 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: #d1d5db;
+  color: #4b5563;
   padding: 7px 10px;
   text-align: left;
   font-size: 12px;
@@ -684,14 +684,14 @@
 
 .dark-select-item:hover,
 .dark-select-item:focus {
-  background: #1f2937;
-  color: #fff;
+  background: #f1f1ef;
+  color: #111;
   outline: none;
 }
 
 .dark-select-item-selected {
-  background: #2563eb;
-  color: #fff;
+  background: #e8f0ff;
+  color: #0d44d9;
 }
 
 .node-port {
@@ -775,6 +775,18 @@
 
 .node-port-data-publication {
   --port-color: #2aabee;
+}
+
+.node-port-data-video {
+  --port-color: #f97316;
+}
+
+.node-port-data-audio {
+  --port-color: #22c55e;
+}
+
+.node-port-data-empty {
+  --port-color: #9ca3af;
 }
 
 .node-port-connected::after {

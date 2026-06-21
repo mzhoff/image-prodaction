@@ -1,4 +1,4 @@
-import { Archive, BriefcaseBusiness, Clapperboard, Crop, Download, Eye, FileText, Fingerprint, ImagePlus, Images, Library, MapPin, MessageCircle, Newspaper, Paintbrush, PanelsTopLeft, Repeat2, Scissors, Send, SlidersHorizontal, Sparkles, SquarePlay, TextCursorInput, Volume2, WandSparkles } from 'lucide-react';
+import { Archive, BriefcaseBusiness, Clapperboard, Crop, Download, Eye, FileText, Fingerprint, ImagePlus, Images, Layers, Library, MapPin, MessageCircle, Newspaper, Paintbrush, PanelsTopLeft, Repeat2, Route, Scissors, Send, SlidersHorizontal, Sparkles, SquarePlay, StickyNote, TextCursorInput, Volume2, WandSparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
@@ -13,11 +13,13 @@ const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   textToSpeech: <Volume2 size={14} />,
   textFormatter: <TextCursorInput size={14} />,
   textSplitter: <TextCursorInput size={14} />,
+  router: <Route size={14} />,
   iterator: <Repeat2 size={14} />,
   subjectBuilder: <Fingerprint size={14} />,
   locationBuilder: <MapPin size={14} />,
   telegramPublication: <Send size={14} />,
   referenceComposer: <Sparkles size={14} />,
+  composition: <Layers size={14} />,
   generateImage: <Sparkles size={14} />,
   sketch: <Paintbrush size={14} />,
   cropImage: <Crop size={14} />,
@@ -27,6 +29,7 @@ const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   refineImage: <WandSparkles size={14} />,
   removeBackground: <Scissors size={14} />,
   exportImage: <Download size={14} />,
+  banner: <PanelsTopLeft size={14} />,
   preview: <Eye size={14} />,
 };
 
@@ -65,7 +68,7 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     id: 'general',
     label: 'Tools',
     icon: <Archive size={14} />,
-    types: ['importImage', 'iterator', 'exportImage', 'preview'],
+    types: ['importImage', 'router', 'iterator', 'exportImage', 'preview'],
   },
   {
     id: 'text',
@@ -77,7 +80,7 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     id: 'image',
     label: 'Image',
     icon: <Images size={14} />,
-    types: ['generateImage', 'imageToText', 'sketch', 'cropImage', 'adjustment', 'curves', 'frequencyRetouch', 'refineImage', 'removeBackground'],
+    types: ['generateImage', 'composition', 'imageToText', 'sketch', 'cropImage', 'adjustment', 'curves', 'frequencyRetouch', 'refineImage', 'removeBackground'],
   },
   {
     id: 'sound',
@@ -96,6 +99,12 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     label: 'Publication',
     icon: <Send size={14} />,
     types: [],
+  },
+  {
+    id: 'collaboration',
+    label: 'Collaboration',
+    icon: <PanelsTopLeft size={14} />,
+    types: ['banner'],
   },
   {
     id: 'library',
@@ -118,6 +127,10 @@ function disabledPublicationItem(id: string, label: string, icon?: ReactNode): A
 }
 
 function disabledVideoItem(id: string, label: string, icon?: ReactNode): AddNodeMenuDisabledItem {
+  return { id, label, icon, disabled: true };
+}
+
+function disabledCollaborationItem(id: string, label: string, icon?: ReactNode): AddNodeMenuDisabledItem {
   return { id, label, icon, disabled: true };
 }
 
@@ -210,13 +223,21 @@ const publicationMenuItems: AddNodeMenuEntry[] = [
   },
 ];
 
+const collaborationMenuItems: AddNodeMenuEntry[] = [
+  createNodeMenuItem('banner'),
+  disabledCollaborationItem('sticky-note', 'Sticky note', <StickyNote size={14} />),
+  disabledCollaborationItem('comment', 'Comment', <MessageCircle size={14} />),
+];
+
 export const addNodeMenuGroups: AddNodeMenuGroup[] = addNodeTypesByGroup.map((group) => ({
   ...group,
   items: group.id === 'publication'
     ? publicationMenuItems
     : group.id === 'video'
       ? videoMenuItems
-      : group.types.map(createNodeMenuItem),
+      : group.id === 'collaboration'
+        ? collaborationMenuItems
+        : group.types.map(createNodeMenuItem),
 }));
 
 export const addNodeMenu: AddNodeMenuItem[] = addNodeMenuGroups.flatMap((group) => getEnabledNodeMenuItems(group.items));

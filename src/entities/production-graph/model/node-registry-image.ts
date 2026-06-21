@@ -63,6 +63,26 @@ export const imageNodeDefinitions = {
       slots: productionLayers.map((layer) => ({ id: layer.id, label: layer.label })),
     }),
   },
+  composition: {
+    type: 'composition',
+    title: 'Composition',
+    menuLabel: 'Composition',
+    defaultHeight: 560,
+    ports: [
+      { id: 'layer-0', label: 'Layer 1', kind: 'any', side: 'input' },
+      { id: 'layer-1', label: 'Layer 2', kind: 'any', side: 'input' },
+      { id: 'image', label: 'Image', kind: 'image', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Composition',
+      aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
+      canvasWidth: 1080,
+      canvasHeight: 1080,
+      layerInputCount: 2,
+      layers: [],
+      size: '1K',
+    }),
+  },
   generateImage: {
     type: 'generateImage',
     title: 'Generate Image',
@@ -208,6 +228,14 @@ export const imageNodeDefinitions = {
       background: 'transparent',
     }),
   },
+  banner: {
+    type: 'banner',
+    title: 'Banner',
+    menuLabel: 'Banner',
+    defaultHeight: 160,
+    ports: [],
+    createData: () => ({ title: 'Banner' }),
+  },
   preview: {
     type: 'preview',
     title: 'Preview',
@@ -220,6 +248,7 @@ export const imageNodeDefinitions = {
   | 'importImage'
   | 'imageToText'
   | 'referenceComposer'
+  | 'composition'
   | 'generateImage'
   | 'sketch'
   | 'cropImage'
@@ -229,5 +258,6 @@ export const imageNodeDefinitions = {
   | 'refineImage'
   | 'removeBackground'
   | 'exportImage'
+  | 'banner'
   | 'preview'
 >;

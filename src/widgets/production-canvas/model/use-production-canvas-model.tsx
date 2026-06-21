@@ -204,7 +204,6 @@ export function useProductionCanvasModel() {
   }, [contextMenu, createNode, graph, showToast]);
 
   const { clearConnectionDraft, connectionDraft, startConnection } = useConnectionDraft({
-    compactDynamicInputSlots: graph.compactDynamicInputSlots,
     connect: graph.connect,
     deleteEdge: graph.deleteEdge,
     edges: graph.edges,
@@ -354,7 +353,7 @@ export function useProductionCanvasModel() {
       },
     ] : [];
 
-    return [
+    const baseActions: ContextMenuAction[] = [
       {
         id: 'ask-ai-node',
         label: 'Ask AI',
@@ -379,6 +378,13 @@ export function useProductionCanvasModel() {
         icon: node.locked ? <Unlock size={14} /> : <Lock size={14} />,
         onSelect: () => graph.toggleNodeLock(node.id),
       },
+    ];
+    const bannerActions = node.type === 'banner'
+      ? baseActions.filter((action) => action.id !== 'ask-ai-node' && action.id !== 'rename-node')
+      : baseActions;
+
+    return [
+      ...bannerActions,
       ...imageActions,
       ...generationActions,
       {

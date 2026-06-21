@@ -1,4 +1,4 @@
-import type { GraphPort, ProductionNode, ProductionNodeType, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
+import type { CompositionNodeData, GraphPort, ProductionNode, ProductionNodeType, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
 import { NODE_DEFINITIONS } from './node-registry';
 export { isNodeCollapsible } from './node-registry';
 
@@ -10,12 +10,14 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   textToSpeech: NODE_DEFINITIONS.textToSpeech.ports,
   textFormatter: NODE_DEFINITIONS.textFormatter.ports,
   textSplitter: NODE_DEFINITIONS.textSplitter.ports,
+  router: NODE_DEFINITIONS.router.ports,
   iterator: NODE_DEFINITIONS.iterator.ports,
   subjectBuilder: NODE_DEFINITIONS.subjectBuilder.ports,
   locationBuilder: NODE_DEFINITIONS.locationBuilder.ports,
   telegramPublication: NODE_DEFINITIONS.telegramPublication.ports,
   imageToText: NODE_DEFINITIONS.imageToText.ports,
   referenceComposer: NODE_DEFINITIONS.referenceComposer.ports,
+  composition: NODE_DEFINITIONS.composition.ports,
   generateImage: NODE_DEFINITIONS.generateImage.ports,
   sketch: NODE_DEFINITIONS.sketch.ports,
   cropImage: NODE_DEFINITIONS.cropImage.ports,
@@ -25,6 +27,7 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   refineImage: NODE_DEFINITIONS.refineImage.ports,
   removeBackground: NODE_DEFINITIONS.removeBackground.ports,
   exportImage: NODE_DEFINITIONS.exportImage.ports,
+  banner: NODE_DEFINITIONS.banner.ports,
   preview: NODE_DEFINITIONS.preview.ports,
 };
 
@@ -33,6 +36,7 @@ export function getNodePorts(node: ProductionNode) {
   if (node.type === 'textConcat') return getTextConcatPorts(node);
   if (node.type === 'textSplitter') return getTextSplitterPorts(node);
   if (node.type === 'telegramPublication') return getTelegramPublicationPorts(node);
+  if (node.type === 'composition') return getCompositionPorts(node);
   if (node.type === 'exportImage') return getExportImagePorts(node);
   return NODE_PORTS[node.type];
 }
@@ -48,6 +52,7 @@ export function canConnectPorts(source: ProductionNode, sourcePortId: string, ta
   const targetPort = getPortById(target, targetPortId);
   if (!sourcePort || !targetPort) return false;
   if (sourcePort.side !== 'output' || targetPort.side !== 'input') return false;
+  if (sourcePort.kind === 'any' || targetPort.kind === 'any') return true;
   if (targetPort.kind === 'reference') {
     if (sourcePort.kind === 'subject') return targetPort.id === 'actors';
     if (sourcePort.kind === 'location') return targetPort.id === 'background';
@@ -62,6 +67,9 @@ export const TEXT_CONCAT_PORT_PREFIX = 'text-';
 export const EXPORT_IMAGE_MAX_INPUTS = 10;
 export const EXPORT_IMAGE_MIN_INPUTS = 1;
 export const EXPORT_IMAGE_PORT_PREFIX = 'image-';
+export const COMPOSITION_LAYER_MAX_INPUTS = 12;
+export const COMPOSITION_LAYER_MIN_INPUTS = 2;
+export const COMPOSITION_LAYER_PORT_PREFIX = 'layer-';
 export const TEXT_PROMPT_VARIABLE_MAX_INPUTS = 10;
 export const TEXT_PROMPT_VARIABLE_PORT_PREFIX = 'variable-';
 export const TELEGRAM_MEDIA_MAX_INPUTS = 10;
@@ -114,10 +122,28 @@ export function getExportImageInputPortId(index: number) {
   return `${EXPORT_IMAGE_PORT_PREFIX}${index}`;
 }
 
+export function getCompositionLayerPortId(index: number) {
+  return `${COMPOSITION_LAYER_PORT_PREFIX}${index}`;
+}
+
+export function getCompositionLayerPortIndex(portId: string) {
+  if (!portId.startsWith(COMPOSITION_LAYER_PORT_PREFIX)) return -1;
+  const index = Number(portId.slice(COMPOSITION_LAYER_PORT_PREFIX.length));
+  return Number.isInteger(index) && index >= 0 ? index : -1;
+}
+
 export function getExportImageInputPortIndex(portId: string) {
   if (!portId.startsWith(EXPORT_IMAGE_PORT_PREFIX)) return -1;
   const index = Number(portId.slice(EXPORT_IMAGE_PORT_PREFIX.length));
   return Number.isInteger(index) && index >= 0 ? index : -1;
+}
+
+export function getCompositionLayerInputCount(node: ProductionNode) {
+  const data = node.data as CompositionNodeData;
+  return Math.max(
+    COMPOSITION_LAYER_MIN_INPUTS,
+    Math.min(COMPOSITION_LAYER_MAX_INPUTS, Math.floor(Number(data.layerInputCount) || COMPOSITION_LAYER_MIN_INPUTS)),
+  );
 }
 
 export function getTextConcatInputCount(node: ProductionNode) {
@@ -170,6 +196,19 @@ export function getExportImageInputCount(node: ProductionNode) {
     EXPORT_IMAGE_MIN_INPUTS,
     Math.min(EXPORT_IMAGE_MAX_INPUTS, Math.floor(Number(data.imageInputCount) || EXPORT_IMAGE_MIN_INPUTS)),
   );
+}
+
+function getCompositionPorts(node: ProductionNode): GraphPort[] {
+  const inputCount = getCompositionLayerInputCount(node);
+  return [
+    ...Array.from({ length: inputCount }, (_, index) => ({
+      id: getCompositionLayerPortId(index),
+      label: `Layer ${index + 1}`,
+      kind: 'any' as const,
+      side: 'input' as const,
+    })),
+    { id: 'image', label: 'Image', kind: 'image' as const, side: 'output' as const },
+  ];
 }
 
 function getTelegramPublicationPorts(node: ProductionNode): GraphPort[] {

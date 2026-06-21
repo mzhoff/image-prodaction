@@ -42,6 +42,91 @@ export interface GenerationResultMetadata {
   size?: string;
 }
 
+export type CompositionLayerFit = 'fit' | 'fill' | 'stretch';
+export type CompositionLayerKind = 'image' | 'text';
+export type CompositionLayerBlendMode =
+  | 'pass-through'
+  | 'normal'
+  | 'darken'
+  | 'multiply'
+  | 'plus-darker'
+  | 'color-burn'
+  | 'lighten'
+  | 'screen'
+  | 'plus-lighter'
+  | 'color-dodge'
+  | 'overlay'
+  | 'soft-light'
+  | 'hard-light'
+  | 'difference'
+  | 'exclusion'
+  | 'hue'
+  | 'saturation'
+  | 'color'
+  | 'luminosity';
+export type CompositionLayerSizingMode = 'auto-width' | 'auto-height' | 'fixed';
+export type CompositionTextAlign = 'left' | 'center' | 'right';
+export type CompositionTextVerticalAlign = 'top' | 'center' | 'bottom';
+
+export interface CompositionLayerStyle {
+  align?: CompositionTextAlign;
+  assetId?: string;
+  blendMode?: CompositionLayerBlendMode;
+  color?: string;
+  fit?: CompositionLayerFit;
+  flipX?: boolean;
+  flipY?: boolean;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: '400' | '500' | '600' | '700' | '800';
+  groupId?: string;
+  height?: number;
+  id: string;
+  kind?: CompositionLayerKind;
+  letterSpacing?: number;
+  lineHeight?: number;
+  locked?: boolean;
+  name?: string;
+  opacity?: number;
+  preserveAspectRatio?: boolean;
+  rotation?: number;
+  sizingMode?: CompositionLayerSizingMode;
+  text?: string;
+  verticalAlign?: CompositionTextVerticalAlign;
+  visible?: boolean;
+  width?: number;
+  x?: number;
+  y?: number;
+}
+
+export interface CompositionLayerGroup {
+  collapsed?: boolean;
+  groupIds?: string[];
+  id: string;
+  itemIds?: string[];
+  layerIds: string[];
+  locked?: boolean;
+  name: string;
+  visible?: boolean;
+}
+
+export interface CompositionNodeData extends BaseNodeData {
+  aspectRatio: string;
+  canvasHeight: number;
+  canvasWidth: number;
+  groups?: CompositionLayerGroup[];
+  layerInputCount?: number;
+  layerOrder?: string[];
+  layers?: CompositionLayerStyle[];
+  message?: string;
+  selectedGroupId?: string;
+  resultAssetId?: string;
+  resultSignature?: string;
+  selectedLayerId?: string;
+  selectedLayerIds?: string[];
+  size?: string;
+}
+
 export interface GenerateImageNodeData extends BaseNodeData {
   model: string;
   aspectRatio: string;
@@ -129,6 +214,11 @@ export interface TextToSpeechNodeData extends BaseNodeData {
   temperature?: number;
   topP?: number;
   voice: string;
+}
+
+export interface RouterNodeData extends BaseNodeData {
+  inputLabel?: string;
+  outputLabel?: string;
 }
 
 export interface TextFormatterNodeData extends BaseNodeData {
@@ -361,6 +451,11 @@ export interface PreviewNodeData extends BaseNodeData {
   assetId?: string;
 }
 
+export interface BannerNodeData extends BaseNodeData {
+  assetId?: string;
+  message?: string;
+}
+
 export type ExportImageFormat = 'png' | 'jpeg' | 'webp';
 export type ExportImageScale = '1' | '0.75' | '0.5' | '0.25';
 export type ExportImageBackground = 'transparent' | 'white' | 'black';
@@ -377,6 +472,7 @@ export type ProductionNodeData =
   | ImportImageNodeData
   | ImageToTextNodeData
   | ReferenceComposerNodeData
+  | CompositionNodeData
   | GenerateImageNodeData
   | TextPromptNodeData
   | TextConcatNodeData
@@ -385,6 +481,7 @@ export type ProductionNodeData =
   | TextFormatterNodeData
   | TextSplitterNodeData
   | IteratorNodeData
+  | RouterNodeData
   | SubjectBuilderNodeData
   | LocationBuilderNodeData
   | TelegramPublicationNodeData
@@ -396,4 +493,5 @@ export type ProductionNodeData =
   | RefineImageNodeData
   | RemoveBackgroundNodeData
   | ExportImageNodeData
+  | BannerNodeData
   | PreviewNodeData;

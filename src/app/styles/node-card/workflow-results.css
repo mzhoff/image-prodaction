@@ -1,0 +1,122 @@
+.production-node-text-workflow .node-title {
+  width: 100%;
+  height: 32px;
+  flex: 0 0 auto;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 16px;
+  color: #c0c0c0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: normal;
+}
+
+.production-node-text-workflow .node-title-main {
+  flex: 1 1 auto;
+  gap: 10px;
+}
+
+.production-node-text-workflow .node-title-main svg,
+.production-node-text-workflow .node-title-action svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.production-node-text-workflow .node-title-action {
+  width: 22px;
+  height: 22px;
+  color: #c0c0c0;
+}
+
+.production-node-text-workflow .node-title-action:hover {
+  background: #f1f1ef;
+  color: #777;
+}
+
+.node-result-port-anchor {
+  position: relative;
+}
+
+.text-section-filter-tags,
+.extract-layer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 2px 6px;
+}
+
+.text-section-filter-tag,
+.extract-layer-tag {
+  border: 0;
+  border-radius: 7px;
+  background: #e1edff;
+  color: #0d44d9;
+  padding: 3px 7px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 13px;
+  cursor: pointer;
+}
+
+.text-section-filter-tag:hover,
+.extract-layer-tag:hover {
+  background: #d5e5ff;
+}
+
+.text-section-filter-tag-muted,
+.extract-layer-tag-muted {
+  background: #f1f1ef;
+  color: #9aa2a5;
+}
+
+.text-section-filter-tag-muted:hover,
+.extract-layer-tag-muted:hover {
+  background: #e8e8e5;
+}
+
+.text-section-result-box,
+.extract-result-box {
+  min-height: 220px;
+  max-height: 360px;
+  overscroll-behavior: contain;
+  overflow: auto;
+  padding: 0;
+}
+
+.text-section-result-editor,
+.extract-result-editor {
+  min-height: 220px;
+  padding: 10px;
+  outline: none;
+  white-space: pre-wrap;
+}
+
+.text-section-result-paragraph,
+.extract-result-paragraph {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+}
+
+.text-section-result-paragraph:last-child,
+.extract-result-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.text-section-result-section-paragraph::first-line,
+.extract-result-layer-paragraph::first-line {
+  color: #0d44d9;
+  font-weight: 760;
+}
+
+.text-section-result-section-paragraph-muted,
+.extract-result-layer-paragraph-muted {
+  color: #9aa2a5;
+  opacity: 0.55;
+}
+
+.text-section-result-section-paragraph-muted::first-line,
+.extract-result-layer-paragraph-muted::first-line {
+  color: #8b9bc7;
+}

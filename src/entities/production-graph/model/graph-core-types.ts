@@ -1,4 +1,4 @@
-export type PortKind = 'image' | 'text' | 'preset' | 'reference' | 'subject' | 'location' | 'publication' | 'video' | 'audio';
+export type PortKind = 'any' | 'image' | 'text' | 'preset' | 'reference' | 'subject' | 'location' | 'publication' | 'video' | 'audio';
 export type CollectionItemKind = 'image' | 'text' | 'subject' | 'location' | 'publication';
 export type CollectionKind = `${CollectionItemKind}[]`;
 export type GraphValueKind = CollectionItemKind | CollectionKind;
@@ -14,11 +14,13 @@ export type ProductionNodeType =
   | 'textFormatter'
   | 'textSplitter'
   | 'iterator'
+  | 'router'
   | 'subjectBuilder'
   | 'locationBuilder'
   | 'telegramPublication'
   | 'imageToText'
   | 'referenceComposer'
+  | 'composition'
   | 'generateImage'
   | 'sketch'
   | 'cropImage'
@@ -28,6 +30,7 @@ export type ProductionNodeType =
   | 'refineImage'
   | 'removeBackground'
   | 'exportImage'
+  | 'banner'
   | 'preview';
 
 export interface GraphPoint {

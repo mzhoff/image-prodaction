@@ -1,0 +1,185 @@
+.composition-canvas-fullscreen {
+  overflow: visible;
+  width: min(calc(100vw - 700px), calc((100vh - 84px) * var(--composition-ratio, 1)));
+  max-width: calc(100vw - 700px);
+  max-height: calc(100vh - 84px);
+  box-shadow: 0 22px 70px rgba(17, 24, 39, 0.12);
+}
+
+.composition-canvas-fullscreen::after {
+  pointer-events: none;
+  position: absolute;
+  z-index: 45;
+  inset: 0;
+  border: 1px solid var(--composition-frame-accent);
+  box-shadow:
+    0 0 0 1px var(--composition-frame-light),
+    0 0 0 2px var(--composition-frame-dark),
+    inset 0 0 0 1px var(--composition-frame-light);
+  content: "";
+}
+
+.composition-preview-interactive {
+  outline: 1px solid rgba(17, 17, 17, 0.12);
+  outline-offset: 0;
+}
+
+.composition-preview-canvas-selected {
+  overflow: visible;
+  outline: 1px solid var(--composition-frame-accent);
+  outline-offset: 0;
+}
+
+.composition-editor-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f3f3;
+  color: #111;
+}
+
+.composition-editor-inspector .composition-layer-controls,
+.composition-editor-inspector .composition-number-control,
+.composition-editor-inspector .composition-color-control,
+.composition-editor-inspector .composition-control-row {
+  color: #777;
+}
+
+.composition-editor-inspector .composition-layer-controls > strong,
+.composition-align-panel strong {
+  color: #111;
+}
+
+.composition-editor-inspector .composition-number-control input {
+  background: #f3f3f3;
+  color: #111;
+}
+
+.composition-preview-layer {
+  cursor: pointer;
+}
+
+.composition-canvas-fullscreen .composition-preview-layer {
+  cursor: move;
+}
+
+.composition-editor-stage-hand .composition-preview,
+.composition-editor-stage-hand .composition-preview-layer,
+.composition-editor-stage-hand .composition-selection-frame {
+  cursor: grab;
+}
+
+.composition-editor-stage-panning .composition-preview,
+.composition-editor-stage-panning .composition-preview-layer,
+.composition-editor-stage-panning .composition-selection-frame {
+  cursor: grabbing;
+}
+
+.composition-canvas-fullscreen .composition-preview-layer-locked {
+  cursor: not-allowed;
+}
+
+.composition-editor-stage-hand .composition-preview-layer-locked {
+  cursor: grab;
+}
+
+.composition-editor-stage-panning .composition-preview-layer-locked {
+  cursor: grabbing;
+}
+
+.composition-resize-handle {
+  position: absolute;
+  z-index: 70;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--composition-frame-accent);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 0 2px rgba(13, 20, 38, 0.55),
+    0 2px 5px rgba(13, 20, 38, 0.18);
+}
+
+.composition-resize-handle-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.composition-resize-handle-n {
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.composition-resize-handle-ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.composition-resize-handle-e {
+  top: 50%;
+  right: -6px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.composition-resize-handle-s {
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.composition-resize-handle-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.composition-resize-handle-se {
+  right: -6px;
+  bottom: -6px;
+  cursor: nwse-resize;
+}
+
+.composition-resize-handle-w {
+  top: 50%;
+  left: -6px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.composition-selection-frame {
+  position: absolute;
+  z-index: 60;
+  border: 1px solid var(--composition-frame-accent);
+  background: transparent;
+  box-shadow:
+    0 0 0 1px var(--composition-frame-light),
+    0 0 0 2px var(--composition-frame-dark),
+    inset 0 0 0 1px var(--composition-frame-light);
+  cursor: move;
+  pointer-events: auto;
+}
+
+.composition-hover-frame {
+  position: absolute;
+  z-index: 55;
+  border: 1px solid rgba(47, 91, 255, 0.92);
+  background: transparent;
+  box-shadow:
+    0 0 0 1px var(--composition-frame-light),
+    0 0 0 2px rgba(13, 20, 38, 0.48),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.76);
+  pointer-events: none;
+}

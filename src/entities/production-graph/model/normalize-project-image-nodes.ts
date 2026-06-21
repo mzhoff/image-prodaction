@@ -3,7 +3,7 @@ import { getGenerationHistory, type GenerationHistoryData } from './generation-h
 import { normalizeProductionLayerIds } from './layer-text-parser';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, normalizeNodeSize } from './node-layout';
 import { productionLayers } from './production-layers';
-import type { ExtractPresetId, ProductionNode, ProductionNodeData } from './types';
+import type { CompositionLayerBlendMode, CompositionLayerFit, CompositionLayerGroup, CompositionLayerSizingMode, CompositionLayerStyle, CompositionTextAlign, CompositionTextVerticalAlign, ExtractPresetId, ProductionNode, ProductionNodeData } from './types';
 import { normalizeCurves } from '@/shared/lib/image-renderer/curves';
 
 export function normalizeImageNode(node: ProductionNode): ProductionNode | null {
@@ -63,6 +63,39 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
         ...data,
         slots,
         title: 'Generate Image',
+      },
+    } as ProductionNode;
+  }
+
+  if (node.type === 'composition') {
+    const data = node.data as ProductionNodeData & {
+      canvasHeight?: unknown;
+      canvasWidth?: unknown;
+      groups?: unknown;
+      layerInputCount?: unknown;
+      layerOrder?: unknown;
+      layers?: unknown;
+      resultSignature?: unknown;
+      size?: unknown;
+    };
+    const canvasWidth = normalizePositiveInteger(data.canvasWidth, 1080, 256, 4096);
+    const rawHeight = normalizePositiveInteger(data.canvasHeight, 1080, 256, 4096);
+    const layerInputCount = normalizePositiveInteger(data.layerInputCount, 2, 2, 12);
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
+        ...node.data,
+        canvasWidth,
+        canvasHeight: rawHeight,
+        groups: normalizeCompositionGroups(data.groups, layerInputCount),
+        layerInputCount,
+        layerOrder: normalizeCompositionLayerOrder(data.layerOrder, layerInputCount),
+        layers: normalizeCompositionLayers(data.layers),
+        resultSignature: typeof data.resultSignature === 'string' ? data.resultSignature : undefined,
+        size: typeof data.size === 'string' && data.size.trim() ? data.size : '1K',
+        title: typeof node.data.title === 'string' && node.data.title.trim() ? node.data.title : 'Composition',
       },
     } as ProductionNode;
   }
@@ -225,7 +258,176 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
     } as ProductionNode;
   }
 
+  if (node.type === 'banner') {
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        ...node.data,
+        title: typeof node.data.title === 'string' && node.data.title.trim() ? node.data.title : 'Banner',
+      },
+    } as ProductionNode;
+  }
+
   return null;
+}
+
+function normalizePositiveInteger(value: unknown, fallback: number, min: number, max: number) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.round(value)))
+    : fallback;
+}
+
+function normalizeCompositionLayers(value: unknown): CompositionLayerStyle[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): CompositionLayerStyle[] => {
+    if (!item || typeof item !== 'object') return [];
+    const raw = item as Record<string, unknown>;
+    const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : '';
+    if (!id) return [];
+    return [{
+      align: normalizeTextAlign(raw.align),
+      assetId: typeof raw.assetId === 'string' && raw.assetId.trim() ? raw.assetId.trim() : undefined,
+      blendMode: normalizeBlendMode(raw.blendMode),
+      color: typeof raw.color === 'string' ? raw.color : undefined,
+      fit: normalizeLayerFit(raw.fit),
+      flipX: typeof raw.flipX === 'boolean' ? raw.flipX : undefined,
+      flipY: typeof raw.flipY === 'boolean' ? raw.flipY : undefined,
+      fontFamily: typeof raw.fontFamily === 'string' ? raw.fontFamily : undefined,
+      fontSize: normalizeOptionalNumber(raw.fontSize, 8, 240),
+      fontWeight: raw.fontWeight === '400' || raw.fontWeight === '500' || raw.fontWeight === '600' || raw.fontWeight === '700' || raw.fontWeight === '800' ? raw.fontWeight : undefined,
+      groupId: typeof raw.groupId === 'string' && raw.groupId.trim() ? raw.groupId.trim() : undefined,
+      height: normalizeOptionalNumber(raw.height, 1, 4096),
+      id,
+      kind: raw.kind === 'image' || raw.kind === 'text' ? raw.kind : undefined,
+      letterSpacing: normalizeOptionalNumber(raw.letterSpacing, -100, 500),
+      lineHeight: normalizeOptionalNumber(raw.lineHeight, 1, 600),
+      locked: typeof raw.locked === 'boolean' ? raw.locked : undefined,
+      name: typeof raw.name === 'string' ? raw.name : undefined,
+      opacity: normalizeOptionalNumber(raw.opacity, 0, 100),
+      preserveAspectRatio: typeof raw.preserveAspectRatio === 'boolean' ? raw.preserveAspectRatio : undefined,
+      rotation: normalizeOptionalNumber(raw.rotation, -360, 360),
+      sizingMode: normalizeLayerSizingMode(raw.sizingMode),
+      text: typeof raw.text === 'string' ? raw.text : undefined,
+      verticalAlign: normalizeTextVerticalAlign(raw.verticalAlign),
+      visible: typeof raw.visible === 'boolean' ? raw.visible : undefined,
+      width: normalizeOptionalNumber(raw.width, 1, 4096),
+      x: normalizeOptionalNumber(raw.x, -4096, 4096),
+      y: normalizeOptionalNumber(raw.y, -4096, 4096),
+    }];
+  });
+}
+
+function normalizeCompositionGroups(value: unknown, layerInputCount: number): CompositionLayerGroup[] {
+  if (!Array.isArray(value)) return [];
+  const validLayerIds = new Set(Array.from({ length: layerInputCount }, (_, index) => `layer-${index}`));
+  const usedLayerIds = new Set<string>();
+  const groups = value.flatMap((item): CompositionLayerGroup[] => {
+    if (!item || typeof item !== 'object') return [];
+    const raw = item as Record<string, unknown>;
+    const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : '';
+    if (!id) return [];
+    const layerIds = Array.isArray(raw.layerIds) ? raw.layerIds.filter((layerId): layerId is string => (
+      typeof layerId === 'string' && validLayerIds.has(layerId) && !usedLayerIds.has(layerId)
+    )) : [];
+    const rawGroupIds = Array.isArray(raw.groupIds)
+      ? raw.groupIds.filter((groupId): groupId is string => typeof groupId === 'string' && groupId.trim() !== id)
+      : undefined;
+    if (layerIds.length === 0 && !rawGroupIds?.length) return [];
+    layerIds.forEach((layerId) => usedLayerIds.add(layerId));
+    return [{
+      collapsed: typeof raw.collapsed === 'boolean' ? raw.collapsed : undefined,
+      groupIds: rawGroupIds,
+      id,
+      itemIds: Array.isArray(raw.itemIds) ? raw.itemIds.filter((itemId): itemId is string => typeof itemId === 'string') : undefined,
+      layerIds,
+      locked: typeof raw.locked === 'boolean' ? raw.locked : undefined,
+      name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Group',
+      visible: typeof raw.visible === 'boolean' ? raw.visible : undefined,
+    }];
+  });
+  const validGroupIds = new Set(groups.map((group) => group.id));
+  const usedGroupIds = new Set<string>();
+  return groups.map((group) => ({
+    ...group,
+    groupIds: group.groupIds?.flatMap((groupId): string[] => {
+      const id = groupId.trim();
+      if (!id || id === group.id || !validGroupIds.has(id) || usedGroupIds.has(id)) return [];
+      usedGroupIds.add(id);
+      return [id];
+    }),
+  })).map((group) => {
+    const validItemIds = new Set([...(group.groupIds ?? []), ...group.layerIds]);
+    const usedItemIds = new Set<string>();
+    const itemIds = (group.itemIds ?? []).flatMap((itemId): string[] => {
+      const id = itemId.trim();
+      if (!id || !validItemIds.has(id) || usedItemIds.has(id)) return [];
+      usedItemIds.add(id);
+      return [id];
+    });
+    for (const id of [...(group.groupIds ?? []), ...group.layerIds]) {
+      if (!usedItemIds.has(id)) itemIds.push(id);
+    }
+    return { ...group, itemIds };
+  });
+}
+
+function normalizeCompositionLayerOrder(value: unknown, layerInputCount: number): string[] {
+  if (!Array.isArray(value)) return [];
+  const validLayerIds = new Set(Array.from({ length: layerInputCount }, (_, index) => `layer-${index}`));
+  const usedIds = new Set<string>();
+  return value.flatMap((item): string[] => {
+    if (typeof item !== 'string') return [];
+    const id = item.trim();
+    if (!id || usedIds.has(id)) return [];
+    if (!validLayerIds.has(id) && !id.startsWith('group-')) return [];
+    usedIds.add(id);
+    return [id];
+  });
+}
+
+function normalizeOptionalNumber(value: unknown, min: number, max: number) {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : undefined;
+}
+
+function normalizeLayerFit(value: unknown): CompositionLayerFit | undefined {
+  return value === 'fit' || value === 'fill' || value === 'stretch' ? value : undefined;
+}
+
+function normalizeLayerSizingMode(value: unknown): CompositionLayerSizingMode | undefined {
+  return value === 'auto-width' || value === 'auto-height' || value === 'fixed' ? value : undefined;
+}
+
+function normalizeBlendMode(value: unknown): CompositionLayerBlendMode | undefined {
+  return value === 'pass-through'
+    || value === 'normal'
+    || value === 'darken'
+    || value === 'multiply'
+    || value === 'plus-darker'
+    || value === 'color-burn'
+    || value === 'lighten'
+    || value === 'screen'
+    || value === 'plus-lighter'
+    || value === 'color-dodge'
+    || value === 'overlay'
+    || value === 'soft-light'
+    || value === 'hard-light'
+    || value === 'difference'
+    || value === 'exclusion'
+    || value === 'hue'
+    || value === 'saturation'
+    || value === 'color'
+    || value === 'luminosity'
+    ? value
+    : undefined;
+}
+
+function normalizeTextAlign(value: unknown): CompositionTextAlign | undefined {
+  return value === 'left' || value === 'center' || value === 'right' ? value : undefined;
+}
+
+function normalizeTextVerticalAlign(value: unknown): CompositionTextVerticalAlign | undefined {
+  return value === 'top' || value === 'center' || value === 'bottom' ? value : undefined;
 }
 
 function isLegacyExtractPrompt(prompt: string, preset: ExtractPresetId) {

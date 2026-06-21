@@ -1,0 +1,125 @@
+.production-node {
+  position: absolute;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  cursor: var(--cursor-mouse-pointer-2);
+  padding: 16px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.production-node-selected {
+  border-color: #2563eb;
+  outline: 1.5px solid #2563eb;
+  outline-offset: 0;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.16), 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.production-node-selected .node-title-main,
+.production-node-selected .node-title-action {
+  color: #1d4ed8;
+}
+
+.production-node-locked {
+  cursor: default;
+}
+
+.production-node-locked::after {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.32);
+  content: '';
+}
+
+.node-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 740;
+  line-height: 17px;
+}
+
+.node-title-muted {
+  color: #bebebe;
+}
+
+.node-title-main {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.node-title-editable-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-title-editable-label[contenteditable='false'],
+.node-title-input {
+  user-select: text;
+}
+
+.node-title-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  outline: none;
+}
+
+.node-title-action {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #b8b8b3;
+  padding: 0;
+}
+
+.node-title-action:hover {
+  background: #f1f1ef;
+  color: #777;
+}
+
+.node-title-action svg {
+  display: block;
+}
+
+.node-title-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.node-title-count {
+  color: #c0c0c0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 17px;
+  white-space: nowrap;
+}

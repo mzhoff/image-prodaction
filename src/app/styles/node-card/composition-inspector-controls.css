@@ -1,0 +1,187 @@
+.composition-typography-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.composition-compact-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.composition-typography-grid-font {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 88px;
+}
+
+.composition-inspector-section .mini-select,
+.composition-typography-button,
+.composition-unit-number-control,
+.composition-segmented-icon-control,
+.composition-square-icon-button {
+  min-height: 28px;
+  border: 1px solid #e2e2e2;
+  border-radius: 5px;
+  background: #f3f3f3;
+  color: #111;
+}
+
+.composition-inspector-section .mini-select {
+  width: 100%;
+  max-width: none;
+  justify-content: space-between;
+  padding: 4px 8px;
+}
+
+.composition-typography-button {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.composition-typography-button-wide {
+  width: 100%;
+}
+
+.composition-unit-number-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 8px;
+}
+
+.composition-unit-number-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+  outline: none;
+}
+
+.composition-unit-number-control input::-webkit-inner-spin-button,
+.composition-unit-number-control input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.composition-unit-number-icon,
+.composition-unit-number-prefix,
+.composition-unit-number-suffix {
+  color: #555;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+}
+
+.composition-unit-number-icon {
+  display: grid;
+  margin-right: 6px;
+  place-items: center;
+}
+
+.composition-unit-number-prefix {
+  margin-right: 6px;
+}
+
+.composition-segmented-icon-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  padding: 0;
+}
+
+.composition-segmented-icon-control button {
+  display: grid;
+  min-width: 0;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid #e2e2e2;
+  background: transparent;
+  color: #5f6368;
+}
+
+.composition-segmented-icon-control button:last-child {
+  border-right: 0;
+}
+
+.composition-segmented-icon-control button:hover,
+.composition-segmented-icon-control button.composition-segmented-icon-active {
+  background: #fff;
+  color: #111;
+}
+
+.composition-layout-section .composition-segmented-icon-control {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.composition-layout-size-row,
+.composition-opacity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+}
+
+.composition-opacity-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.composition-square-icon-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+}
+
+.composition-square-icon-button-active {
+  background: #fff;
+  color: #0d44d9;
+}
+
+.composition-opacity-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  color: #111;
+}
+
+.composition-letter-spacing-mark {
+  position: relative;
+  display: inline-grid;
+  width: 18px;
+  height: 14px;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.composition-letter-spacing-mark::before,
+.composition-letter-spacing-mark::after {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.composition-letter-spacing-mark::before {
+  left: 0;
+}
+
+.composition-letter-spacing-mark::after {
+  right: 0;
+}

@@ -7,6 +7,7 @@ export interface ConnectOptions {
   detachedEdge?: GraphEdge;
 }
 export interface DeleteEdgeOptions {
+  preserveCompositionLayerContent?: boolean;
   preserveDynamicInputSlots?: boolean;
   preserveTextConcatSlots?: boolean;
 }
@@ -19,11 +20,13 @@ export interface ProductionGraphState extends GraphProject {
   addNode: (type: ProductionNodeType, position: GraphPoint) => string;
   addAsset: (asset: AssetRecord) => void;
   assignAssetToNode: (nodeId: string, assetId: string) => void;
+  assignBannerAssetToNode: (nodeId: string, asset: AssetRecord) => void;
   clearNodeGenerations: (nodeId: string) => void;
   duplicateNode: (nodeId: string) => void;
   pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string) => void;
   renameNode: (nodeId: string, title: string) => void;
   resizeNode: (nodeId: string, size: Partial<ProductionNode['size']>) => void;
+  resizeNodeFrame: (nodeId: string, frame: { position: GraphPoint; size: ProductionNode['size'] }) => void;
   toggleNodeLock: (nodeId: string) => void;
   compactDynamicInputSlots: (nodeId: string) => void;
   compactTextConcatInputs: (nodeId: string) => void;

@@ -15,12 +15,14 @@ export const NODE_DEFINITIONS = {
   textToSpeech: textNodeDefinitions.textToSpeech,
   textFormatter: textNodeDefinitions.textFormatter,
   textSplitter: textNodeDefinitions.textSplitter,
+  router: contextNodeDefinitions.router,
   iterator: contextNodeDefinitions.iterator,
   subjectBuilder: contextNodeDefinitions.subjectBuilder,
   locationBuilder: contextNodeDefinitions.locationBuilder,
   telegramPublication: publicationNodeDefinitions.telegramPublication,
   imageToText: imageNodeDefinitions.imageToText,
   referenceComposer: imageNodeDefinitions.referenceComposer,
+  composition: imageNodeDefinitions.composition,
   generateImage: imageNodeDefinitions.generateImage,
   sketch: imageNodeDefinitions.sketch,
   cropImage: imageNodeDefinitions.cropImage,
@@ -30,6 +32,7 @@ export const NODE_DEFINITIONS = {
   refineImage: imageNodeDefinitions.refineImage,
   removeBackground: imageNodeDefinitions.removeBackground,
   exportImage: imageNodeDefinitions.exportImage,
+  banner: imageNodeDefinitions.banner,
   preview: imageNodeDefinitions.preview,
 } satisfies Record<ProductionNodeType, ProductionNodeDefinition>;
 

@@ -246,6 +246,140 @@ test('normalizeProject keeps renamed text generation node title after reload', (
   assert.equal(node?.data.title, 'Text Generation');
 });
 
+test('normalizeProject keeps renamed iterator node title after reload', () => {
+  const project = normalizeProject({
+    version: 1,
+    nodes: [{
+      id: 'iterator',
+      type: 'iterator',
+      position: { x: 0, y: 0 },
+      size: { width: 320, height: 430 },
+      status: 'idle',
+      data: {
+        title: 'Question router',
+        activeKind: 'text',
+        activeIndex: 0,
+        activeText: '',
+        imageCount: 0,
+        textCount: 0,
+      },
+    } as never],
+    edges: [],
+    sections: [],
+    assets: [],
+    presets: [],
+    subjects: [],
+    locations: [],
+    publications: [],
+    runs: [],
+    selectedNodeIds: [],
+    selectedSectionIds: [],
+  });
+  const iterator = project.nodes.find((node) => node.id === 'iterator');
+
+  assert.equal(iterator?.data.title, 'Question router');
+});
+
+test('normalizeProject keeps composition settings and title after reload', () => {
+  const project = normalizeProject({
+    version: 1,
+    nodes: [{
+      id: 'composition',
+      type: 'composition',
+      position: { x: 0, y: 0 },
+      size: { width: 510, height: 690 },
+      status: 'idle',
+      data: {
+        title: 'Story layout',
+        aspectRatio: '9:16',
+        canvasWidth: 1080,
+        canvasHeight: 1920,
+        layerInputCount: 3,
+        size: '2K',
+        groups: [{
+          collapsed: true,
+          groupIds: ['group-2', 'missing-group'],
+          id: 'group-1',
+          itemIds: ['group-2', 'layer-1', 'missing-layer'],
+          layerIds: ['layer-1'],
+          locked: true,
+          name: 'Headline group',
+          visible: false,
+        }, {
+          id: 'group-2',
+          layerIds: ['layer-2'],
+          name: 'Nested group',
+        }],
+        layerOrder: ['group-1', 'missing-layer', 'layer-0'],
+        resultSignature: 'canvas-signature-v1',
+        layers: [{
+          id: 'layer-1',
+          kind: 'text',
+          locked: true,
+          x: 120,
+          y: 80,
+          width: 840,
+          height: 220,
+          opacity: 86,
+          fontSize: 72,
+          color: '#ffffff',
+          text: 'Detached text',
+          visible: false,
+        }, {
+          id: 'layer-2',
+          assetId: 'detached-asset',
+          kind: 'image',
+        }],
+      },
+    } as never],
+    edges: [],
+    sections: [],
+    assets: [],
+    presets: [],
+    subjects: [],
+    locations: [],
+    publications: [],
+    runs: [],
+    selectedNodeIds: [],
+    selectedSectionIds: [],
+  });
+  const composition = project.nodes.find((node) => node.id === 'composition');
+  const data = composition?.data as {
+    canvasHeight?: number;
+    canvasWidth?: number;
+    groups?: Array<{ collapsed?: boolean; groupIds?: string[]; id?: string; itemIds?: string[]; layerIds?: string[]; locked?: boolean; name?: string; visible?: boolean }>;
+    layerInputCount?: number;
+    layerOrder?: string[];
+    layers?: Array<{ assetId?: string; id?: string; locked?: boolean; opacity?: number; text?: string; visible?: boolean }>;
+    resultSignature?: string;
+    size?: string;
+    title?: string;
+  } | undefined;
+
+  assert.equal(composition?.size.width, 510);
+  assert.equal(data?.title, 'Story layout');
+  assert.equal(data?.canvasWidth, 1080);
+  assert.equal(data?.canvasHeight, 1920);
+  assert.equal(data?.layerInputCount, 3);
+  assert.equal(data?.size, '2K');
+  assert.equal(data?.resultSignature, 'canvas-signature-v1');
+  assert.deepEqual(data?.layerOrder, ['group-1', 'layer-0']);
+  assert.equal(data?.groups?.[0]?.collapsed, true);
+  assert.equal(data?.groups?.[0]?.id, 'group-1');
+  assert.deepEqual(data?.groups?.[0]?.groupIds, ['group-2']);
+  assert.deepEqual(data?.groups?.[0]?.itemIds, ['group-2', 'layer-1']);
+  assert.deepEqual(data?.groups?.[0]?.layerIds, ['layer-1']);
+  assert.equal(data?.groups?.[0]?.locked, true);
+  assert.equal(data?.groups?.[0]?.visible, false);
+  assert.deepEqual(data?.groups?.[1]?.layerIds, ['layer-2']);
+  assert.equal(data?.layers?.[0]?.id, 'layer-1');
+  assert.equal(data?.layers?.[0]?.locked, true);
+  assert.equal(data?.layers?.[0]?.opacity, 86);
+  assert.equal(data?.layers?.[0]?.text, 'Detached text');
+  assert.equal(data?.layers?.[0]?.visible, false);
+  assert.equal(data?.layers?.[1]?.assetId, 'detached-asset');
+});
+
 test('normalizeProject keeps markdown formatter preset and clamps formatter width', () => {
   const project = normalizeProject({
     version: 1,

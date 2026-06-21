@@ -42,6 +42,7 @@ export function createConnectMenuActions(
 }
 
 function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) {
+  if (type === 'router') return 'input';
   if (type === 'textPrompt' && sourceKind === 'text') return getTextPromptVariablePortId(0);
 
   const inputPorts = NODE_PORTS[type].filter((port) => port.side === 'input');
@@ -50,8 +51,10 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
     : sourceKind === 'location'
     ? ['background']
     : sourceKind === 'image'
-    ? ['media-0', 'media', 'image-0', 'image', 'imageCollection', 'reference', ...layerPortIds]
-    : ['body', 'text', 'textCollection', 'text-0', 'prompt', ...layerPortIds, 'image'];
+    ? ['layer-0', 'media-0', 'media', 'image-0', 'image', 'imageCollection', 'reference', ...layerPortIds]
+    : sourceKind === 'any'
+    ? ['input', 'body', 'text', 'image', 'reference']
+    : ['layer-0', 'body', 'text', 'textCollection', 'text-0', 'prompt', ...layerPortIds, 'image'];
 
   return priority.find((portId) => {
     const targetPort = inputPorts.find((port) => port.id === portId);
@@ -59,11 +62,12 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
     if (sourceKind === 'subject' && targetPort.kind === 'reference' && targetPort.id === 'actors') return true;
     if (sourceKind === 'location' && targetPort.kind === 'reference' && targetPort.id === 'background') return true;
     if (targetPort.kind === 'reference') return sourceKind === 'text' || sourceKind === 'image' || sourceKind === 'preset';
-    return targetPort.kind === sourceKind;
+    return sourceKind === 'any' || targetPort.kind === 'any' || targetPort.kind === sourceKind;
   });
 }
 
 function getDefaultSourcePortId(type: ProductionNodeType, targetKind: PortKind, targetPortId?: string) {
+  if (type === 'router') return 'output';
   const outputPorts = NODE_PORTS[type].filter((port) => port.side === 'output');
   const priority = targetKind === 'reference' && targetPortId === 'actors'
     ? ['subject', 'image', 'result', 'text', 'prompt']
@@ -75,6 +79,8 @@ function getDefaultSourcePortId(type: ProductionNodeType, targetKind: PortKind, 
     ? ['location']
     : targetKind === 'image'
     ? ['image', 'imageItem', 'result']
+    : targetKind === 'any'
+    ? ['output', 'text', 'image', 'result', 'prompt']
     : ['text', 'textItem', 'items', 'result', 'prompt'];
 
   return priority.find((portId) => {
@@ -85,6 +91,6 @@ function getDefaultSourcePortId(type: ProductionNodeType, targetKind: PortKind, 
       if (targetPortId === 'background' && sourcePort.kind === 'location') return true;
       return sourcePort.kind === 'text' || sourcePort.kind === 'image' || sourcePort.kind === 'preset';
     }
-    return sourcePort.kind === targetKind;
+    return targetKind === 'any' || sourcePort.kind === 'any' || sourcePort.kind === targetKind;
   });
 }

@@ -126,9 +126,9 @@ export function useTextPromptNodeModel(node: ProductionNode) {
   const variableDisplayMode = normalizeTextPromptVariableDisplayMode(data.variableDisplayMode);
   const variableSlots = useMemo(() => variables.map((variable, index) => {
     const incomingEdge = edges.find((edge) => edge.targetNodeId === node.id && edge.targetPortId === variable.id);
-    const sourceNode = incomingEdge ? nodes.find((item) => item.id === incomingEdge.sourceNodeId) : undefined;
-    const sourceAlias = getCustomTextPromptSourceAlias(sourceNode);
     const incoming = getIncomingTextInputs(node.id, variable.id, { edges, nodes });
+    const sourceNode = incoming[0]?.sourceNode ?? (incomingEdge ? nodes.find((item) => item.id === incomingEdge.sourceNodeId) : undefined);
+    const sourceAlias = getCustomTextPromptSourceAlias(sourceNode);
     const value = incoming.map((input) => input.text).join('\n\n');
     const connected = Boolean(incomingEdge);
     const alias = sourceAlias ?? variable.alias;

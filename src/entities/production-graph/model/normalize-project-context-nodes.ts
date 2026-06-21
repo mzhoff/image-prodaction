@@ -5,6 +5,19 @@ import { normalizeSubjectPreserveStrength, normalizeSubjectType } from './subjec
 import type { ProductionNode, ProductionNodeData } from './types';
 
 export function normalizeContextNode(node: ProductionNode): ProductionNode | null {
+  if (node.type === 'router') {
+    return {
+      ...node,
+      size: normalizeNodeSize(node.type, node.size),
+      data: {
+        inputLabel: 'Input',
+        outputLabel: 'Output',
+        ...node.data,
+        title: typeof node.data.title === 'string' && node.data.title.trim() ? node.data.title : 'Router',
+      },
+    } as ProductionNode;
+  }
+
   if (node.type === 'iterator') {
     const data = node.data as ProductionNodeData & {
       activeIndex?: unknown;
@@ -26,7 +39,7 @@ export function normalizeContextNode(node: ProductionNode): ProductionNode | nul
         imageCount: typeof data.imageCount === 'number' && Number.isFinite(data.imageCount) ? Math.max(0, Math.floor(data.imageCount)) : 0,
         message: '',
         textCount: typeof data.textCount === 'number' && Number.isFinite(data.textCount) ? Math.max(0, Math.floor(data.textCount)) : 0,
-        title: 'Iterator',
+        title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Iterator',
       },
     } as ProductionNode;
   }

@@ -3,6 +3,21 @@ import type { ProductionNodeDefinitionMap } from './node-registry-types';
 import { normalizeSubjectPreserveStrength, normalizeSubjectType } from './subject';
 
 export const contextNodeDefinitions = {
+  router: {
+    type: 'router',
+    title: 'Router',
+    menuLabel: 'Router',
+    defaultHeight: 62,
+    ports: [
+      { id: 'input', label: 'Input', kind: 'any', side: 'input' },
+      { id: 'output', label: 'Output', kind: 'any', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'Router',
+      inputLabel: 'Input',
+      outputLabel: 'Output',
+    }),
+  },
   iterator: {
     type: 'iterator',
     title: 'Iterator',
@@ -79,4 +94,4 @@ export const contextNodeDefinitions = {
       sourceCount: 0,
     }),
   },
-} satisfies ProductionNodeDefinitionMap<'iterator' | 'subjectBuilder' | 'locationBuilder'>;
+} satisfies ProductionNodeDefinitionMap<'router' | 'iterator' | 'subjectBuilder' | 'locationBuilder'>;

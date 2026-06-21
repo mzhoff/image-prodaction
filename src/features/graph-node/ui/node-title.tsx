@@ -7,10 +7,12 @@ import {
   Eye,
   FileInput,
   ImageIcon,
+  Layers,
   ListPlus,
   Minimize2,
   Paintbrush,
   Repeat2,
+  Route,
   Scissors,
   Send,
   Slice,
@@ -239,6 +241,7 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'importImage') return FileInput;
     if (nodeType === 'imageToText') return WandSparkles;
     if (nodeType === 'referenceComposer') return ImageIcon;
+    if (nodeType === 'composition') return Layers;
     if (nodeType === 'generateImage') return ImageIcon;
     if (nodeType === 'textPrompt') return Type;
     if (nodeType === 'textConcat') return ListPlus;
@@ -246,6 +249,7 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'textToSpeech') return Volume2;
     if (nodeType === 'textFormatter') return Text;
     if (nodeType === 'textSplitter') return Slice;
+    if (nodeType === 'router') return Route;
     if (nodeType === 'iterator') return Repeat2;
     if (nodeType === 'subjectBuilder') return WandSparkles;
     if (nodeType === 'locationBuilder') return WandSparkles;
@@ -258,15 +262,18 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'refineImage') return Paintbrush;
     if (nodeType === 'removeBackground') return Scissors;
     if (nodeType === 'exportImage') return Download;
+    if (nodeType === 'banner') return ImageIcon;
     if (nodeType === 'preview') return Eye;
   }
   if (title === 'Import') return FileInput;
   if (title === 'Extract') return WandSparkles;
   if (title === 'Generate Image') return ImageIcon;
+  if (title === 'Composition') return Layers;
   if (title === 'Concatenate') return ListPlus;
   if (title === 'Text Generate (LLM)' || title === 'Text Gen') return Text;
   if (title === 'Formatter') return Text;
   if (title === 'Text Split' || title === 'Splitter') return Slice;
+  if (title === 'Router') return Route;
   if (title === 'Iterator') return Repeat2;
   if (title === 'Telegram Post') return Send;
   if (title === 'Sketch') return Paintbrush;
@@ -275,6 +282,7 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
   if (title === 'Adjustments') return SlidersHorizontal;
   if (title === 'Remove BG') return Scissors;
   if (title === 'Export') return Download;
+  if (title === 'Banner') return ImageIcon;
   if (title === 'Preview') return Eye;
   if (title === 'Prompt') return Text;
   return null;

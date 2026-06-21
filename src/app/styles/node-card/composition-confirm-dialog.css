@@ -1,0 +1,98 @@
+.composition-confirm-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 24, 39, 0.18);
+  backdrop-filter: blur(10px);
+  padding: 18px;
+}
+
+.composition-confirm-panel {
+  display: grid;
+  width: min(430px, calc(100vw - 36px));
+  gap: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 62px rgba(17, 24, 39, 0.18);
+  color: #111;
+  padding: 16px;
+}
+
+.composition-confirm-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.composition-confirm-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 18px;
+}
+
+.composition-confirm-close {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: #f3f3f3;
+  color: #4b5563;
+  padding: 0;
+}
+
+.composition-confirm-close:hover {
+  background: #e8e8e5;
+  color: #111;
+}
+
+.composition-confirm-panel p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 18px;
+}
+
+.composition-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.composition-confirm-actions button {
+  min-width: 92px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.composition-confirm-secondary {
+  background: #eef1f5;
+  color: #374151;
+}
+
+.composition-confirm-secondary:hover {
+  background: #e2e6ee;
+  color: #111;
+}
+
+.composition-confirm-primary {
+  background: #111;
+  color: #fff;
+}
+
+.composition-confirm-primary:hover {
+  background: #2b2b2b;
+}
