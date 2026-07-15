@@ -31,17 +31,22 @@
     "npm": ">=10"
   },
   "dependencies": {
-    "@lexical/react": "^0.45.0",
-    "@lexical/markdown": "^0.45.0",
-    "@lexical/rich-text": "^0.45.0",
-    "@lexical/list": "^0.45.0",
+    "@aws-sdk/client-s3": "^3.1088.0",
     "@lexical/link": "^0.45.0",
+    "@lexical/list": "^0.45.0",
+    "@lexical/markdown": "^0.45.0",
+    "@lexical/react": "^0.45.0",
+    "@lexical/rich-text": "^0.45.0",
     "@lexical/table": "^0.45.0",
+    "better-auth": "^1.6.23",
     "clsx": "2.1.1",
+    "drizzle-orm": "^0.45.2",
     "heic2any": "0.0.4",
+    "kysely": "^0.28.17",
     "lexical": "^0.45.0",
     "lucide-react": "1.17.0",
     "next": "16.2.6",
+    "pg": "^8.22.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "zod": "4.4.3",
@@ -49,8 +54,10 @@
   },
   "devDependencies": {
     "@types/node": "25.9.1",
+    "@types/pg": "^8.15.6",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "dotenv": "^17.4.2",
     "typescript": "6.0.3"
   }
 }
