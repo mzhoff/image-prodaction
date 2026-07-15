@@ -14,7 +14,9 @@ import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { normalizeNodeDisplayState } from '@/entities/production-graph/model/project-schema';
+import { loadWorkspaceState, updateWorkspaceProjectSnapshot } from '@/entities/workspace/model/workspace-storage';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
+import { NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
 import { useCanvasClipboard } from './use-canvas-clipboard';
 import { useCanvasImageImport } from './use-canvas-image-import';
 import { useCanvasImageViewer } from './use-canvas-image-viewer';
@@ -32,7 +34,12 @@ import { useProductionCanvasStore } from './use-production-canvas-store';
 export const CANVAS_WORLD_SIZE = 4000;
 type CanvasTool = 'select' | 'section';
 
-export function useProductionCanvasModel() {
+interface ProductionCanvasModelOptions {
+  projectId?: string;
+}
+
+export function useProductionCanvasModel(options: ProductionCanvasModelOptions = {}) {
+  const { projectId } = options;
   const contextMenu = useContextMenu();
   const graph = useProductionCanvasStore();
   const canvas = useCanvasNavigation({
@@ -77,6 +84,40 @@ export function useProductionCanvasModel() {
     pan: canvas.pan,
     zoom: canvas.zoom,
   });
+  const exportProjectSnapshotForRoute = graph.exportProjectSnapshot;
+  const importPortableProjectForRoute = graph.importPortableProject;
+  const resetProjectForRoute = graph.resetProject;
+
+  useEffect(() => {
+    if (!projectId) return undefined;
+
+    const workspaceState = loadWorkspaceState();
+    const project = workspaceState.projects.find((item) => item.id === projectId);
+
+    try {
+      if (project?.snapshot) {
+        importPortableProjectForRoute(project.snapshot, 'projectSnapshot');
+      } else {
+        resetProjectForRoute();
+      }
+    } catch {
+      showToast('Не удалось загрузить сохраненный snapshot проекта.');
+    }
+
+    const saveCurrentProject = () => {
+      try {
+        updateWorkspaceProjectSnapshot(projectId, exportProjectSnapshotForRoute());
+      } catch {
+        // Local project autosave is best-effort until backend storage is connected.
+      }
+    };
+
+    window.addEventListener('beforeunload', saveCurrentProject);
+    return () => {
+      saveCurrentProject();
+      window.removeEventListener('beforeunload', saveCurrentProject);
+    };
+  }, [exportProjectSnapshotForRoute, importPortableProjectForRoute, projectId, resetProjectForRoute, showToast]);
 
   useEffect(() => {
     if (!hasRestoredViewport || didApplyRestoredViewportRef.current) return;
@@ -222,6 +263,19 @@ export function useProductionCanvasModel() {
     setSectionColorPreviews({});
     contextMenu.closeContextMenu();
   }, [clearConnectionDraft, contextMenu, pendingConnectionMenu]);
+
+  const createNodeFromPalette = useCallback((type: ProductionNodeType) => {
+    const container = canvas.containerRef.current;
+    const rect = container?.getBoundingClientRect();
+    const position = rect
+      ? canvas.screenToWorld({
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+      }) ?? lastPointerWorldRef.current
+      : lastPointerWorldRef.current;
+    createNode(type, position);
+    closeContextMenu();
+  }, [canvas, closeContextMenu, createNode]);
 
   const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => [
     {
@@ -494,12 +548,21 @@ export function useProductionCanvasModel() {
   };
 
   const handleCanvasDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
-    if (!hasImageFileInDataTransfer(event.dataTransfer)) return;
+    if (!hasDraggedNodeType(event.dataTransfer) && !hasImageFileInDataTransfer(event.dataTransfer)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   };
 
   const handleCanvasDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    const draggedNodeType = getDraggedNodeType(event.dataTransfer);
+    if (draggedNodeType) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeContextMenu();
+      createNode(draggedNodeType, canvas.screenToWorld(event.nativeEvent) ?? getFallbackPastePosition());
+      return;
+    }
+
     const imageFiles = getImageFilesFromDataTransfer(event.dataTransfer, 'dropped-image');
     if (imageFiles.length === 0) return;
     event.preventDefault();
@@ -530,6 +593,7 @@ export function useProductionCanvasModel() {
     collapsedGenerateComposingNodeIds,
     connectionDraft,
     contextMenu,
+    createNodeFromPalette,
     cursor,
     edges: graph.edges,
     handleCanvasDragOver,
@@ -562,6 +626,7 @@ export function useProductionCanvasModel() {
     startNodeDrag,
     startSectionDrag,
     startSectionResize,
+    showAssistantHint: () => showToast('Assistant will be connected in the product chat.'),
     toastMessage,
     toggleGenerateComposing,
     undo: graph.undo,
@@ -577,6 +642,15 @@ function getDropTargetImportNodeId(event: ReactDragEvent<HTMLElement>, nodesById
   const nodeId = target?.closest<HTMLElement>('[data-node-id]')?.dataset.nodeId;
   const node = nodeId ? nodesById.get(nodeId) : undefined;
   return node?.type === 'importImage' ? node.id : undefined;
+}
+
+function getDraggedNodeType(dataTransfer: DataTransfer) {
+  const value = dataTransfer.getData(NODE_DRAG_MIME_TYPE);
+  return value ? value as ProductionNodeType : null;
+}
+
+function hasDraggedNodeType(dataTransfer: DataTransfer) {
+  return Array.from(dataTransfer.types).includes(NODE_DRAG_MIME_TYPE);
 }
 
 function hasClearableGenerationData(node: ProductionNode) {

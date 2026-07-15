@@ -1,17 +1,36 @@
 'use client';
 
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
+import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
 import { ContextMenu } from '@/shared/ui/context-menu';
+import { loadWorkspaceState } from '@/entities/workspace/model/workspace-storage';
+import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
+import { Menu, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
 import { CanvasGrid } from './canvas-grid';
 import { CanvasNodeLayer } from './canvas-node-layer';
 import { CanvasSectionLayer } from './canvas-section-layer';
 import { CanvasToolbar } from './canvas-toolbar';
+import { DocumentNodePalette } from './document-node-palette';
 import { OpenRouterBalance } from './openrouter-balance';
 
-export function ProductionCanvas() {
-  const model = useProductionCanvasModel();
+interface ProductionCanvasProps {
+  projectId?: string;
+}
+
+export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
+  const model = useProductionCanvasModel({ projectId });
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [projectTitle, setProjectTitle] = useState('Blog Articles Pipeline');
+
+  useEffect(() => {
+    if (!projectId) return;
+    const project = loadWorkspaceState().projects.find((item) => item.id === projectId);
+    setProjectTitle(project?.name ?? 'Untitled Pipeline');
+  }, [projectId]);
 
   return (
     <div className="canvas-shell">
@@ -37,6 +56,17 @@ export function ProductionCanvas() {
         onContextMenu={model.openCanvasMenu}
         style={{ cursor: model.cursor }}
       >
+        <div className="document-title-pill">
+          <button type="button" aria-label="Open document menu">
+            <Menu size={16} />
+          </button>
+          <strong>{projectTitle}</strong>
+        </div>
+        <DocumentNodePalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          onCreateNode={model.createNodeFromPalette}
+        />
         <CanvasGrid pan={model.canvas.pan} zoom={model.canvas.zoom} />
         <div
           className="canvas-world"
@@ -76,8 +106,21 @@ export function ProductionCanvas() {
             selectedSet={model.selectedSet}
           />
         </div>
-        <div className="zoom-indicator">{Math.round(model.canvas.zoom * 100)}%</div>
         <OpenRouterBalance />
+        <button
+          type="button"
+          className={`document-floating-action document-floating-action-add ${paletteOpen ? 'document-floating-action-hidden' : ''}`}
+          aria-label="Open node palette"
+          aria-expanded={paletteOpen}
+          onClick={() => setPaletteOpen(true)}
+        >
+          <Plus size={28} />
+        </button>
+        <AssistantFloatingButton
+          className={assistantOpen ? 'assistant-floating-button-hidden' : ''}
+          onClick={() => setAssistantOpen(true)}
+        />
+        <AssistantShell open={assistantOpen} contextLabel={projectTitle} onClose={() => setAssistantOpen(false)} />
         {model.toastMessage ? <div className="canvas-toast">{model.toastMessage}</div> : null}
         {model.boxSelection.rectStyle ? <div className="selection-rect" style={model.boxSelection.rectStyle} /> : null}
         {model.sectionDraftStyle ? <div className="section-draft-rect" style={model.sectionDraftStyle} /> : null}

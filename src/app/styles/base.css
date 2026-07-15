@@ -78,8 +78,6 @@ button {
 }
 
 .editor-page {
-  display: grid;
-  grid-template-rows: 58px minmax(0, 1fr);
   height: 100vh;
   background: var(--app-bg);
 }

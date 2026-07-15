@@ -1,5 +1,5 @@
-import { ProductionEditorPage } from '@/pages/production-editor/ui/production-editor-page';
+import { WorkspacePage } from '@/pages/workspace/ui/workspace-page';
 
 export default function Home() {
-  return <ProductionEditorPage />;
+  return <WorkspacePage />;
 }
