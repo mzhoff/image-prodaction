@@ -52,12 +52,15 @@
     "kysely": "^0.28.17",
     "lexical": "^0.45.0",
     "lucide-react": "1.17.0",
-    "next": "16.2.6",
+    "next": "16.2.10",
     "pg": "^8.22.0",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "zod": "4.4.3",
     "zustand": "5.0.13"
+  },
+  "overrides": {
+    "postcss": "8.5.19"
   },
   "devDependencies": {
     "@types/node": "25.9.1",
