@@ -2,23 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { loadAssetBlobByKey } from '../lib/asset-db';
+import { getRemoteAssetContentUrl } from '../lib/remote-asset';
 import { useProductionGraphStore } from './use-production-graph-store';
 
 export function useAssetUrl(assetId?: string) {
   const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === assetId));
-  const blobKey = asset?.storage.blobKey;
+  const storage = asset?.storage;
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
 
-    if (!blobKey) {
+    if (!storage) {
       setUrl(null);
       return undefined;
     }
+    if (storage.type === 'remote') {
+      setUrl(getRemoteAssetContentUrl(storage.assetId));
+      return undefined;
+    }
 
-    void loadAssetBlobByKey(blobKey).then((blob) => {
+    void loadAssetBlobByKey(storage.blobKey).then((blob) => {
       if (!blob || cancelled) return;
       objectUrl = URL.createObjectURL(blob);
       setUrl(objectUrl);
@@ -28,7 +33,7 @@ export function useAssetUrl(assetId?: string) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [blobKey]);
+  }, [storage]);
 
   return url;
 }

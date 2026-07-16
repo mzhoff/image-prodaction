@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { activateAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 import { fetchDocumentProject, saveDocumentProjectSnapshot } from './document-api';
 import {
@@ -45,6 +46,7 @@ export function useDocumentBackendSync({
     let dirty = false;
     let halted = false;
     let revision = 0;
+    let releaseAssetScope = () => {};
     let saving = false;
     let unsubscribe = () => {};
 
@@ -105,6 +107,11 @@ export function useDocumentBackendSync({
         if (project.snapshot) importSnapshot(project.snapshot, 'projectSnapshot');
         else resetProject();
         revision = project.revision;
+        releaseAssetScope();
+        releaseAssetScope = activateAssetScope({
+          documentId,
+          workspaceId: project.workspaceId,
+        });
         setDocumentName(project.name);
         clearDocumentRecoverySnapshot(documentId);
         setSyncState({ phase: 'saved' });
@@ -136,6 +143,7 @@ export function useDocumentBackendSync({
       active = false;
       controller.abort();
       debouncedSave.cancel();
+      releaseAssetScope();
       unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };

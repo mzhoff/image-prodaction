@@ -2,6 +2,13 @@ import type { AssetRecord } from '../model/types';
 import { readImageSize } from '@/shared/lib/file-to-image-size';
 import { createId } from '@/shared/lib/id';
 import { normalizeImageFileForStorage } from '@/shared/lib/normalize-image-file';
+import {
+  deleteRemoteAsset,
+  getActiveAssetScope,
+  isRemoteImageMimeType,
+  loadRemoteAssetBlob,
+  uploadRemoteImageAsset,
+} from './remote-asset';
 
 const DB_NAME = 'reverie-image-production-assets';
 const DB_VERSION = 1;
@@ -61,6 +68,11 @@ export async function saveAssetBlob(blob: Blob, options: SaveAssetBlobOptions = 
   const file = blob instanceof File && blob.name === name && blob.type === mimeType
     ? blob
     : new File([blob], name, { type: mimeType });
+  if (kind === 'image' && isRemoteImageMimeType(mimeType)) {
+    const scope = getActiveAssetScope();
+    if (!scope) throw new Error('Document asset storage is not ready. Reload the document and try again.');
+    return uploadRemoteImageAsset(file, scope);
+  }
   const dimensions = kind === 'image' ? await readImageSize(file).catch(() => undefined) : undefined;
 
   await withAssetStore('readwrite', (store) => store.put({ key: blobKey, blob: file } satisfies StoredAssetBlob));
@@ -96,11 +108,18 @@ export async function loadAssetBlobByKey(blobKey: string) {
 }
 
 export async function loadAssetBlob(asset: AssetRecord) {
-  return loadAssetBlobByKey(asset.storage.blobKey);
+  return asset.storage.type === 'remote'
+    ? loadRemoteAssetBlob(asset.storage.assetId)
+    : loadAssetBlobByKey(asset.storage.blobKey);
 }
 
 export async function deleteAssetBlob(asset: AssetRecord) {
-  await withAssetStore('readwrite', (store) => store.delete(asset.storage.blobKey));
+  if (asset.storage.type === 'remote') {
+    await deleteRemoteAsset(asset.storage.assetId);
+    return;
+  }
+  const { blobKey } = asset.storage;
+  await withAssetStore('readwrite', (store) => store.delete(blobKey));
 }
 
 function inferAssetKind(mimeType?: string): AssetRecord['kind'] {

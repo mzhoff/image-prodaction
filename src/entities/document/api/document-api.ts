@@ -6,6 +6,7 @@ export interface DocumentProject {
   revision: number;
   schemaVersion: number;
   snapshot?: ProjectExport;
+  workspaceId: string;
 }
 
 interface ApiErrorPayload {
