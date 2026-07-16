@@ -26,6 +26,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useWorkspaceProjects } from '../model/use-workspace-projects';
+import { signOut, useSession } from '@/shared/auth/client';
 
 const navItems: Array<{ id: WorkspaceSection; icon: typeof GalleryVerticalEnd; label: string }> = [
   { id: 'my-files', icon: GalleryVerticalEnd, label: 'My Files' },
@@ -58,6 +59,7 @@ export function WorkspacePage() {
   const router = useRouter();
   const contextMenu = useContextMenu();
   const workspace = useWorkspaceProjects();
+  const { data: session } = useSession();
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('my-files');
   const [activeTemplateTab, setActiveTemplateTab] = useState<TemplateTab>('templates');
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -66,6 +68,7 @@ export function WorkspacePage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const visibleTemplateCards = activeTemplateTab === 'templates' ? templateCards : tutorialCards;
   const sectionProjects = workspace.getProjectsForSection(activeSection);
@@ -94,9 +97,15 @@ export function WorkspacePage() {
     };
   }, [profileMenuOpen]);
 
-  const createProject = () => {
-    const project = workspace.createProject();
-    router.push(`/projects/${project.id}`);
+  const createProject = async () => {
+    if (creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const project = await workspace.createProject();
+      router.push(`/projects/${project.id}`);
+    } finally {
+      setCreatingProject(false);
+    }
   };
 
   const startRename = (project: ProjectSummary) => {
@@ -152,7 +161,7 @@ export function WorkspacePage() {
         icon: <Trash2 size={14} />,
         label: 'Delete permanently',
         destructive: true,
-        onSelect: () => workspace.deleteProject(project.id),
+        onSelect: () => void workspace.deleteProject(project.id),
       },
     ];
   };
@@ -196,16 +205,16 @@ export function WorkspacePage() {
             onClick={() => setProfileMenuOpen((open) => !open)}
             type="button"
           >
-            <img src="/workspace-assets/avatar-john.png" alt="" />
-            <span>John Malkovich</span>
+            <img src={session?.user.image || '/workspace-assets/avatar-john.png'} alt="" />
+            <span>{session?.user.name || 'Your account'}</span>
           </button>
           {profileMenuOpen ? (
             <div className="workspace-profile-menu" role="menu">
               <div className="workspace-profile-menu-user">
-                <img src="/workspace-assets/avatar-john.png" alt="" />
+                <img src={session?.user.image || '/workspace-assets/avatar-john.png'} alt="" />
                 <div>
-                  <strong>John Malkovich</strong>
-                  <span>john@reverie.local</span>
+                  <strong>{session?.user.name || 'Your account'}</strong>
+                  <span>{session?.user.email || ''}</span>
                 </div>
               </div>
               <button type="button" role="menuitem">Account settings</button>
@@ -213,8 +222,7 @@ export function WorkspacePage() {
               <label className="workspace-menu-field">
                 <span>Workspace</span>
                 <select value={workspace.activeWorkspace?.id ?? 'workspace-john'} onChange={() => undefined}>
-                  <option value={workspace.activeWorkspace?.id ?? 'workspace-john'}>{workspace.activeWorkspace?.name ?? "John's Workspace"}</option>
-                  <option value="team">Creative Team</option>
+                  <option value={workspace.activeWorkspace?.id ?? ''}>{workspace.activeWorkspace?.name ?? 'Personal Workspace'}</option>
                 </select>
               </label>
               <div className="workspace-credit-panel">
@@ -223,6 +231,17 @@ export function WorkspacePage() {
                 <small>580 image credits and 840 text credits remaining</small>
               </div>
               <button className="workspace-upgrade-button" type="button">Upgrade</button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={async () => {
+                  await signOut();
+                  router.replace('/login');
+                  router.refresh();
+                }}
+              >
+                Sign out
+              </button>
             </div>
           ) : null}
         </div>
@@ -231,6 +250,7 @@ export function WorkspacePage() {
       <section className="workspace-window" aria-label="Workspace projects">
         <header className="workspace-header">
           <h1>{workspace.activeWorkspace?.name ?? 'Workspace Name'}</h1>
+          {workspace.error ? <p className="workspace-load-error" role="alert">{workspace.error}</p> : null}
         </header>
 
         <div className="workspace-content">
@@ -291,7 +311,7 @@ export function WorkspacePage() {
                     <List size={16} />
                   </button>
                 </div>
-                <button className="workspace-create-button" onClick={createProject} type="button">
+                <button className="workspace-create-button" disabled={creatingProject || !workspace.activeWorkspace} onClick={() => void createProject()} type="button">
                   <Plus size={18} />
                   <span>Create New</span>
                 </button>
@@ -357,7 +377,7 @@ export function WorkspacePage() {
               ) : null}
 
               {activeSection !== 'trash' ? (
-                <button className="workspace-new-document" onClick={createProject} type="button">
+                <button className="workspace-new-document" disabled={creatingProject || !workspace.activeWorkspace} onClick={() => void createProject()} type="button">
                   <span className="workspace-new-document-icon">
                     <Plus size={24} />
                   </span>

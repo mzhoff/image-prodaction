@@ -1,13 +1,18 @@
 import { relations } from 'drizzle-orm';
 import { bigint, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth';
+import { document } from './document';
+import { workspace } from './workspace';
 
 export const assetStatus = pgEnum('asset_status', ['pending', 'ready', 'failed', 'deleted']);
 
 export const asset = pgTable('asset', {
   id: uuid('id').primaryKey(),
-  workspaceId: uuid('workspace_id').notNull(),
-  documentId: uuid('document_id'),
+  workspaceId: uuid('workspace_id')
+    .notNull()
+    .references(() => workspace.id, { onDelete: 'cascade' }),
+  documentId: uuid('document_id')
+    .references(() => document.id, { onDelete: 'set null' }),
   createdByUserId: text('created_by_user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'restrict' }),
@@ -38,5 +43,13 @@ export const assetRelations = relations(asset, ({ one }) => ({
   createdBy: one(user, {
     fields: [asset.createdByUserId],
     references: [user.id],
+  }),
+  document: one(document, {
+    fields: [asset.documentId],
+    references: [document.id],
+  }),
+  workspace: one(workspace, {
+    fields: [asset.workspaceId],
+    references: [workspace.id],
   }),
 }));

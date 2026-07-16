@@ -232,6 +232,18 @@
   font-size: 20px;
   font-weight: 500;
 }
+
+.workspace-load-error {
+  margin: 0 0 0 auto;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.workspace-create-button:disabled,
+.workspace-new-document:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
 .workspace-content {
   min-height: 0;
   flex: 1;

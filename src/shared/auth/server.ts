@@ -1,7 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
-import { bootstrapPersonalWorkspace } from './workspace-bootstrap';
 
 let authPromise: ReturnType<typeof createAuth> | undefined;
 
@@ -11,7 +10,7 @@ export function getAuth() {
 }
 
 async function createAuth() {
-  const [{ db }, schema] = await Promise.all([
+  const [{ getDb }, schema] = await Promise.all([
     import('@/shared/db/client'),
     import('@/shared/db/schema'),
   ]);
@@ -20,7 +19,7 @@ async function createAuth() {
   return betterAuth({
     baseURL,
     secret: readRequiredEnv('BETTER_AUTH_SECRET'),
-    database: drizzleAdapter(db, {
+    database: drizzleAdapter(getDb(), {
       provider: 'pg',
       schema,
     }),
@@ -43,7 +42,8 @@ async function createAuth() {
       user: {
         create: {
           after: async (createdUser) => {
-            await bootstrapPersonalWorkspace({
+            const { ensurePersonalWorkspace } = await import('@/entities/workspace/server/workspace-service');
+            await ensurePersonalWorkspace({
               id: createdUser.id,
               email: createdUser.email,
               name: createdUser.name,

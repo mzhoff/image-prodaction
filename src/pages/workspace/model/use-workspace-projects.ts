@@ -3,90 +3,124 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createWorkspaceProject,
-  defaultWorkspaceState,
-  loadWorkspaceState,
-  saveWorkspaceState,
-} from '@/entities/workspace/model/workspace-storage';
-import type { ProjectSummary, WorkspaceSection, WorkspaceState } from '@/entities/workspace/model/types';
+  deleteWorkspaceProject,
+  fetchWorkspaceState,
+  updateWorkspaceProject,
+} from '@/entities/workspace/api/workspace-api';
+import type { ProjectSummary, WorkspaceRecord, WorkspaceSection } from '@/entities/workspace/model/types';
 
 export function useWorkspaceProjects() {
-  const [state, setState] = useState<WorkspaceState>(() => defaultWorkspaceState);
+  const [workspaces, setWorkspaces] = useState<WorkspaceRecord[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const result = await fetchWorkspaceState(signal);
+      setWorkspaces(result.workspaces);
+      setProjects(result.projects);
+      setError(null);
+    } catch (caughtError) {
+      if (caughtError instanceof DOMException && caughtError.name === 'AbortError') return;
+      setError(caughtError instanceof Error ? caughtError.message : 'Workspace could not be loaded.');
+    } finally {
+      if (!signal?.aborted) setHydrated(true);
+    }
+  }, []);
 
   useEffect(() => {
-    setState(loadWorkspaceState());
-    setHydrated(true);
-  }, []);
+    const controller = new AbortController();
+    void refresh(controller.signal);
+    return () => controller.abort();
+  }, [refresh]);
 
-  const persist = useCallback((updater: (current: WorkspaceState) => WorkspaceState) => {
-    setState((current) => {
-      const next = updater(current);
-      saveWorkspaceState(next);
-      return next;
-    });
-  }, []);
+  const activeWorkspace = workspaces[0];
 
-  const activeWorkspace = useMemo(() => (
-    state.workspaces.find((workspace) => workspace.id === state.activeWorkspaceId) ?? state.workspaces[0]
-  ), [state.activeWorkspaceId, state.workspaces]);
-
-  const createProject = useCallback(() => {
-    const project = createWorkspaceProject('Untitled Pipeline');
-    persist((current) => ({ ...current, projects: [project, ...current.projects] }));
+  const createProject = useCallback(async () => {
+    if (!activeWorkspace) throw new Error('Workspace is not ready yet.');
+    const project = await createWorkspaceProject(activeWorkspace.id);
+    setProjects((current) => [project, ...current]);
     return project;
-  }, [persist]);
+  }, [activeWorkspace]);
+
+  const mutateProject = useCallback(async (
+    projectId: string,
+    patch: Pick<Partial<ProjectSummary>, 'favorite' | 'name' | 'status'>,
+  ) => {
+    const before = projects;
+    setProjects((current) => current.map((project) => (
+      project.id === projectId ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project
+    )));
+    try {
+      const updated = await updateWorkspaceProject(projectId, patch);
+      setProjects((current) => current.map((project) => project.id === projectId ? updated : project));
+      setError(null);
+    } catch (caughtError) {
+      setProjects(before);
+      setError(caughtError instanceof Error ? caughtError.message : 'Project update failed.');
+    }
+  }, [projects]);
 
   const renameProject = useCallback((projectId: string, name: string) => {
     const nextName = name.trim();
-    if (!nextName) return;
-    persist((current) => updateProject(current, projectId, { name: nextName }));
-  }, [persist]);
+    if (nextName) void mutateProject(projectId, { name: nextName });
+  }, [mutateProject]);
 
   const toggleFavorite = useCallback((projectId: string) => {
-    persist((current) => {
-      const project = current.projects.find((item) => item.id === projectId);
-      return updateProject(current, projectId, { favorite: !project?.favorite });
-    });
-  }, [persist]);
+    const project = projects.find((item) => item.id === projectId);
+    if (project) void mutateProject(projectId, { favorite: !project.favorite });
+  }, [mutateProject, projects]);
 
   const moveToTrash = useCallback((projectId: string) => {
-    persist((current) => updateProject(current, projectId, { status: 'trash', favorite: false }));
-  }, [persist]);
+    void mutateProject(projectId, { status: 'trash', favorite: false });
+  }, [mutateProject]);
 
   const restoreProject = useCallback((projectId: string) => {
-    persist((current) => updateProject(current, projectId, { status: 'active' }));
-  }, [persist]);
+    void mutateProject(projectId, { status: 'active' });
+  }, [mutateProject]);
 
-  const deleteProject = useCallback((projectId: string) => {
-    persist((current) => ({ ...current, projects: current.projects.filter((project) => project.id !== projectId) }));
-  }, [persist]);
+  const deleteProject = useCallback(async (projectId: string) => {
+    const before = projects;
+    setProjects((current) => current.filter((project) => project.id !== projectId));
+    try {
+      await deleteWorkspaceProject(projectId);
+      setError(null);
+    } catch (caughtError) {
+      setProjects(before);
+      setError(caughtError instanceof Error ? caughtError.message : 'Project deletion failed.');
+    }
+  }, [projects]);
 
-  const getProjectsForSection = useCallback((section: WorkspaceSection) => {
-    if (section === 'trash') return state.projects.filter((project) => project.status === 'trash');
-    return state.projects.filter((project) => project.status === 'active');
-  }, [state.projects]);
+  const getProjectsForSection = useCallback((section: WorkspaceSection) => (
+    projects.filter((project) => project.status === (section === 'trash' ? 'trash' : 'active'))
+  ), [projects]);
 
-  return {
+  return useMemo(() => ({
     activeWorkspace,
     createProject,
     deleteProject,
+    error,
     getProjectsForSection,
     hydrated,
     moveToTrash,
-    projects: state.projects,
+    projects,
+    refresh,
     renameProject,
     restoreProject,
     toggleFavorite,
-  };
-}
-
-function updateProject(state: WorkspaceState, projectId: string, patch: Partial<ProjectSummary>): WorkspaceState {
-  return {
-    ...state,
-    projects: state.projects.map((project) => (
-      project.id === projectId
-        ? { ...project, ...patch, updatedAt: new Date().toISOString() }
-        : project
-    )),
-  };
+  }), [
+    activeWorkspace,
+    createProject,
+    deleteProject,
+    error,
+    getProjectsForSection,
+    hydrated,
+    moveToTrash,
+    projects,
+    refresh,
+    renameProject,
+    restoreProject,
+    toggleFavorite,
+  ]);
 }

@@ -27,6 +27,8 @@ export interface ProjectSummary {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
+  revision?: number;
+  schemaVersion?: number;
   snapshot?: ProjectExport;
 }
 
