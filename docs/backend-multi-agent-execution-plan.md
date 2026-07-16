@@ -2,7 +2,7 @@
 
 Дата: 2026-07-16
 
-Статус: активный рабочий контракт
+Статус: реализация завершена, идёт delivery в `main`
 
 Основной план: [backend-auth-storage-implementation-plan.md](./backend-auth-storage-implementation-plan.md)
 
@@ -340,3 +340,21 @@ asset/storage tests
 10. оставить одну основную папку репозитория на чистом `main`.
 
 Worktree-папки не сохраняются как архив и не остаются после завершения задачи.
+
+## 10. Фактический результат
+
+Первая и вторая волны подагентов реализованы и интегрированы в `backend/integration`:
+
+- Better Auth email/password, HttpOnly session, PostgreSQL rate limit и серверное сохранение актуальной версии terms acceptance;
+- personal Workspace, Membership, Document CRUD, revision-aware autosave и локальная recovery-копия;
+- private MinIO/S3 asset API, client canvas wiring, authenticated content, ownership checks и cleanup при permanent document delete;
+- безопасная загрузка provider images с timeout, byte limit, signature validation и блокировкой private network targets;
+- readiness для PostgreSQL и S3, Drizzle migrations, Docker Compose, standalone Docker image, CI и release runbook;
+- воспроизводимый `npm run test:backend-smoke` для полного локального backend user journey.
+
+Внешние production-зависимости не маскируются как готовые:
+
+- email verification и password reset требуют выбранного email provider, домена и шаблонов;
+- managed PostgreSQL/S3, secret manager, backups, alerting и staging ingress требуют выбранной hosting-платформы;
+- автоматическая миграция старых IndexedDB blobs не выполняется: legacy assets читаются, новые поддерживаемые изображения сохраняются в S3;
+- orphan cleanup service реализован, но его scheduled запуск должен настраиваться на выбранной production-платформе.

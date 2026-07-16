@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { cleanupDocumentAssets } from '@/entities/asset/server/asset-service';
 import {
+  DocumentConflictError,
   getDocument,
   permanentlyDeleteDocument,
   saveDocumentSnapshot,
@@ -8,6 +10,7 @@ import {
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/shared/auth/session';
 import { isUuidV7 } from '@/shared/lib/id';
+import { toAssetApiErrorResponse } from '../assets/error-response';
 import { toApiErrorResponse } from '../error-response';
 
 const documentIdSchema = z.string().refine(isUuidV7);
@@ -62,9 +65,12 @@ export async function deleteProject(request: Request, projectId: string) {
   try {
     if (!documentIdSchema.safeParse(projectId).success) return apiError('invalid_project_id', 'Invalid project id.', 400);
     const session = await requireApiSession(request);
+    const project = await getDocument(session.user.id, projectId);
+    if (project.status !== 'trash') throw new DocumentConflictError(project.revision);
+    await cleanupDocumentAssets(projectId);
     await permanentlyDeleteDocument(session.user.id, projectId);
     return new Response(null, { status: 204 });
   } catch (error) {
-    return toApiErrorResponse(error);
+    return toAssetApiErrorResponse(error);
   }
 }
