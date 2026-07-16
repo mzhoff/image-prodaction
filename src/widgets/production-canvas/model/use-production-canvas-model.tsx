@@ -7,6 +7,8 @@ import { getNodeCurrentImageAssetId, getNodeImageAssetIds } from '@/entities/pro
 import { getTextPromptVariablePortIndex, getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
 import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
 import type { GraphSection, ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
+import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { useDocumentBackendSync } from '@/entities/document/api/use-document-backend-sync';
 import { requestNodeTitleRename } from '@/features/graph-node/ui/node-title';
 import { hasImageFileInDataTransfer, getImageFilesFromDataTransfer } from '@/shared/lib/image-file';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
@@ -14,7 +16,6 @@ import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { normalizeNodeDisplayState } from '@/entities/production-graph/model/project-schema';
-import { loadWorkspaceState, updateWorkspaceProjectSnapshot } from '@/entities/workspace/model/workspace-storage';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
 import { NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
 import { useCanvasClipboard } from './use-canvas-clipboard';
@@ -87,37 +88,30 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
   const exportProjectSnapshotForRoute = graph.exportProjectSnapshot;
   const importPortableProjectForRoute = graph.importPortableProject;
   const resetProjectForRoute = graph.resetProject;
-
-  useEffect(() => {
-    if (!projectId) return undefined;
-
-    const workspaceState = loadWorkspaceState();
-    const project = workspaceState.projects.find((item) => item.id === projectId);
-
-    try {
-      if (project?.snapshot) {
-        importPortableProjectForRoute(project.snapshot, 'projectSnapshot');
-      } else {
-        resetProjectForRoute();
-      }
-    } catch {
-      showToast('Не удалось загрузить сохраненный snapshot проекта.');
-    }
-
-    const saveCurrentProject = () => {
-      try {
-        updateWorkspaceProjectSnapshot(projectId, exportProjectSnapshotForRoute());
-      } catch {
-        // Local project autosave is best-effort until backend storage is connected.
-      }
-    };
-
-    window.addEventListener('beforeunload', saveCurrentProject);
-    return () => {
-      saveCurrentProject();
-      window.removeEventListener('beforeunload', saveCurrentProject);
-    };
-  }, [exportProjectSnapshotForRoute, importPortableProjectForRoute, projectId, resetProjectForRoute, showToast]);
+  const subscribeToProjectChanges = useCallback((listener: () => void) => (
+    useProductionGraphStore.subscribe((state, previous) => {
+      if (
+        state.version !== previous.version
+        || state.nodes !== previous.nodes
+        || state.sections !== previous.sections
+        || state.edges !== previous.edges
+        || state.assets !== previous.assets
+        || state.presets !== previous.presets
+        || state.subjects !== previous.subjects
+        || state.locations !== previous.locations
+        || state.publications !== previous.publications
+        || state.runs !== previous.runs
+        || state.uiState !== previous.uiState
+      ) listener();
+    })
+  ), []);
+  const documentSync = useDocumentBackendSync({
+    exportSnapshot: exportProjectSnapshotForRoute,
+    importSnapshot: importPortableProjectForRoute,
+    projectId,
+    resetProject: resetProjectForRoute,
+    subscribeToProjectChanges,
+  });
 
   useEffect(() => {
     if (!hasRestoredViewport || didApplyRestoredViewportRef.current) return;
@@ -615,6 +609,8 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     redo: graph.redo,
     renameSection: graph.renameSection,
     deleteSelected: graph.deleteSelected,
+    documentName: documentSync.documentName,
+    documentSync: documentSync.syncState,
     selectedSet: graph.selectedSet,
     selectedSectionSet: graph.selectedSectionSet,
     selectSection: graph.selectSection,

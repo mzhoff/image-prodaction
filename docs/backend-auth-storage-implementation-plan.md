@@ -2,9 +2,11 @@
 
 Дата: 2026-07-16
 
-Статус: готов к декомпозиции в задачи и реализации
+Статус: backend MVP реализован; внешняя production-инфраструктура и email delivery остаются отдельным release-этапом
 
 Источник для переиспользования: [PR #9 — backend](https://github.com/mzhoff/image-prodaction/pull/9), commit `2facdef5056056a2e255106f1317298e92d3b277`
+
+Multi-agent декомпозиция и правила worktree: [backend-multi-agent-execution-plan.md](./backend-multi-agent-execution-plan.md)
 
 ## 1. Цель
 

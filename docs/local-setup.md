@@ -1,70 +1,123 @@
-# Local setup
+# Local setup: полный backend-контур
 
-## Requirements
+## Что запускается
 
-- Node.js `>=20.9.0`; local development currently uses Node `24`.
-- npm `>=10`.
-- OpenRouter account and API key for real model calls.
+Локальная среда состоит из трёх частей:
 
-If you use `nvm`:
+1. PostgreSQL хранит пользователей, сессии, workspace, документы и metadata файлов.
+2. MinIO имитирует production S3 и хранит сами изображения в закрытом bucket.
+3. Next.js обслуживает интерфейс и backend API на `http://localhost:3004`.
+
+Файлы не публикуются напрямую из MinIO: приложение сначала проверяет сессию и membership пользователя.
+
+## Требования
+
+- Node.js `>=20.9.0` (проект проверен на Node `24.15.0`);
+- npm `>=10`;
+- Docker Desktop;
+- OpenRouter API key — только для реальных AI-вызовов, регистрация и документы работают без него.
+
+## Первый запуск
+
+Установить зависимости:
 
 ```bash
-nvm use
+npm ci
 ```
 
-## Install
-
-```bash
-npm install
-```
-
-## Environment
-
-Create a local env file from the template:
+Создать локальные настройки:
 
 ```bash
 cp .env.example .env.local
+openssl rand -base64 32
 ```
 
-Fill `.env.local`:
+Скопировать результат второй команды в `BETTER_AUTH_SECRET`. Для local-контура остальные backend-значения из `.env.example` уже указывают на Docker Compose.
+
+Существующие provider keys (`OPENROUTER_API_KEY`, `FAL_API_KEY`, `TELEGRAM_BOT_TOKEN`) хранить только в `.env.local`. Этот файл не коммитится.
+
+Поднять PostgreSQL и private MinIO:
 
 ```bash
-OPENROUTER_API_KEY=your_openrouter_key_here
-OPENROUTER_SITE_URL=http://localhost:3004
-OPENROUTER_APP_NAME=Reverie Image Production Pipeline
+docker compose up -d
+docker compose ps
 ```
 
-`OPENROUTER_API_KEY` is the only required secret. It is used only in Next.js API routes, not in browser code.
+У PostgreSQL должен появиться статус `healthy`, а `minio-init` должен один раз завершиться с кодом `0`. Это нормальное поведение: init-контейнер только создаёт private bucket и после этого выключается.
 
-`OPENROUTER_SITE_URL` and `OPENROUTER_APP_NAME` are metadata headers sent to OpenRouter. If you run the app on another port, update `OPENROUTER_SITE_URL`.
+Создать или обновить таблицы:
 
-Never commit `.env.local`.
+```bash
+npm run db:migrate
+```
 
-## Run
+Команда повторяемая: второй запуск не создаёт таблицы заново и не удаляет данные.
+
+Запустить приложение:
 
 ```bash
 npm run dev:local
 ```
 
-Open [http://localhost:3004](http://localhost:3004).
+Открыть:
 
-If port `3004` is busy:
+- приложение: [http://localhost:3004](http://localhost:3004);
+- MinIO console: [http://localhost:9001](http://localhost:9001);
+- liveness: [http://localhost:3004/api/health/live](http://localhost:3004/api/health/live);
+- readiness PostgreSQL и private S3: [http://localhost:3004/api/health/ready](http://localhost:3004/api/health/ready).
+
+Local MinIO credentials: `minioadmin` / `minioadmin`. Они предназначены только для локальной машины.
+
+## Пользовательский smoke-test
+
+1. Открыть `/register` и создать аккаунт.
+2. Убедиться, что открывается personal workspace.
+3. Создать новый документ.
+4. Изменить canvas и дождаться статуса успешного сохранения.
+5. Перезагрузить страницу: документ должен восстановиться из PostgreSQL.
+6. Выйти через `Sign out`: защищённая страница должна вернуть на `/login`.
+7. Снова войти и проверить, что workspace и документ сохранились.
+
+Полный backend smoke-test выполняет тот же путь автоматически и дополнительно проверяет revision conflict, приватность asset между двумя пользователями, S3 upload/read/delete и cleanup при удалении документа:
 
 ```bash
-npm run dev -- -p 3005
+npm run test:backend-smoke
 ```
 
-Then update `OPENROUTER_SITE_URL` in `.env.local` to match the selected port.
+Команда ожидает уже запущенное приложение на `http://localhost:3004`. Другой адрес можно передать через `SMOKE_BASE_URL`.
 
-## Validate Before Pushing
+## Проверки перед push
 
 ```bash
+npm run db:check
 npm run typecheck
+npm test
+npm run test:backend-smoke
 npm run build
+npm audit --omit=dev --audit-level=high
 ```
 
-## Local Storage Model
+## Остановка и данные
 
-- Graph metadata is persisted in browser storage through Zustand.
-- Image assets are stored locally in IndexedDB.
-- There is no backend database, auth or S3/MinIO in the current MVP.
+Остановить сервисы, сохранив данные:
+
+```bash
+docker compose stop
+```
+
+Снова запустить:
+
+```bash
+docker compose start
+```
+
+`docker compose down` удаляет контейнеры, но сохраняет named volumes. Команда `docker compose down -v` удалит локальную БД и все MinIO-файлы; использовать её только для осознанного полного сброса.
+
+## Production-заметки
+
+- не использовать local passwords и `BETTER_AUTH_SECRET` из примера;
+- запускать миграции отдельным release step до переключения трафика;
+- bucket должен оставаться private;
+- readiness должен быть подключён к health probe платформы;
+- PostgreSQL и S3 должны иметь backup/versioning lifecycle;
+- секреты передаются через secret manager платформы, а не через Git.

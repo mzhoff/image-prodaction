@@ -2,14 +2,25 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, CheckCircle2, Eye, EyeOff, Sparkles, TrendingUp } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Sparkles, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { signIn, signUp } from '@/shared/auth/client';
+import { formatAuthError } from '@/shared/auth/error-message';
+import { getSafePostAuthPath } from '@/shared/auth/route-policy';
+import { CURRENT_TERMS_VERSION } from '@/shared/auth/terms-contract';
 
 type AuthMode = 'login' | 'register';
 
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const title = mode === 'login' ? 'Войти в Reverie' : 'Создать аккаунт';
   const subtitle = mode === 'login'
     ? 'Войдите в рабочее пространство и откройте продукт.'
@@ -17,6 +28,48 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const submitLabel = mode === 'login' ? 'Войти' : 'Зарегистрироваться';
   const switchHref = mode === 'login' ? '/register' : '/login';
   const switchLabel = mode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (mode === 'register' && !name.trim()) {
+      setError('Укажите имя и фамилию.');
+      return;
+    }
+    if (mode === 'register' && !acceptedTerms) {
+      setError('Подтвердите согласие с условиями сервиса.');
+      return;
+    }
+
+    setPending(true);
+    setError(null);
+
+    try {
+      const credentials = { email: email.trim(), password };
+      const result = mode === 'login'
+        ? await signIn.email({ ...credentials, rememberMe: true })
+        : await signUp.email({
+          ...credentials,
+          name: name.trim(),
+          termsAccepted: acceptedTerms,
+          termsVersion: CURRENT_TERMS_VERSION,
+        });
+
+      if (result.error) {
+        setError(formatAuthError(result.error));
+        return;
+      }
+
+      const requestedPath = typeof window === 'undefined'
+        ? null
+        : new URLSearchParams(window.location.search).get('next');
+      router.replace(getSafePostAuthPath(requestedPath));
+      router.refresh();
+    } catch (caughtError) {
+      setError(formatAuthError(caughtError));
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <main className="auth-page">
@@ -28,8 +81,8 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           </span>
           <h1>Вход в пространство, где pipeline превращает идею в готовый визуал.</h1>
           <p>
-            Пока это фронтовый сценарий входа. Он уже готов под backend-сессию,
-            workspace, роли и приглашения команды.
+            Аккаунт и серверная сессия защищают ваши документы, файлы и рабочее
+            пространство между устройствами.
           </p>
         </div>
         <div className="auth-promo-stack">
@@ -68,37 +121,61 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             <div className="auth-card-head">
               <span className="auth-card-badge">
                 <TrendingUp size={14} />
-                Прототип авторизации
+                Защищённый доступ
               </span>
               <h2>{title}</h2>
               <p>{subtitle}</p>
             </div>
 
-            <form
-              className="auth-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                router.push('/');
-              }}
-            >
+            <form className="auth-form" onSubmit={handleSubmit}>
               {mode === 'register' ? (
                 <label>
                   <span>Имя и фамилия</span>
-                  <input type="text" placeholder="Иван Петров" />
+                  <input
+                    type="text"
+                    name="name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Иван Петров"
+                    autoComplete="name"
+                    disabled={pending}
+                    required
+                  />
                 </label>
               ) : null}
               <label>
                 <span>Email</span>
-                <input type="email" placeholder="team@reverie.app" />
+                <input
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="team@reverie.app"
+                  autoComplete="email"
+                  disabled={pending}
+                  required
+                />
               </label>
               <label>
                 <span>Пароль</span>
                 <div className="auth-password-field">
-                  <input type={showPassword ? 'text' : 'password'} placeholder="Минимум 8 символов" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Минимум 8 символов"
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    minLength={8}
+                    maxLength={128}
+                    disabled={pending}
+                    required
+                  />
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
                     aria-label="Показать или скрыть пароль"
+                    disabled={pending}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -107,28 +184,29 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
               {mode === 'register' ? (
                 <label className="auth-checkbox">
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(event) => setAcceptedTerms(event.target.checked)}
+                    disabled={pending}
+                    required
+                  />
                   <span>Соглашаюсь с условиями сервиса и политикой конфиденциальности.</span>
                 </label>
               ) : null}
 
-              <button className="auth-submit" type="submit">
-                {submitLabel}
+              {error ? <p className="auth-form-error" role="alert">{error}</p> : null}
+
+              <button className="auth-submit" type="submit" disabled={pending}>
+                {pending ? 'Подождите…' : submitLabel}
                 <span>
                   <ArrowRight size={16} />
                 </span>
               </button>
             </form>
 
-            <div className="auth-provider-block">
-              <button type="button">
-                <CheckCircle2 size={16} />
-                Continue with Google
-              </button>
-            </div>
-
             <p className="auth-disclaimer">
-              Сейчас это UX-прототип. Кнопка отправки открывает workspace без проверки полей.
+              Вход сохраняется в защищённой серверной сессии. Пароль не попадает в браузерное хранилище.
             </p>
 
             <div className="auth-switch">

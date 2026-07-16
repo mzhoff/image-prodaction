@@ -13,6 +13,14 @@ export interface ProductionNode {
   data: ProductionNodeData;
 }
 
+export type AssetStorage = {
+  type: 'indexeddb';
+  blobKey: string;
+} | {
+  type: 'remote';
+  assetId: string;
+};
+
 export interface AssetRecord {
   id: string;
   kind: 'image' | 'video' | 'audio';
@@ -21,10 +29,7 @@ export interface AssetRecord {
   width?: number;
   height?: number;
   createdAt: string;
-  storage: {
-    type: 'indexeddb';
-    blobKey: string;
-  };
+  storage: AssetStorage;
 }
 
 export interface PresetRecord {
