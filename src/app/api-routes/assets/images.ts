@@ -5,7 +5,7 @@ import { requireApiSession } from '@/shared/auth/session';
 import { isUuidV7 } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from './error-response';
 
-const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 20 * 1024 * 1024;
+const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 15 * 1024 * 1024;
 const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 const uploadFieldsSchema = z.object({
@@ -68,6 +68,6 @@ function getStringField(formData: FormData, name: string) {
 }
 
 function getMaxImageUploadBytes() {
-  const parsed = Number.parseInt(process.env.ASSET_MAX_IMAGE_BYTES ?? '', 10);
+  const parsed = Number.parseInt(process.env.S3_MAX_IMAGE_BYTES ?? '', 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_IMAGE_UPLOAD_BYTES;
 }
