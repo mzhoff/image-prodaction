@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -14,6 +15,7 @@ export interface AssetObjectLocation {
 export interface AssetObjectStore {
   delete(location: AssetObjectLocation): Promise<void>;
   get(location: AssetObjectLocation): Promise<{ body: ReadableStream; contentLength?: number; contentType?: string }>;
+  health(): Promise<void>;
   put(input: AssetObjectLocation & { body: Uint8Array; contentType: string }): Promise<void>;
 }
 
@@ -36,6 +38,9 @@ export function createS3AssetStore(): AssetObjectStore {
   });
 
   return {
+    async health() {
+      await client.send(new HeadBucketCommand({ Bucket: config.bucket }));
+    },
     async put(input) {
       enforceConfiguredBucket(input.bucket, config.bucket);
       await client.send(new PutObjectCommand({

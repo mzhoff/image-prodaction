@@ -24,6 +24,7 @@ export interface AssetRepository {
   createPending(input: PendingAssetInput): Promise<AssetRecord>;
   findAccessible(assetId: string, userId: string): Promise<AssetRecord | undefined>;
   findCleanupCandidates(before: Date, limit: number): Promise<AssetRecord[]>;
+  listByDocument(documentId: string): Promise<AssetRecord[]>;
   markDeleted(assetId: string, deletedAt: Date): Promise<void>;
   markFailed(assetId: string, errorCode: string): Promise<void>;
   markReady(assetId: string): Promise<AssetRecord>;
@@ -77,6 +78,15 @@ export function createDbAssetRepository(): AssetRepository {
         ))
         .orderBy(asc(asset.createdAt))
         .limit(limit);
+    },
+
+    async listByDocument(documentId) {
+      return getDb().select().from(asset)
+        .where(and(
+          eq(asset.documentId, documentId),
+          inArray(asset.status, ['pending', 'ready', 'failed']),
+        ))
+        .orderBy(asc(asset.createdAt));
     },
 
     async markDeleted(assetId, deletedAt) {

@@ -1,14 +1,7 @@
-import { sql } from 'drizzle-orm';
-import { getDb } from '@/shared/db/client';
+import { getReadiness } from '@/app/api-routes/health/readiness';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
-  try {
-    await getDb().execute(sql`select 1`);
-    return Response.json({ status: 'ready', checks: { database: 'ok' } });
-  } catch (error) {
-    console.error('Readiness check failed', error);
-    return Response.json({ status: 'not_ready', checks: { database: 'failed' } }, { status: 503 });
-  }
+export function GET() {
+  return getReadiness();
 }

@@ -201,6 +201,31 @@ export async function cleanupOrphanedAssets(
   return { scanned: candidates.length, deleted, failed };
 }
 
+/**
+ * Internal precondition for permanent document deletion.
+ * The caller must authorize the document first and must not delete it if this throws.
+ */
+export async function cleanupDocumentAssets(
+  documentId: string,
+  dependencies: AssetStorageDependencies = createDefaultStorageDependencies(),
+) {
+  const records = await dependencies.repository.listByDocument(documentId);
+  let deleted = 0;
+
+  for (const record of records) {
+    try {
+      await dependencies.objectStore.delete({ bucket: record.bucket, key: record.storageKey });
+    } catch (error) {
+      logStorageFailure('document-cleanup', record.id, error);
+      throw new AssetStorageError();
+    }
+    await dependencies.repository.markDeleted(record.id, new Date());
+    deleted += 1;
+  }
+
+  return { scanned: records.length, deleted };
+}
+
 async function requireAccessibleAsset(userId: string, assetId: string, repository: AssetRepository) {
   const record = await repository.findAccessible(assetId, userId);
   if (!record) throw new AssetNotFoundError();

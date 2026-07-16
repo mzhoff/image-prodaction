@@ -1,3 +1,5 @@
+import { downloadRemoteImage, type RemoteImageDependencies } from '@/shared/storage/remote-image';
+
 export interface OpenRouterImageMessage {
   content?: unknown;
   images?: Array<{
@@ -9,6 +11,8 @@ export interface OpenRouterImageMessage {
 }
 
 const inlineImageUrlPattern = /(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+|https?:\/\/[^\s)"']+)/;
+const OPENROUTER_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+const OPENROUTER_IMAGE_TIMEOUT_MS = 20_000;
 
 export function extractOpenRouterImageUrl(message?: OpenRouterImageMessage) {
   const imageUrl = message?.images?.find((image) => image.image_url?.url)?.image_url?.url;
@@ -42,12 +46,17 @@ export function missingOpenRouterImageErrorWithContext(action: string, message?:
   return `${missingOpenRouterImageError(action)} Ответ модели: ${text.slice(0, 500)}`;
 }
 
-export async function normalizeOpenRouterImageUrl(url: string) {
-  if (url.startsWith('data:')) return url;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`OpenRouter image download failed: ${response.status}`);
-  const contentType = response.headers.get('content-type') ?? 'image/png';
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return `data:${contentType};base64,${buffer.toString('base64')}`;
+export async function normalizeOpenRouterImageUrl(
+  url: string,
+  options: {
+    dependencies?: RemoteImageDependencies;
+    maxBytes?: number;
+    timeoutMs?: number;
+  } = {},
+) {
+  const image = await downloadRemoteImage(url, {
+    maxBytes: options.maxBytes ?? OPENROUTER_IMAGE_MAX_BYTES,
+    timeoutMs: options.timeoutMs ?? OPENROUTER_IMAGE_TIMEOUT_MS,
+  }, options.dependencies);
+  return `data:${image.contentType};base64,${image.buffer.toString('base64')}`;
 }

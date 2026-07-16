@@ -4,6 +4,7 @@ import type { AssetObjectStore } from '@/shared/storage/s3-assets';
 import {
   AssetNotFoundError,
   AssetStorageError,
+  cleanupDocumentAssets,
   cleanupOrphanedAssets,
   deleteAsset,
   getAssetContent,
@@ -129,6 +130,39 @@ test('delete is idempotent and orphan cleanup can be scheduled separately', asyn
   assert.equal(deleteCalls, 2);
 });
 
+test('document cleanup blocks on partial S3 failure and safely resumes on retry', async () => {
+  const firstId = '01900000-0000-7000-8000-000000000004';
+  const secondId = '01900000-0000-7000-8000-000000000005';
+  const repository = new DocumentAssetRepository([
+    createRecord({ id: firstId, status: 'ready', storageKey: `documents/${documentId}/${firstId}.png` }),
+    createRecord({ id: secondId, status: 'failed', storageKey: `documents/${documentId}/${secondId}.png` }),
+  ]);
+  const deleteCalls: string[] = [];
+  let failSecond = true;
+  const dependencies = {
+    repository,
+    objectStore: createObjectStore({
+      delete: async ({ key }) => {
+        deleteCalls.push(key);
+        if (key.includes(secondId) && failSecond) throw new Error('temporary S3 failure');
+      },
+    }),
+  };
+
+  await assert.rejects(
+    cleanupDocumentAssets(documentId, dependencies),
+    AssetStorageError,
+  );
+  assert.equal(repository.records.find((record) => record.id === firstId)?.status, 'deleted');
+  assert.equal(repository.records.find((record) => record.id === secondId)?.status, 'failed');
+
+  failSecond = false;
+  const retried = await cleanupDocumentAssets(documentId, dependencies);
+  assert.deepEqual(retried, { scanned: 1, deleted: 1 });
+  assert.deepEqual(deleteCalls.map((key) => key.split('/').at(-1)?.split('.')[0]), [firstId, secondId, secondId]);
+  assert.equal(repository.records.every((record) => record.status === 'deleted'), true);
+});
+
 class MemoryAssetRepository implements AssetRepository {
   cleanupCandidates: AssetRecord[] = [];
   record: AssetRecord | undefined;
@@ -146,6 +180,10 @@ class MemoryAssetRepository implements AssetRepository {
 
   async findCleanupCandidates() {
     return this.cleanupCandidates;
+  }
+
+  async listByDocument(_documentId: string) {
+    return this.record && this.record.status !== 'deleted' ? [this.record] : [];
   }
 
   async markDeleted(assetIdToDelete: string, deletedAt: Date) {
@@ -166,6 +204,27 @@ class MemoryAssetRepository implements AssetRepository {
     if (!this.record || this.record.id !== assetIdToReady) throw new Error('missing test asset');
     this.record = { ...this.record, status: 'ready', updatedAt: new Date() };
     return this.record;
+  }
+}
+
+class DocumentAssetRepository extends MemoryAssetRepository {
+  records: AssetRecord[];
+
+  constructor(records: AssetRecord[]) {
+    super();
+    this.records = records;
+  }
+
+  override async listByDocument(documentIdToFind: string) {
+    return this.records.filter((record) => (
+      record.documentId === documentIdToFind && record.status !== 'deleted'
+    ));
+  }
+
+  override async markDeleted(assetIdToDelete: string, deletedAt: Date) {
+    this.records = this.records.map((record) => record.id === assetIdToDelete
+      ? { ...record, status: 'deleted', deletedAt, updatedAt: deletedAt }
+      : record);
   }
 }
 
@@ -197,6 +256,7 @@ function createObjectStore(overrides: Partial<AssetObjectStore> = {}): AssetObje
   return {
     delete: async () => undefined,
     get: async () => ({ body: new ReadableStream() }),
+    health: async () => undefined,
     put: async () => undefined,
     ...overrides,
   };
