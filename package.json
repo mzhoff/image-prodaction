@@ -8,6 +8,10 @@
     "dev:local": "next dev -p 3004",
     "build": "next build",
     "start": "next start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:check": "drizzle-kit check",
+    "db:studio": "drizzle-kit studio",
     "test": "npm run test:auth-schema && npm run test:asset-policy && npm run test:document-validation && npm run test:node-rename && npm run test:graph-sections && npm run test:text-prompt-variables && npm run test:telegram-rich-text && npm run test:workflow-contract && npm run test:dynamic-input-slot && npm run test:port-contract && npm run test:graph-connections && npm run test:normalize-project && npm run test:project-portability && npm run test:pipeline-template-import && npm run test:graph-text-filter-output && npm run test:speech-capabilities && npm run test:openrouter-models && npm run test:project-ui-state",
     "test:auth-schema": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs --test src/shared/db/schema/auth.test.ts",
     "test:asset-policy": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs --test src/shared/storage/image-policy.test.ts",
@@ -61,6 +65,7 @@
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "typescript": "6.0.3"
   }
 }
