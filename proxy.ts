@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from '@/shared/auth/server';
-
-const publicPagePaths = new Set(['/login', '/register']);
-const publicApiPrefixes = ['/api/auth', '/api/health'];
+import { isPublicApiPath, isPublicPagePath } from '@/shared/auth/route-policy';
+import { getRequestSession } from '@/shared/auth/session';
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  if (publicApiPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+  if (isPublicApiPath(pathname)) {
     return NextResponse.next();
   }
 
-  const session = await (await getAuth()).api.getSession({ headers: request.headers });
-  const isPublicPage = publicPagePaths.has(pathname);
+  const session = await getRequestSession(request);
+  const isPublicPage = isPublicPagePath(pathname);
 
   if (isPublicPage) {
     return session?.user.id

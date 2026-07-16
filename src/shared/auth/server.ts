@@ -1,6 +1,8 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
+import { readAuthServerConfig } from './config';
+import { ensurePersonalWorkspaceForUser } from './workspace-bootstrap';
 
 let authPromise: ReturnType<typeof createAuth> | undefined;
 
@@ -14,16 +16,16 @@ async function createAuth() {
     import('@/shared/db/client'),
     import('@/shared/db/schema'),
   ]);
-  const baseURL = readRequiredEnv('BETTER_AUTH_URL');
+  const config = readAuthServerConfig();
 
   return betterAuth({
-    baseURL,
-    secret: readRequiredEnv('BETTER_AUTH_SECRET'),
+    baseURL: config.baseURL,
+    secret: config.secret,
     database: drizzleAdapter(getDb(), {
       provider: 'pg',
       schema,
     }),
-    trustedOrigins: readTrustedOrigins(baseURL),
+    trustedOrigins: config.trustedOrigins,
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
@@ -31,6 +33,7 @@ async function createAuth() {
     },
     rateLimit: {
       enabled: true,
+      storage: 'database',
       window: 60,
       max: 100,
       customRules: {
@@ -42,8 +45,7 @@ async function createAuth() {
       user: {
         create: {
           after: async (createdUser) => {
-            const { ensurePersonalWorkspace } = await import('@/entities/workspace/server/workspace-service');
-            await ensurePersonalWorkspace({
+            await ensurePersonalWorkspaceForUser({
               id: createdUser.id,
               email: createdUser.email,
               name: createdUser.name,
@@ -54,19 +56,4 @@ async function createAuth() {
     },
     plugins: [nextCookies()],
   });
-}
-
-function readRequiredEnv(name: 'BETTER_AUTH_SECRET' | 'BETTER_AUTH_URL') {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required for Better Auth.`);
-  return value;
-}
-
-function readTrustedOrigins(baseURL: string) {
-  const configured = process.env.BETTER_AUTH_TRUSTED_ORIGINS
-    ?.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean) ?? [];
-
-  return Array.from(new Set([baseURL, ...configured]));
 }

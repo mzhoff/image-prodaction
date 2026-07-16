@@ -6,6 +6,8 @@ import { ArrowRight, Eye, EyeOff, Sparkles, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { signIn, signUp } from '@/shared/auth/client';
+import { formatAuthError } from '@/shared/auth/error-message';
+import { getSafePostAuthPath } from '@/shared/auth/route-policy';
 
 type AuthMode = 'login' | 'register';
 
@@ -28,6 +30,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === 'register' && !name.trim()) {
+      setError('Укажите имя и фамилию.');
+      return;
+    }
     if (mode === 'register' && !acceptedTerms) {
       setError('Подтвердите согласие с условиями сервиса.');
       return;
@@ -47,7 +53,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      router.replace('/');
+      const requestedPath = typeof window === 'undefined'
+        ? null
+        : new URLSearchParams(window.location.search).get('next');
+      router.replace(getSafePostAuthPath(requestedPath));
       router.refresh();
     } catch (caughtError) {
       setError(formatAuthError(caughtError));
@@ -202,16 +211,4 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       </section>
     </main>
   );
-}
-
-function formatAuthError(error: unknown) {
-  const code = typeof error === 'object' && error && 'code' in error
-    ? String((error as { code?: unknown }).code ?? '')
-    : '';
-
-  if (code.includes('USER_ALREADY_EXISTS')) return 'Аккаунт с таким email уже существует.';
-  if (code.includes('INVALID_EMAIL_OR_PASSWORD')) return 'Неверный email или пароль.';
-  if (code.includes('TOO_MANY_REQUESTS')) return 'Слишком много попыток. Подождите минуту и попробуйте снова.';
-
-  return 'Не удалось выполнить запрос. Проверьте данные и попробуйте ещё раз.';
 }
