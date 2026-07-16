@@ -3,10 +3,9 @@
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
 import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
 import { ContextMenu } from '@/shared/ui/context-menu';
-import { loadWorkspaceState } from '@/entities/workspace/model/workspace-storage';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { Menu, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
 import { CanvasGrid } from './canvas-grid';
@@ -24,13 +23,11 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
   const model = useProductionCanvasModel({ projectId });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [projectTitle, setProjectTitle] = useState('Blog Articles Pipeline');
-
-  useEffect(() => {
-    if (!projectId) return;
-    const project = loadWorkspaceState().projects.find((item) => item.id === projectId);
-    setProjectTitle(project?.name ?? 'Untitled Pipeline');
-  }, [projectId]);
+  const projectTitle = model.documentName
+    ?? (model.documentSync.phase === 'loading' ? 'Загрузка документа…' : 'Untitled Pipeline');
+  const syncProblem = model.documentSync.phase === 'conflict'
+    || model.documentSync.phase === 'error'
+    || model.documentSync.phase === 'recovery';
 
   return (
     <div className="canvas-shell">
@@ -121,7 +118,9 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           onClick={() => setAssistantOpen(true)}
         />
         <AssistantShell open={assistantOpen} contextLabel={projectTitle} onClose={() => setAssistantOpen(false)} />
-        {model.toastMessage ? <div className="canvas-toast">{model.toastMessage}</div> : null}
+        {syncProblem && model.documentSync.message ? (
+          <div className="canvas-toast" role="status">{model.documentSync.message}</div>
+        ) : model.toastMessage ? <div className="canvas-toast">{model.toastMessage}</div> : null}
         {model.boxSelection.rectStyle ? <div className="selection-rect" style={model.boxSelection.rectStyle} /> : null}
         {model.sectionDraftStyle ? <div className="section-draft-rect" style={model.sectionDraftStyle} /> : null}
         <ContextMenu menu={model.contextMenu.menu} onClose={model.closeContextMenu} />
