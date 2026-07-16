@@ -10,6 +10,10 @@ test('Better Auth schema keeps the required tables and ownership indexes', () =>
   assert.equal(getTableConfig(verification).name, 'verification');
   assert.equal(getTableConfig(rateLimit).name, 'rate_limit');
 
+  const userColumns = getTableConfig(user).columns;
+  assert.equal(userColumns.find((column) => column.name === 'terms_accepted_at')?.notNull, true);
+  assert.equal(userColumns.find((column) => column.name === 'terms_version')?.notNull, true);
+
   assert.ok(getTableConfig(session).indexes.some((item) => item.config.name === 'session_user_id_idx'));
   assert.ok(getTableConfig(account).indexes.some((item) => item.config.name === 'account_user_id_idx'));
   assert.ok(getTableConfig(verification).indexes.some((item) => item.config.name === 'verification_identifier_idx'));

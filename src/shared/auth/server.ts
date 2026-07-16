@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
 import { readAuthServerConfig } from './config';
+import { termsAcceptanceAdditionalFields } from './terms-policy';
 import { ensurePersonalWorkspaceForUser } from './workspace-bootstrap';
 
 let authPromise: ReturnType<typeof createAuth> | undefined;
@@ -26,6 +27,9 @@ async function createAuth() {
       schema,
     }),
     trustedOrigins: config.trustedOrigins,
+    user: {
+      additionalFields: termsAcceptanceAdditionalFields,
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,

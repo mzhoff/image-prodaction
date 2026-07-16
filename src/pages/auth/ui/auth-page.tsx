@@ -8,6 +8,7 @@ import type { FormEvent } from 'react';
 import { signIn, signUp } from '@/shared/auth/client';
 import { formatAuthError } from '@/shared/auth/error-message';
 import { getSafePostAuthPath } from '@/shared/auth/route-policy';
+import { CURRENT_TERMS_VERSION } from '@/shared/auth/terms-contract';
 
 type AuthMode = 'login' | 'register';
 
@@ -46,7 +47,12 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       const credentials = { email: email.trim(), password };
       const result = mode === 'login'
         ? await signIn.email({ ...credentials, rememberMe: true })
-        : await signUp.email({ ...credentials, name: name.trim() });
+        : await signUp.email({
+          ...credentials,
+          name: name.trim(),
+          termsAccepted: acceptedTerms,
+          termsVersion: CURRENT_TERMS_VERSION,
+        });
 
       if (result.error) {
         setError(formatAuthError(result.error));
