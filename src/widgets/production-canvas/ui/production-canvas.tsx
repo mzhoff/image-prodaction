@@ -103,7 +103,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             selectedSet={model.selectedSet}
           />
         </div>
-        <OpenRouterBalance />
+        <OpenRouterBalance workspaceId={model.workspaceId} />
         <button
           type="button"
           className={`document-floating-action document-floating-action-add ${paletteOpen ? 'document-floating-action-hidden' : ''}`}

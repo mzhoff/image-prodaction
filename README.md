@@ -1,27 +1,31 @@
 # Reverie Image Production
 
-Node-based image production pipeline prototype for Reverie.
+Node-based image production workspace for Reverie.
 
-The current MVP is a local Next.js app for building image workflows on a canvas:
+The local contour includes Next.js, PostgreSQL, private S3-compatible storage,
+transactional-email capture and a durable AI generation worker:
 
 - import image references;
 - extract structured text layers from an image through OpenRouter;
 - connect text or image outputs between nodes;
 - generate images from prompt, references, aspect ratio and model settings;
-- store the local graph and image assets in the browser.
+- store projects, sessions, assets, provider connections and usage on the backend;
+- keep each Workspace OpenRouter key encrypted and isolated.
 
 ## Quick Start
 
 ```bash
 npm install
 cp .env.example .env.local
-npm run dev:local
+docker compose up --build
 ```
 
 Open [http://localhost:3004](http://localhost:3004).
 
-Before using real AI calls, fill `OPENROUTER_API_KEY` in `.env.local`.
-The local `.env.local` file is ignored by git and must not be committed.
+Before the first launch, generate the three independent secrets described in
+`.env.example`. Connect OpenRouter afterwards in
+`Settings → Workspace → AI Providers`; the raw key is never returned to the
+browser after it is saved.
 
 ## Documentation
 
@@ -35,15 +39,21 @@ The local `.env.local` file is ignored by git and must not be committed.
 - [Phase 4 plan](./docs/phase-4-plan.md)
 - [Coding standards](./docs/coding-standards.md)
 - [Workflow contracts](./docs/workflow-contracts.md)
+- [Workspace AI execution architecture](./docs/workspace-ai-execution-architecture.md)
+- [Workspace AI execution implementation plan](./docs/workspace-ai-execution-implementation-plan.md)
+- [Executable Pipelines architecture](./docs/executable-pipelines-architecture.md)
 - [Quality gates](./docs/quality-gates.md)
 
 ## Useful Scripts
 
 ```bash
 npm run dev:local   # Start local app on port 3004
+npm run worker      # Start the durable generation worker
 npm run dev         # Start Next.js on default port 3000
+npm run check:architecture # Verify modular boundaries
 npm run typecheck   # Run TypeScript checks
 npm run test        # Run focused unit tests
+npm run test:generation-persistence-smoke # Verify PostgreSQL + MinIO generation fences
 npm run test:workflow-contract  # Contract-level tests
 npm run build       # Build production bundle
 ```

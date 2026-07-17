@@ -1,0 +1,18 @@
+{
+	admin off
+	auto_https off
+}
+
+http://89.124.115.57 {
+	redir https://89.124.115.57{uri} permanent
+}
+
+https://89.124.115.57 {
+	tls /etc/letsencrypt/live/gigonom-ip/fullchain.pem /etc/letsencrypt/live/gigonom-ip/privkey.pem
+	encode zstd gzip
+	reverse_proxy web:3000
+	log {
+		output stdout
+		format json
+	}
+}

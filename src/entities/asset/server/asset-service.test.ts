@@ -162,6 +162,56 @@ test('marks the database row failed and exposes only a generic storage error', a
   assert.deepEqual(repository.transitions, ['pending', 'failed']);
 });
 
+test('retries a failed generated asset with the same database row and storage key', async () => {
+  const generationJobId = '01900000-0000-7000-8000-000000000099';
+  const repository = new MemoryAssetRepository();
+  let allocatedIds = 0;
+  let putCalls = 0;
+  const dependencies: AssetUploadDependencies = {
+    repository,
+    bucket: 'private-assets',
+    createId: () => {
+      allocatedIds += 1;
+      return assetId;
+    },
+    assertAccess: async () => undefined,
+    objectStore: createObjectStore({
+      put: async () => {
+        putCalls += 1;
+        if (putCalls === 1) throw new Error('temporary S3 outage');
+      },
+    }),
+  };
+  const input = {
+    bytes: onePixelPng,
+    claimedContentType: 'image/png',
+    documentId,
+    generationJobId,
+    libraryVisible: false,
+    maxBytes: 1024,
+    modelId: 'google/gemini-image',
+    operation: 'generate_image',
+    origin: 'generated' as const,
+    originalName: 'generated.png',
+    provider: 'openrouter',
+    userId: 'user-1',
+    workspaceId,
+  };
+
+  await assert.rejects(uploadImageAsset(input, dependencies), AssetStorageError);
+  const result = await uploadImageAsset(input, dependencies);
+
+  assert.equal(result.id, assetId);
+  assert.equal(result.status, 'ready');
+  assert.equal(allocatedIds, 1);
+  assert.deepEqual(repository.transitions, [
+    'pending',
+    'failed',
+    'reset-pending',
+    'ready',
+  ]);
+});
+
 test('durable origins are explicit while technical operation outputs stay hidden by default', async () => {
   const uploaded = await uploadWithProvenance({
     libraryVisible: true,
@@ -628,6 +678,14 @@ class MemoryAssetRepository implements AssetRepository {
     return this.cleanupCandidates;
   }
 
+  async findGeneratedByJobId(generationJobIdToFind: string) {
+    return this.record?.generationJobId === generationJobIdToFind
+      && this.record.origin === 'generated'
+      && this.record.status !== 'deleted'
+      ? this.record
+      : undefined;
+  }
+
   async findVariant(assetIdToFind: string, purpose: AssetVariantRecord['purpose']) {
     return this.variants.find((variant) => (
       variant.assetId === assetIdToFind && variant.purpose === purpose
@@ -686,6 +744,20 @@ class MemoryAssetRepository implements AssetRepository {
     this.transitions.push('ready');
     if (!this.record || this.record.id !== assetIdToReady) throw new Error('missing test asset');
     this.record = { ...this.record, status: 'ready', updatedAt: new Date() };
+    return this.record;
+  }
+
+  async resetPending(assetIdToReset: string) {
+    this.transitions.push('reset-pending');
+    if (!this.record || this.record.id !== assetIdToReset) throw new Error('missing test asset');
+    this.record = {
+      ...this.record,
+      status: 'pending',
+      errorCode: null,
+      libraryVisible: false,
+      deletedAt: null,
+      updatedAt: new Date(),
+    };
     return this.record;
   }
 

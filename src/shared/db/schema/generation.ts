@@ -45,6 +45,12 @@ export const generationJob = pgTable('generation_job', {
   modelId: text('model_id').notNull(),
   operation: text('operation').notNull(),
   idempotencyKey: text('idempotency_key').notNull(),
+  requestObjectKey: text('request_object_key'),
+  resultObjectKey: text('result_object_key'),
+  providerOperationId: text('provider_operation_id'),
+  providerDispatchedAt: timestamp('provider_dispatched_at', { withTimezone: true }),
+  providerDispatchedAttempt: integer('provider_dispatched_attempt'),
+  queueJobId: text('queue_job_id'),
   status: generationJobStatus('status').default('queued').notNull(),
   attemptCount: integer('attempt_count').default(0).notNull(),
   maxAttempts: integer('max_attempts').default(3).notNull(),
@@ -62,8 +68,11 @@ export const generationJob = pgTable('generation_job', {
   errorMessage: text('error_message'),
   metadata: jsonb('metadata').$type<Record<string, unknown> | null>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  enqueuedAt: timestamp('enqueued_at', { withTimezone: true }),
   startedAt: timestamp('started_at', { withTimezone: true }),
   leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+  retryAvailableAt: timestamp('retry_available_at', { withTimezone: true }),
+  cancelRequestedAt: timestamp('cancel_requested_at', { withTimezone: true }),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
@@ -82,7 +91,10 @@ export const generationJob = pgTable('generation_job', {
   index('generation_job_creator_created_idx').on(table.createdByUserId, table.createdAt),
   index('generation_job_document_idx').on(table.documentId),
   index('generation_job_lease_idx').on(table.status, table.leaseExpiresAt),
+  index('generation_job_retry_idx').on(table.status, table.retryAvailableAt),
+  index('generation_job_dispatch_idx').on(table.status, table.enqueuedAt, table.createdAt),
   index('generation_job_final_asset_idx').on(table.finalAssetId),
+  index('generation_job_provider_operation_idx').on(table.provider, table.providerOperationId),
 ]);
 
 export const generationJobRelations = relations(generationJob, ({ one }) => ({

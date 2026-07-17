@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import { getIncomingImageInputs, getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
@@ -19,6 +19,7 @@ import {
   requestDescribeSubject,
   requestEditImage,
   requestGenerateImage,
+  requestGenerationJob,
 } from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL, DEFAULT_IMAGE_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
@@ -42,6 +43,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
   const { imageModels } = useOpenRouterModels();
   const [describing, setDescribing] = useState(false);
   const [generatingReferenceTarget, setGeneratingReferenceTarget] = useState<string | null>(null);
+  const referencePollingControllerRef = useRef<AbortController | null>(null);
   const generatingReferences = generatingReferenceTarget !== null;
   const generatingReferenceSlotId = generatingReferenceTarget && generatingReferenceTarget !== 'all'
     ? generatingReferenceTarget
@@ -98,6 +100,100 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
   const referenceModelOptions = useMemo(() => modelSelectOptions(imageModels), [imageModels]);
   const canDescribeSubject = sourceCount > 0 && !describing;
   const canGenerateSubjectReferences = imageAssetIds.length > 0 && !generatingReferences;
+  const pendingReferenceGeneration = Object.entries(data.referenceGenerationRequests ?? {})
+    .find(([, request]) => Boolean(request.jobId));
+  const pendingReferenceSlotId = pendingReferenceGeneration?.[0];
+  const pendingReferenceJobId = pendingReferenceGeneration?.[1].jobId;
+  const referenceRecoveryStateRef = useRef({
+    generatedImageAssetIds,
+    imageCount,
+    referenceGenerationBatchPending: data.referenceGenerationBatchPending,
+    referenceGenerationRequests: data.referenceGenerationRequests,
+    textInputCount: textInputs.length,
+  });
+  referenceRecoveryStateRef.current = {
+    generatedImageAssetIds,
+    imageCount,
+    referenceGenerationBatchPending: data.referenceGenerationBatchPending,
+    referenceGenerationRequests: data.referenceGenerationRequests,
+    textInputCount: textInputs.length,
+  };
+
+  useEffect(() => () => {
+    referencePollingControllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    const slotId = pendingReferenceSlotId;
+    const jobId = pendingReferenceJobId;
+    if (!slotId || !jobId || generatingReferences) return;
+    const slotIndex = SUBJECT_PROFILE_REFERENCE_SLOTS.findIndex((slot) => slot.id === slotId);
+    if (slotIndex < 0) return;
+    const controller = new AbortController();
+    referencePollingControllerRef.current?.abort();
+    referencePollingControllerRef.current = controller;
+    setGeneratingReferenceTarget(slotId);
+    setNodeStatus(node.id, 'running');
+    updateNodeDataSilent(node.id, {
+      message: `Восстанавливаем ${getSubjectReferenceSlotLabel(slotId).toLowerCase()} reference…`,
+    });
+
+    void requestGenerationJob(jobId, { signal: controller.signal }).then((response) => {
+      const current = referenceRecoveryStateRef.current;
+      const asset = response.asset;
+      addAsset(asset);
+      const nextAssetIds = [...current.generatedImageAssetIds];
+      nextAssetIds[slotIndex] = asset.id;
+      const nextRequests = { ...(current.referenceGenerationRequests ?? {}) };
+      delete nextRequests[slotId];
+      const libraryImageAssetIds = SUBJECT_PROFILE_REFERENCE_SLOTS
+        .map((_, index) => nextAssetIds[index])
+        .filter((assetId): assetId is string => Boolean(assetId));
+      updateNodeData(node.id, {
+        libraryImageAssetIds,
+        referenceGenerationBatchPending:
+          Boolean(current.referenceGenerationBatchPending)
+          && libraryImageAssetIds.length < SUBJECT_PROFILE_REFERENCE_SLOTS.length,
+        referenceGenerationRequests: nextRequests,
+        sourceCount: current.textInputCount + current.imageCount + libraryImageAssetIds.length,
+        message: `Восстановлен результат ${getSubjectReferenceSlotLabel(slotId)} reference.`,
+      });
+      setNodeStatus(node.id, 'success');
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      const nextRequests = {
+        ...(referenceRecoveryStateRef.current.referenceGenerationRequests ?? {}),
+      };
+      if (shouldDiscardGenerationRequest(error)) delete nextRequests[slotId];
+      updateNodeDataSilent(node.id, {
+        referenceGenerationRequests: nextRequests,
+        message: error instanceof Error
+          ? error.message
+          : 'OpenRouter canonical subject reference generation failed',
+      });
+      setNodeStatus(node.id, 'error');
+    }).finally(() => {
+      setGeneratingReferenceTarget(null);
+      if (referencePollingControllerRef.current === controller) {
+        referencePollingControllerRef.current = null;
+      }
+    });
+
+    return () => {
+      controller.abort();
+      if (referencePollingControllerRef.current === controller) {
+        referencePollingControllerRef.current = null;
+      }
+    };
+  }, [
+    addAsset,
+    node.id,
+    pendingReferenceJobId,
+    pendingReferenceSlotId,
+    setNodeStatus,
+    updateNodeData,
+    updateNodeDataSilent,
+  ]);
 
   useEffect(() => {
     if (data.result === result && data.sourceCount === sourceCount) return;
@@ -160,7 +256,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
     if (slotId && !targetSlot) return;
     const nextGenerationRequests = { ...(data.referenceGenerationRequests ?? {}) };
     const resumeInterruptedBatch = !targetSlot
-      && node.status === 'error'
+      && Boolean(data.referenceGenerationBatchPending)
       && (generatedImageAssetIds.length > 0 || Object.keys(nextGenerationRequests).length > 0);
     const nextGeneratedAssetIds = targetSlot || resumeInterruptedBatch
       ? [...generatedImageAssetIds]
@@ -171,11 +267,17 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
         ? SUBJECT_PROFILE_REFERENCE_SLOTS.filter((_, index) => !nextGeneratedAssetIds[index])
         : SUBJECT_PROFILE_REFERENCE_SLOTS;
     let activeSlotId: string | null = null;
+    const controller = new AbortController();
+    referencePollingControllerRef.current?.abort();
+    referencePollingControllerRef.current = controller;
 
     try {
       setGeneratingReferenceTarget(targetSlot?.id ?? 'all');
       setNodeStatus(node.id, 'running');
       updateNodeDataSilent(node.id, {
+        referenceGenerationBatchPending: targetSlot
+          ? data.referenceGenerationBatchPending
+          : true,
         message: targetSlot
           ? `Regenerating ${targetSlot.label.toLowerCase()} reference...`
           : 'Generating canonical subject references...',
@@ -222,7 +324,22 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
         updateNodeDataSilent(node.id, {
           referenceGenerationRequests: { ...nextGenerationRequests },
         });
-        const response = await requestGenerateImage({ ...requestPayload, idempotencyKey });
+        const response = await requestGenerateImage(
+          { ...requestPayload, idempotencyKey },
+          {
+            signal: controller.signal,
+            onJobAccepted(jobId) {
+              nextGenerationRequests[slot.id] = {
+                fingerprint,
+                idempotencyKey,
+                jobId,
+              };
+              updateNodeDataSilent(node.id, {
+                referenceGenerationRequests: { ...nextGenerationRequests },
+              });
+            },
+          },
+        );
         const asset = response.asset;
         addAsset(asset);
         if (targetSlot) {
@@ -251,11 +368,15 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
           ? `Regenerated ${targetSlot.label} canonical subject reference.`
           : 'Generated 4 canonical subject references.',
         referenceModel: selectedReferenceModel,
+        referenceGenerationBatchPending: targetSlot
+          ? data.referenceGenerationBatchPending
+          : false,
         referenceGenerationRequests: nextGenerationRequests,
         sourceCount: textInputs.length + imageCount + libraryImageAssetIds.length,
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
+      if (controller.signal.aborted) return;
       setNodeStatus(node.id, 'error');
       if (activeSlotId && shouldDiscardGenerationRequest(error)) {
         delete nextGenerationRequests[activeSlotId];
@@ -266,8 +387,30 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
       });
     } finally {
       setGeneratingReferenceTarget(null);
+      if (referencePollingControllerRef.current === controller) {
+        referencePollingControllerRef.current = null;
+      }
     }
   };
+
+  useEffect(() => {
+    if (
+      !data.referenceGenerationBatchPending
+      || generatingReferences
+      || pendingReferenceJobId
+      || generatedImageAssetIds.length >= SUBJECT_PROFILE_REFERENCE_SLOTS.length
+      || imageAssetIds.length === 0
+    ) {
+      return;
+    }
+    void handleGenerateSubjectReferences();
+  }, [
+    data.referenceGenerationBatchPending,
+    generatedImageAssetIds.length,
+    generatingReferences,
+    imageAssetIds.length,
+    pendingReferenceJobId,
+  ]);
 
   const handleMaskEdit = async (
     slotId: string,

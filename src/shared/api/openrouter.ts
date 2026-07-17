@@ -14,15 +14,13 @@ interface OpenRouterFetchOptions extends RequestInit {
 
 export class OpenRouterRequestError extends Error {
   status: number;
-  body?: string;
   code: 'upstream_error' | 'network_error';
 
-  constructor(message: string, status: number, code: OpenRouterRequestError['code'], body?: string) {
+  constructor(message: string, status: number, code: OpenRouterRequestError['code']) {
     super(message);
     this.name = 'OpenRouterRequestError';
     this.status = status;
     this.code = code;
-    this.body = body;
   }
 }
 
@@ -60,6 +58,7 @@ export interface OpenRouterUsage {
 }
 
 export async function sendOpenRouterChat({
+  apiKey,
   model,
   messages,
   modalities,
@@ -68,6 +67,7 @@ export async function sendOpenRouterChat({
   reasoning,
   temperature,
 }: {
+  apiKey: string;
   model: string;
   messages: OpenRouterChatMessage[];
   modalities?: Array<'text' | 'image'>;
@@ -76,10 +76,7 @@ export async function sendOpenRouterChat({
   reasoning?: OpenRouterReasoningConfig;
   temperature?: number;
 }) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not configured');
-  }
+  assertExplicitApiKey(apiKey);
 
   const response = await fetchOpenRouter(OPENROUTER_URL, {
     method: 'POST',
@@ -126,10 +123,7 @@ export async function sendOpenRouterChat({
 }
 
 export async function fetchOpenRouterModels() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const headers: HeadersInit = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
   const response = await fetchOpenRouter(OPENROUTER_MODELS_URL, {
-    headers,
     next: { revalidate: 300 },
     timeoutMs: 15_000,
   }, 'OpenRouter models request', 1);
@@ -144,10 +138,7 @@ export async function fetchOpenRouterModels() {
 }
 
 export async function fetchOpenRouterSpeechModels() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const headers: HeadersInit = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
   const response = await fetchOpenRouter(OPENROUTER_SPEECH_MODELS_URL, {
-    headers,
     next: { revalidate: 300 },
     timeoutMs: 15_000,
   }, 'OpenRouter speech models request', 1);
@@ -162,6 +153,7 @@ export async function fetchOpenRouterSpeechModels() {
 }
 
 export async function sendOpenRouterSpeech({
+  apiKey,
   input,
   model,
   responseFormat,
@@ -171,6 +163,7 @@ export async function sendOpenRouterSpeech({
   topP,
   voice,
 }: {
+  apiKey: string;
   input: string;
   model: string;
   responseFormat?: 'mp3' | 'pcm';
@@ -180,10 +173,7 @@ export async function sendOpenRouterSpeech({
   topP?: number;
   voice: string;
 }) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not configured');
-  }
+  assertExplicitApiKey(apiKey);
 
   const response = await fetchOpenRouter(OPENROUTER_SPEECH_URL, {
     method: 'POST',
@@ -212,11 +202,8 @@ export async function sendOpenRouterSpeech({
   return response;
 }
 
-export async function fetchOpenRouterKey() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not configured');
-  }
+export async function fetchOpenRouterKey(apiKey: string) {
+  assertExplicitApiKey(apiKey);
 
   const response = await fetchOpenRouter(OPENROUTER_KEY_URL, {
     headers: {
@@ -290,32 +277,11 @@ async function fetchOpenRouter(url: string, options: OpenRouterFetchOptions, lab
 }
 
 async function createOpenRouterResponseError(response: Response, label: string) {
-  const body = await response.text().catch(() => '');
-  const detail = extractOpenRouterErrorMessage(body);
   return new OpenRouterRequestError(
-    `${label} failed with HTTP ${response.status}${detail ? `: ${detail}` : ''}`,
+    `${label} failed with HTTP ${response.status}.`,
     response.status,
     'upstream_error',
-    body,
   );
-}
-
-function extractOpenRouterErrorMessage(body: string) {
-  if (!body) return '';
-
-  try {
-    const parsed = JSON.parse(body) as {
-      error?: {
-        message?: string;
-        code?: string | number;
-      } | string;
-      message?: string;
-    };
-    if (typeof parsed.error === 'string') return parsed.error;
-    return parsed.error?.message ?? parsed.message ?? body.slice(0, 500);
-  } catch {
-    return body.slice(0, 500);
-  }
 }
 
 function delay(ms: number) {
@@ -326,4 +292,8 @@ function delay(ms: number) {
 
 function removeUndefined<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
+}
+
+function assertExplicitApiKey(apiKey: string) {
+  if (!apiKey.trim()) throw new Error('OpenRouter credential is required.');
 }

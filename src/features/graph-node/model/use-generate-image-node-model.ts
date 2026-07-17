@@ -1,10 +1,15 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { appendGenerationResult, getGenerationHistory, selectGenerationResult } from '@/entities/production-graph/model/generation-history';
 import type { GenerateImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { AiRequestError, requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
+import {
+  AiRequestError,
+  requestEditImage,
+  requestGenerateImage,
+  requestGenerationJob,
+} from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
@@ -49,7 +54,90 @@ export function useGenerateImageNodeModel({
   const generationHistory = useMemo(() => getGenerationHistory(data), [data]);
   const [promptOpen, setPromptOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
+  const activeGenerationJobIdRef = useRef<string | null>(null);
+  const pollingControllerRef = useRef<AbortController | null>(null);
+  const generationPresentationRef = useRef({
+    data,
+    selectedAspectRatio,
+    selectedModel,
+    selectedSize,
+  });
+  generationPresentationRef.current = {
+    data,
+    selectedAspectRatio,
+    selectedModel,
+    selectedSize,
+  };
+  const pendingGenerationJobId = data.generationRequest?.jobId;
   const allSectionsOpen = promptOpen && settingsOpen && composingOpen;
+
+  useEffect(() => () => {
+    pollingControllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    const jobId = pendingGenerationJobId;
+    if (!jobId || activeGenerationJobIdRef.current === jobId) return;
+    const controller = new AbortController();
+    pollingControllerRef.current?.abort();
+    pollingControllerRef.current = controller;
+    activeGenerationJobIdRef.current = jobId;
+    setNodeStatus(node.id, 'running');
+    updateNodeDataSilent(node.id, {
+      message: 'Восстанавливаем незавершённую генерацию…',
+    });
+    void requestGenerationJob(jobId, { signal: controller.signal }).then((result) => {
+      const current = generationPresentationRef.current;
+      const asset = result.asset;
+      addAsset(asset);
+      updateNodeData(node.id, {
+        ...appendGenerationResult(current.data, asset.id),
+        resultMetadata: {
+          ...current.data.resultMetadata,
+          [asset.id]: {
+            aspectRatio: current.selectedAspectRatio,
+            model: current.selectedModel,
+            size: current.selectedSize,
+          },
+        },
+        generationRequest: undefined,
+        message: result.message,
+      });
+      setNodeStatus(node.id, 'success');
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      setNodeStatus(node.id, 'error');
+      if (shouldDiscardGenerationRequest(error)) {
+        updateNodeDataSilent(node.id, { generationRequest: undefined });
+      }
+      updateNodeDataSilent(node.id, {
+        message: error instanceof Error ? error.message : 'OpenRouter generation failed',
+      });
+    }).finally(() => {
+      if (activeGenerationJobIdRef.current === jobId) {
+        activeGenerationJobIdRef.current = null;
+      }
+      if (pollingControllerRef.current === controller) {
+        pollingControllerRef.current = null;
+      }
+    });
+    return () => {
+      controller.abort();
+      if (activeGenerationJobIdRef.current === jobId) {
+        activeGenerationJobIdRef.current = null;
+      }
+      if (pollingControllerRef.current === controller) {
+        pollingControllerRef.current = null;
+      }
+    };
+  }, [
+    addAsset,
+    node.id,
+    pendingGenerationJobId,
+    setNodeStatus,
+    updateNodeData,
+    updateNodeDataSilent,
+  ]);
 
   const toggleAllSections = () => {
     const nextOpen = !allSectionsOpen;
@@ -70,6 +158,9 @@ export function useGenerateImageNodeModel({
   };
 
   const handleGenerate = async () => {
+    const controller = new AbortController();
+    pollingControllerRef.current?.abort();
+    pollingControllerRef.current = controller;
     try {
       setNodeStatus(node.id, 'running');
       updateNodeDataSilent(node.id, { message: '' });
@@ -92,7 +183,18 @@ export function useGenerateImageNodeModel({
       updateNodeDataSilent(node.id, {
         generationRequest: { fingerprint, idempotencyKey },
       });
-      const result = await requestGenerateImage({ ...requestPayload, idempotencyKey });
+      const result = await requestGenerateImage(
+        { ...requestPayload, idempotencyKey },
+        {
+          signal: controller.signal,
+          onJobAccepted(jobId) {
+            activeGenerationJobIdRef.current = jobId;
+            updateNodeDataSilent(node.id, {
+              generationRequest: { fingerprint, idempotencyKey, jobId },
+            });
+          },
+        },
+      );
       const asset = result.asset;
       addAsset(asset);
       updateNodeData(node.id, {
@@ -113,6 +215,7 @@ export function useGenerateImageNodeModel({
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
+      if (controller.signal.aborted) return;
       setNodeStatus(node.id, 'error');
       if (shouldDiscardGenerationRequest(error)) {
         updateNodeDataSilent(node.id, { generationRequest: undefined });
@@ -120,6 +223,11 @@ export function useGenerateImageNodeModel({
       updateNodeDataSilent(node.id, {
         message: error instanceof Error ? error.message : 'OpenRouter generation failed',
       });
+    } finally {
+      activeGenerationJobIdRef.current = null;
+      if (pollingControllerRef.current === controller) {
+        pollingControllerRef.current = null;
+      }
     }
   };
 

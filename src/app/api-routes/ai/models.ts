@@ -19,10 +19,10 @@ export async function GET() {
     }
 
     return Response.json(catalog);
-  } catch (error) {
+  } catch {
     return Response.json({
       ...createFallbackCatalog(),
-      error: error instanceof Error ? error.message : 'OpenRouter models request failed',
+      error: 'OpenRouter models request failed',
     });
   }
 }

@@ -1,4 +1,4 @@
-export const settingsSections = ['account', 'security'] as const;
+export const settingsSections = ['account', 'security', 'providers'] as const;
 
 export type SettingsSection = typeof settingsSections[number];
 

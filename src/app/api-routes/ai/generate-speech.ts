@@ -1,11 +1,18 @@
 import { z } from 'zod';
-import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterSpeech } from '@/shared/api/openrouter';
+import { sendOpenRouterSpeech } from '@/shared/api/openrouter';
 import { DEFAULT_SPEECH_MODEL } from '@/shared/api/openrouter-models';
 import { getOpenRouterSpeechCapabilities, getOpenRouterSpeechResponseFormat, getSafeSpeechResponseFormat, getSafeSpeechVoice } from '@/shared/api/openrouter-speech-capabilities';
+import {
+  executeShortOpenRouterCall,
+  shortAiScopeSchema,
+  toShortAiApiErrorResponse,
+} from './short-ai-execution';
+import { EMPTY_PROVIDER_USAGE } from '@/modules/provider-connections';
 
 export const runtime = 'nodejs';
 
 const speechSchema = z.object({
+  ...shortAiScopeSchema.shape,
   inputText: z.string().default(''),
   language: z.enum(['auto', 'ru', 'en', 'de', 'es', 'zh']).default('auto'),
   model: z.string().min(1).default(DEFAULT_SPEECH_MODEL),
@@ -18,7 +25,7 @@ const speechSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const parsed = speechSchema.safeParse(await request.json());
+  const parsed = speechSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
@@ -31,42 +38,116 @@ export async function POST(request: Request) {
     return Response.json({ error: 'MAI-Voice-2 rejects very short text. Add a full sentence before generating voice.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return Response.json({ error: 'OPENROUTER_API_KEY is not configured.' }, { status: 503 });
-  }
-
   try {
     const capabilities = getOpenRouterSpeechCapabilities(parsed.data.model);
     const responseFormat = getSafeSpeechResponseFormat(parsed.data.model, parsed.data.responseFormat);
     const openRouterResponseFormat = getOpenRouterSpeechResponseFormat(parsed.data.model, responseFormat);
-    const response = await sendOpenRouterSpeech({
-      input,
-      model: parsed.data.model,
-      responseFormat: openRouterResponseFormat,
-      seed: capabilities.supportsSeed ? parsed.data.seed : undefined,
-      speed: capabilities.supportsSpeed ? parsed.data.speed : undefined,
-      temperature: capabilities.supportsTemperature ? parsed.data.temperature : undefined,
-      topP: capabilities.supportsTopP ? parsed.data.topP : undefined,
-      voice: getSafeSpeechVoice(parsed.data.model, parsed.data.voice, parsed.data.language),
+    const execution = await executeShortOpenRouterCall({
+      checkpoint: {
+        deserialize(value) {
+          const saved = parseSpeechCheckpoint(value);
+          return {
+            audioBody: new Uint8Array(Buffer.from(saved.audioBase64, 'base64')),
+            contentType: saved.contentType,
+            generationId: saved.generationId,
+          };
+        },
+        serialize(result) {
+          return {
+            audioBase64: Buffer.from(result.audioBody).toString('base64'),
+            contentType: result.contentType,
+            generationId: result.generationId,
+          };
+        },
+      },
+      request,
+      scope: parsed.data,
+      modelId: parsed.data.model,
+      operation: 'generate_speech',
+      invoke: async ({ adapter, apiKey }) => {
+        const response = await sendOpenRouterSpeech({
+          apiKey,
+          input,
+          model: parsed.data.model,
+          responseFormat: openRouterResponseFormat,
+          seed: capabilities.supportsSeed ? parsed.data.seed : undefined,
+          speed: capabilities.supportsSpeed ? parsed.data.speed : undefined,
+          temperature: capabilities.supportsTemperature ? parsed.data.temperature : undefined,
+          topP: capabilities.supportsTopP ? parsed.data.topP : undefined,
+          voice: getSafeSpeechVoice(parsed.data.model, parsed.data.voice, parsed.data.language),
+        });
+        const providerOperationId = response.headers.get('x-generation-id');
+        let usage = { ...EMPTY_PROVIDER_USAGE };
+        if (providerOperationId) {
+          try {
+            const status = await adapter.getOperationStatus(providerOperationId, {
+              credential: apiKey,
+              signal: request.signal,
+            });
+            usage = status.usage;
+          } catch {
+            // Audio is already generated. Preserve the successful result and an
+            // incomplete ledger entry; a later reconciliation can fill usage.
+            console.error('OpenRouter speech usage could not be reconciled immediately.');
+          }
+        }
+        return {
+          providerOperationId,
+          result: response,
+          usage,
+        };
+      },
+      transform: async (response) => {
+        const rawAudio = new Uint8Array(await response.arrayBuffer());
+        const upstreamContentType = response.headers.get('content-type') ?? '';
+        const isPcmResponse = openRouterResponseFormat === 'pcm'
+          || upstreamContentType.toLowerCase().includes('audio/pcm');
+        const audioBody = isPcmResponse
+          ? wrapPcm16MonoAsWav(
+            rawAudio.buffer,
+            getPcmSampleRate(parsed.data.model, upstreamContentType),
+          )
+          : rawAudio;
+        return {
+          audioBody,
+          contentType: isPcmResponse
+            ? 'audio/wav'
+            : upstreamContentType || 'audio/mpeg',
+          generationId: response.headers.get('x-generation-id'),
+        };
+      },
     });
-    const rawAudio = await response.arrayBuffer();
-    const upstreamContentType = response.headers.get('content-type') ?? '';
-    const isPcmResponse = openRouterResponseFormat === 'pcm' || upstreamContentType.toLowerCase().includes('audio/pcm');
-    const audioBody = isPcmResponse ? wrapPcm16MonoAsWav(rawAudio, getPcmSampleRate(parsed.data.model, upstreamContentType)) : rawAudio;
-    const contentType = isPcmResponse
-      ? 'audio/wav'
-      : upstreamContentType || 'audio/mpeg';
     const headers = new Headers();
-    headers.set('Content-Type', contentType);
-    const generationId = response.headers.get('x-generation-id');
-    if (generationId) headers.set('X-Generation-Id', generationId);
+    headers.set('Content-Type', execution.result.contentType);
+    headers.set('X-Generation-Job-Id', execution.job.id);
+    if (execution.result.generationId) {
+      headers.set('X-Generation-Id', execution.result.generationId);
+    }
 
-    return new Response(audioBody, { headers });
+    return new Response(execution.result.audioBody, { headers });
   } catch (error) {
-    return Response.json({
-      error: formatOpenRouterError(error, 'OpenRouter speech generation failed'),
-    }, { status: getOpenRouterErrorStatus(error) });
+    return toShortAiApiErrorResponse(error);
   }
+}
+
+function parseSpeechCheckpoint(value: unknown) {
+  if (
+    !value
+    || typeof value !== 'object'
+    || !('audioBase64' in value)
+    || typeof value.audioBase64 !== 'string'
+    || !('contentType' in value)
+    || typeof value.contentType !== 'string'
+  ) {
+    throw new Error('Saved speech result is invalid.');
+  }
+  return {
+    audioBase64: value.audioBase64,
+    contentType: value.contentType,
+    generationId: 'generationId' in value && typeof value.generationId === 'string'
+      ? value.generationId
+      : null,
+  };
 }
 
 function getPcmSampleRate(model: string, contentType = '') {

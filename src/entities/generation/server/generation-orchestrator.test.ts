@@ -11,9 +11,11 @@ import {
   GenerationJobNotFoundError,
   GenerationJobTransitionError,
   GenerationJobValidationError,
+  claimNextGenerationJob,
   createGenerationJob,
   failGenerationJob,
   getGenerationJob,
+  heartbeatGenerationJob,
   recoverExpiredGenerationJob,
   startGenerationJob,
   succeedGenerationJob,
@@ -228,6 +230,84 @@ test('expired worker lease becomes a retryable failure before a new attempt star
   assert.equal(retriedResult.attemptCount, 2);
 });
 
+test('queue claim and heartbeat preserve one fenced attempt and persisted retry availability', async () => {
+  const repository = new MemoryGenerationJobRepository();
+  const claimAt = new Date('2026-07-17T10:00:10.000Z');
+  const heartbeatAt = new Date('2026-07-17T10:00:20.000Z');
+  const failedAt = new Date('2026-07-17T10:00:30.000Z');
+  const retryAvailableAt = new Date('2026-07-17T10:01:30.000Z');
+  const times = [claimAt, heartbeatAt, failedAt];
+  const dependencies = createDependencies(repository, {
+    now: () => times.shift() ?? failedAt,
+  });
+  const created = await createGenerationJob(createJobInput(), dependencies);
+  const queuedRecord = repository.records.get(created.id);
+  assert.ok(queuedRecord);
+  repository.records.set(created.id, { ...queuedRecord, enqueuedAt: queuedAt });
+  const claimed = await claimNextGenerationJob({ leaseDurationMs: 60_000 }, dependencies);
+  assert.equal(claimed?.id, created.id);
+  assert.equal(claimed?.attemptCount, 1);
+  assert.equal(claimed?.leaseExpiresAt, '2026-07-17T10:01:10.000Z');
+
+  const heartbeat = await heartbeatGenerationJob({
+    jobId: created.id,
+    attemptCount: claimed?.attemptCount ?? 0,
+    leaseDurationMs: 60_000,
+  }, dependencies);
+  assert.equal(heartbeat?.leaseExpiresAt, '2026-07-17T10:01:20.000Z');
+
+  const failed = await failGenerationJob({
+    jobId: created.id,
+    attemptCount: claimed?.attemptCount ?? 0,
+    errorCode: 'provider_timeout',
+    errorMessage: 'Provider timed out.',
+    retryable: true,
+    retryAvailableAt,
+  }, dependencies);
+  assert.equal(failed.leaseExpiresAt, null);
+  assert.equal(failed.retryAvailableAt, retryAvailableAt.toISOString());
+
+  const tooEarly = await claimNextGenerationJob({ leaseDurationMs: 60_000 }, createDependencies(repository, {
+    now: () => new Date('2026-07-17T10:01:00.000Z'),
+  }));
+  assert.equal(tooEarly, null);
+  const retry = await claimNextGenerationJob({ leaseDurationMs: 60_000 }, createDependencies(repository, {
+    now: () => retryAvailableAt,
+  }));
+  assert.equal(retry?.attemptCount, 2);
+});
+
+test('queue recovery closes an expired final attempt instead of leaving it running forever', async () => {
+  const repository = new MemoryGenerationJobRepository();
+  const firstClaimAt = new Date('2026-07-17T10:00:10.000Z');
+  const afterLease = new Date('2026-07-17T10:01:11.000Z');
+  const created = await createGenerationJob({
+    ...createJobInput(),
+    maxAttempts: 1,
+  }, createDependencies(repository));
+  const record = repository.records.get(created.id);
+  assert.ok(record);
+  repository.records.set(created.id, { ...record, enqueuedAt: queuedAt });
+  const claimed = await claimNextGenerationJob(
+    { leaseDurationMs: 60_000 },
+    createDependencies(repository, { now: () => firstClaimAt }),
+  );
+  assert.equal(claimed?.attemptCount, 1);
+
+  const noMoreWork = await claimNextGenerationJob(
+    { leaseDurationMs: 60_000 },
+    createDependencies(repository, { now: () => afterLease }),
+  );
+  assert.equal(noMoreWork, null);
+  const recovered = await getGenerationJob('user-1', created.id, repository);
+  assert.equal(recovered.status, 'failed');
+  assert.deepEqual(recovered.error, {
+    code: 'max_attempts_exhausted',
+    message: 'Generation worker lease expired after the final allowed attempt.',
+    retryable: false,
+  });
+});
+
 test('invalid ledger values and cross-user reads fail without mutating usage', async () => {
   const repository = new MemoryGenerationJobRepository();
   const dependencies = createDependencies(repository);
@@ -274,6 +354,61 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
   records = new Map<string, GenerationJobRecord>();
   succeedCalls = 0;
 
+  async claimNext(input: { claimedAt: Date; leaseExpiresAt: Date }) {
+    for (const record of this.records.values()) {
+      if (
+        record.status === 'running'
+        && record.enqueuedAt !== null
+        && record.cancelRequestedAt === null
+        && record.attemptCount >= record.maxAttempts
+        && (!record.leaseExpiresAt || record.leaseExpiresAt <= input.claimedAt)
+      ) {
+        this.replace(record.id, {
+          status: 'failed',
+          retryable: false,
+          errorCode: 'max_attempts_exhausted',
+          errorMessage: 'Generation worker lease expired after the final allowed attempt.',
+          leaseExpiresAt: null,
+          retryAvailableAt: null,
+          finishedAt: input.claimedAt,
+          updatedAt: input.claimedAt,
+        });
+      }
+    }
+    const candidate = Array.from(this.records.values())
+      .filter((record) => (
+        record.attemptCount < record.maxAttempts
+        && record.enqueuedAt !== null
+        && record.cancelRequestedAt === null
+        && (
+          record.status === 'queued'
+          || (
+            record.status === 'failed'
+            && record.retryable === true
+            && (!record.retryAvailableAt || record.retryAvailableAt <= input.claimedAt)
+          )
+          || (
+            record.status === 'running'
+            && (!record.leaseExpiresAt || record.leaseExpiresAt <= input.claimedAt)
+          )
+        )
+      ))
+      .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())[0];
+    if (!candidate) return undefined;
+    return this.replace(candidate.id, {
+      status: 'running',
+      attemptCount: candidate.attemptCount + 1,
+      retryable: null,
+      errorCode: null,
+      errorMessage: null,
+      finishedAt: null,
+      leaseExpiresAt: input.leaseExpiresAt,
+      retryAvailableAt: null,
+      startedAt: candidate.startedAt ?? input.claimedAt,
+      updatedAt: input.claimedAt,
+    });
+  }
+
   async createOrFind(input: NewGenerationJobRecord) {
     this.createCalls += 1;
     const existing = Array.from(this.records.values()).find((record) => (
@@ -292,6 +427,7 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
     errorMessage: string;
     finishedAt: Date;
     id: string;
+    retryAvailableAt?: Date | null;
     retryable: boolean;
     usage: GenerationUsageRecord;
   }) {
@@ -301,6 +437,7 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
       !current
       || current.status !== 'running'
       || current.attemptCount !== input.attemptCount
+      || current.cancelRequestedAt !== null
     ) return undefined;
     return this.replace(input.id, {
       status: 'failed',
@@ -308,6 +445,7 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
       errorCode: input.errorCode,
       errorMessage: input.errorMessage,
       leaseExpiresAt: null,
+      retryAvailableAt: input.retryable ? input.retryAvailableAt ?? null : null,
       finishedAt: input.finishedAt,
       updatedAt: input.finishedAt,
       usageComplete: current.usageComplete || hasCompleteUsage(input.usage),
@@ -319,15 +457,20 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
     const current = this.records.get(id);
     if (!current
       || current.status !== 'running'
-      || (current.leaseExpiresAt && current.leaseExpiresAt >= expiredAt)) {
+      || current.cancelRequestedAt !== null
+      || (current.leaseExpiresAt && current.leaseExpiresAt > expiredAt)) {
       return undefined;
     }
+    const retryable = current.attemptCount < current.maxAttempts;
     return this.replace(id, {
       status: 'failed',
-      retryable: true,
-      errorCode: 'lease_expired',
-      errorMessage: 'Generation worker lease expired before completion.',
+      retryable,
+      errorCode: retryable ? 'lease_expired' : 'max_attempts_exhausted',
+      errorMessage: retryable
+        ? 'Generation worker lease expired before completion.'
+        : 'Generation worker lease expired after the final allowed attempt.',
       leaseExpiresAt: null,
+      retryAvailableAt: retryable ? expiredAt : null,
       finishedAt: expiredAt,
       updatedAt: expiredAt,
     });
@@ -342,11 +485,39 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
     return this.records.get(id);
   }
 
+  async heartbeat(input: {
+    attemptCount: number;
+    heartbeatAt: Date;
+    id: string;
+    leaseExpiresAt: Date;
+  }) {
+    const current = this.records.get(input.id);
+    if (
+      !current
+      || current.status !== 'running'
+      || current.attemptCount !== input.attemptCount
+      || current.cancelRequestedAt !== null
+      || !current.leaseExpiresAt
+      || current.leaseExpiresAt <= input.heartbeatAt
+    ) return undefined;
+    return this.replace(input.id, {
+      leaseExpiresAt: input.leaseExpiresAt,
+      updatedAt: input.heartbeatAt,
+    });
+  }
+
   async start(id: string, startedAtValue: Date, leaseExpiresAt: Date) {
     const current = this.records.get(id);
     if (!current
       || current.attemptCount >= current.maxAttempts
-      || (current.status !== 'queued' && !(current.status === 'failed' && current.retryable))) {
+      || (
+        current.status !== 'queued'
+        && !(
+          current.status === 'failed'
+          && current.retryable
+          && (!current.retryAvailableAt || current.retryAvailableAt <= startedAtValue)
+        )
+      )) {
       return undefined;
     }
     return this.replace(id, {
@@ -357,6 +528,7 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
       errorMessage: null,
       finishedAt: null,
       leaseExpiresAt,
+      retryAvailableAt: null,
       startedAt: startedAtValue,
       updatedAt: startedAtValue,
     });
@@ -376,6 +548,7 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
       !current
       || current.status !== 'running'
       || current.attemptCount !== input.attemptCount
+      || current.cancelRequestedAt !== null
     ) return undefined;
     return this.replace(input.id, {
       status: 'succeeded',
@@ -384,6 +557,7 @@ class MemoryGenerationJobRepository implements GenerationJobRepository {
       errorMessage: null,
       finalAssetId: input.finalAssetId,
       leaseExpiresAt: null,
+      retryAvailableAt: null,
       finishedAt: input.finishedAt,
       updatedAt: input.finishedAt,
       usageComplete: current.usageComplete || input.usageComplete,
@@ -439,13 +613,22 @@ function createRecord(input: NewGenerationJobRecord): GenerationJobRecord {
     internalCreditsCharged: null,
     internalCreditsBalanceAfter: null,
     usageComplete: false,
+    requestObjectKey: null,
+    resultObjectKey: null,
+    providerOperationId: null,
+    providerDispatchedAt: null,
+    providerDispatchedAttempt: null,
+    queueJobId: null,
     finalAssetId: null,
     retryable: null,
     errorCode: null,
     errorMessage: null,
     createdAt: queuedAt,
+    enqueuedAt: null,
     startedAt: null,
     leaseExpiresAt: null,
+    retryAvailableAt: null,
+    cancelRequestedAt: null,
     finishedAt: null,
     updatedAt: queuedAt,
   };

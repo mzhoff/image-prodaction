@@ -51,6 +51,7 @@ export interface GenerationOrchestratorDependencies {
 
 export interface GenerationJobDto {
   attemptCount: number;
+  cancelRequestedAt?: string | null;
   createdAt: string;
   documentId: string | null;
   error: {
@@ -63,12 +64,18 @@ export interface GenerationJobDto {
   id: string;
   idempotencyKey: string;
   idempotentReplay: boolean;
+  enqueuedAt?: string | null;
   leaseExpiresAt: string | null;
   maxAttempts: number;
   metadata: Record<string, unknown> | null;
   modelId: string;
   operation: string;
   provider: string;
+  providerOperationId?: string | null;
+  queueJobId?: string | null;
+  requestObjectKey?: string | null;
+  resultObjectKey?: string | null;
+  retryAvailableAt?: string | null;
   startedAt: string | null;
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
   updatedAt: string;
@@ -175,6 +182,38 @@ export async function startGenerationJob(
   return toGenerationJobDto(updated, false);
 }
 
+export async function claimNextGenerationJob(
+  input: { leaseDurationMs?: number } = {},
+  dependencies: GenerationOrchestratorDependencies = createDefaultDependencies(),
+) {
+  const claimedAt = dependencies.now();
+  const leaseDurationMs = normalizeLeaseDurationMs(input.leaseDurationMs);
+  const claimed = await dependencies.repository.claimNext({
+    claimedAt,
+    leaseExpiresAt: new Date(claimedAt.getTime() + leaseDurationMs),
+  });
+  return claimed ? toGenerationJobDto(claimed, false) : null;
+}
+
+export async function heartbeatGenerationJob(
+  input: {
+    attemptCount: number;
+    jobId: string;
+    leaseDurationMs?: number;
+  },
+  dependencies: GenerationOrchestratorDependencies = createDefaultDependencies(),
+) {
+  const heartbeatAt = dependencies.now();
+  const leaseDurationMs = normalizeLeaseDurationMs(input.leaseDurationMs);
+  const updated = await dependencies.repository.heartbeat({
+    id: input.jobId,
+    attemptCount: normalizeAttemptCount(input.attemptCount),
+    heartbeatAt,
+    leaseExpiresAt: new Date(heartbeatAt.getTime() + leaseDurationMs),
+  });
+  return updated ? toGenerationJobDto(updated, false) : null;
+}
+
 export async function recoverExpiredGenerationJob(
   jobId: string,
   dependencies: GenerationOrchestratorDependencies = createDefaultDependencies(),
@@ -210,18 +249,21 @@ export async function failGenerationJob(
     errorCode: string;
     errorMessage: string;
     jobId: string;
+    retryAvailableAt?: Date | null;
     retryable: boolean;
     usage?: GenerationFailureUsageInput;
   },
   dependencies: GenerationOrchestratorDependencies = createDefaultDependencies(),
 ) {
+  const finishedAt = dependencies.now();
   const updated = await dependencies.repository.fail({
     id: input.jobId,
     attemptCount: normalizeAttemptCount(input.attemptCount),
     errorCode: normalizeRequiredText(input.errorCode, 'Error code', 120),
     errorMessage: normalizeRequiredText(input.errorMessage, 'Error message', 1_000),
+    retryAvailableAt: normalizeRetryAvailableAt(input.retryAvailableAt, finishedAt),
     retryable: input.retryable,
-    finishedAt: dependencies.now(),
+    finishedAt,
     usage: normalizeFailureUsage(input.usage),
   });
   if (!updated) throw await getTransitionError(input.jobId, dependencies.repository);
@@ -270,11 +312,18 @@ function toGenerationJobDto(record: GenerationJobRecord, idempotentReplay: boole
     operation: record.operation,
     idempotencyKey: record.idempotencyKey,
     idempotentReplay,
+    requestObjectKey: record.requestObjectKey,
+    resultObjectKey: record.resultObjectKey,
+    providerOperationId: record.providerOperationId,
+    queueJobId: record.queueJobId,
     status: record.status,
     attemptCount: record.attemptCount,
     maxAttempts: record.maxAttempts,
     finalAssetId: record.finalAssetId,
-    leaseExpiresAt: record.leaseExpiresAt?.toISOString() ?? null,
+    leaseExpiresAt: record.status === 'running'
+      ? record.leaseExpiresAt?.toISOString() ?? null
+      : null,
+    retryAvailableAt: record.retryAvailableAt?.toISOString() ?? null,
     usage: {
       complete: record.usageComplete,
       inputTokens: record.inputTokens,
@@ -293,7 +342,9 @@ function toGenerationJobDto(record: GenerationJobRecord, idempotentReplay: boole
       : null,
     metadata: record.metadata,
     createdAt: record.createdAt.toISOString(),
+    enqueuedAt: record.enqueuedAt?.toISOString() ?? null,
     startedAt: record.startedAt?.toISOString() ?? null,
+    cancelRequestedAt: record.cancelRequestedAt?.toISOString() ?? null,
     finishedAt: record.finishedAt?.toISOString() ?? null,
     updatedAt: record.updatedAt.toISOString(),
   };
@@ -375,6 +426,22 @@ function normalizeMaxAttempts(value?: number) {
 function normalizeAttemptCount(value: number) {
   if (!Number.isSafeInteger(value) || value < 1) {
     throw new GenerationJobValidationError('Attempt count must be a positive safe integer.');
+  }
+  return value;
+}
+
+function normalizeLeaseDurationMs(value?: number) {
+  if (value === undefined) return getGenerationLeaseDurationMs();
+  if (!Number.isSafeInteger(value) || value < 1_000 || value > 3_600_000) {
+    throw new GenerationJobValidationError('Lease duration must be between 1 second and 1 hour.');
+  }
+  return value;
+}
+
+function normalizeRetryAvailableAt(value: Date | null | undefined, finishedAt: Date) {
+  if (value === null || value === undefined) return null;
+  if (!Number.isFinite(value.getTime()) || value.getTime() < finishedAt.getTime()) {
+    throw new GenerationJobValidationError('Retry availability must not be before failure time.');
   }
   return value;
 }

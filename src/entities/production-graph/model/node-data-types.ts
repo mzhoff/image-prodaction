@@ -138,6 +138,7 @@ export interface GenerateImageNodeData extends BaseNodeData {
   generationRequest?: {
     fingerprint: string;
     idempotencyKey: string;
+    jobId?: string;
   };
   editGenerationRequest?: {
     fingerprint: string;
@@ -281,9 +282,11 @@ export interface SubjectBuilderNodeData extends BaseNodeData {
   notes: string;
   preserveStrength: SubjectPreserveStrength;
   referenceModel?: string;
+  referenceGenerationBatchPending?: boolean;
   referenceGenerationRequests?: Record<string, {
     fingerprint: string;
     idempotencyKey: string;
+    jobId?: string;
   }>;
   editGenerationRequests?: Record<string, {
     fingerprint: string;

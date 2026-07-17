@@ -2,22 +2,27 @@ import { z } from 'zod';
 import {
   assertTelegramFormattingPreservesText,
   createTelegramEditorValueFromSegments,
-  createTelegramFallbackFormatSegments,
   parseTelegramFormatSegmentsPayload,
 } from '@/features/graph-node/lib/telegram-rich-text';
-import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterChat } from '@/shared/api/openrouter';
 import { DEFAULT_ANALYSIS_MODEL, PREFERRED_ANALYSIS_MODEL_IDS } from '@/shared/api/openrouter-models';
+import {
+  executeShortOpenRouterChat,
+  getProviderText,
+  shortAiScopeSchema,
+  toShortAiApiErrorResponse,
+} from './short-ai-execution';
 
 export const runtime = 'nodejs';
 
 const telegramFormatSchema = z.object({
+  ...shortAiScopeSchema.shape,
   inputText: z.string().default(''),
   model: z.string().min(1).default(DEFAULT_ANALYSIS_MODEL),
   rulesText: z.string().optional(),
 });
 
 export async function POST(request: Request) {
-  const parsed = telegramFormatSchema.safeParse(await request.json());
+  const parsed = telegramFormatSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
@@ -27,41 +32,45 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Connect or enter text before formatting Telegram post.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    const formattedValue = createTelegramEditorValueFromSegments(
-      inputText,
-      createTelegramFallbackFormatSegments(inputText),
-    );
-    return Response.json({
-      provider: 'mock',
-      ...formattedValue,
-      message: 'Mock Telegram formatting: OPENROUTER_API_KEY is not configured.',
-    });
-  }
-
   try {
     if (!PREFERRED_ANALYSIS_MODEL_IDS.includes(parsed.data.model)) {
       return Response.json({ error: `Model ${parsed.data.model} is not available for Telegram formatting.` }, { status: 400 });
     }
 
-    const result = await sendOpenRouterChat({
-      model: parsed.data.model,
-      messages: [{ role: 'user', content: composeTelegramFormattingPrompt(inputText, parsed.data.rulesText) }],
-      maxTokens: Math.min(6000, Math.max(1200, Math.ceil(inputText.length * 1.8))),
-      temperature: 0.2,
+    const execution = await executeShortOpenRouterChat({
+      request,
+      scope: parsed.data,
+      providerRequest: {
+        modelId: parsed.data.model,
+        operation: 'format_telegram_text',
+        expectedOutputModalities: ['text'],
+        messages: [{
+          role: 'user',
+          parts: [{
+            modality: 'text',
+            text: composeTelegramFormattingPrompt(inputText, parsed.data.rulesText),
+          }],
+        }],
+        parameters: {
+          maxOutputTokens: Math.min(6000, Math.max(1200, Math.ceil(inputText.length * 1.8))),
+          temperature: 0.2,
+        },
+      },
+      transform: (result) => {
+        const segments = parseTelegramFormatSegmentsPayload(getProviderText(result));
+        const formattedValue = createTelegramEditorValueFromSegments(inputText, segments);
+        assertTelegramFormattingPreservesText(inputText, formattedValue.plainText);
+        return formattedValue;
+      },
     });
-    const segments = parseTelegramFormatSegmentsPayload(extractText(result));
-    const formattedValue = createTelegramEditorValueFromSegments(inputText, segments);
-    assertTelegramFormattingPreservesText(inputText, formattedValue.plainText);
 
     return Response.json({
+      ...execution.result,
+      job: execution.job,
       provider: 'openrouter',
-      ...formattedValue,
     });
   } catch (error) {
-    return Response.json({
-      error: formatOpenRouterError(error, 'OpenRouter Telegram formatting failed'),
-    }, { status: getOpenRouterErrorStatus(error) });
+    return toShortAiApiErrorResponse(error);
   }
 }
 
@@ -87,9 +96,4 @@ function composeTelegramFormattingPrompt(inputText: string, rulesText: string | 
     'Input text:',
     inputText,
   ].filter(Boolean).join('\n');
-}
-
-function extractText(result: Awaited<ReturnType<typeof sendOpenRouterChat>>) {
-  const content = result.choices?.[0]?.message?.content;
-  return typeof content === 'string' ? content.trim() : '';
 }

@@ -16,6 +16,7 @@ import { EntityBuilderInputRow } from '../entity-builder-input-row';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
 import { NodeReferenceGrid } from '../reference-grid';
+import { SubjectProfileReferenceGrid } from '../subject-profile-reference-grid';
 
 interface SubjectBuilderNodeProps {
   node: ProductionNode;
@@ -112,6 +113,31 @@ export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNo
                 {model.describing ? 'Generating...' : 'Generate Description'}
               </button>
             </div>
+          </CollapsibleSection>
+          <CollapsibleSection title="Canonical references" className="text-node-section subject-node-reference-section">
+            <SettingRow
+              label="Model"
+              value={model.selectedReferenceModel}
+              options={model.referenceModelOptions}
+              onChange={model.handleReferenceModelChange}
+              wide
+            />
+            <SubjectProfileReferenceGrid
+              canGenerate={model.canGenerateSubjectReferences}
+              busy={model.generatingReferences}
+              generating={model.generatingReferences}
+              generatingReferenceSlotId={model.generatingReferenceSlotId}
+              hasGeneratedReferences={model.hasGeneratedReferences}
+              onGenerate={() => {
+                void model.handleGenerateSubjectReferences();
+              }}
+              onMaskEdit={model.handleMaskEdit}
+              onRegenerateSlot={(slotId) => {
+                void model.handleGenerateSubjectReferences(slotId);
+              }}
+              slots={model.generatedReferenceSlots}
+              sourceModel={model.selectedReferenceModel}
+            />
           </CollapsibleSection>
           <CollapsibleSection title="Passport" className="text-node-section subject-node-result-section">
             <PromptBox value={model.result} readonly className="subject-node-result-box" />

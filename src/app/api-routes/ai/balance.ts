@@ -1,30 +1,33 @@
-import { fetchOpenRouterKey, formatOpenRouterError, getOpenRouterErrorStatus } from '@/shared/api/openrouter';
+import { getOpenRouterProviderUsage } from '@/modules/provider-connections/server/provider-connection-service';
+import { apiError } from '@/shared/api/api-error';
+import { requireApiSession } from '@/shared/auth/session';
+import { isUuidV7 } from '@/shared/lib/id';
+import { toShortAiApiErrorResponse } from './short-ai-execution';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const response = await fetchOpenRouterKey();
-    const data = response.data ?? {};
+    const workspaceId = new URL(request.url).searchParams.get('workspaceId');
+    if (!isUuidV7(workspaceId)) {
+      return apiError('invalid_workspace_id', 'Invalid workspace id.', 400);
+    }
+    const session = await requireApiSession(request);
+    const response = await getOpenRouterProviderUsage(session.user.id, workspaceId);
+    const data = response.keyUsage;
 
     return Response.json({
-      limit: data.limit ?? null,
-      remaining: data.limit_remaining ?? null,
-      used: data.usage ?? null,
-      usedToday: data.usage_daily ?? null,
-      usedMonth: data.usage_monthly ?? null,
+      limit: data.limit,
+      remaining: data.limitRemaining,
+      used: data.usage,
+      usedToday: data.usageDaily,
+      usedMonth: data.usageMonthly,
+      updatedAt: data.updatedAt,
       provider: 'openrouter',
+    }, {
+      headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch (error) {
-    return Response.json({
-      limit: null,
-      remaining: null,
-      used: null,
-      usedToday: null,
-      usedMonth: null,
-      error: formatOpenRouterError(error, 'OpenRouter balance request failed'),
-      status: getOpenRouterErrorStatus(error),
-      provider: 'openrouter',
-    });
+    return toShortAiApiErrorResponse(error);
   }
 }
