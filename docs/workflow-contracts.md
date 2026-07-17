@@ -78,6 +78,9 @@ Backward compatibility rule:
 
 ## What is in contract and what is deferred
 
-- Contract for `ExecutionMode` / backend-run mode: deferred for backend integration.
-- Endpoint strategy (`single endpoint vs per-pipeline endpoint`): deferred until backend discussion closes.
+- Contract for `ExecutionMode` / backend-run mode is specified at architecture level
+  and will be implemented after the Workspace AI worker foundation.
+- Endpoint strategy: one universal route family keyed by pipeline `publicId`; each
+  published pipeline receives a stable URL without generating a physical route file.
+  See [executable-pipelines-architecture.md](./executable-pipelines-architecture.md).
 - New primitive value kinds beyond the list above: deferred.

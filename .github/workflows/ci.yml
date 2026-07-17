@@ -49,8 +49,14 @@ jobs:
       S3_SECRET_ACCESS_KEY: minioadmin
       S3_FORCE_PATH_STYLE: "true"
       S3_MAX_IMAGE_BYTES: "15728640"
+      PROVIDER_CREDENTIALS_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      PROVIDER_CREDENTIALS_MASTER_KEY_VERSION: v1
+      PROVIDER_CREDENTIALS_FINGERPRINT_KEY: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+      AI_PROVIDER_RUNTIME: fake
+      FAKE_AI_PROVIDER_CREDENTIAL: fake-valid-credential
       MAILPIT_HTTP_URL: http://localhost:8025
       SMOKE_REQUIRE_EMAIL_VERIFICATION: "true"
+      SMOKE_FAKE_AI_PROVIDER: "true"
       E2E_BASE_URL: http://localhost:3004
     steps:
       - uses: actions/checkout@v4
@@ -100,13 +106,15 @@ jobs:
           npm run db:migrate
       - name: Typecheck
         run: npm run typecheck
+      - name: Check architecture boundaries
+        run: npm run check:architecture
       - name: Unit tests
         run: npm test
       - name: Production build
         run: npm run build
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
-      - name: Start production server
+      - name: Start production web and worker
         run: |
           mkdir -p .next/standalone/public .next/standalone/.next/static
           cp -R public/. .next/standalone/public/
@@ -114,8 +122,13 @@ jobs:
           PORT=3004 HOSTNAME=127.0.0.1 node .next/standalone/server.js > /tmp/reverie-app.log 2>&1 &
           echo "$!" > /tmp/reverie-app.pid
           node scripts/wait-for-url.mjs http://localhost:3004/api/health/ready 60000
+          npm run worker > /tmp/reverie-worker.log 2>&1 &
+          echo "$!" > /tmp/reverie-worker.pid
+          node scripts/wait-for-url.mjs http://localhost:3004/api/health/worker 60000
       - name: Backend critical-path smoke
         run: npm run test:backend-smoke
+      - name: Generation persistence smoke
+        run: npm run test:generation-persistence-smoke
       - name: Browser critical-path E2E
         run: npx playwright test
       - name: Build production container
@@ -124,6 +137,7 @@ jobs:
         if: failure()
         run: |
           cp /tmp/reverie-app.log ./reverie-app.log 2>/dev/null || true
+          cp /tmp/reverie-worker.log ./reverie-worker.log 2>/dev/null || true
           docker logs reverie-minio > minio.log 2>&1 || true
           docker logs reverie-mailpit > mailpit.log 2>&1 || true
       - name: Upload Playwright and service artifacts
@@ -135,6 +149,7 @@ jobs:
             playwright-report/
             test-results/
             reverie-app.log
+            reverie-worker.log
             minio.log
             mailpit.log
           if-no-files-found: ignore
@@ -145,4 +160,74 @@ jobs:
           if [ -f /tmp/reverie-app.pid ]; then
             kill "$(cat /tmp/reverie-app.pid)" 2>/dev/null || true
           fi
+          if [ -f /tmp/reverie-worker.pid ]; then
+            kill "$(cat /tmp/reverie-worker.pid)" 2>/dev/null || true
+          fi
           docker rm --force reverie-minio reverie-mailpit 2>/dev/null || true
+
+  deploy-staging:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: reverie-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build immutable staging image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: reverie-app:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Configure restricted staging SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.STAGING_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          install -m 600 /dev/null ~/.ssh/reverie_staging
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/reverie_staging
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Synchronize staging configuration
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
+        run: |
+          tar -czf /tmp/reverie-deploy-config.tar.gz \
+            compose.production.yaml \
+            deploy/Caddyfile \
+            deploy/server/reverie-backup
+          ssh -i ~/.ssh/reverie_staging \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            sync-config < /tmp/reverie-deploy-config.tar.gz
+      - name: Stream staging image
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
+        run: |
+          docker save "reverie-app:${GITHUB_SHA}" | gzip -1 | ssh \
+            -i ~/.ssh/reverie_staging \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "load-image ${GITHUB_SHA}"
+      - name: Apply staging release
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/reverie_staging \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "apply ${GITHUB_SHA}"

@@ -1,10 +1,16 @@
 import { z } from 'zod';
-import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterChat } from '@/shared/api/openrouter';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
+import {
+  executeShortOpenRouterChat,
+  getProviderText,
+  shortAiScopeSchema,
+  toShortAiApiErrorResponse,
+} from './short-ai-execution';
 
 export const runtime = 'nodejs';
 
 const subjectDescriptionSchema = z.object({
+  ...shortAiScopeSchema.shape,
   model: z.string().min(1).default(DEFAULT_ANALYSIS_MODEL),
   subjectType: z.string().min(1).default('person'),
   imageDataUrls: z.array(z.string().min(1)).max(4).default([]),
@@ -24,7 +30,7 @@ const subjectDescriptionDraftSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const parsed = subjectDescriptionSchema.safeParse(await request.json());
+  const parsed = subjectDescriptionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
@@ -33,60 +39,55 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Attach image refs or text notes before generating a subject description.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return Response.json({
-      draft: {
-        name: 'Reference subject',
-        subjectType: parsed.data.subjectType,
-        identitySummary: '[ROLE]\nMock subject identity generated from attached references.\n\n[VISUAL DESCRIPTION]\nLayered production-ready description will be generated here when OpenRouter is configured.',
-        immutableTraits: 'Stable facial structure, recognizable silhouette, key proportions, and persistent visual markers from the reference set.',
-        mutableAttributes: 'Clothing, pose, expression, camera angle, lighting, and scene context may adapt to the target prompt.',
-        negativeConstraints: 'Do not change core identity, face proportions, key silhouette, or recognizable permanent traits.',
-        notes: 'Mock response because OPENROUTER_API_KEY is not configured.',
-      },
-      provider: 'mock',
-    });
-  }
-
   try {
     const prompt = buildSubjectDescriptionPrompt(parsed.data.subjectType, cleanTextNotes, parsed.data.imageDataUrls.length);
-    const result = await sendOpenRouterChat({
-      model: parsed.data.model,
-      messages: [
+    const execution = await executeShortOpenRouterChat({
+      request,
+      scope: parsed.data,
+      providerRequest: {
+        modelId: parsed.data.model,
+        operation: 'describe_subject',
+        expectedOutputModalities: ['text'],
+        messages: [
         {
           role: 'system',
-          content: [
+          parts: [{
+            modality: 'text',
+            text: [
             'You are a senior commercial image analyst and AI image-production prompt engineer.',
             'Analyze reference images as one reusable production subject.',
             'Return only compact valid JSON. Do not wrap it in markdown.',
             'Do not identify real people by name. Do not invent brand names or logos.',
             'The identitySummary field must be a multiline layered description with explicit square-bracket headers.',
           ].join(' '),
+          }],
         },
         {
           role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            ...parsed.data.imageDataUrls.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
+          parts: [
+            { modality: 'text', text: prompt },
+            ...parsed.data.imageDataUrls.map((url) => ({ modality: 'image' as const, url })),
           ],
         },
-      ],
-      modalities: ['text'],
-      maxTokens: 2200,
-      temperature: 0.25,
+        ],
+        parameters: {
+          maxOutputTokens: 2200,
+          temperature: 0.25,
+        },
+      },
+      transform: (result) => ({
+        draft: subjectDescriptionDraftSchema.parse(parseJsonObject(getProviderText(result))),
+      }),
     });
-    const content = result.choices?.[0]?.message?.content ?? '';
-    const draft = subjectDescriptionDraftSchema.parse(parseJsonObject(content));
 
     return Response.json({
-      draft,
+      ...execution.result,
+      job: execution.job,
       message: 'Subject description generated from attached sources.',
       provider: 'openrouter',
     });
   } catch (error) {
-    return Response.json({
-      error: formatOpenRouterError(error, 'OpenRouter subject description failed'),
-    }, { status: getOpenRouterErrorStatus(error) });
+    return toShortAiApiErrorResponse(error);
   }
 }
 

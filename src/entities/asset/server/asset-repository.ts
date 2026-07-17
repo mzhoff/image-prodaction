@@ -100,6 +100,7 @@ export interface AssetRepository {
   createPending(input: PendingAssetInput): Promise<AssetRecord>;
   findAccessible(assetId: string, userId: string): Promise<AssetRecord | undefined>;
   findCleanupCandidates(before: Date, limit: number): Promise<AssetRecord[]>;
+  findGeneratedByJobId(generationJobId: string): Promise<AssetRecord | undefined>;
   findVariant(assetId: string, purpose: AssetVariantPurpose): Promise<AssetVariantRecord | undefined>;
   listLibrary(input: AssetLibraryFilters): Promise<LibraryAssetRecord[]>;
   listLibraryFacets(input: { userId: string; workspaceId: string }): Promise<AssetLibraryFacets>;
@@ -109,6 +110,7 @@ export interface AssetRepository {
   markDeleted(assetId: string, deletedAt: Date): Promise<void>;
   markFailed(assetId: string, errorCode: string): Promise<void>;
   markReady(assetId: string): Promise<AssetRecord>;
+  resetPending(assetId: string): Promise<AssetRecord>;
   upsertVariant(input: AssetVariantInput): Promise<AssetVariantRecord>;
 }
 
@@ -145,6 +147,17 @@ export function createDbAssetRepository(): AssetRepository {
         ))
         .orderBy(asc(asset.createdAt))
         .limit(limit);
+    },
+
+    async findGeneratedByJobId(generationJobId) {
+      const [record] = await getDb().select().from(asset)
+        .where(and(
+          eq(asset.generationJobId, generationJobId),
+          eq(asset.origin, 'generated'),
+          ne(asset.status, 'deleted'),
+        ))
+        .limit(1);
+      return record;
     },
 
     async findVariant(assetId, purpose) {
@@ -302,6 +315,21 @@ export function createDbAssetRepository(): AssetRepository {
         updatedAt: new Date(),
       }).where(and(eq(asset.id, assetId), eq(asset.status, 'pending'))).returning();
       if (!updated) throw new Error('Pending asset could not be marked ready.');
+      return updated;
+    },
+
+    async resetPending(assetId) {
+      const [updated] = await getDb().update(asset).set({
+        status: 'pending',
+        errorCode: null,
+        libraryVisible: false,
+        deletedAt: null,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(asset.id, assetId),
+        inArray(asset.status, ['pending', 'failed']),
+      )).returning();
+      if (!updated) throw new Error('Asset could not be reset for upload retry.');
       return updated;
     },
 

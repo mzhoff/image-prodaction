@@ -611,6 +611,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     deleteSelected: graph.deleteSelected,
     documentName: documentSync.documentName,
     documentSync: documentSync.syncState,
+    workspaceId: documentSync.workspaceId,
     selectedSet: graph.selectedSet,
     selectedSectionSet: graph.selectedSectionSet,
     selectSection: graph.selectSection,

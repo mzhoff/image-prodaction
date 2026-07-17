@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   bigint,
@@ -74,6 +74,9 @@ export const asset = pgTable('asset', {
   index('asset_document_idx').on(table.documentId),
   index('asset_creator_idx').on(table.createdByUserId),
   index('asset_generation_job_idx').on(table.generationJobId),
+  uniqueIndex('asset_generated_job_unique')
+    .on(table.generationJobId)
+    .where(sql`${table.origin} = 'generated' and ${table.generationJobId} is not null`),
 ]);
 
 export const assetVariant = pgTable('asset_variant', {

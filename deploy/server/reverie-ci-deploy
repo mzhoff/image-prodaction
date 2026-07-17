@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+deploy_root=/opt/image-prodaction
+compose_file="$deploy_root/compose.production.yaml"
+runtime_env="$deploy_root/.env.production"
+release_env="$deploy_root/.release.env"
+public_base_url=https://89.124.115.57
+
+sync_config() {
+  local archive staging archive_entry
+  archive="$(mktemp)"
+  staging="$(mktemp -d)"
+  trap 'rm -rf "$archive" "$staging"' RETURN
+  cat > "$archive"
+
+  while IFS= read -r archive_entry; do
+    case "$archive_entry" in
+      compose.production.yaml|deploy/Caddyfile|deploy/server/reverie-backup)
+        ;;
+      *)
+        printf 'Rejected deploy bundle entry: %s\n' "$archive_entry" >&2
+        exit 65
+        ;;
+    esac
+  done < <(tar -tzf "$archive")
+
+  tar -xzf "$archive" -C "$staging" --no-same-owner
+  install -d -m 750 "$deploy_root/deploy/server"
+  install -m 640 "$staging/compose.production.yaml" "$compose_file"
+  install -m 640 "$staging/deploy/Caddyfile" "$deploy_root/deploy/Caddyfile"
+  install -m 750 \
+    "$staging/deploy/server/reverie-backup" \
+    "$deploy_root/deploy/server/reverie-backup"
+}
+
+load_image() {
+  local tag="$1"
+  gzip -dc | docker load
+  docker image inspect "reverie-app:$tag" >/dev/null
+}
+
+apply_release() {
+  local tag="$1" previous_tag compose_args
+  docker image inspect "reverie-app:$tag" >/dev/null
+  [[ -s "$runtime_env" ]] || {
+    printf 'Runtime environment is missing.\n' >&2
+    exit 66
+  }
+  [[ -s "$compose_file" ]] || {
+    printf 'Production Compose file is missing.\n' >&2
+    exit 66
+  }
+
+  previous_tag="$(read_release_tag || true)"
+  write_release_tag "$tag"
+  compose_args=(
+    docker compose
+    --env-file "$runtime_env"
+    --env-file "$release_env"
+    --file "$compose_file"
+  )
+
+  if ! "${compose_args[@]}" config --quiet; then
+    restore_release "$previous_tag"
+    exit 67
+  fi
+
+  "${compose_args[@]}" pull postgres minio minio-init caddy
+  "${compose_args[@]}" up --detach --wait --wait-timeout 120 postgres minio
+  "${compose_args[@]}" run --rm minio-init
+  "${compose_args[@]}" run --rm migrate
+  "${compose_args[@]}" up --detach --remove-orphans web worker caddy
+
+  if ! wait_for_endpoint "$public_base_url/api/health/ready" 120 \
+    || ! wait_for_endpoint "$public_base_url/api/health/worker" 120; then
+    printf 'New release failed health checks.\n' >&2
+    rollback "$previous_tag"
+    exit 68
+  fi
+
+  docker image prune --force >/dev/null
+  "${compose_args[@]}" ps
+}
+
+rollback() {
+  local previous_tag="$1"
+  if [[ -z "$previous_tag" ]] || ! docker image inspect "reverie-app:$previous_tag" >/dev/null 2>&1; then
+    printf 'No previous image is available for rollback.\n' >&2
+    return
+  fi
+
+  printf 'Rolling back to %s.\n' "$previous_tag" >&2
+  write_release_tag "$previous_tag"
+  docker compose \
+    --env-file "$runtime_env" \
+    --env-file "$release_env" \
+    --file "$compose_file" \
+    up --detach --remove-orphans web worker caddy
+}
+
+restore_release() {
+  local previous_tag="$1"
+  if [[ -n "$previous_tag" ]]; then
+    write_release_tag "$previous_tag"
+  else
+    rm -f "$release_env"
+  fi
+}
+
+read_release_tag() {
+  sed -n 's/^APP_IMAGE_TAG=//p' "$release_env" 2>/dev/null | head -n 1
+}
+
+write_release_tag() {
+  local tag="$1" temporary_file
+  temporary_file="$(mktemp "$deploy_root/.release.env.XXXXXX")"
+  printf 'APP_IMAGE_TAG=%s\n' "$tag" > "$temporary_file"
+  chmod 600 "$temporary_file"
+  mv "$temporary_file" "$release_env"
+}
+
+wait_for_endpoint() {
+  local url="$1" timeout_seconds="$2" deadline
+  deadline=$((SECONDS + timeout_seconds))
+  while (( SECONDS < deadline )); do
+    if curl --fail --silent --show-error --max-time 5 "$url" >/dev/null; then
+      return 0
+    fi
+    sleep 3
+  done
+  return 1
+}
+
+validate_tag() {
+  [[ "$1" =~ ^[0-9a-f]{40}$ ]] || {
+    printf 'Invalid image tag.\n' >&2
+    exit 64
+  }
+}
+
+read -r action argument extra <<<"${SSH_ORIGINAL_COMMAND:-}"
+
+if [[ -n "${extra:-}" ]]; then
+  printf 'Unexpected deploy arguments.\n' >&2
+  exit 64
+fi
+
+case "${action:-}" in
+  sync-config)
+    sync_config
+    ;;
+  load-image)
+    validate_tag "${argument:-}"
+    load_image "$argument"
+    ;;
+  apply)
+    validate_tag "${argument:-}"
+    apply_release "$argument"
+    ;;
+  *)
+    printf 'Unsupported deploy action.\n' >&2
+    exit 64
+    ;;
+esac

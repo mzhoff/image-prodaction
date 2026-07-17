@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Shield, UserRound, X } from 'lucide-react';
+import { PlugZap, Shield, UserRound, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { SettingsSection } from '../model/settings-section';
 import { AccountSettings } from './account-settings';
+import { ProviderSettings } from './provider-settings';
 import { SecuritySettings } from './security-settings';
 
 interface SettingsPanelProps {
@@ -16,8 +17,9 @@ interface SettingsPanelProps {
 }
 
 const navigation = [
-  { section: 'account' as const, label: 'Аккаунт', icon: UserRound },
-  { section: 'security' as const, label: 'Безопасность', icon: Shield },
+  { section: 'account' as const, label: 'Аккаунт', icon: UserRound, group: 'Личные' },
+  { section: 'security' as const, label: 'Безопасность', icon: Shield, group: 'Личные' },
+  { section: 'providers' as const, label: 'AI Providers', icon: PlugZap, group: 'Workspace' },
 ];
 
 export function SettingsPanel({
@@ -85,25 +87,32 @@ export function SettingsPanel({
 
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Разделы настроек">
-          {navigation.map((item) => (
-            <Link
-              className={section === item.section ? 'settings-nav-active' : ''}
-              href={`/settings/${item.section}`}
-              key={item.section}
-              onClick={handleNavigation}
-              replace={presentation === 'dialog'}
-              aria-current={section === item.section ? 'page' : undefined}
-            >
-              <item.icon size={16} />
-              {item.label}
-            </Link>
-          ))}
+          {navigation.map((item, index) => {
+            const showGroup = index === 0 || navigation[index - 1]?.group !== item.group;
+            return (
+              <div className="settings-nav-entry" key={item.section}>
+                {showGroup ? <span className="settings-nav-group">{item.group}</span> : null}
+                <Link
+                  className={section === item.section ? 'settings-nav-active' : ''}
+                  href={`/settings/${item.section}`}
+                  onClick={handleNavigation}
+                  replace={presentation === 'dialog'}
+                  aria-current={section === item.section ? 'page' : undefined}
+                >
+                  <item.icon size={16} />
+                  {item.label}
+                </Link>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="settings-content">
           {section === 'account'
             ? <AccountSettings onDirtyChange={updateDirty} />
-            : <SecuritySettings onDirtyChange={updateDirty} />}
+            : section === 'security'
+              ? <SecuritySettings onDirtyChange={updateDirty} />
+              : <ProviderSettings onDirtyChange={updateDirty} />}
         </div>
       </div>
     </div>

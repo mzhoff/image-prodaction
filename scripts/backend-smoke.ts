@@ -4,6 +4,9 @@ import { waitForEmailLink } from './mailpit-client.ts';
 
 const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? 'http://localhost:3004');
 const requireEmailVerification = process.env.SMOKE_REQUIRE_EMAIL_VERIFICATION === 'true';
+const exerciseFakeGeneration = process.env.SMOKE_FAKE_AI_PROVIDER === 'true';
+const fakeProviderCredential =
+  process.env.FAKE_AI_PROVIDER_CREDENTIAL ?? 'fake-valid-credential';
 const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 const owner = {
   email: `smoke-owner-${runId}@example.test`,
@@ -27,6 +30,11 @@ assert.deepEqual(ready, {
   status: 'ready',
   checks: { database: 'ok', objectStorage: 'ok' },
 });
+const workerHealth = await requestJson('/api/health/worker', { expectedStatus: 200 });
+assert.equal(workerHealth.status, 'healthy');
+assert.equal(workerHealth.worker?.status, 'running');
+assert.equal(Number.isSafeInteger(workerHealth.queue?.queued), true);
+assert.equal(Number.isSafeInteger(workerHealth.queue?.running), true);
 
 const ownerCookie = await register(owner);
 const workspaces = await requestJson('/api/workspaces', {
@@ -153,6 +161,10 @@ assert.equal(filteredLibrary.items[0]?.origin, 'uploaded');
 assert.equal(filteredLibrary.items[0]?.mediaKind, 'image');
 assert.equal(filteredLibrary.items[0]?.document?.id, projectId);
 
+const generatedAsset = exerciseFakeGeneration
+  ? await exerciseGenerationVertical(ownerCookie, workspaceId, projectId)
+  : null;
+
 await rejectUploadWithoutDurableOrigin(ownerCookie, workspaceId, projectId);
 const deletedAsset = await uploadAsset(
   ownerCookie,
@@ -202,7 +214,11 @@ const libraryAfterProjectDeletion = await requestJson(
 );
 assert.deepEqual(
   new Set(libraryAfterProjectDeletion.items.map((item: { id: string }) => item.id)),
-  new Set([libraryUploadedAsset.id, librarySavedAsset.id]),
+  new Set([
+    libraryUploadedAsset.id,
+    librarySavedAsset.id,
+    ...(generatedAsset ? [generatedAsset.id] : []),
+  ]),
 );
 assert.equal(
   libraryAfterProjectDeletion.items.every((item: { document: unknown }) => item.document === null),
@@ -328,6 +344,99 @@ async function rejectUploadWithoutDurableOrigin(
     expectedStatus: 400,
     method: 'POST',
   });
+}
+
+async function exerciseGenerationVertical(
+  cookie: string,
+  workspaceId: string,
+  documentId: string,
+) {
+  const connected = await requestJson(
+    `/api/workspaces/${workspaceId}/providers/openrouter`,
+    {
+      cookie,
+      expectedStatus: 201,
+      method: 'POST',
+      json: { apiKey: fakeProviderCredential },
+    },
+  );
+  assert.equal(connected.provider?.provider, 'openrouter');
+  assert.equal(connected.provider?.status, 'connected');
+
+  const submitted = await requestJson('/api/ai/generate-image', {
+    cookie,
+    expectedStatus: 202,
+    method: 'POST',
+    json: {
+      aspectRatio: '1:1',
+      documentId,
+      idempotencyKey: `backend-smoke-generation-${runId}`,
+      inputs: {
+        actors: [],
+        actions: [],
+        composition: [],
+        camera: [],
+        background: [],
+        style: [],
+        light: [],
+        color: [],
+        metaphor: [],
+        text: [],
+      },
+      locationInputs: [],
+      model: 'google/gemini-2.5-flash-image',
+      prompt: 'A one pixel integration test image',
+      referenceImages: [],
+      size: '1K',
+      subjectInputs: [],
+      workspaceId,
+    },
+  });
+  const jobId = submitted.job?.id as string;
+  assert.ok(jobId, 'Generation submission did not return a durable job id.');
+
+  let completed: Record<string, any> | null = null;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const current = await requestJson(`/api/generation-jobs/${jobId}`, {
+      cookie,
+      expectedStatus: 200,
+    });
+    if (current.job?.status === 'succeeded') {
+      completed = current;
+      break;
+    }
+    if (current.job?.status === 'failed' || current.job?.status === 'canceled') {
+      throw new Error(
+        `Generation ${jobId} finished unexpectedly: ${JSON.stringify(current.job)}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  assert.ok(completed, `Generation ${jobId} did not finish before the smoke timeout.`);
+  assert.equal(completed.job.usage?.complete, true);
+  assert.equal(completed.job.usage?.totalTokens, '15');
+  assert.equal(completed.asset?.origin, 'generated');
+  assert.equal(completed.asset?.libraryVisible, true);
+  assert.equal(completed.asset?.documentId, documentId);
+  await requestBinary(`/api/assets/${completed.asset.id}/content`, {
+    cookie,
+    expectedStatus: 200,
+    expectedBytes: onePixelPng,
+  });
+
+  const usage = await requestJson(
+    `/api/workspaces/${workspaceId}/ai-usage?periodDays=30`,
+    {
+      cookie,
+      expectedStatus: 200,
+    },
+  );
+  assert.equal(usage.summary?.jobs, 1);
+  assert.equal(usage.summary?.totalTokens, '15');
+  assert.equal(Number(usage.summary?.providerCostUsd), 0.001);
+
+  return completed.asset as { id: string };
 }
 
 async function requestJson(path: string, options: SmokeRequestOptions) {

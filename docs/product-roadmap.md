@@ -191,6 +191,9 @@ Batch Runner - отдельный будущий слой, не просто UI 
 
 Цель: сделать canvas не только редактором, но и фабрикой reusable automation.
 
+Полная продуктовая и runtime-спецификация раздела Pipelines вынесена в
+[executable-pipelines-architecture.md](./executable-pipelines-architecture.md).
+
 ### 4.1 Executable section
 
 Section может стать executable pipeline, если пользователь явно назначил ей эту роль.
@@ -205,14 +208,18 @@ Section может стать executable pipeline, если пользовате
 - usage references;
 - warning before editing used executable pipeline.
 
-### 4.2 Pipeline library
+### 4.2 Pipelines catalog
 
-Pipeline templates и executable pipelines должны жить в workspace library.
+Pipeline templates и executable pipelines должны жить в отдельном workspace-разделе
+`Pipelines`, а не смешиваться с asset Library.
 
 Отличие:
 
 - template можно скопировать и доработать;
 - executable pipeline можно запускать из других модулей.
+
+Финальные результаты запусков могут сохраняться в Library по явной storage policy
+конкретного pipeline и фильтроваться по pipeline/run source.
 
 ### 4.3 External launch points
 
@@ -224,11 +231,15 @@ Pipeline templates и executable pipelines должны жить в workspace li
 - batch generation task;
 - API endpoint.
 
-## 8. Priority 5: Backend handoff
+## 8. Completed prerequisite: backend execution foundation
 
-Backend станет нужен для авторизации, workspace, документов, библиотек, assets, publication artifacts и run metadata.
+По состоянию на 2026-07-17 backend foundation закрыт: реализованы Auth, Workspace,
+Document, private S3 assets, Workspace provider credentials, provider-neutral
+contract, PostgreSQL queue, отдельный worker, generation ledger и usage events.
+Canvas восстанавливает ожидающую генерацию после reload, а бюджетный индикатор
+показывает key limit remaining и потраченные средства OpenRouter.
 
-Frontend MVP должен быть готов к переносу:
+Frontend и backend должны сохранять:
 
 - typed API contracts;
 - stable project schema;
@@ -248,6 +259,19 @@ Frontend MVP должен быть готов к переносу:
 - publication artifact;
 - kanban card binding;
 - generation run.
+
+Реализованный backend foundation перед Executable Pipelines:
+
+1. Workspace-level OpenRouter connection;
+2. provider-neutral contract;
+3. PostgreSQL queue и отдельный worker;
+4. единый usage event ledger;
+5. Workspace AI settings и однохостовый тестовый контур.
+
+Архитектура и план:
+
+- [workspace-ai-execution-architecture.md](./workspace-ai-execution-architecture.md);
+- [workspace-ai-execution-implementation-plan.md](./workspace-ai-execution-implementation-plan.md).
 
 ## 9. Priority 6: Visual LUT Builder and color look
 

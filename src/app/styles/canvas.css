@@ -160,34 +160,63 @@
   bottom: 18px;
   z-index: 20;
   display: grid;
-  gap: 5px;
-  min-width: 168px;
+  gap: 9px;
+  min-width: 196px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
-  padding: 10px 12px;
+  padding: 11px 12px 12px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(12px);
 }
 
-.openrouter-balance div {
+.openrouter-balance-provider {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  gap: 6px;
+  color: #30323a;
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.035em;
+  line-height: 13px;
+  text-transform: uppercase;
 }
 
-.openrouter-balance span {
+.openrouter-balance-provider > span {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #31a66a;
+  box-shadow: 0 0 0 3px rgba(49, 166, 106, 0.12);
+}
+
+.openrouter-balance-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.openrouter-balance-metrics > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.openrouter-balance-metrics span {
   color: #777;
-  font-size: 11px;
-  line-height: 14px;
+  font-size: 10px;
+  line-height: 13px;
 }
 
-.openrouter-balance strong {
+.openrouter-balance-metrics strong {
   color: #111;
-  font-size: 12px;
-  font-weight: 720;
-  line-height: 15px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
+  line-height: 17px;
 }
 
 .canvas-toast {

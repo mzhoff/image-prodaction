@@ -30,15 +30,18 @@ export function useDocumentBackendSync({
   subscribeToProjectChanges,
 }: UseDocumentBackendSyncOptions) {
   const [documentName, setDocumentName] = useState<string>();
+  const [workspaceId, setWorkspaceId] = useState<string>();
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
 
   useEffect(() => {
     if (!projectId) {
       setDocumentName(undefined);
+      setWorkspaceId(undefined);
       setSyncState({ phase: 'idle' });
       return undefined;
     }
     const documentId = projectId;
+    setWorkspaceId(undefined);
 
     const controller = new AbortController();
     let active = true;
@@ -104,8 +107,15 @@ export function useDocumentBackendSync({
       try {
         const project = await fetchDocumentProject(documentId, controller.signal);
         if (!active) return;
-        if (project.snapshot) importSnapshot(project.snapshot, 'projectSnapshot');
-        else resetProject();
+        const recoverySnapshot = loadDocumentRecoverySnapshot(documentId);
+        if (recoverySnapshot) {
+          importSnapshot(recoverySnapshot, 'projectSnapshot');
+          dirty = true;
+        } else if (project.snapshot) {
+          importSnapshot(project.snapshot, 'projectSnapshot');
+        } else {
+          resetProject();
+        }
         revision = project.revision;
         releaseAssetScope();
         releaseAssetScope = activateAssetScope({
@@ -113,8 +123,16 @@ export function useDocumentBackendSync({
           workspaceId: project.workspaceId,
         });
         setDocumentName(project.name);
-        clearDocumentRecoverySnapshot(documentId);
-        setSyncState({ phase: 'saved' });
+        setWorkspaceId(project.workspaceId);
+        if (recoverySnapshot) {
+          setSyncState({
+            phase: 'recovery',
+            message: 'Восстановлены локальные изменения, которые не успели сохраниться перед закрытием страницы.',
+          });
+        } else {
+          clearDocumentRecoverySnapshot(documentId);
+          setSyncState({ phase: 'saved' });
+        }
       } catch (error) {
         if (!active || controller.signal.aborted) return;
         const recoverySnapshot = loadDocumentRecoverySnapshot(documentId);
@@ -134,6 +152,7 @@ export function useDocumentBackendSync({
       if (!active) return;
       unsubscribe = subscribeToProjectChanges(markDirty);
       window.addEventListener('beforeunload', handleBeforeUnload);
+      if (dirty && !halted) debouncedSave.schedule();
     }
 
     void load();
@@ -149,5 +168,5 @@ export function useDocumentBackendSync({
     };
   }, [exportSnapshot, importSnapshot, projectId, resetProject, subscribeToProjectChanges]);
 
-  return { documentName, syncState };
+  return { documentName, syncState, workspaceId };
 }

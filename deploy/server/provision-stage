@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${EUID}" -ne 0 ]]; then
+  printf 'provision-stage must run as root.\n' >&2
+  exit 1
+fi
+
+bundle_root="${1:?bundle root is required}"
+ci_public_key_file="${2:?CI public key file is required}"
+deploy_root=/opt/image-prodaction
+deploy_user=deploy
+
+install -d -m 750 -o "$deploy_user" -g "$deploy_user" \
+  "$deploy_root" \
+  "$deploy_root/deploy" \
+  "$deploy_root/deploy/server"
+install -m 755 -o root -g root \
+  "$bundle_root/deploy/server/reverie-ci-deploy" \
+  /usr/local/sbin/reverie-ci-deploy
+install -m 750 -o "$deploy_user" -g "$deploy_user" \
+  "$bundle_root/deploy/server/reverie-backup" \
+  "$deploy_root/deploy/server/reverie-backup"
+install -m 640 -o "$deploy_user" -g "$deploy_user" \
+  "$bundle_root/compose.production.yaml" \
+  "$deploy_root/compose.production.yaml"
+install -m 640 -o "$deploy_user" -g "$deploy_user" \
+  "$bundle_root/deploy/Caddyfile" \
+  "$deploy_root/deploy/Caddyfile"
+install -d -m 700 -o "$deploy_user" -g "$deploy_user" /var/backups/reverie
+
+install_ci_key() {
+  local authorized_keys filtered_keys
+  authorized_keys="/home/$deploy_user/.ssh/authorized_keys"
+  filtered_keys="$(mktemp)"
+  grep -v 'github-actions-image-prodaction' "$authorized_keys" > "$filtered_keys" || true
+  {
+    cat "$filtered_keys"
+    printf 'restrict,command="/usr/local/sbin/reverie-ci-deploy" '
+    cat "$ci_public_key_file"
+  } > "$authorized_keys.tmp"
+  install -m 600 -o "$deploy_user" -g "$deploy_user" \
+    "$authorized_keys.tmp" "$authorized_keys"
+  rm -f "$filtered_keys" "$authorized_keys.tmp"
+}
+
+create_runtime_environment() {
+  local environment_file
+  if [[ -s "$deploy_root/.env.production" ]]; then
+    return
+  fi
+
+  local postgres_password minio_user minio_password auth_secret
+  local provider_master provider_fingerprint
+  postgres_password="$(openssl rand -hex 32)"
+  minio_user="$(openssl rand -hex 16)"
+  minio_password="$(openssl rand -hex 32)"
+  auth_secret="$(openssl rand -base64 48 | tr -d '\n')"
+  provider_master="$(openssl rand -base64 32 | tr -d '\n')"
+  provider_fingerprint="$(openssl rand -base64 32 | tr -d '\n')"
+  environment_file="$(mktemp)"
+
+  printf '%s\n' \
+    'APP_BASE_URL=https://89.124.115.57' \
+    'POSTGRES_DB=image_prodaction' \
+    'POSTGRES_USER=reverie' \
+    "POSTGRES_PASSWORD=$postgres_password" \
+    "DATABASE_URL=postgresql://reverie:$postgres_password@postgres:5432/image_prodaction" \
+    "MINIO_ROOT_USER=$minio_user" \
+    "MINIO_ROOT_PASSWORD=$minio_password" \
+    'S3_REGION=us-east-1' \
+    'S3_BUCKET=image-prodaction-assets' \
+    "S3_ACCESS_KEY_ID=$minio_user" \
+    "S3_SECRET_ACCESS_KEY=$minio_password" \
+    'S3_FORCE_PATH_STYLE=true' \
+    'S3_MAX_IMAGE_BYTES=15728640' \
+    'BETTER_AUTH_URL=https://89.124.115.57' \
+    "BETTER_AUTH_SECRET=$auth_secret" \
+    'BETTER_AUTH_TRUSTED_ORIGINS=https://89.124.115.57' \
+    'AUTH_REQUIRE_EMAIL_VERIFICATION=false' \
+    'EMAIL_TRANSPORT=disabled' \
+    "PROVIDER_CREDENTIALS_MASTER_KEY=$provider_master" \
+    'PROVIDER_CREDENTIALS_MASTER_KEY_VERSION=v1' \
+    "PROVIDER_CREDENTIALS_FINGERPRINT_KEY=$provider_fingerprint" \
+    'AI_PROVIDER_RUNTIME=openrouter' \
+    'OPENROUTER_SITE_URL=https://89.124.115.57' \
+    'WORKER_READY_FILE=/tmp/reverie-generation-worker-ready' \
+    'WORKER_HEALTH_STALE_AFTER_MS=45000' \
+    > "$environment_file"
+
+  install -m 600 -o "$deploy_user" -g "$deploy_user" \
+    "$environment_file" "$deploy_root/.env.production"
+  rm -f "$environment_file"
+}
+
+install_certificate_renewal() {
+  install -m 755 /dev/null /usr/local/sbin/reverie-renew-ip-cert
+  cat > /usr/local/sbin/reverie-renew-ip-cert <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+caddy_was_running=0
+if docker ps --format '{{.Names}}' | grep -qx reverie-caddy; then
+  caddy_was_running=1
+  docker stop reverie-caddy >/dev/null
+fi
+
+restart_caddy() {
+  if [[ "$caddy_was_running" = 1 ]]; then
+    docker start reverie-caddy >/dev/null || true
+  fi
+}
+trap restart_caddy EXIT
+
+/opt/certbot-venv/bin/certbot renew \
+  --cert-name gigonom-ip \
+  --non-interactive \
+  --logs-dir /var/log/letsencrypt \
+  --work-dir /var/lib/letsencrypt \
+  --config-dir /etc/letsencrypt
+SCRIPT
+  chmod 755 /usr/local/sbin/reverie-renew-ip-cert
+
+  cat > /etc/systemd/system/reverie-renew-ip-cert.service <<'UNIT'
+[Unit]
+Description=Renew Reverie staging IP certificate
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/reverie-renew-ip-cert
+UNIT
+  cat > /etc/systemd/system/reverie-renew-ip-cert.timer <<'UNIT'
+[Unit]
+Description=Daily renewal check for Reverie staging IP certificate
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+}
+
+install_backup_timer() {
+  cat > /etc/systemd/system/reverie-backup.service <<'UNIT'
+[Unit]
+Description=Create local Reverie staging backup
+After=docker.service
+ConditionPathExists=/opt/image-prodaction/.release.env
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/opt/image-prodaction/deploy/server/reverie-backup
+UNIT
+  cat > /etc/systemd/system/reverie-backup.timer <<'UNIT'
+[Unit]
+Description=Daily Reverie staging backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+}
+
+install_ci_key
+create_runtime_environment
+install_certificate_renewal
+install_backup_timer
+
+systemctl daemon-reload
+systemctl enable --now reverie-renew-ip-cert.timer reverie-backup.timer
+systemctl enable --now unattended-upgrades.service
+
+printf 'server-provisioning=complete\n'
+printf 'runtime-env-mode='
+stat -c '%a %U:%G' "$deploy_root/.env.production"
+printf 'authorized-key-count='
+grep -c '^' "/home/$deploy_user/.ssh/authorized_keys"

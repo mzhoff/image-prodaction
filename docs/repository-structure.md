@@ -10,6 +10,7 @@ src/
   widgets/production-canvas/  Canvas widget, graph interaction and rendering
   features/graph-node/        Node card UI and node-specific behavior
   entities/production-graph/  Graph domain types, store, node definitions
+  modules/                     Backend domain modules and provider contracts
   shared/                     Shared API clients, utilities, hooks and UI atoms
 ```
 
@@ -29,12 +30,20 @@ The root-level `pages/` directory is intentionally present as a placeholder for 
 
 `entities` contains domain state and business rules. For this project it is mainly the production graph: nodes, edges, ports, assets and history.
 
+`modules` contains backend domain boundaries that do not fit frontend FSD:
+`provider-connections`, `generation` and `usage`. Their public entrypoints keep
+provider-specific code out of orchestration.
+
 `shared` contains reusable low-level pieces: UI atoms, small hooks, API wrappers and file utilities.
 
 ## Current Boundaries
 
-- OpenRouter calls are implemented in `src/app/api-routes/ai/*` and re-exported by thin root `app/api/ai/*/route.ts` files.
-- The browser never receives `OPENROUTER_API_KEY`.
+- AI routes are thin adapters over Workspace credentials, generation jobs and
+  provider contracts.
+- The browser never receives a stored raw provider key.
+- Long image generation is executed by a separate worker over a PostgreSQL queue.
+- `npm run check:architecture` prevents product code from restoring the removed
+  global OpenRouter secret or bypassing module boundaries.
 - Canvas interactions are split into hooks under `src/widgets/production-canvas/model`.
 - Node renderers are split by node type under `src/features/graph-node/ui/nodes`.
 - Global CSS is split by responsibility under `src/app/styles`.

@@ -183,29 +183,13 @@ export async function uploadImageAsset(
     workspaceId: input.workspaceId,
   });
 
-  const assetId = dependencies.createId();
-  const storageKey = createAssetObjectKey({
-    assetId,
-    documentId,
-    extension: image.extension,
-    workspaceId: input.workspaceId,
-  });
-  const pending = await dependencies.repository.createPending({
-    id: assetId,
-    workspaceId: input.workspaceId,
-    documentId,
-    createdByUserId: input.userId,
-    bucket: dependencies.bucket,
-    storageKey,
-    originalName: normalizeOriginalName(input.originalName, image.extension),
-    contentType: image.contentType,
-    byteSize: image.byteSize,
-    width: image.width ?? null,
-    height: image.height ?? null,
-    checksumSha256: image.checksumSha256,
-    mediaKind: 'image',
-    ...provenance,
-  });
+  const existingGenerated = input.generationJobId && provenance.origin === 'generated'
+    ? await dependencies.repository.findGeneratedByJobId(input.generationJobId)
+    : undefined;
+  const pending = existingGenerated
+    ? await prepareGeneratedAssetRetry(existingGenerated, input, image.checksumSha256, dependencies)
+    : await createPendingImageAsset(input, documentId, provenance, image, dependencies);
+  if (pending.status === 'ready') return toAssetDto(pending);
 
   try {
     await dependencies.objectStore.put({
@@ -235,6 +219,61 @@ export async function uploadImageAsset(
     });
     throw new AssetStorageError();
   }
+}
+
+async function prepareGeneratedAssetRetry(
+  existing: AssetRecord,
+  input: UploadImageAssetInput,
+  checksumSha256: string,
+  dependencies: AssetUploadDependencies,
+) {
+  if (
+    existing.workspaceId !== input.workspaceId
+    || existing.documentId !== (input.documentId ?? null)
+    || existing.createdByUserId !== input.userId
+    || existing.generationJobId !== input.generationJobId
+    || existing.origin !== 'generated'
+    || existing.checksumSha256 !== checksumSha256
+  ) {
+    throw new AssetProvenanceError('Existing generated asset does not match the retry payload.');
+  }
+  if (existing.status === 'ready') return existing;
+  if (existing.status !== 'pending' && existing.status !== 'failed') {
+    throw new AssetStorageError();
+  }
+  return dependencies.repository.resetPending(existing.id);
+}
+
+async function createPendingImageAsset(
+  input: UploadImageAssetInput,
+  documentId: string | null,
+  provenance: ReturnType<typeof normalizeAssetProvenance>,
+  image: ReturnType<typeof validateImageBytes>,
+  dependencies: AssetUploadDependencies,
+) {
+  const assetId = dependencies.createId();
+  const storageKey = createAssetObjectKey({
+    assetId,
+    documentId,
+    extension: image.extension,
+    workspaceId: input.workspaceId,
+  });
+  return dependencies.repository.createPending({
+    id: assetId,
+    workspaceId: input.workspaceId,
+    documentId,
+    createdByUserId: input.userId,
+    bucket: dependencies.bucket,
+    storageKey,
+    originalName: normalizeOriginalName(input.originalName, image.extension),
+    contentType: image.contentType,
+    byteSize: image.byteSize,
+    width: image.width ?? null,
+    height: image.height ?? null,
+    checksumSha256: image.checksumSha256,
+    mediaKind: 'image',
+    ...provenance,
+  });
 }
 
 export async function listLibraryAssets(
@@ -280,6 +319,14 @@ export async function getAssetMetadata(
   const record = await requireAccessibleAsset(userId, assetId, repository);
   if (record.status === 'deleted') throw new AssetNotFoundError();
   return toAssetDto(record);
+}
+
+export async function getGeneratedAssetByJobId(
+  generationJobId: string,
+  repository: AssetRepository = createDbAssetRepository(),
+) {
+  const record = await repository.findGeneratedByJobId(generationJobId);
+  return record ? toAssetDto(record) : null;
 }
 
 export async function getLibraryAssetMetadata(

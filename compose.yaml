@@ -65,6 +65,87 @@ services:
       retries: 10
       start_period: 5s
 
+  migrate:
+    build: .
+    restart: "no"
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: true
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/image_prodaction
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npm", "run", "db:migrate"]
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: true
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/image_prodaction
+      S3_ENDPOINT: http://minio:9000
+      SMTP_HOST: mailpit
+      SMTP_USER: reverie-local
+      SMTP_PASSWORD: reverie-local-mailpit
+      BETTER_AUTH_URL: http://localhost:3004
+      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3004
+      OPENROUTER_SITE_URL: http://localhost:3004
+      AI_PROVIDER_RUNTIME: ${AI_PROVIDER_RUNTIME:-}
+      CI: ${CI:-false}
+      FAKE_AI_PROVIDER_CREDENTIAL: ${FAKE_AI_PROVIDER_CREDENTIAL:-fake-valid-credential}
+    ports:
+      - "3004:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://127.0.0.1:3000/api/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: true
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/image_prodaction
+      S3_ENDPOINT: http://minio:9000
+      SMTP_HOST: mailpit
+      OPENROUTER_SITE_URL: http://web:3000
+      WORKER_READY_FILE: /tmp/reverie-generation-worker-ready
+      AI_PROVIDER_RUNTIME: ${AI_PROVIDER_RUNTIME:-}
+      CI: ${CI:-false}
+      FAKE_AI_PROVIDER_CREDENTIAL: ${FAKE_AI_PROVIDER_CREDENTIAL:-fake-valid-credential}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/reverie-generation-worker-ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
 volumes:
   postgres_data:
   minio_data:

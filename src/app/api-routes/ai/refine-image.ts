@@ -29,6 +29,13 @@ import {
   normalizeOpenRouterUsage,
   resolveTransientGenerationReplay,
 } from './transient-generation-ledger';
+import {
+  markOpenRouterProviderUsed,
+  ProviderConnectionNotConfiguredError,
+  resolveOpenRouterCredential,
+} from '@/modules/provider-connections/server/provider-connection-service';
+import { ProviderCredentialConfigurationError } from '@/modules/provider-connections/server/credential-crypto-config';
+import { recordUsageEvent } from '@/modules/usage';
 
 export const runtime = 'nodejs';
 
@@ -68,11 +75,13 @@ export async function POST(request: Request) {
 
   let startedJob: GenerationJobDto | null = null;
   let providerUsage: GenerationUsageInput | undefined;
+  let providerOperationId: string | null = null;
   try {
     const session = await requireApiSession(request);
-    if (!process.env.OPENROUTER_API_KEY) {
-      return apiError('openrouter_not_configured', 'OPENROUTER_API_KEY is not configured.', 503);
-    }
+    const providerConnection = await resolveOpenRouterCredential(
+      session.user.id,
+      parsed.data.workspaceId,
+    );
     if (!PREFERRED_IMAGE_MODEL_IDS.includes(parsed.data.model)) {
       return Response.json({ error: `Model ${parsed.data.model} is not available for image refine.` }, { status: 400 });
     }
@@ -110,6 +119,7 @@ export async function POST(request: Request) {
       size: parsed.data.size,
     });
     const result = await sendOpenRouterChat({
+      apiKey: providerConnection.apiKey,
       model: parsed.data.model,
       messages: [{ role: 'user', content }],
       modalities: ['image', 'text'],
@@ -118,7 +128,21 @@ export async function POST(request: Request) {
         image_size: parsed.data.size,
       },
     });
+    providerOperationId = result.id ?? null;
     providerUsage = normalizeOpenRouterUsage(result.usage);
+    await Promise.all([
+      markOpenRouterProviderUsed(providerConnection.connection.id),
+      recordUsageEvent({
+        generationJobId: startedJob.id,
+        attemptCount: startedJob.attemptCount,
+        succeeded: true,
+        inputTokens: providerUsage.inputTokens,
+        outputTokens: providerUsage.outputTokens,
+        totalTokens: providerUsage.totalTokens,
+        providerCostUsd: providerUsage.providerCostUsd,
+        providerOperationId,
+      }),
+    ]);
 
     const message = result.choices?.[0]?.message;
     const responseSummary = summarizeOpenRouterImageMessage(message);
@@ -151,6 +175,17 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (startedJob) {
+      await recordUsageEvent({
+        generationJobId: startedJob.id,
+        attemptCount: startedJob.attemptCount,
+        succeeded: false,
+        inputTokens: providerUsage?.inputTokens ?? null,
+        outputTokens: providerUsage?.outputTokens ?? null,
+        totalTokens: providerUsage?.totalTokens ?? null,
+        providerCostUsd: providerUsage?.providerCostUsd ?? null,
+        providerOperationId,
+        errorCode: getGenerationErrorCode(error),
+      }).catch(() => undefined);
       await failGenerationJob({
         attemptCount: startedJob.attemptCount,
         errorCode: getGenerationErrorCode(error),
@@ -167,6 +202,16 @@ export async function POST(request: Request) {
     }
     if (error instanceof GenerationJobTransitionError) {
       return apiError('generation_job_conflict', error.message, 409);
+    }
+    if (error instanceof ProviderConnectionNotConfiguredError) {
+      return apiError('provider_not_configured', error.message, 409);
+    }
+    if (error instanceof ProviderCredentialConfigurationError) {
+      return apiError(
+        'provider_credentials_not_configured',
+        'Server credential encryption is not configured.',
+        503,
+      );
     }
     const baseResponse = toApiErrorResponse(error);
     if (baseResponse.status !== 500) return baseResponse;

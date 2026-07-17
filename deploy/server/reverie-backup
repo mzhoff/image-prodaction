@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+deploy_root=/opt/image-prodaction
+backup_root=/var/backups/reverie
+retention_days=7
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+destination="$backup_root/$timestamp"
+
+install -d -m 700 "$destination"
+cd "$deploy_root"
+
+set -a
+# shellcheck disable=SC1091
+source .env.production
+set +a
+
+docker compose \
+  --env-file .env.production \
+  --env-file .release.env \
+  --file compose.production.yaml \
+  exec -T postgres \
+  pg_dump --format=custom --no-owner --username "$POSTGRES_USER" "$POSTGRES_DB" \
+  > "$destination/postgres.dump"
+
+docker run --rm \
+  --network reverie-stage_default \
+  --volume "$destination:/backup" \
+  --env "MC_HOST_reverie=http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@minio:9000" \
+  quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z \
+  mirror --overwrite "reverie/${S3_BUCKET}" /backup/minio
+
+tar -C "$destination" -czf "$backup_root/$timestamp.tar.gz" .
+rm -rf "$destination"
+find "$backup_root" -maxdepth 1 -type f -name '*.tar.gz' -mtime "+$retention_days" -delete

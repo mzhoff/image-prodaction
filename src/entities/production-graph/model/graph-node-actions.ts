@@ -284,6 +284,7 @@ function getClearedGenerationData(node: ProductionNode): Partial<ProductionNodeD
   if (node.type === 'subjectBuilder') {
     return {
       libraryImageAssetIds: [],
+      referenceGenerationBatchPending: false,
       referenceGenerationRequests: {},
       message: '',
     } as Partial<ProductionNodeData>;

@@ -122,7 +122,13 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 >
                   Account settings
                 </Link>
-                <button type="button" role="menuitem">Workspace settings</button>
+                <Link
+                  href="/settings/providers"
+                  role="menuitem"
+                  onClick={() => setProfileMenuOpen(false)}
+                >
+                  Workspace settings
+                </Link>
                 <BrandSelect
                   className="workspace-menu-brand-select"
                   disabled={!workspace.activeWorkspace}

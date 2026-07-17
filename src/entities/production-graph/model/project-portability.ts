@@ -152,6 +152,7 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.generationRequest;
   delete data.editGenerationRequest;
   delete data.editGenerationRequests;
+  delete data.referenceGenerationBatchPending;
   delete data.referenceGenerationRequests;
 
   if (node.type === 'generateImage' || node.type === 'refineImage') {

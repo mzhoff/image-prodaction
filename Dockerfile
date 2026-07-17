@@ -24,6 +24,11 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs package.json package-lock.json tsconfig.json drizzle.config.ts ./
+COPY --chown=nextjs:nodejs drizzle ./drizzle
+COPY --chown=nextjs:nodejs scripts ./scripts
+COPY --chown=nextjs:nodejs src ./src
 
 USER nextjs
 EXPOSE 3000

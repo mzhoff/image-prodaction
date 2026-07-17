@@ -1,13 +1,18 @@
 import {
   and,
+  asc,
   eq,
+  gte,
+  gt,
+  isNotNull,
   isNull,
   lt,
+  lte,
   or,
   sql,
-  type AnyColumn,
 } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
+import { asset } from '@/shared/db/schema/asset';
 import { generationJob } from '@/shared/db/schema/generation';
 import { membership } from '@/shared/db/schema/workspace';
 
@@ -36,6 +41,10 @@ export interface GenerationUsageRecord {
 }
 
 export interface GenerationJobRepository {
+  claimNext(input: {
+    claimedAt: Date;
+    leaseExpiresAt: Date;
+  }): Promise<GenerationJobRecord | undefined>;
   createOrFind(input: NewGenerationJobRecord): Promise<{
     created: boolean;
     record: GenerationJobRecord;
@@ -46,12 +55,19 @@ export interface GenerationJobRepository {
     errorMessage: string;
     finishedAt: Date;
     id: string;
+    retryAvailableAt?: Date | null;
     retryable: boolean;
     usage: GenerationUsageRecord;
   }): Promise<GenerationJobRecord | undefined>;
   expireLease(id: string, expiredAt: Date): Promise<GenerationJobRecord | undefined>;
   findAccessible(id: string, userId: string): Promise<GenerationJobRecord | undefined>;
   findById(id: string): Promise<GenerationJobRecord | undefined>;
+  heartbeat(input: {
+    attemptCount: number;
+    heartbeatAt: Date;
+    id: string;
+    leaseExpiresAt: Date;
+  }): Promise<GenerationJobRecord | undefined>;
   start(id: string, startedAt: Date, leaseExpiresAt: Date): Promise<GenerationJobRecord | undefined>;
   succeed(input: {
     attemptCount: number;
@@ -65,6 +81,116 @@ export interface GenerationJobRepository {
 
 export function createDbGenerationJobRepository(): GenerationJobRepository {
   return {
+    async claimNext(input) {
+      return getDb().transaction(async (transaction) => {
+        await transaction.update(generationJob).set({
+          status: 'canceled',
+          retryable: false,
+          errorCode: 'generation_canceled',
+          errorMessage: 'Generation was canceled by the user.',
+          leaseExpiresAt: null,
+          retryAvailableAt: null,
+          finishedAt: input.claimedAt,
+          updatedAt: input.claimedAt,
+        }).where(and(
+          eq(generationJob.status, 'running'),
+          isNotNull(generationJob.cancelRequestedAt),
+          or(
+            isNull(generationJob.leaseExpiresAt),
+            lte(generationJob.leaseExpiresAt, input.claimedAt),
+          ),
+        ));
+
+        await transaction.update(generationJob).set({
+          status: 'failed',
+          retryable: false,
+          errorCode: sql`case
+            when ${generationJob.providerDispatchedAt} is not null
+              then 'provider_outcome_unknown'
+            else 'max_attempts_exhausted'
+          end`,
+          errorMessage: sql`case
+            when ${generationJob.providerDispatchedAt} is not null
+              then 'The provider call was dispatched before the worker lease expired. Automatic retry is blocked to prevent duplicate charges.'
+            else 'Generation worker lease expired after the final allowed attempt.'
+          end`,
+          leaseExpiresAt: null,
+          retryAvailableAt: null,
+          finishedAt: input.claimedAt,
+          updatedAt: input.claimedAt,
+        }).where(and(
+          eq(generationJob.status, 'running'),
+          isNotNull(generationJob.enqueuedAt),
+          isNull(generationJob.cancelRequestedAt),
+          gte(generationJob.attemptCount, generationJob.maxAttempts),
+          or(
+            isNull(generationJob.leaseExpiresAt),
+            lte(generationJob.leaseExpiresAt, input.claimedAt),
+          ),
+        ));
+
+        const [candidate] = await transaction.select().from(generationJob)
+          .where(and(
+            lt(generationJob.attemptCount, generationJob.maxAttempts),
+            isNotNull(generationJob.enqueuedAt),
+            isNull(generationJob.cancelRequestedAt),
+            or(
+              eq(generationJob.status, 'queued'),
+              and(
+                eq(generationJob.status, 'failed'),
+                eq(generationJob.retryable, true),
+                or(
+                  isNull(generationJob.retryAvailableAt),
+                  lte(generationJob.retryAvailableAt, input.claimedAt),
+                ),
+              ),
+              and(
+                eq(generationJob.status, 'running'),
+                or(
+                  isNull(generationJob.leaseExpiresAt),
+                  lte(generationJob.leaseExpiresAt, input.claimedAt),
+                ),
+              ),
+            ),
+          ))
+          .orderBy(
+            asc(sql`case ${generationJob.status}
+              when 'queued' then 0
+              when 'failed' then 1
+              else 2
+            end`),
+            asc(sql`coalesce(
+              ${generationJob.retryAvailableAt},
+              ${generationJob.leaseExpiresAt},
+              ${generationJob.enqueuedAt},
+              ${generationJob.createdAt}
+            )`),
+            asc(generationJob.createdAt),
+            asc(generationJob.id),
+          )
+          .for('update', { skipLocked: true })
+          .limit(1);
+        if (!candidate) return undefined;
+
+        const [claimed] = await transaction.update(generationJob).set({
+          status: 'running',
+          attemptCount: sql`${generationJob.attemptCount} + 1`,
+          retryable: null,
+          errorCode: null,
+          errorMessage: null,
+          finishedAt: null,
+          startedAt: sql`coalesce(${generationJob.startedAt}, ${input.claimedAt})`,
+          leaseExpiresAt: input.leaseExpiresAt,
+          retryAvailableAt: null,
+          updatedAt: input.claimedAt,
+        }).where(and(
+          eq(generationJob.id, candidate.id),
+          eq(generationJob.attemptCount, candidate.attemptCount),
+        )).returning();
+        return claimed;
+      });
+    },
+
     async createOrFind(input) {
       const [created] = await getDb().insert(generationJob).values(input)
         .onConflictDoNothing({
@@ -83,23 +209,29 @@ export function createDbGenerationJobRepository(): GenerationJobRepository {
 
     async fail(input) {
       const [updated] = await getDb().update(generationJob).set({
-        status: 'failed',
-        retryable: input.retryable,
-        errorCode: input.errorCode,
-        errorMessage: input.errorMessage,
-        inputTokens: addLedgerValue(generationJob.inputTokens, input.usage.inputTokens),
-        outputTokens: addLedgerValue(generationJob.outputTokens, input.usage.outputTokens),
-        totalTokens: addLedgerValue(generationJob.totalTokens, input.usage.totalTokens),
-        providerCostUsd: addLedgerValue(generationJob.providerCostUsd, input.usage.providerCostUsd),
-        internalCreditsCharged: addLedgerValue(
-          generationJob.internalCreditsCharged,
-          input.usage.internalCreditsCharged,
-        ),
+        status: sql`case
+          when ${generationJob.cancelRequestedAt} is not null
+            then 'canceled'::generation_job_status
+          else 'failed'::generation_job_status
+        end`,
+        retryable: sql`case
+          when ${generationJob.cancelRequestedAt} is not null then false
+          else ${input.retryable}
+        end`,
+        errorCode: sql`case
+          when ${generationJob.cancelRequestedAt} is not null then 'generation_canceled'
+          else ${input.errorCode}
+        end`,
+        errorMessage: sql`case
+          when ${generationJob.cancelRequestedAt} is not null
+            then 'Generation was canceled by the user.'
+          else ${input.errorMessage}
+        end`,
         internalCreditsBalanceAfter: input.usage.internalCreditsBalanceAfter === null
           ? generationJob.internalCreditsBalanceAfter
           : input.usage.internalCreditsBalanceAfter,
-        usageComplete: sql`${generationJob.usageComplete} OR ${hasCompleteUsage(input.usage)}`,
         leaseExpiresAt: null,
+        retryAvailableAt: input.retryable ? input.retryAvailableAt ?? null : null,
         finishedAt: input.finishedAt,
         updatedAt: input.finishedAt,
       }).where(and(
@@ -113,18 +245,38 @@ export function createDbGenerationJobRepository(): GenerationJobRepository {
     async expireLease(id, expiredAt) {
       const [updated] = await getDb().update(generationJob).set({
         status: 'failed',
-        retryable: true,
-        errorCode: 'lease_expired',
-        errorMessage: 'Generation worker lease expired before completion.',
+        retryable: sql`${generationJob.providerDispatchedAt} is null
+          AND ${generationJob.attemptCount} < ${generationJob.maxAttempts}`,
+        errorCode: sql`case
+          when ${generationJob.providerDispatchedAt} is not null
+            then 'provider_outcome_unknown'
+          when ${generationJob.attemptCount} < ${generationJob.maxAttempts}
+            then 'lease_expired'
+          else 'max_attempts_exhausted'
+        end`,
+        errorMessage: sql`case
+          when ${generationJob.providerDispatchedAt} is not null
+            then 'The provider call was dispatched before the worker lease expired. Automatic retry is blocked to prevent duplicate charges.'
+          when ${generationJob.attemptCount} < ${generationJob.maxAttempts}
+            then 'Generation worker lease expired before completion.'
+          else 'Generation worker lease expired after the final allowed attempt.'
+        end`,
         leaseExpiresAt: null,
+        retryAvailableAt: sql<Date | null>`case
+          when ${generationJob.providerDispatchedAt} is null
+            AND ${generationJob.attemptCount} < ${generationJob.maxAttempts}
+            then ${expiredAt}::timestamptz
+          else null::timestamptz
+        end`,
         finishedAt: expiredAt,
         updatedAt: expiredAt,
       }).where(and(
         eq(generationJob.id, id),
         eq(generationJob.status, 'running'),
+        isNull(generationJob.cancelRequestedAt),
         or(
           isNull(generationJob.leaseExpiresAt),
-          lt(generationJob.leaseExpiresAt, expiredAt),
+          lte(generationJob.leaseExpiresAt, expiredAt),
         ),
       )).returning();
       return updated;
@@ -148,6 +300,19 @@ export function createDbGenerationJobRepository(): GenerationJobRepository {
       return record;
     },
 
+    async heartbeat(input) {
+      const [updated] = await getDb().update(generationJob).set({
+        leaseExpiresAt: input.leaseExpiresAt,
+        updatedAt: input.heartbeatAt,
+      }).where(and(
+        eq(generationJob.id, input.id),
+        eq(generationJob.status, 'running'),
+        eq(generationJob.attemptCount, input.attemptCount),
+        gt(generationJob.leaseExpiresAt, input.heartbeatAt),
+      )).returning();
+      return updated;
+    },
+
     async start(id, startedAt, leaseExpiresAt) {
       const [updated] = await getDb().update(generationJob).set({
         status: 'running',
@@ -158,46 +323,92 @@ export function createDbGenerationJobRepository(): GenerationJobRepository {
         finishedAt: null,
         startedAt: sql`coalesce(${generationJob.startedAt}, ${startedAt})`,
         leaseExpiresAt,
+        retryAvailableAt: null,
         updatedAt: startedAt,
       }).where(and(
         eq(generationJob.id, id),
         lt(generationJob.attemptCount, generationJob.maxAttempts),
+        isNull(generationJob.cancelRequestedAt),
         or(
           eq(generationJob.status, 'queued'),
-          and(eq(generationJob.status, 'failed'), eq(generationJob.retryable, true)),
+          and(
+            eq(generationJob.status, 'failed'),
+            eq(generationJob.retryable, true),
+            or(
+              isNull(generationJob.retryAvailableAt),
+              lte(generationJob.retryAvailableAt, startedAt),
+            ),
+          ),
         ),
       )).returning();
       return updated;
     },
 
     async succeed(input) {
-      const [updated] = await getDb().update(generationJob).set({
-        status: 'succeeded',
-        retryable: false,
-        errorCode: null,
-        errorMessage: null,
-        finalAssetId: input.finalAssetId,
-        inputTokens: addLedgerValue(generationJob.inputTokens, input.usage.inputTokens),
-        outputTokens: addLedgerValue(generationJob.outputTokens, input.usage.outputTokens),
-        totalTokens: addLedgerValue(generationJob.totalTokens, input.usage.totalTokens),
-        providerCostUsd: addLedgerValue(generationJob.providerCostUsd, input.usage.providerCostUsd),
-        internalCreditsCharged: addLedgerValue(
-          generationJob.internalCreditsCharged,
-          input.usage.internalCreditsCharged,
-        ),
-        internalCreditsBalanceAfter: input.usage.internalCreditsBalanceAfter === null
-          ? generationJob.internalCreditsBalanceAfter
-          : input.usage.internalCreditsBalanceAfter,
-        usageComplete: sql`${generationJob.usageComplete} OR ${input.usageComplete}`,
-        leaseExpiresAt: null,
-        finishedAt: input.finishedAt,
-        updatedAt: input.finishedAt,
-      }).where(and(
-        eq(generationJob.id, input.id),
-        eq(generationJob.status, 'running'),
-        eq(generationJob.attemptCount, input.attemptCount),
-      )).returning();
-      return updated;
+      return getDb().transaction(async (transaction) => {
+        const [updated] = await transaction.update(generationJob).set({
+          status: sql`case
+            when ${generationJob.cancelRequestedAt} is not null
+              then 'canceled'::generation_job_status
+            else 'succeeded'::generation_job_status
+          end`,
+          retryable: false,
+          errorCode: sql`case
+            when ${generationJob.cancelRequestedAt} is not null
+              then 'generation_canceled'
+            else null
+          end`,
+          errorMessage: sql`case
+            when ${generationJob.cancelRequestedAt} is not null
+              then 'Generation was canceled by the user.'
+            else null
+          end`,
+          finalAssetId: sql`case
+            when ${generationJob.cancelRequestedAt} is not null
+              then null
+            else ${input.finalAssetId}::uuid
+          end`,
+          internalCreditsBalanceAfter: input.usage.internalCreditsBalanceAfter === null
+            ? generationJob.internalCreditsBalanceAfter
+            : input.usage.internalCreditsBalanceAfter,
+          leaseExpiresAt: null,
+          retryAvailableAt: null,
+          finishedAt: input.finishedAt,
+          updatedAt: input.finishedAt,
+        }).where(and(
+          eq(generationJob.id, input.id),
+          eq(generationJob.status, 'running'),
+          eq(generationJob.attemptCount, input.attemptCount),
+        )).returning();
+        if (!updated) return undefined;
+        if (input.finalAssetId && updated.status === 'succeeded') {
+          const [published] = await transaction.update(asset).set({
+            libraryVisible: true,
+            updatedAt: input.finishedAt,
+          }).where(and(
+            eq(asset.id, input.finalAssetId),
+            eq(asset.generationJobId, input.id),
+            eq(asset.workspaceId, updated.workspaceId),
+            eq(asset.origin, 'generated'),
+            eq(asset.status, 'ready'),
+            eq(asset.libraryVisible, false),
+          )).returning({ id: asset.id });
+          const [alreadyPublished] = published ? [] : await transaction.select({
+            id: asset.id,
+          }).from(asset).where(and(
+            eq(asset.id, input.finalAssetId),
+            eq(asset.generationJobId, input.id),
+            eq(asset.workspaceId, updated.workspaceId),
+            eq(asset.origin, 'generated'),
+            eq(asset.status, 'ready'),
+            eq(asset.libraryVisible, true),
+          )).limit(1);
+          if (!published && !alreadyPublished) {
+            throw new Error('Generated asset could not be atomically published with its job.');
+          }
+        }
+        return updated;
+      });
     },
   };
 }
@@ -211,6 +422,12 @@ const generationJobSelect = {
   modelId: generationJob.modelId,
   operation: generationJob.operation,
   idempotencyKey: generationJob.idempotencyKey,
+  requestObjectKey: generationJob.requestObjectKey,
+  resultObjectKey: generationJob.resultObjectKey,
+  providerOperationId: generationJob.providerOperationId,
+  providerDispatchedAt: generationJob.providerDispatchedAt,
+  providerDispatchedAttempt: generationJob.providerDispatchedAttempt,
+  queueJobId: generationJob.queueJobId,
   status: generationJob.status,
   attemptCount: generationJob.attemptCount,
   maxAttempts: generationJob.maxAttempts,
@@ -227,23 +444,11 @@ const generationJobSelect = {
   errorMessage: generationJob.errorMessage,
   metadata: generationJob.metadata,
   createdAt: generationJob.createdAt,
+  enqueuedAt: generationJob.enqueuedAt,
   startedAt: generationJob.startedAt,
   leaseExpiresAt: generationJob.leaseExpiresAt,
+  retryAvailableAt: generationJob.retryAvailableAt,
+  cancelRequestedAt: generationJob.cancelRequestedAt,
   finishedAt: generationJob.finishedAt,
   updatedAt: generationJob.updatedAt,
 };
-
-function addLedgerValue(
-  column: AnyColumn,
-  value: string | null,
-) {
-  return value === null
-    ? sql`${column}`
-    : sql`coalesce(${column}, 0) + ${value}::numeric`;
-}
-
-function hasCompleteUsage(usage: GenerationUsageRecord) {
-  return usage.inputTokens !== null
-    && usage.outputTokens !== null
-    && usage.totalTokens !== null;
-}

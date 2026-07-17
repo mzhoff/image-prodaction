@@ -1,10 +1,16 @@
 import { z } from 'zod';
-import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterChat } from '@/shared/api/openrouter';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
+import {
+  executeShortOpenRouterChat,
+  getProviderText,
+  shortAiScopeSchema,
+  toShortAiApiErrorResponse,
+} from './short-ai-execution';
 
 export const runtime = 'nodejs';
 
 const locationDescriptionSchema = z.object({
+  ...shortAiScopeSchema.shape,
   imageDataUrls: z.array(z.string().min(1)).max(4).default([]),
   locationType: z.string().min(1).default('interior'),
   model: z.string().min(1).default(DEFAULT_ANALYSIS_MODEL),
@@ -25,7 +31,7 @@ const locationDescriptionDraftSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const parsed = locationDescriptionSchema.safeParse(await request.json());
+  const parsed = locationDescriptionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
@@ -34,61 +40,55 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Attach image refs or text notes before generating a location description.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return Response.json({
-      draft: {
-        atmosphere: 'Mock atmospheric description generated from attached references.',
-        description: '[LOCATION ROLE]\nMock reusable location generated from attached references.\n\n[ENVIRONMENT DESCRIPTION]\nLayered production-ready description will be generated here when OpenRouter is configured.',
-        locationType: parsed.data.locationType,
-        mutableAttributes: 'Camera angle, time of day, weather, dressing, action, characters, props, and production style may adapt to the target prompt.',
-        name: 'Reference location',
-        negativeConstraints: 'Do not change core spatial identity, architecture, environment type, or key surface language.',
-        notes: 'Mock response because OPENROUTER_API_KEY is not configured.',
-        spatialLayout: 'Stable layout, scale cues, foreground/midground/background relationships, and recognizable environment geometry from the reference set.',
-      },
-      provider: 'mock',
-    });
-  }
-
   try {
     const prompt = buildLocationDescriptionPrompt(parsed.data.locationType, cleanTextNotes, parsed.data.imageDataUrls.length);
-    const result = await sendOpenRouterChat({
-      model: parsed.data.model,
-      messages: [
+    const execution = await executeShortOpenRouterChat({
+      request,
+      scope: parsed.data,
+      providerRequest: {
+        modelId: parsed.data.model,
+        operation: 'describe_location',
+        expectedOutputModalities: ['text'],
+        messages: [
         {
           role: 'system',
-          content: [
+          parts: [{
+            modality: 'text',
+            text: [
             'You are a senior commercial image analyst and AI image-production prompt engineer.',
             'Analyze reference images as one reusable production location or environment.',
             'Return only compact valid JSON. Do not wrap it in markdown.',
             'Do not invent brand names, exact addresses, logos, or real-world claims not visible in the image.',
             'The description field must be a multiline layered description with explicit square-bracket headers.',
           ].join(' '),
+          }],
         },
         {
           role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            ...parsed.data.imageDataUrls.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
+          parts: [
+            { modality: 'text', text: prompt },
+            ...parsed.data.imageDataUrls.map((url) => ({ modality: 'image' as const, url })),
           ],
         },
-      ],
-      modalities: ['text'],
-      maxTokens: 2200,
-      temperature: 0.25,
+        ],
+        parameters: {
+          maxOutputTokens: 2200,
+          temperature: 0.25,
+        },
+      },
+      transform: (result) => ({
+        draft: locationDescriptionDraftSchema.parse(parseJsonObject(getProviderText(result))),
+      }),
     });
-    const content = result.choices?.[0]?.message?.content ?? '';
-    const draft = locationDescriptionDraftSchema.parse(parseJsonObject(content));
 
     return Response.json({
-      draft,
+      ...execution.result,
+      job: execution.job,
       message: 'Location description generated from attached sources.',
       provider: 'openrouter',
     });
   } catch (error) {
-    return Response.json({
-      error: formatOpenRouterError(error, 'OpenRouter location description failed'),
-    }, { status: getOpenRouterErrorStatus(error) });
+    return toShortAiApiErrorResponse(error);
   }
 }
 
