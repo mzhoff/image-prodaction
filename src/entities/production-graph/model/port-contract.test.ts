@@ -93,6 +93,23 @@ const exportImageTarget = {
   },
 } as ProductionNode;
 
+const generateImageTarget = {
+  id: 'generate-image',
+  type: 'generateImage',
+  position: { x: 250, y: 0 },
+  size: { width: 320, height: 720 },
+  status: 'idle',
+  data: {
+    title: 'Generate Image',
+    model: 'google/gemini-2.5-flash-image',
+    aspectRatio: '1:1',
+    size: '1K',
+    prompt: '',
+    activeResultIndex: -1,
+    resultAssetIds: [],
+  },
+} as ProductionNode;
+
 const textPromptTarget = {
   id: 'text-prompt',
   type: 'textPrompt',
@@ -231,6 +248,25 @@ test('resolveTargetPortConnectionConflict blocks prompt variable port if already
   assert.equal(conflict.reason, PROMPT_VARIABLE_CONNECTED_REASON);
 });
 
+test('resolveTargetPortConnectionConflict allows multiple inputs for one Generate Image layer', () => {
+  const firstStyleInput: GraphEdge = {
+    id: 'style-1',
+    sourceNodeId: sourceNodeA.id,
+    sourcePortId: 'text',
+    targetNodeId: generateImageTarget.id,
+    targetPortId: 'style',
+  };
+
+  const conflict = resolveTargetPortConnectionConflict({
+    edges: [firstStyleInput],
+    targetNode: generateImageTarget,
+    targetPortId: 'style',
+  });
+
+  assert.equal(conflict.isBlocked, false);
+  assert.equal(conflict.isSwapAllowed, false);
+});
+
 test('resolveTargetPortConnectionConflict identifies prompt variable ports', () => {
   assert.equal(isTextPromptVariablePortId('variable-0'), true);
   assert.equal(isTextPromptVariablePortId('text-0'), false);
@@ -286,4 +322,30 @@ test('canKeepSingleIncomingEdge keeps only one edge for each fixed port and one 
   assert.equal(fixedPorts.length, 1);
   assert.equal(fixedPorts[0].id, 'fixed-1');
   assert.equal(promptPorts.length, 2);
+});
+
+test('canKeepSingleIncomingEdge preserves multiple compatible Generate Image layer inputs', () => {
+  const generateEdges: GraphEdge[] = [
+    {
+      id: 'style-text-a',
+      sourceNodeId: sourceNodeA.id,
+      sourcePortId: 'text',
+      targetNodeId: generateImageTarget.id,
+      targetPortId: 'style',
+    },
+    {
+      id: 'style-text-b',
+      sourceNodeId: sourceNodeB.id,
+      sourcePortId: 'text',
+      targetNodeId: generateImageTarget.id,
+      targetPortId: 'style',
+    },
+  ];
+
+  const keep = canKeepSingleIncomingEdge({
+    edges: generateEdges,
+    nodes: [sourceNodeA, sourceNodeB, generateImageTarget],
+  });
+
+  assert.deepEqual(keep.map((edge) => edge.id), ['style-text-a', 'style-text-b']);
 });

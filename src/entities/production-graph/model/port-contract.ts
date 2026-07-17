@@ -34,6 +34,10 @@ export function resolveTargetPortConnectionConflict(params: ResolveTargetPortCon
     return { isBlocked: false, isSwapAllowed: false };
   }
 
+  if (targetNode.type === 'generateImage') {
+    return { isBlocked: false, isSwapAllowed: false };
+  }
+
   const isPromptVariableSlot = targetNode.type === 'textPrompt' && isTextPromptVariablePortId(targetPortId);
   if (isPromptVariableSlot) {
     const isTextPromptVariableSwap = detachedEdge
@@ -98,7 +102,11 @@ export function canKeepSingleIncomingEdge(params: CanKeepSingleIncomingEdgeParam
     if (!canConnectPorts(sourceNode, edge.sourcePortId, targetNode, edge.targetPortId)) continue;
 
     const target = `${edge.targetNodeId}::${edge.targetPortId}`;
-    if (blocked.has(target) && !isDynamicInputSlotPort(targetNode, edge.targetPortId)) {
+    if (
+      blocked.has(target)
+      && targetNode.type !== 'generateImage'
+      && !isDynamicInputSlotPort(targetNode, edge.targetPortId)
+    ) {
       continue;
     }
     blocked.add(target);

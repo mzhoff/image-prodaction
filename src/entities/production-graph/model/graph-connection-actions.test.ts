@@ -145,6 +145,23 @@ const exportImageTarget: ProductionNode = {
   },
 } as ProductionNode;
 
+const generateImageTarget: ProductionNode = {
+  id: 'generate-target',
+  type: 'generateImage',
+  position: { x: 120, y: 0 },
+  size: { width: 320, height: 720 },
+  status: 'idle',
+  data: {
+    title: 'Generate Image',
+    model: 'google/gemini-2.5-flash-image',
+    aspectRatio: '1:1',
+    size: '1K',
+    prompt: '',
+    activeResultIndex: -1,
+    resultAssetIds: [],
+  },
+} as ProductionNode;
+
 const compositionTarget: ProductionNode = {
   id: 'composition-target',
   type: 'composition',
@@ -211,6 +228,27 @@ test('single fixed target input rejects an additional edge', () => {
   assert.equal(second.ok, false);
   assert.equal(second.reason, 'This input is already connected.');
   assert.equal(useProductionGraphStore.getState().edges.length, 1);
+});
+
+test('Generate Image accepts multiple text inputs for the same production layer', () => {
+  resetState({ nodes: [textSourceA, textSourceB, generateImageTarget] });
+
+  const first = useProductionGraphStore.getState().connect(
+    textSourceA.id,
+    'text',
+    generateImageTarget.id,
+    'style',
+  );
+  const second = useProductionGraphStore.getState().connect(
+    textSourceB.id,
+    'text',
+    generateImageTarget.id,
+    'style',
+  );
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  assert.equal(useProductionGraphStore.getState().edges.length, 2);
 });
 
 test('text concat keeps one edge per text input port and allows swap while dragging', () => {
