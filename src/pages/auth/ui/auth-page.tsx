@@ -13,7 +13,12 @@ import { AuthShell } from './auth-shell';
 
 type AuthMode = 'login' | 'register';
 
-export function AuthPage({ mode }: { mode: AuthMode }) {
+interface AuthPageProps {
+  mode: AuthMode;
+  allowRegistration?: boolean;
+}
+
+export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -187,9 +192,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           Вход сохраняется в защищённой серверной сессии. Пароль не попадает в браузерное хранилище.
         </p>
 
-        <div className="auth-switch">
-          <Link href={switchHref}>{switchLabel}</Link>
-        </div>
+        {mode === 'register' || allowRegistration ? (
+          <div className="auth-switch">
+            <Link href={switchHref}>{switchLabel}</Link>
+          </div>
+        ) : null}
       </div>
     </AuthShell>
   );

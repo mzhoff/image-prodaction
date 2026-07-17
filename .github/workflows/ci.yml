@@ -201,7 +201,8 @@ jobs:
           tar -czf /tmp/reverie-deploy-config.tar.gz \
             compose.production.yaml \
             deploy/Caddyfile \
-            deploy/server/reverie-backup
+            deploy/server/reverie-backup \
+            deploy/server/reverie-create-user
           ssh -i ~/.ssh/reverie_staging \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \

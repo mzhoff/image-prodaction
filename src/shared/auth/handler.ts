@@ -1,9 +1,29 @@
 import { getAuth } from './server';
+import { readAuthAccessPolicyConfig } from './config';
 
 type AuthHandler = (request: Request) => Promise<Response>;
 
 export async function handleAuthRequest(request: Request) {
+  const policyResponse = enforceAuthAccessPolicy(
+    request,
+    readAuthAccessPolicyConfig().allowSignUp,
+  );
+  if (policyResponse) return policyResponse;
   return handleAuthRequestSafely(request, async (nextRequest) => (await getAuth()).handler(nextRequest));
+}
+
+export function enforceAuthAccessPolicy(request: Request, allowSignUp: boolean) {
+  if (allowSignUp || !isEmailSignUpRequest(request)) return null;
+
+  return Response.json({
+    error: {
+      code: 'SIGN_UP_DISABLED',
+      message: 'Registration is closed.',
+    },
+  }, {
+    status: 403,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
 
 export async function handleAuthRequestSafely(
@@ -25,6 +45,11 @@ export async function handleAuthRequestSafely(
       headers: { 'Cache-Control': 'no-store' },
     });
   }
+}
+
+function isEmailSignUpRequest(request: Request) {
+  return request.method.toUpperCase() === 'POST'
+    && new URL(request.url).pathname === '/api/auth/sign-up/email';
 }
 
 function reportAuthFailure(error: unknown) {

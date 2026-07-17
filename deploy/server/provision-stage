@@ -21,6 +21,9 @@ install -m 755 -o root -g root \
 install -m 750 -o "$deploy_user" -g "$deploy_user" \
   "$bundle_root/deploy/server/reverie-backup" \
   "$deploy_root/deploy/server/reverie-backup"
+install -m 750 -o "$deploy_user" -g "$deploy_user" \
+  "$bundle_root/deploy/server/reverie-create-user" \
+  "$deploy_root/deploy/server/reverie-create-user"
 install -m 640 -o "$deploy_user" -g "$deploy_user" \
   "$bundle_root/compose.production.yaml" \
   "$deploy_root/compose.production.yaml"
@@ -77,6 +80,7 @@ create_runtime_environment() {
     'BETTER_AUTH_URL=https://89.124.115.57' \
     "BETTER_AUTH_SECRET=$auth_secret" \
     'BETTER_AUTH_TRUSTED_ORIGINS=https://89.124.115.57' \
+    'AUTH_ALLOW_SIGN_UP=false' \
     'AUTH_REQUIRE_EMAIL_VERIFICATION=false' \
     'EMAIL_TRANSPORT=disabled' \
     "PROVIDER_CREDENTIALS_MASTER_KEY=$provider_master" \

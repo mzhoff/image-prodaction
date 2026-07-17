@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+deploy_root=/opt/image-prodaction
+
+printf 'Email: ' >&2
+IFS= read -r email
+printf 'Name: ' >&2
+IFS= read -r name
+printf 'Temporary password: ' >&2
+IFS= read -r -s password
+printf '\n' >&2
+
+if [[ "$email" != *@* ]] || [[ -z "$name" ]]; then
+  printf 'A valid email and a non-empty name are required.\n' >&2
+  exit 64
+fi
+if (( ${#password} < 8 || ${#password} > 128 )); then
+  printf 'The temporary password must contain between 8 and 128 characters.\n' >&2
+  exit 64
+fi
+
+cd "$deploy_root"
+printf '%s\n%s\n%s\n' "$email" "$name" "$password" |
+  docker compose \
+    --env-file .env.production \
+    --env-file .release.env \
+    --file compose.production.yaml \
+    exec -T web \
+    node --experimental-strip-types \
+      --loader ./scripts/node-test-loader.mjs \
+      scripts/create-staging-user.ts
+
+unset password

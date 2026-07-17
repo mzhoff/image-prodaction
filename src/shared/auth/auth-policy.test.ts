@@ -2,9 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { betterAuth } from 'better-auth';
 import { memoryAdapter } from 'better-auth/adapters/memory';
-import { readAuthServerConfig } from './config';
+import {
+  readAuthAccessPolicyConfig,
+  readAuthServerConfig,
+} from './config';
 import { formatAuthError } from './error-message';
-import { handleAuthRequestSafely } from './handler';
+import {
+  enforceAuthAccessPolicy,
+  handleAuthRequestSafely,
+} from './handler';
 import {
   getSafePostAuthPath,
   isGuestOnlyPagePath,
@@ -45,6 +51,42 @@ test('auth configuration accepts only explicit origins and enforces a production
     BETTER_AUTH_SECRET: 'a-secure-production-secret-with-32-characters',
     NODE_ENV: 'production',
   }), /HTTPS in production/);
+});
+
+test('sign-up access policy defaults to open locally and accepts an explicit closed mode', () => {
+  assert.deepEqual(readAuthAccessPolicyConfig({}), { allowSignUp: true });
+  assert.deepEqual(
+    readAuthAccessPolicyConfig({ AUTH_ALLOW_SIGN_UP: 'false' }),
+    { allowSignUp: false },
+  );
+  assert.throws(
+    () => readAuthAccessPolicyConfig({ AUTH_ALLOW_SIGN_UP: 'sometimes' }),
+    /AUTH_ALLOW_SIGN_UP/,
+  );
+});
+
+test('closed sign-up policy blocks only the email registration endpoint', async () => {
+  const signUpResponse = enforceAuthAccessPolicy(
+    new Request('https://app.example.com/api/auth/sign-up/email', { method: 'POST' }),
+    false,
+  );
+  assert.equal(signUpResponse?.status, 403);
+  assert.equal(signUpResponse?.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await signUpResponse?.json(), {
+    error: {
+      code: 'SIGN_UP_DISABLED',
+      message: 'Registration is closed.',
+    },
+  });
+
+  assert.equal(enforceAuthAccessPolicy(
+    new Request('https://app.example.com/api/auth/sign-in/email', { method: 'POST' }),
+    false,
+  ), null);
+  assert.equal(enforceAuthAccessPolicy(
+    new Request('https://app.example.com/api/auth/sign-up/email', { method: 'POST' }),
+    true,
+  ), null);
 });
 
 test('route policy uses segment boundaries for public endpoints', () => {

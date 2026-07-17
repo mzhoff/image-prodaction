@@ -16,7 +16,7 @@ sync_config() {
 
   while IFS= read -r archive_entry; do
     case "$archive_entry" in
-      compose.production.yaml|deploy/Caddyfile|deploy/server/reverie-backup)
+      compose.production.yaml|deploy/Caddyfile|deploy/server/reverie-backup|deploy/server/reverie-create-user)
         ;;
       *)
         printf 'Rejected deploy bundle entry: %s\n' "$archive_entry" >&2
@@ -32,6 +32,9 @@ sync_config() {
   install -m 750 \
     "$staging/deploy/server/reverie-backup" \
     "$deploy_root/deploy/server/reverie-backup"
+  install -m 750 \
+    "$staging/deploy/server/reverie-create-user" \
+    "$deploy_root/deploy/server/reverie-create-user"
 }
 
 load_image() {
