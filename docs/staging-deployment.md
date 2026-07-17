@@ -7,6 +7,7 @@ machine while preserving container boundaries:
 - the Next.js web application and generation worker use one immutable image;
 - PostgreSQL and MinIO are available only inside the Docker network;
 - Mailpit is intentionally excluded;
+- public self-registration is disabled;
 - email delivery and mandatory email verification are disabled;
 - runtime secrets exist only in `/opt/image-prodaction/.env.production`.
 
@@ -43,6 +44,21 @@ Persistent Docker volumes contain PostgreSQL, MinIO, and Caddy state.
 The application is available at `https://89.124.115.57`. PostgreSQL and MinIO
 must not publish host ports. Administrative access to them is performed through
 an explicitly created SSH tunnel or a short-lived diagnostic container.
+
+## Test accounts
+
+The public `/register` route redirects to `/login`, and the email sign-up API
+returns `403` while `AUTH_ALLOW_SIGN_UP=false`. Create an approved test account
+from an interactive SSH session instead:
+
+```bash
+/opt/image-prodaction/deploy/server/reverie-create-user
+```
+
+The command reads the temporary password without echoing it or placing it in the
+process arguments. It calls Better Auth inside the running application, so the
+normal user, account, personal Workspace, and terms records are created
+consistently. The partner can then change the temporary password in Settings.
 
 ## Backups
 

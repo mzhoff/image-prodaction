@@ -12,7 +12,12 @@ export interface AuthEmailPolicyConfig {
   passwordResetTokenTTLSeconds: number;
 }
 
+export interface AuthAccessPolicyConfig {
+  allowSignUp: boolean;
+}
+
 interface AuthEnvironment {
+  AUTH_ALLOW_SIGN_UP?: string;
   AUTH_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS?: string;
   AUTH_PASSWORD_RESET_TOKEN_TTL_SECONDS?: string;
   AUTH_REQUIRE_EMAIL_VERIFICATION?: string;
@@ -56,6 +61,18 @@ export function readAuthEmailPolicyConfig(
       environment.AUTH_PASSWORD_RESET_TOKEN_TTL_SECONDS,
       'AUTH_PASSWORD_RESET_TOKEN_TTL_SECONDS',
       DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS,
+    ),
+  };
+}
+
+export function readAuthAccessPolicyConfig(
+  environment: AuthEnvironment = process.env,
+): AuthAccessPolicyConfig {
+  return {
+    allowSignUp: readBoolean(
+      environment.AUTH_ALLOW_SIGN_UP,
+      'AUTH_ALLOW_SIGN_UP',
+      true,
     ),
   };
 }
