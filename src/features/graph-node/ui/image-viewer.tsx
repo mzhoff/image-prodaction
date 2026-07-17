@@ -2,15 +2,25 @@
 
 import Image from 'next/image';
 import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Mic, RotateCcw, WandSparkles, X } from 'lucide-react';
-import { useEffect, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import { DarkSelect } from '@/shared/ui/dark-select';
 import { RangeSlider } from '@/shared/ui/range-slider';
+import { SaveToLibraryButton } from '@/shared/ui/save-to-library-button';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { ImageMaskEditor } from './image-mask-editor';
 import type { ImageViewerEditorPanel, MaskEditPayload } from './image-viewer-types';
 import { MAX_MASK_BRUSH_SIZE, MIN_MASK_BRUSH_SIZE, useImageViewerMaskModel } from './use-image-viewer-mask-model';
+
+export interface ImageViewerItem {
+  id: string;
+  height?: number;
+  name?: string;
+  thumbnailUrl?: string;
+  url: string;
+  width?: number;
+}
 
 interface ImageViewerProps {
   asset?: AssetRecord;
@@ -20,6 +30,7 @@ interface ImageViewerProps {
   currentIndex: number;
   hasHistory: boolean;
   historyAssetIds: string[];
+  items?: ImageViewerItem[];
   maskDataUrl?: string;
   onClose: () => void;
   onMaskChange?: (maskDataUrl: string | null) => void;
@@ -27,6 +38,8 @@ interface ImageViewerProps {
   onNext: () => void;
   onPrevious: () => void;
   onSelectVersion: (index: number) => void;
+  onSaveToLibrary?: (assetId: string) => Promise<void>;
+  savedToLibrary?: boolean;
   sourceModel?: string;
   url: string;
   viewerPanel?: ImageViewerEditorPanel;
@@ -40,6 +53,7 @@ export function ImageViewer({
   currentIndex,
   hasHistory,
   historyAssetIds,
+  items,
   maskDataUrl,
   onClose,
   onMaskChange,
@@ -47,16 +61,23 @@ export function ImageViewer({
   onNext,
   onPrevious,
   onSelectVersion,
+  onSaveToLibrary,
+  savedToLibrary,
   sourceModel,
   url,
   viewerPanel,
 }: ImageViewerProps) {
   const maskModel = useImageViewerMaskModel({ asset, assetId, assetMetadata, maskDataUrl, onMaskChange, onMaskEdit, sourceModel });
+  const itemsById = useMemo(
+    () => new Map((items ?? []).map((item) => [item.id, item])),
+    [items],
+  );
+  const currentItem = assetId ? itemsById.get(assetId) : undefined;
   const hasToolPanel = maskModel.canMaskEdit || Boolean(viewerPanel);
   const customPanelOpen = Boolean(viewerPanel?.active);
   const editorOpen = maskModel.maskOpen || customPanelOpen;
-  const width = asset?.width ?? 1200;
-  const height = asset?.height ?? 800;
+  const width = asset?.width ?? currentItem?.width ?? 1200;
+  const height = asset?.height ?? currentItem?.height ?? 800;
   const stageStyle = {
     aspectRatio: `${width} / ${height}`,
     '--image-viewer-aspect-ratio': width / height,
@@ -73,16 +94,19 @@ export function ImageViewer({
   };
 
   useEffect(() => {
-    if (!hasHistory) return undefined;
-
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target?.closest('textarea,input,select,[contenteditable="true"]')) return;
-      if (event.key === 'ArrowLeft') {
+      if (hasHistory && event.key === 'ArrowLeft') {
         event.preventDefault();
         onPrevious();
       }
-      if (event.key === 'ArrowRight') {
+      if (hasHistory && event.key === 'ArrowRight') {
         event.preventDefault();
         onNext();
       }
@@ -90,12 +114,15 @@ export function ImageViewer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasHistory, onNext, onPrevious]);
+  }, [hasHistory, onClose, onNext, onPrevious]);
 
   return (
     <div
       className={cn('image-viewer-overlay', maskModel.maskOpen && 'image-viewer-overlay-editing')}
       data-node-interactive
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -118,11 +145,20 @@ export function ImageViewer({
         <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={onClose}>
           <X size={18} />
         </button>
+        {assetId && onSaveToLibrary ? (
+          <div className="image-viewer-save-to-library">
+            <SaveToLibraryButton
+              assetId={assetId}
+              onSave={onSaveToLibrary}
+              saved={savedToLibrary}
+            />
+          </div>
+        ) : null}
         <div className="image-viewer-viewport" onMouseDown={closeOnEmptyPreviewArea}>
           <div className="image-viewer-stage" style={stageStyle}>
             <Image
               src={url}
-              alt={asset?.name ?? 'Image preview'}
+              alt={asset?.name ?? currentItem?.name ?? 'Image preview'}
               width={width}
               height={height}
               unoptimized
@@ -230,6 +266,7 @@ export function ImageViewer({
                   active={index === currentIndex}
                   assetId={historyAssetId}
                   index={index}
+                  item={itemsById.get(historyAssetId)}
                   onSelect={onSelectVersion}
                 />
               ))}
@@ -246,14 +283,17 @@ function ImageViewerThumbnail({
   active,
   assetId,
   index,
+  item,
   onSelect,
 }: {
   active: boolean;
   assetId: string;
   index: number;
+  item?: ImageViewerItem;
   onSelect: (index: number) => void;
 }) {
-  const url = useAssetUrl(assetId);
+  const graphUrl = useAssetUrl(item ? undefined : assetId);
+  const url = item?.thumbnailUrl ?? item?.url ?? graphUrl;
 
   if (!url) return null;
 
@@ -267,7 +307,7 @@ function ImageViewerThumbnail({
     >
       <Image
         src={url}
-        alt={`Generated variation ${index + 1}`}
+        alt={item?.name ?? `Generated variation ${index + 1}`}
         fill
         sizes="80px"
         unoptimized

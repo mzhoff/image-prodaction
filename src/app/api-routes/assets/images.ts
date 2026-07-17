@@ -1,15 +1,18 @@
 import { z } from 'zod';
-import { uploadImageAsset } from '@/entities/asset/server/asset-service';
+import {
+  getMaxImageUploadBytes,
+  uploadImageAsset,
+} from '@/entities/asset/server/asset-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/shared/auth/session';
 import { isUuidV7 } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from './error-response';
 
-const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 15 * 1024 * 1024;
 const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 const uploadFieldsSchema = z.object({
   documentId: z.string().refine(isUuidV7).nullable(),
+  origin: z.enum(['uploaded', 'saved']),
   workspaceId: z.string().refine(isUuidV7),
 });
 
@@ -36,9 +39,14 @@ export async function postAssetImage(request: Request) {
     const parsedFields = uploadFieldsSchema.safeParse({
       workspaceId: getStringField(formData, 'workspaceId'),
       documentId: getStringField(formData, 'documentId') || null,
+      origin: getStringField(formData, 'origin'),
     });
     if (!parsedFields.success) {
-      return apiError('invalid_asset_scope', 'Valid workspaceId and documentId fields are required.', 400);
+      return apiError(
+        'invalid_asset_scope',
+        'Valid workspaceId, documentId, and durable asset origin fields are required.',
+        400,
+      );
     }
 
     const created = await uploadImageAsset({
@@ -46,6 +54,8 @@ export async function postAssetImage(request: Request) {
       claimedContentType: file.type,
       documentId: parsedFields.data.documentId,
       maxBytes,
+      libraryVisible: true,
+      origin: parsedFields.data.origin,
       originalName: file.name,
       userId: session.user.id,
       workspaceId: parsedFields.data.workspaceId,
@@ -65,9 +75,4 @@ export async function postAssetImage(request: Request) {
 function getStringField(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function getMaxImageUploadBytes() {
-  const parsed = Number.parseInt(process.env.S3_MAX_IMAGE_BYTES ?? '', 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_IMAGE_UPLOAD_BYTES;
 }

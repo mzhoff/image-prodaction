@@ -4,11 +4,13 @@ import { useMemo, useState } from 'react';
 import { appendGenerationResult, getGenerationHistory, selectGenerationResult } from '@/entities/production-graph/model/generation-history';
 import type { GenerateImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
+import { AiRequestError, requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
+import { createRequestFingerprint } from '@/shared/lib/request-fingerprint';
 import {
   buildGeneratePayload,
   getGenerateInputKinds,
@@ -73,9 +75,25 @@ export function useGenerateImageNodeModel({
       updateNodeDataSilent(node.id, { message: '' });
       const payload = await buildGeneratePayload(node.id, edges, nodes, assets);
       const prompt = [...payload.promptInputs, data.prompt ?? ''].filter((item) => item.trim()).join('\n\n');
-      const result = await requestGenerateImage({ ...payload, model: selectedModel, aspectRatio: selectedAspectRatio, size: selectedSize, prompt });
-      const file = await dataUrlToFile(result.imageDataUrl, `generated-${Date.now()}.png`);
-      const asset = await saveImageAsset(file);
+      const scope = getActiveAssetScope();
+      if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
+      const requestPayload = {
+        ...payload,
+        ...scope,
+        model: selectedModel,
+        aspectRatio: selectedAspectRatio,
+        size: selectedSize,
+        prompt,
+      };
+      const fingerprint = await createRequestFingerprint(requestPayload);
+      const idempotencyKey = data.generationRequest?.fingerprint === fingerprint
+        ? data.generationRequest.idempotencyKey
+        : crypto.randomUUID();
+      updateNodeDataSilent(node.id, {
+        generationRequest: { fingerprint, idempotencyKey },
+      });
+      const result = await requestGenerateImage({ ...requestPayload, idempotencyKey });
+      const asset = result.asset;
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, asset.id),
@@ -90,11 +108,15 @@ export function useGenerateImageNodeModel({
         model: selectedModel,
         aspectRatio: selectedAspectRatio,
         size: selectedSize,
+        generationRequest: undefined,
         message: result.message,
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
+      if (shouldDiscardGenerationRequest(error)) {
+        updateNodeDataSilent(node.id, { generationRequest: undefined });
+      }
       updateNodeDataSilent(node.id, {
         message: error instanceof Error ? error.message : 'OpenRouter generation failed',
       });
@@ -109,16 +131,27 @@ export function useGenerateImageNodeModel({
       const sourceBlob = await loadAssetBlob(sourceAsset);
       if (!sourceBlob) throw new Error('Не удалось прочитать активное изображение из локального хранилища.');
 
-      const result = await requestEditImage({
+      const scope = getActiveAssetScope();
+      if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
+      const requestPayload = {
+        ...scope,
         aspectRatio: selectedAspectRatio,
         imageDataUrl: await blobToDataUrl(sourceBlob),
         maskDataUrl,
         model,
         prompt,
         size: selectedSize,
+      };
+      const fingerprint = await createRequestFingerprint(requestPayload);
+      const idempotencyKey = data.editGenerationRequest?.fingerprint === fingerprint
+        ? data.editGenerationRequest.idempotencyKey
+        : crypto.randomUUID();
+      updateNodeDataSilent(node.id, {
+        editGenerationRequest: { fingerprint, idempotencyKey },
       });
+      const result = await requestEditImage({ ...requestPayload, idempotencyKey });
       const file = await dataUrlToFile(result.imageDataUrl, `edited-${Date.now()}.png`);
-      const editedAsset = await saveImageAsset(file);
+      const editedAsset = await saveTransientImageAsset(file);
       addAsset(editedAsset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, editedAsset.id),
@@ -130,11 +163,15 @@ export function useGenerateImageNodeModel({
             size: selectedSize,
           },
         },
+        editGenerationRequest: undefined,
         message: result.message,
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
+      if (shouldDiscardGenerationRequest(error)) {
+        updateNodeDataSilent(node.id, { editGenerationRequest: undefined });
+      }
       throw error;
     }
   };
@@ -167,4 +204,10 @@ export function useGenerateImageNodeModel({
     toggleAllSections,
     getInputState: (portId: string) => getGenerateInputKinds(node.id, portId, edges, nodes),
   };
+}
+
+function shouldDiscardGenerationRequest(error: unknown) {
+  return error instanceof AiRequestError
+    && error.code !== 'generation_in_progress'
+    && error.status < 500;
 }

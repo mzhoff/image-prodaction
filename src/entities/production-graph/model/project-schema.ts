@@ -30,6 +30,7 @@ export interface ProjectUiState {
 export interface AssetManifestItem {
   id: string;
   kind: AssetRecord['kind'];
+  libraryAssetId?: string;
   name: string;
   mimeType: string;
   width?: number;
@@ -109,6 +110,7 @@ export function createAssetManifest(assets: AssetRecord[]): AssetManifestItem[] 
   return assets.map((asset) => ({
     id: asset.id,
     kind: asset.kind,
+    libraryAssetId: asset.libraryAssetId,
     name: asset.name,
     mimeType: asset.mimeType,
     width: asset.width,

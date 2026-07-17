@@ -8,7 +8,7 @@ import {
   MODEL_EXTENDED_GEMINI_FLASH_ASPECT_RATIOS,
   MODEL_FALLBACK_ASPECT_RATIOS,
 } from '@/shared/api/openrouter-models';
-import { saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { valueSelectOptions } from '../lib/node-select-options';
 
 const SKETCH_OUTPUT_LONG_SIDE = 1024;
@@ -46,7 +46,7 @@ export function useSketchNodeModel(node: ProductionNode) {
 
   const saveCanvas = async (canvas: HTMLCanvasElement) => {
     const file = await canvasToPngFile(canvas, `sketch-${Date.now()}.png`);
-    const nextAsset = await saveImageAsset(file);
+    const nextAsset = await saveTransientImageAsset(file);
     addAsset(nextAsset);
     updateNodeData(node.id, { assetId: nextAsset.id });
   };

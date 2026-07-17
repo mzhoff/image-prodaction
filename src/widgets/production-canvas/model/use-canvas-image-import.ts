@@ -3,7 +3,7 @@
 import { useCallback, useRef } from 'react';
 import type { AssetRecord, GraphPoint } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { saveUploadedImageAsset } from '@/entities/production-graph/lib/asset-db';
 
 interface UseCanvasImageImportParams {
   getFallbackPastePosition: () => GraphPoint;
@@ -26,7 +26,7 @@ export function useCanvasImageImport({
     imageImportInFlightRef.current = true;
 
     try {
-      const assets = await Promise.all(files.map((file) => saveImageAsset(file)));
+      const assets = await Promise.all(files.map((file) => saveUploadedImageAsset(file)));
       const state = useProductionGraphStore.getState();
       const targetNode = targetNodeId
         ? state.nodes.find((node) => node.id === targetNodeId && node.type === 'importImage')

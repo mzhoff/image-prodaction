@@ -24,6 +24,12 @@
   color: #fff;
 }
 
+.primary-node-button.primary-node-button-secondary {
+  border: 1px solid #e4e4e1;
+  background: #fff;
+  color: #111;
+}
+
 .primary-node-button:disabled,
 .secondary-node-button:disabled {
   cursor: default;

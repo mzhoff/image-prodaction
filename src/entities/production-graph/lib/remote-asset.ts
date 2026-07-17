@@ -5,7 +5,9 @@ export interface ActiveAssetScope {
   workspaceId: string;
 }
 
-interface UploadedAssetDto {
+export type DurableAssetOrigin = 'uploaded' | 'saved';
+
+export interface RemoteImageAssetDto {
   contentType: string;
   createdAt: string;
   height: number | null;
@@ -65,24 +67,28 @@ export function isRemoteImageMimeType(mimeType: string) {
 export async function uploadRemoteImageAsset(
   file: File,
   scope: ActiveAssetScope,
+  originOrFetch: DurableAssetOrigin | FetchAsset = 'uploaded',
   fetchAsset: FetchAsset = fetch,
 ): Promise<AssetRecord> {
+  const origin = typeof originOrFetch === 'function' ? 'uploaded' : originOrFetch;
+  const request = typeof originOrFetch === 'function' ? originOrFetch : fetchAsset;
   const formData = new FormData();
   formData.set('file', file);
   formData.set('documentId', scope.documentId);
+  formData.set('origin', origin);
   formData.set('workspaceId', scope.workspaceId);
 
-  const response = await fetchAsset('/api/assets/images', {
+  const response = await request('/api/assets/images', {
     method: 'POST',
     credentials: 'same-origin',
     body: formData,
   });
-  const payload = await response.json().catch(() => null) as { asset?: UploadedAssetDto } & AssetApiErrorPayload | null;
+  const payload = await response.json().catch(() => null) as { asset?: RemoteImageAssetDto } & AssetApiErrorPayload | null;
   if (!response.ok || !payload?.asset) throw new AssetClientError(response.status, payload);
-  return mapUploadedImageAsset(payload.asset);
+  return mapRemoteImageAsset(payload.asset);
 }
 
-export function mapUploadedImageAsset(asset: UploadedAssetDto): AssetRecord {
+export function mapRemoteImageAsset(asset: RemoteImageAssetDto): AssetRecord {
   return {
     id: asset.id,
     kind: 'image',
@@ -97,6 +103,8 @@ export function mapUploadedImageAsset(asset: UploadedAssetDto): AssetRecord {
     },
   };
 }
+
+export const mapUploadedImageAsset = mapRemoteImageAsset;
 
 export function getRemoteAssetContentUrl(assetId: string) {
   return `/api/assets/${encodeURIComponent(assetId)}/content`;

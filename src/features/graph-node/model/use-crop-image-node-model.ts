@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { CropImageNodeData, CropRect, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import {
@@ -145,7 +145,7 @@ export function useCropImageNodeModel(node: ProductionNode) {
       try {
         const file = await cropImageBlob(sourceBlob, crop, `crop-${Date.now()}.png`);
         if (processingRef.current !== runId) return;
-        const asset = await saveImageAsset(file);
+        const asset = await saveTransientImageAsset(file);
         addAsset(asset);
         updateNodeDataSilent(node.id, {
           resultAssetId: asset.id,

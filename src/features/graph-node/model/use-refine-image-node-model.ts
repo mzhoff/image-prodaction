@@ -6,11 +6,13 @@ import type { GenerationHistoryData } from '@/entities/production-graph/model/ge
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import type { RefineImageNodeData, RefineImageMode, RefinePreserveStrength, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
-import { requestRefineImage } from '@/shared/api/ai-client';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
+import { AiRequestError, requestRefineImage } from '@/shared/api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { dataUrlToFile, prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
+import { createRequestFingerprint } from '@/shared/lib/request-fingerprint';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
 
@@ -59,6 +61,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
       if (!data.sourceAssetId && data.sourceAspectRatio === undefined && !data.resultAssetIds?.length && !data.resultAssetId) return;
       updateNodeDataSilent(node.id, {
         activeResultIndex: -1,
+        generationRequest: undefined,
         message: '',
         resultAssetId: undefined,
         resultAssetIds: [],
@@ -71,6 +74,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
     if (data.sourceAssetId === sourceAsset.id && data.sourceAspectRatio === sourceAspectRatio) return;
     updateNodeDataSilent(node.id, {
       activeResultIndex: -1,
+      generationRequest: undefined,
       message: '',
       resultAssetId: undefined,
       resultAssetIds: [],
@@ -110,7 +114,10 @@ export function useRefineImageNodeModel(node: ProductionNode) {
       const sourceBlob = await loadAssetBlob(sourceAsset);
       if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
 
-      const result = await requestRefineImage({
+      const scope = getActiveAssetScope();
+      if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
+      const requestPayload = {
+        ...scope,
         aspectRatio: selectedAspectRatio,
         imageDataUrl: await prepareImageForOpenRouter(sourceBlob),
         instruction: data.instruction,
@@ -118,9 +125,17 @@ export function useRefineImageNodeModel(node: ProductionNode) {
         model: selectedModel,
         preserveStrength: data.preserveStrength,
         size: selectedSize,
+      };
+      const fingerprint = await createRequestFingerprint(requestPayload);
+      const idempotencyKey = data.generationRequest?.fingerprint === fingerprint
+        ? data.generationRequest.idempotencyKey
+        : crypto.randomUUID();
+      updateNodeDataSilent(node.id, {
+        generationRequest: { fingerprint, idempotencyKey },
       });
+      const result = await requestRefineImage({ ...requestPayload, idempotencyKey });
       const file = await dataUrlToFile(result.imageDataUrl, `refined-${Date.now()}.png`);
-      const asset = await saveImageAsset(file);
+      const asset = await saveTransientImageAsset(file);
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data as GenerationHistoryData, asset.id),
@@ -133,6 +148,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
           },
         },
         message: result.message || 'Generative refine complete.',
+        generationRequest: undefined,
         model: selectedModel,
         size: selectedSize,
         sourceAssetId: sourceAsset.id,
@@ -140,6 +156,9 @@ export function useRefineImageNodeModel(node: ProductionNode) {
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
+      if (shouldDiscardGenerationRequest(error)) {
+        updateNodeDataSilent(node.id, { generationRequest: undefined });
+      }
       updateNodeDataSilent(node.id, {
         message: error instanceof Error ? error.message : 'OpenRouter image refine failed',
       });
@@ -182,6 +201,12 @@ export function useRefineImageNodeModel(node: ProductionNode) {
     sizeOptions: valueSelectOptions(sizes),
     sourceAsset,
   };
+}
+
+function shouldDiscardGenerationRequest(error: unknown) {
+  return error instanceof AiRequestError
+    && error.code !== 'generation_in_progress'
+    && error.status < 500;
 }
 
 function getClosestAspectRatio(sourceAspectRatio: number | undefined, available: string[]) {

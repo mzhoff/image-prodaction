@@ -75,9 +75,34 @@ test('upload sends authenticated multipart scope and returns the server asset id
   );
 
   assert.equal(capturedForm?.get('documentId'), scope.documentId);
+  assert.equal(capturedForm?.get('origin'), 'uploaded');
   assert.equal(capturedForm?.get('workspaceId'), scope.workspaceId);
   assert.equal((capturedForm?.get('file') as File).name, 'input.png');
   assert.equal(asset.id, '019b48b0-40e7-7a1b-8000-000000000010');
+});
+
+test('explicit Library save sends the durable saved origin', async () => {
+  let capturedForm: FormData | undefined;
+  await uploadRemoteImageAsset(
+    new File([new Uint8Array([1, 2, 3])], 'technical-result.png', { type: 'image/png' }),
+    scope,
+    'saved',
+    async (_input, init) => {
+      capturedForm = init?.body as FormData;
+      return Response.json({
+        asset: {
+          contentType: 'image/png',
+          createdAt: '2026-07-16T00:00:00.000Z',
+          height: 1,
+          id: '019b48b0-40e7-7a1b-8000-000000000011',
+          originalName: 'technical-result.png',
+          width: 1,
+        },
+      }, { status: 201 });
+    },
+  );
+
+  assert.equal(capturedForm?.get('origin'), 'saved');
 });
 
 test('content read and delete use private same-origin API routes', async () => {

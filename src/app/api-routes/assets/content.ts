@@ -7,15 +7,25 @@ import { toAssetApiErrorResponse } from './error-response';
 export async function getAssetContentResponse(request: Request, assetId: string) {
   try {
     if (!isUuidV7(assetId)) return apiError('invalid_asset_id', 'Invalid asset id.', 400);
+    const variant = new URL(request.url).searchParams.get('variant');
+    if (variant && variant !== 'thumbnail') {
+      return apiError('invalid_asset_variant', 'Invalid asset variant.', 400);
+    }
+    const purpose = variant === 'thumbnail' ? 'thumbnail' : undefined;
     const session = await requireApiSession(request);
-    const { asset, object } = await getAssetContent(session.user.id, assetId);
-    const contentLength = object.contentLength ?? asset.byteSize;
+    const { byteSize, contentType, object } = await getAssetContent(
+      session.user.id,
+      assetId,
+      undefined,
+      purpose,
+    );
+    const contentLength = object.contentLength ?? byteSize;
 
     return new Response(object.body, {
       headers: {
-        'Cache-Control': 'private, no-store',
+        'Cache-Control': 'private, max-age=31536000, immutable',
         'Content-Length': String(contentLength),
-        'Content-Type': asset.contentType,
+        'Content-Type': contentType,
         'X-Content-Type-Options': 'nosniff',
       },
     });

@@ -1,7 +1,16 @@
 'use client';
 
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, Download, ImageUp, Maximize2 } from 'lucide-react';
+import {
+  BookmarkCheck,
+  BookmarkPlus,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ImageUp,
+  Loader2,
+  Maximize2,
+} from 'lucide-react';
 import { useCallback, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { GenerationResultMetadata } from '@/entities/production-graph/model/types';
@@ -9,6 +18,10 @@ import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-gr
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
+import {
+  isAssetInLibrary,
+  persistAssetToLibrary,
+} from '@/entities/production-graph/lib/persist-asset-to-library';
 import { ImageViewer } from './image-viewer';
 import type { ImageViewerEditorPanel, MaskEditPayload } from './image-viewer-types';
 
@@ -53,6 +66,8 @@ export function ImagePlate({
   const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === currentAssetId));
   const url = useAssetUrl(currentAssetId);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const imageAspectRatio = asset?.width && asset.height ? `${asset.width} / ${asset.height}` : undefined;
   const plateAspectRatio = formatCssAspectRatio(aspectRatio) ?? imageAspectRatio ?? formatCssAspectRatio(DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO);
@@ -65,6 +80,19 @@ export function ImagePlate({
     document.body.appendChild(link);
     link.click();
     link.remove();
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (!asset || savingToLibrary || isAssetInLibrary(asset)) return;
+    setSavingToLibrary(true);
+    setSaveError(null);
+    try {
+      await persistAssetToLibrary(asset);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Не удалось сохранить изображение в библиотеку.');
+    } finally {
+      setSavingToLibrary(false);
+    }
   };
 
   const changeVersion = useCallback((nextIndex: number) => {
@@ -105,6 +133,20 @@ export function ImagePlate({
         )}
         {url ? (
           <div className="image-plate-actions">
+            <button
+              type="button"
+              aria-label={saveError || (isAssetInLibrary(asset) ? 'Image is saved in Library' : 'Save image to Library')}
+              title={saveError || (isAssetInLibrary(asset) ? 'Saved in Library' : 'Save to Library')}
+              disabled={savingToLibrary || isAssetInLibrary(asset)}
+              onClick={(event) => {
+                event.stopPropagation();
+                void handleSaveToLibrary();
+              }}
+            >
+              {savingToLibrary
+                ? <Loader2 className="spin" size={15} />
+                : isAssetInLibrary(asset) ? <BookmarkCheck size={15} /> : <BookmarkPlus size={15} />}
+            </button>
             <button
               type="button"
               aria-label="Download image"
@@ -174,7 +216,9 @@ export function ImagePlate({
           onMaskEdit={onMaskEdit}
           onNext={showNext}
           onPrevious={showPrevious}
+          onSaveToLibrary={async () => handleSaveToLibrary()}
           onSelectVersion={changeVersion}
+          savedToLibrary={isAssetInLibrary(asset)}
           sourceModel={sourceModel}
           url={url}
           viewerPanel={viewerPanel}

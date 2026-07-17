@@ -5,7 +5,6 @@ import { normalizeImageFileForStorage } from '@/shared/lib/normalize-image-file'
 import {
   deleteRemoteAsset,
   getActiveAssetScope,
-  isRemoteImageMimeType,
   loadRemoteAssetBlob,
   uploadRemoteImageAsset,
 } from './remote-asset';
@@ -68,11 +67,6 @@ export async function saveAssetBlob(blob: Blob, options: SaveAssetBlobOptions = 
   const file = blob instanceof File && blob.name === name && blob.type === mimeType
     ? blob
     : new File([blob], name, { type: mimeType });
-  if (kind === 'image' && isRemoteImageMimeType(mimeType)) {
-    const scope = getActiveAssetScope();
-    if (!scope) throw new Error('Document asset storage is not ready. Reload the document and try again.');
-    return uploadRemoteImageAsset(file, scope);
-  }
   const dimensions = kind === 'image' ? await readImageSize(file).catch(() => undefined) : undefined;
 
   await withAssetStore('readwrite', (store) => store.put({ key: blobKey, blob: file } satisfies StoredAssetBlob));
@@ -92,7 +86,7 @@ export async function saveAssetBlob(blob: Blob, options: SaveAssetBlobOptions = 
   };
 }
 
-export async function saveImageAsset(file: File): Promise<AssetRecord> {
+export async function saveTransientImageAsset(file: File): Promise<AssetRecord> {
   const normalizedFile = await normalizeImageFileForStorage(file);
 
   return saveAssetBlob(normalizedFile, {
@@ -100,6 +94,25 @@ export async function saveImageAsset(file: File): Promise<AssetRecord> {
     name: normalizedFile.name,
     mimeType: normalizedFile.type || 'image/png',
   });
+}
+
+export async function saveUploadedImageAsset(file: File): Promise<AssetRecord> {
+  return uploadDurableImageAsset(file, 'uploaded');
+}
+
+export async function saveSavedImageAsset(file: File): Promise<AssetRecord> {
+  return uploadDurableImageAsset(file, 'saved');
+}
+
+export async function saveAssetToLibrary(asset: AssetRecord): Promise<AssetRecord> {
+  if (asset.storage.type === 'remote') return asset;
+  if (asset.kind !== 'image') throw new Error('Only image assets can currently be saved to Library.');
+  const blob = await loadAssetBlob(asset);
+  if (!blob) throw new Error('Не удалось прочитать изображение для сохранения в Library.');
+  return uploadDurableImageAsset(
+    new File([blob], asset.name, { type: asset.mimeType || blob.type || 'image/png' }),
+    'saved',
+  );
 }
 
 export async function loadAssetBlobByKey(blobKey: string) {
@@ -132,4 +145,11 @@ function defaultMimeType(kind: AssetRecord['kind']) {
   if (kind === 'video') return 'video/mp4';
   if (kind === 'audio') return 'audio/mpeg';
   return 'image/png';
+}
+
+async function uploadDurableImageAsset(file: File, origin: 'uploaded' | 'saved') {
+  const normalizedFile = await normalizeImageFileForStorage(file);
+  const scope = getActiveAssetScope();
+  if (!scope) throw new Error('Document asset storage is not ready. Reload the document and try again.');
+  return uploadRemoteImageAsset(normalizedFile, scope, origin);
 }

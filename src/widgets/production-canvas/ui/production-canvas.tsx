@@ -136,7 +136,9 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             onClose={model.imageViewer.onClose}
             onNext={model.imageViewer.onNext}
             onPrevious={model.imageViewer.onPrevious}
+            onSaveToLibrary={model.imageViewer.onSaveToLibrary}
             onSelectVersion={model.imageViewer.onSelectVersion}
+            savedToLibrary={model.imageViewer.savedToLibrary}
             sourceModel={model.imageViewer.sourceModel}
             url={model.imageViewer.url}
           />

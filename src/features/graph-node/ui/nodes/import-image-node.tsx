@@ -5,7 +5,7 @@ import type { ChangeEvent } from 'react';
 import { useRef } from 'react';
 import type { ImportImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { saveUploadedImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
@@ -20,7 +20,7 @@ export function ImportImageNode({ node }: { node: ProductionNode }) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const asset = await saveImageAsset(file);
+    const asset = await saveUploadedImageAsset(file);
     addAsset(asset);
     assignAssetToNode(node.id, asset.id);
   };

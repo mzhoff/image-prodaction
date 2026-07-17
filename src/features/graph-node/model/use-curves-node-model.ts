@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CurvesNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import {
   createDefaultCurves,
@@ -94,7 +94,7 @@ export function useCurvesNodeModel(node: ProductionNode) {
         const file = await curvesImageBlob(sourceBlob, values, `curves-${Date.now()}.png`, data.maskDataUrl);
         if (processingRef.current !== runId) return;
 
-        const asset = await saveImageAsset(file);
+        const asset = await saveTransientImageAsset(file);
         addAsset(asset);
         updateNodeDataSilent(node.id, {
           message: '',

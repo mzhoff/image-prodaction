@@ -24,6 +24,7 @@ export type AssetStorage = {
 export interface AssetRecord {
   id: string;
   kind: 'image' | 'video' | 'audio';
+  libraryAssetId?: string;
   name: string;
   mimeType: string;
   width?: number;

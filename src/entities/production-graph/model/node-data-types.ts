@@ -135,6 +135,14 @@ export interface GenerateImageNodeData extends BaseNodeData {
   resultAssetId?: string;
   resultAssetIds?: string[];
   resultMetadata?: Record<string, GenerationResultMetadata>;
+  generationRequest?: {
+    fingerprint: string;
+    idempotencyKey: string;
+  };
+  editGenerationRequest?: {
+    fingerprint: string;
+    idempotencyKey: string;
+  };
   message?: string;
 }
 
@@ -273,6 +281,14 @@ export interface SubjectBuilderNodeData extends BaseNodeData {
   notes: string;
   preserveStrength: SubjectPreserveStrength;
   referenceModel?: string;
+  referenceGenerationRequests?: Record<string, {
+    fingerprint: string;
+    idempotencyKey: string;
+  }>;
+  editGenerationRequests?: Record<string, {
+    fingerprint: string;
+    idempotencyKey: string;
+  }>;
   result?: string;
   sourceCount?: number;
   subjectType: SubjectType;
@@ -441,6 +457,10 @@ export interface RefineImageNodeData extends BaseNodeData {
   resultAssetId?: string;
   resultAssetIds?: string[];
   resultMetadata?: Record<string, GenerationResultMetadata>;
+  generationRequest?: {
+    fingerprint: string;
+    idempotencyKey: string;
+  };
   size: string;
   sourceAspectRatio?: number;
   sourceAssetId?: string;

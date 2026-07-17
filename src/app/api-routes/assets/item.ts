@@ -1,4 +1,8 @@
-import { deleteAsset, getAssetMetadata } from '@/entities/asset/server/asset-service';
+import {
+  deleteAsset,
+  getAssetMetadata,
+  getLibraryAssetMetadata,
+} from '@/entities/asset/server/asset-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/shared/auth/session';
 import { isUuidV7 } from '@/shared/lib/id';
@@ -8,7 +12,10 @@ export async function getAsset(request: Request, assetId: string) {
   try {
     if (!isUuidV7(assetId)) return apiError('invalid_asset_id', 'Invalid asset id.', 400);
     const session = await requireApiSession(request);
-    const metadata = await getAssetMetadata(session.user.id, assetId);
+    const libraryOnly = new URL(request.url).searchParams.get('view') === 'library';
+    const metadata = libraryOnly
+      ? await getLibraryAssetMetadata(session.user.id, assetId)
+      : await getAssetMetadata(session.user.id, assetId);
     return Response.json({ asset: metadata }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return toAssetApiErrorResponse(error);

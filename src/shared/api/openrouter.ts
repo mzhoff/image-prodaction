@@ -52,6 +52,13 @@ export interface OpenRouterReasoningConfig {
   effort?: 'low' | 'medium' | 'high';
 }
 
+export interface OpenRouterUsage {
+  completion_tokens?: number;
+  cost?: number;
+  prompt_tokens?: number;
+  total_tokens?: number;
+}
+
 export async function sendOpenRouterChat({
   model,
   messages,
@@ -91,6 +98,7 @@ export async function sendOpenRouterChat({
       reasoning,
       temperature,
       stream: false,
+      usage: { include: true },
     })),
   }, 'OpenRouter generation request');
 
@@ -99,6 +107,9 @@ export async function sendOpenRouterChat({
   }
 
   return response.json() as Promise<{
+    id?: string;
+    model?: string;
+    provider?: string;
     choices?: Array<{
       message?: {
         content?: string;
@@ -110,6 +121,7 @@ export async function sendOpenRouterChat({
         }>;
       };
     }>;
+    usage?: OpenRouterUsage;
   }>;
 }
 

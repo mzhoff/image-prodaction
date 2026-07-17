@@ -9,7 +9,7 @@ import type {
   ProductionNode,
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveSavedImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getIncomingImageCollectionInputs } from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { createZipBlob } from '@/shared/lib/zip-file';
@@ -49,10 +49,12 @@ export function useExportImageNodeModel(node: ProductionNode) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [message, setMessage] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [savingToLibrary, setSavingToLibrary] = useState(false);
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const assets = useProductionGraphStore((state) => state.assets);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
+  const addAsset = useProductionGraphStore((state) => state.addAsset);
   const sourceItems = useMemo(() => (
     getIncomingImageCollectionInputs(node.id, undefined, { edges, nodes, assets })
       .sort((first, second) => {
@@ -137,6 +139,46 @@ export function useExportImageNodeModel(node: ProductionNode) {
     }
   }, [data.background, data.format, data.quality, data.scale, sourceItems]);
 
+  const handleSaveToLibrary = useCallback(async () => {
+    if (!sourceAsset || savingToLibrary) {
+      if (!sourceAsset) setMessage('Подключи image output к входу Export.');
+      return;
+    }
+
+    setSavingToLibrary(true);
+    setMessage('');
+    try {
+      const sourceBlob = await loadAssetBlob(sourceAsset);
+      if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+      const exported = await exportImageBlob(sourceBlob, {
+        background: data.background,
+        format: data.format,
+        quality: data.quality,
+        scale: data.scale,
+      });
+      const fileName = getExportFileName(sourceAsset.name, exported.extension);
+      const savedAsset = await saveSavedImageAsset(new File(
+        [exported.blob],
+        fileName,
+        { type: exported.mimeType },
+      ));
+      addAsset(savedAsset);
+      setMessage(`${fileName} · сохранено в Library`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось сохранить изображение в Library.');
+    } finally {
+      setSavingToLibrary(false);
+    }
+  }, [
+    addAsset,
+    data.background,
+    data.format,
+    data.quality,
+    data.scale,
+    savingToLibrary,
+    sourceAsset,
+  ]);
+
   return {
     activeIndex: safeActiveIndex,
     activeSourceItem,
@@ -148,8 +190,10 @@ export function useExportImageNodeModel(node: ProductionNode) {
     handleDownload,
     handleFormatChange,
     handleQualityChange,
+    handleSaveToLibrary,
     handleScaleChange,
     message,
+    savingToLibrary,
     sourceAsset,
     sourceAssetIds,
     sourceCount: sourceItems.length,
