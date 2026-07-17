@@ -9,12 +9,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  settings,
 }: Readonly<{
   children: ReactNode;
+  settings: ReactNode;
 }>) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <div id="app-root">{children}</div>
+        {settings}
+      </body>
     </html>
   );
 }

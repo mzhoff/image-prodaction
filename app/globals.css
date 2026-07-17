@@ -1,5 +1,6 @@
 @import "../src/app/styles/base.css";
 @import "../src/app/styles/auth.css";
+@import "../src/app/styles/settings.css";
 @import "../src/app/styles/canvas.css";
 @import "../src/app/styles/assistant-floating-button.css";
 @import "../src/app/styles/assistant-shell.css";

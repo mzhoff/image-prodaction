@@ -1,8 +1,19 @@
-const publicPagePaths = new Set(['/login', '/register']);
+const guestOnlyPagePaths = new Set(['/login', '/register']);
+const publicPagePaths = new Set([
+  ...guestOnlyPagePaths,
+  '/check-email',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+]);
 const publicApiRoots = ['/api/auth', '/api/health'];
 
 export function isPublicPagePath(pathname: string) {
   return publicPagePaths.has(pathname);
+}
+
+export function isGuestOnlyPagePath(pathname: string) {
+  return guestOnlyPagePaths.has(pathname);
 }
 
 export function isPublicApiPath(pathname: string) {
