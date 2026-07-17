@@ -120,6 +120,23 @@ test('verified user persists a private image and can reset the password', async 
     await expect(page).toHaveURL('/');
     await expect(page.getByRole('button', { name: owner.name })).toBeVisible();
   });
+
+  await test.step('close settings in one action after navigating between sections', async () => {
+    await page.getByRole('button', { name: owner.name }).click();
+    await page.getByRole('menuitem', { name: 'Account settings' }).click();
+    await expect(page).toHaveURL('/settings/account');
+
+    await page.getByRole('link', { name: 'Безопасность' }).click();
+    await expect(page).toHaveURL('/settings/security');
+    await page.getByRole('link', { name: 'Аккаунт' }).click();
+    await expect(page).toHaveURL('/settings/account');
+    await page.getByRole('link', { name: 'Безопасность' }).click();
+    await expect(page).toHaveURL('/settings/security');
+
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    await expect(page).toHaveURL('/');
+    await expect(page.getByRole('dialog', { name: 'Настройки' })).toHaveCount(0);
+  });
 });
 
 async function fillLogin(page: Page, email: string, password: string) {

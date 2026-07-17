@@ -91,6 +91,7 @@ export function SettingsPanel({
               href={`/settings/${item.section}`}
               key={item.section}
               onClick={handleNavigation}
+              replace={presentation === 'dialog'}
               aria-current={section === item.section ? 'page' : undefined}
             >
               <item.icon size={16} />
