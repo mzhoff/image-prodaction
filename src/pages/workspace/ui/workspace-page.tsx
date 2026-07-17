@@ -217,7 +217,13 @@ export function WorkspacePage() {
                   <span>{session?.user.email || ''}</span>
                 </div>
               </div>
-              <button type="button" role="menuitem">Account settings</button>
+              <Link
+                href="/settings/account"
+                role="menuitem"
+                onClick={() => setProfileMenuOpen(false)}
+              >
+                Account settings
+              </Link>
               <button type="button" role="menuitem">Workspace settings</button>
               <label className="workspace-menu-field">
                 <span>Workspace</span>

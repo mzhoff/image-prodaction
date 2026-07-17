@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { CURRENT_TERMS_VERSION } from '../src/shared/auth/terms-contract.ts';
+import { waitForEmailLink } from './mailpit-client.ts';
 
 const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? 'http://localhost:3004');
+const requireEmailVerification = process.env.SMOKE_REQUIRE_EMAIL_VERIFICATION === 'true';
 const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 const owner = {
   email: `smoke-owner-${runId}@example.test`,
@@ -134,12 +136,61 @@ async function register(input: typeof owner) {
       termsVersion: CURRENT_TERMS_VERSION,
     },
   });
-  const cookie = response.headers.getSetCookie()
-    .map((value) => value.split(';', 1)[0])
-    .filter(Boolean)
-    .join('; ');
-  assert.ok(cookie, 'Registration did not create a server session cookie.');
-  return cookie;
+  const registrationCookie = readResponseCookie(response);
+
+  if (registrationCookie && !requireEmailVerification) return registrationCookie;
+  if (requireEmailVerification) {
+    assert.equal(
+      registrationCookie,
+      '',
+      'Registration created a session even though mandatory email verification is enabled.',
+    );
+    const deniedSignIn = await request('/api/auth/sign-in/email', {
+      expectedStatus: 403,
+      method: 'POST',
+      json: {
+        email: input.email,
+        password: input.password,
+        rememberMe: true,
+      },
+    });
+    assert.equal(
+      readResponseCookie(deniedSignIn),
+      '',
+      'Unverified sign-in unexpectedly created a server session cookie.',
+    );
+    assert.equal(
+      ((await deniedSignIn.json()) as { code?: string }).code,
+      'EMAIL_NOT_VERIFIED',
+    );
+  }
+
+  const verificationLink = await waitForEmailLink({
+    recipient: input.email,
+    subjectIncludes: 'Подтвердите email в Reverie',
+    pathIncludes: '/api/auth/verify-email',
+  });
+  const verificationResponse = await fetch(verificationLink, {
+    headers: { Origin: baseUrl.origin },
+    redirect: 'manual',
+  });
+  assert.ok(
+    verificationResponse.status >= 300 && verificationResponse.status < 400,
+    `Email verification expected a redirect, got ${verificationResponse.status}.`,
+  );
+
+  const signInResponse = await request('/api/auth/sign-in/email', {
+    expectedStatus: 200,
+    method: 'POST',
+    json: {
+      email: input.email,
+      password: input.password,
+      rememberMe: true,
+    },
+  });
+  const verifiedCookie = readResponseCookie(signInResponse);
+  assert.ok(verifiedCookie, 'Verified sign-in did not create a server session cookie.');
+  return verifiedCookie;
 }
 
 async function uploadAsset(cookie: string, workspaceId: string, documentId: string, name: string) {
@@ -234,4 +285,11 @@ interface SmokeRequestOptions {
   headers?: HeadersInit;
   json?: unknown;
   method?: string;
+}
+
+function readResponseCookie(response: Response) {
+  return response.headers.getSetCookie()
+    .map((value) => value.split(';', 1)[0])
+    .filter(Boolean)
+    .join('; ');
 }

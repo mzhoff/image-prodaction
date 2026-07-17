@@ -5,7 +5,12 @@ import { memoryAdapter } from 'better-auth/adapters/memory';
 import { readAuthServerConfig } from './config';
 import { formatAuthError } from './error-message';
 import { handleAuthRequestSafely } from './handler';
-import { getSafePostAuthPath, isPublicApiPath, isPublicPagePath } from './route-policy';
+import {
+  getSafePostAuthPath,
+  isGuestOnlyPagePath,
+  isPublicApiPath,
+  isPublicPagePath,
+} from './route-policy';
 import { CURRENT_TERMS_VERSION } from './terms-contract';
 import { createTermsAcceptanceAdditionalFields } from './terms-policy';
 import { attemptPersonalWorkspaceBootstrap } from './workspace-bootstrap';
@@ -44,6 +49,12 @@ test('auth configuration accepts only explicit origins and enforces a production
 
 test('route policy uses segment boundaries for public endpoints', () => {
   assert.equal(isPublicPagePath('/login'), true);
+  assert.equal(isGuestOnlyPagePath('/login'), true);
+  assert.equal(isPublicPagePath('/check-email'), true);
+  assert.equal(isPublicPagePath('/forgot-password'), true);
+  assert.equal(isPublicPagePath('/reset-password'), true);
+  assert.equal(isPublicPagePath('/verify-email'), true);
+  assert.equal(isGuestOnlyPagePath('/verify-email'), false);
   assert.equal(isPublicPagePath('/login/reset'), false);
   assert.equal(isPublicApiPath('/api/auth/sign-in/email'), true);
   assert.equal(isPublicApiPath('/api/health/ready'), true);
@@ -58,6 +69,7 @@ test('post-auth redirect allows local product pages and rejects open redirects',
   assert.equal(getSafePostAuthPath('/\\evil.example/path'), '/');
   assert.equal(getSafePostAuthPath('/api/projects'), '/');
   assert.equal(getSafePostAuthPath('/login'), '/');
+  assert.equal(getSafePostAuthPath('/reset-password?token=secret'), '/');
 });
 
 test('auth UI maps only known codes and never returns provider messages', () => {

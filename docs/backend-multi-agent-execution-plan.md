@@ -351,10 +351,15 @@ Worktree-папки не сохраняются как архив и не ост
 - безопасная загрузка provider images с timeout, byte limit, signature validation и блокировкой private network targets;
 - readiness для PostgreSQL и S3, Drizzle migrations, Docker Compose, standalone Docker image, CI и release runbook;
 - воспроизводимый `npm run test:backend-smoke` для полного локального backend user journey.
+- строгая email verification policy с явным rollback-флагом, password reset,
+  SMTP-граница и локальный Mailpit;
+- route-backed настройки аккаунта и безопасности с управлением сессиями;
+- Playwright critical-path от регистрации до S3 и смены пароля.
 
 Внешние production-зависимости не маскируются как готовые:
 
-- email verification и password reset требуют выбранного email provider, домена и шаблонов;
+- verification/reset и шаблоны полностью проверяются локально; для отправки
+  реальным пользователям остаются Unisender Go и отправляющий домен;
 - managed PostgreSQL/S3, secret manager, backups, alerting и staging ingress требуют выбранной hosting-платформы;
 - автоматическая миграция старых IndexedDB blobs не выполняется: legacy assets читаются, новые поддерживаемые изображения сохраняются в S3;
 - orphan cleanup service реализован, но его scheduled запуск должен настраиваться на выбранной production-платформе.

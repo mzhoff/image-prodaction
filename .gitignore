@@ -13,4 +13,7 @@ pnpm-debug.log*
 .DS_Store
 tsconfig.tsbuildinfo
 .playwright-mcp/
+/blob-report/
+/playwright-report/
+/test-results/
 image-prodaction-canvas-*.png

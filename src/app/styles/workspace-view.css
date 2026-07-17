@@ -163,6 +163,7 @@
   font-size: 11px;
 }
 .workspace-profile-menu > button,
+.workspace-profile-menu > a,
 .workspace-menu-field select,
 .workspace-upgrade-button {
   min-height: 34px;
@@ -170,13 +171,18 @@
   border-radius: 8px;
   font-size: 12px;
 }
-.workspace-profile-menu > button {
+.workspace-profile-menu > button,
+.workspace-profile-menu > a {
+  display: flex;
+  align-items: center;
   background: transparent;
   color: #333;
   padding: 0 10px;
   text-align: left;
+  text-decoration: none;
 }
-.workspace-profile-menu > button:hover {
+.workspace-profile-menu > button:hover,
+.workspace-profile-menu > a:hover {
   background: #f1f1f1;
 }
 .workspace-menu-field {

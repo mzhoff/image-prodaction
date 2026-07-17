@@ -12,7 +12,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16.10-alpine3.22
@@ -32,6 +32,16 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3004
       BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only
       BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3004
+      AUTH_REQUIRE_EMAIL_VERIFICATION: "true"
+      AUTH_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: "3600"
+      AUTH_PASSWORD_RESET_TOKEN_TTL_SECONDS: "3600"
+      EMAIL_TRANSPORT: smtp
+      EMAIL_FROM: Reverie <no-reply@reverie.local>
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+      SMTP_USER: reverie-ci
+      SMTP_PASSWORD: mailpit-ci-password
       S3_ENDPOINT: http://localhost:9000
       S3_REGION: us-east-1
       S3_BUCKET: image-prodaction-assets
@@ -39,17 +49,100 @@ jobs:
       S3_SECRET_ACCESS_KEY: minioadmin
       S3_FORCE_PATH_STYLE: "true"
       S3_MAX_IMAGE_BYTES: "15728640"
+      MAILPIT_HTTP_URL: http://localhost:8025
+      SMOKE_REQUIRE_EMAIL_VERIFICATION: "true"
+      E2E_BASE_URL: http://localhost:3004
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24.15.0
           cache: npm
-      - run: npm ci
-      - run: npm run db:check
-      - run: npm run db:migrate
-      - run: npm run db:migrate
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start MinIO and Mailpit
+        run: |
+          docker run --detach \
+            --name reverie-minio \
+            --publish 9000:9000 \
+            --publish 9001:9001 \
+            --env MINIO_ROOT_USER=minioadmin \
+            --env MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z \
+            server /data --console-address ":9001"
+          docker run --detach \
+            --name reverie-mailpit \
+            --publish 1025:1025 \
+            --publish 8025:8025 \
+            --env MP_SMTP_AUTH_ACCEPT_ANY=true \
+            --env MP_SMTP_AUTH_ALLOW_INSECURE=true \
+            axllent/mailpit:v1.30.0
+          node scripts/wait-for-url.mjs http://localhost:9000/minio/health/live 60000
+          node scripts/wait-for-url.mjs http://localhost:8025/api/v1/info 60000
+      - name: Create private S3 bucket
+        run: |
+          docker run --rm \
+            --network container:reverie-minio \
+            --entrypoint /bin/sh \
+            quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z \
+            -eu -c '
+              mc alias set local http://127.0.0.1:9000 minioadmin minioadmin
+              mc mb --ignore-existing local/image-prodaction-assets
+              mc anonymous set none local/image-prodaction-assets
+            '
+      - name: Check database migrations
+        run: npm run db:check
+      - name: Apply migrations twice
+        run: |
+          npm run db:migrate
+          npm run db:migrate
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Start production server
+        run: |
+          mkdir -p .next/standalone/public .next/standalone/.next/static
+          cp -R public/. .next/standalone/public/
+          cp -R .next/static/. .next/standalone/.next/static/
+          PORT=3004 HOSTNAME=127.0.0.1 node .next/standalone/server.js > /tmp/reverie-app.log 2>&1 &
+          echo "$!" > /tmp/reverie-app.pid
+          node scripts/wait-for-url.mjs http://localhost:3004/api/health/ready 60000
+      - name: Backend critical-path smoke
+        run: npm run test:backend-smoke
+      - name: Browser critical-path E2E
+        run: npx playwright test
+      - name: Build production container
+        run: docker build --tag "reverie-ci:${GITHUB_SHA}" .
+      - name: Collect service logs
+        if: failure()
+        run: |
+          cp /tmp/reverie-app.log ./reverie-app.log 2>/dev/null || true
+          docker logs reverie-minio > minio.log 2>&1 || true
+          docker logs reverie-mailpit > mailpit.log 2>&1 || true
+      - name: Upload Playwright and service artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-path-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+            reverie-app.log
+            minio.log
+            mailpit.log
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Stop local test services
+        if: always()
+        run: |
+          if [ -f /tmp/reverie-app.pid ]; then
+            kill "$(cat /tmp/reverie-app.pid)" 2>/dev/null || true
+          fi
+          docker rm --force reverie-minio reverie-mailpit 2>/dev/null || true

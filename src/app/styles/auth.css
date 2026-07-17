@@ -243,6 +243,25 @@
   font-weight: 550;
 }
 
+.auth-form .auth-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.auth-label-row a {
+  color: #5846d8;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.auth-label-row a:hover,
+.auth-text-link:hover {
+  text-decoration: underline;
+}
+
 .auth-form input {
   width: 100%;
   height: 48px;
@@ -357,6 +376,16 @@
   line-height: 1.45;
 }
 
+.auth-form-success {
+  border: 1px solid #ccebdc;
+  border-radius: 14px;
+  background: #f0faf5;
+  color: #267052 !important;
+  padding: 11px 12px;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
 .auth-provider-block {
   margin-top: 14px;
 }
@@ -387,6 +416,87 @@
   font-weight: 600;
 }
 
+.auth-state-card {
+  display: grid;
+  gap: 22px;
+  text-align: center;
+}
+
+.auth-state-card .auth-card-head h2 {
+  margin-top: 0;
+}
+
+.auth-state-card .auth-card-head strong {
+  color: #27272a;
+  overflow-wrap: anywhere;
+}
+
+.auth-state-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-self: center;
+  place-items: center;
+  border-radius: 18px;
+  background: #effaf4;
+  color: #267052;
+}
+
+.auth-state-icon-error {
+  background: #fff2f0;
+  color: #b42318;
+}
+
+.auth-state-actions {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-primary-link,
+.auth-secondary-link,
+.auth-secondary-button {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-primary-link {
+  border: 0;
+  background: linear-gradient(180deg, #5235ef, #8771ff);
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(82, 53, 239, 0.2);
+}
+
+.auth-secondary-link,
+.auth-secondary-button {
+  border: 1px solid #e6e6ec;
+  background: #fafafc;
+  color: #27272a;
+}
+
+.auth-secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.auth-text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #5f5f69;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 @media (max-width: 980px) {
   .auth-page {
     display: block;
@@ -397,5 +507,15 @@
   .auth-form-area {
     width: 100%;
     padding: 24px;
+  }
+}
+
+@media (max-height: 780px) {
+  .auth-form-area {
+    overflow-y: auto;
+  }
+
+  .auth-topline {
+    margin-bottom: 20px;
   }
 }
