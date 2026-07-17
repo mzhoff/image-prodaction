@@ -90,6 +90,11 @@
   color: #fff;
 }
 
+.image-plate-actions button:disabled {
+  cursor: default;
+  color: #b9efcf;
+}
+
 .image-plate-version-badge {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.72);

@@ -1,6 +1,6 @@
 'use client';
 
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import type { AssetRecord, ProductionNodeData } from '@/entities/production-graph/model/types';
 import { renderCompositionToBlob, type CompositionRenderLayer } from '../lib/composition-render';
 import type { CompositionLayerView } from './composition-model-types';
@@ -70,7 +70,7 @@ interface ComposeCompositionResultParams {
 
       const blob = await renderCompositionToBlob({ height: canvasHeight, layers: renderLayers, width: canvasWidth });
       const file = new File([blob], `composition-${Date.now()}.png`, { type: 'image/png' });
-      const asset = await saveImageAsset(file);
+      const asset = await saveTransientImageAsset(file);
       addAsset(asset);
       const updateResult = options.silent ? updateNodeDataSilent : updateNodeData;
       updateResult(nodeId, {

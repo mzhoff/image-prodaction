@@ -1,4 +1,4 @@
-import { saveAssetBlob } from './asset-db';
+import { saveUploadedImageAsset } from './asset-db';
 import type { AssetRecord } from '../model/types';
 
 const BANNER_WEBP_QUALITY = 0.86;
@@ -15,11 +15,11 @@ export async function saveBannerAsset(file: File): Promise<AssetRecord> {
   context.drawImage(image, 0, 0);
 
   const blob = await canvasToBlob(canvas, 'image/webp', BANNER_WEBP_QUALITY);
-  return saveAssetBlob(blob, {
-    kind: 'image',
-    mimeType: 'image/webp',
-    name: toWebpName(file.name),
-  });
+  return saveUploadedImageAsset(new File(
+    [blob],
+    toWebpName(file.name),
+    { type: 'image/webp' },
+  ));
 }
 
 function loadImage(file: File) {

@@ -208,6 +208,19 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
 }
 
+.image-viewer-save-to-library {
+  position: fixed;
+  top: 26px;
+  right: 80px;
+  z-index: 4;
+}
+
+.image-viewer-save-to-library .save-to-library-action small {
+  max-width: 260px;
+  color: #ffd5d1;
+  text-align: right;
+}
+
 .image-viewer-nav {
   position: fixed;
   top: 50%;

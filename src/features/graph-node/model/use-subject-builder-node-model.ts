@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import { getIncomingImageInputs, getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import { buildSubjectPassportText } from '@/entities/production-graph/model/subject-passport';
@@ -13,10 +14,16 @@ import type {
   SubjectType,
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestDescribeSubject, requestEditImage, requestGenerateImage } from '@/shared/api/ai-client';
+import {
+  AiRequestError,
+  requestDescribeSubject,
+  requestEditImage,
+  requestGenerateImage,
+} from '@/shared/api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL, DEFAULT_IMAGE_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { blobToDataUrl, dataUrlToFile, prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
+import { createRequestFingerprint } from '@/shared/lib/request-fingerprint';
 import { getSelectedModelId, modelSelectOptions } from '../lib/node-select-options';
 
 export function useSubjectBuilderNodeModel(node: ProductionNode) {
@@ -151,8 +158,19 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
     }
     const targetSlot = slotId ? SUBJECT_PROFILE_REFERENCE_SLOTS.find((slot) => slot.id === slotId) : undefined;
     if (slotId && !targetSlot) return;
-    const slotsToGenerate = targetSlot ? [targetSlot] : SUBJECT_PROFILE_REFERENCE_SLOTS;
-    const nextGeneratedAssetIds = targetSlot ? [...generatedImageAssetIds] : [];
+    const nextGenerationRequests = { ...(data.referenceGenerationRequests ?? {}) };
+    const resumeInterruptedBatch = !targetSlot
+      && node.status === 'error'
+      && (generatedImageAssetIds.length > 0 || Object.keys(nextGenerationRequests).length > 0);
+    const nextGeneratedAssetIds = targetSlot || resumeInterruptedBatch
+      ? [...generatedImageAssetIds]
+      : [];
+    const slotsToGenerate = targetSlot
+      ? [targetSlot]
+      : resumeInterruptedBatch
+        ? SUBJECT_PROFILE_REFERENCE_SLOTS.filter((_, index) => !nextGeneratedAssetIds[index])
+        : SUBJECT_PROFILE_REFERENCE_SLOTS;
+    let activeSlotId: string | null = null;
 
     try {
       setGeneratingReferenceTarget(targetSlot?.id ?? 'all');
@@ -170,11 +188,15 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
         return prepareImageForOpenRouter(blob);
       }));
       const subjectPassport = result.trim();
+      const scope = getActiveAssetScope();
+      if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
 
       for (const slot of slotsToGenerate) {
+        activeSlotId = slot.id;
         updateNodeDataSilent(node.id, { message: `Generating ${slot.label.toLowerCase()} reference...` });
-        const response = await requestGenerateImage({
+        const requestPayload = {
           aspectRatio: '1:1',
+          ...scope,
           inputs: createEmptyGenerateInputs(),
           model: selectedReferenceModel,
           prompt: buildSubjectReferencePrompt({
@@ -191,9 +213,17 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
           })),
           size: '1K',
           subjectInputs: subjectPassport ? [subjectPassport] : [],
+        };
+        const fingerprint = await createRequestFingerprint(requestPayload);
+        const idempotencyKey = nextGenerationRequests[slot.id]?.fingerprint === fingerprint
+          ? nextGenerationRequests[slot.id].idempotencyKey
+          : crypto.randomUUID();
+        nextGenerationRequests[slot.id] = { fingerprint, idempotencyKey };
+        updateNodeDataSilent(node.id, {
+          referenceGenerationRequests: { ...nextGenerationRequests },
         });
-        const file = await dataUrlToFile(response.imageDataUrl, `subject-${slot.id}-${Date.now()}.png`);
-        const asset = await saveImageAsset(file);
+        const response = await requestGenerateImage({ ...requestPayload, idempotencyKey });
+        const asset = response.asset;
         addAsset(asset);
         if (targetSlot) {
           const slotIndex = SUBJECT_PROFILE_REFERENCE_SLOTS.findIndex((item) => item.id === slot.id);
@@ -201,6 +231,15 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
         } else {
           nextGeneratedAssetIds.push(asset.id);
         }
+        delete nextGenerationRequests[slot.id];
+        const checkpointAssetIds = SUBJECT_PROFILE_REFERENCE_SLOTS
+          .map((_, index) => nextGeneratedAssetIds[index])
+          .filter((assetId): assetId is string => Boolean(assetId));
+        updateNodeDataSilent(node.id, {
+          libraryImageAssetIds: checkpointAssetIds,
+          referenceGenerationRequests: { ...nextGenerationRequests },
+          sourceCount: textInputs.length + imageCount + checkpointAssetIds.length,
+        });
       }
       const libraryImageAssetIds = SUBJECT_PROFILE_REFERENCE_SLOTS
         .map((_, index) => nextGeneratedAssetIds[index])
@@ -212,12 +251,17 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
           ? `Regenerated ${targetSlot.label} canonical subject reference.`
           : 'Generated 4 canonical subject references.',
         referenceModel: selectedReferenceModel,
+        referenceGenerationRequests: nextGenerationRequests,
         sourceCount: textInputs.length + imageCount + libraryImageAssetIds.length,
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
+      if (activeSlotId && shouldDiscardGenerationRequest(error)) {
+        delete nextGenerationRequests[activeSlotId];
+      }
       updateNodeDataSilent(node.id, {
+        referenceGenerationRequests: { ...nextGenerationRequests },
         message: error instanceof Error ? error.message : 'OpenRouter canonical subject reference generation failed',
       });
     } finally {
@@ -229,6 +273,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
     slotId: string,
     { assetId, maskDataUrl, model, prompt }: { assetId: string; maskDataUrl: string; model: string; prompt: string },
   ) => {
+    const nextEditRequests = { ...(data.editGenerationRequests ?? {}) };
     try {
       setNodeStatus(node.id, 'running');
       updateNodeDataSilent(node.id, { message: `Editing ${getSubjectReferenceSlotLabel(slotId).toLowerCase()} reference...` });
@@ -237,17 +282,30 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
       const sourceBlob = await loadAssetBlob(sourceAsset);
       if (!sourceBlob) throw new Error('Не удалось прочитать активное изображение из локального хранилища.');
 
-      const result = await requestEditImage({
+      const scope = getActiveAssetScope();
+      if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
+      const requestPayload = {
+        ...scope,
         aspectRatio: '1:1',
         imageDataUrl: await blobToDataUrl(sourceBlob),
         maskDataUrl,
         model,
         prompt,
         size: '1K',
+      };
+      const fingerprint = await createRequestFingerprint(requestPayload);
+      const idempotencyKey = nextEditRequests[slotId]?.fingerprint === fingerprint
+        ? nextEditRequests[slotId].idempotencyKey
+        : crypto.randomUUID();
+      nextEditRequests[slotId] = { fingerprint, idempotencyKey };
+      updateNodeDataSilent(node.id, {
+        editGenerationRequests: { ...nextEditRequests },
       });
+      const result = await requestEditImage({ ...requestPayload, idempotencyKey });
       const file = await dataUrlToFile(result.imageDataUrl, `subject-${slotId}-edited-${Date.now()}.png`);
-      const editedAsset = await saveImageAsset(file);
+      const editedAsset = await saveTransientImageAsset(file);
       addAsset(editedAsset);
+      delete nextEditRequests[slotId];
 
       const slotIndex = SUBJECT_PROFILE_REFERENCE_SLOTS.findIndex((slot) => slot.id === slotId);
       const nextAssetIds = [...generatedImageAssetIds];
@@ -257,6 +315,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
         .filter((nextAssetId): nextAssetId is string => Boolean(nextAssetId));
 
       updateNodeData(node.id, {
+        editGenerationRequests: nextEditRequests,
         libraryImageAssetIds,
         message: result.message || `Edited ${getSubjectReferenceSlotLabel(slotId)} subject reference.`,
         referenceModel: model,
@@ -265,6 +324,12 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
       setNodeStatus(node.id, 'success');
     } catch (error) {
       setNodeStatus(node.id, 'error');
+      if (shouldDiscardGenerationRequest(error)) {
+        delete nextEditRequests[slotId];
+      }
+      updateNodeDataSilent(node.id, {
+        editGenerationRequests: { ...nextEditRequests },
+      });
       throw error;
     }
   };
@@ -321,6 +386,12 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
     textCount: textInputs.length,
     textInputs,
   };
+}
+
+function shouldDiscardGenerationRequest(error: unknown) {
+  return error instanceof AiRequestError
+    && error.code !== 'generation_in_progress'
+    && error.status < 500;
 }
 
 function cleanDraftValue(value: string | undefined, fallback: string) {

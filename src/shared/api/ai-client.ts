@@ -1,3 +1,20 @@
+import {
+  mapRemoteImageAsset,
+  type RemoteImageAssetDto,
+} from '@/entities/production-graph/lib/remote-asset';
+
+export class AiRequestError extends Error {
+  readonly code?: string;
+  readonly status: number;
+
+  constructor(status: number, error: unknown) {
+    super(formatApiError(error));
+    this.name = 'AiRequestError';
+    this.status = status;
+    this.code = readApiErrorCode(error);
+  }
+}
+
 export interface AnalyzeImageRequest {
   imageDataUrl: string;
   model: string;
@@ -6,6 +23,8 @@ export interface AnalyzeImageRequest {
 
 export interface GenerateImageRequest {
   aspectRatio: string;
+  documentId: string;
+  idempotencyKey: string;
   inputs: Record<string, string[]>;
   model: string;
   prompt: string;
@@ -18,25 +37,32 @@ export interface GenerateImageRequest {
   size: string;
   locationInputs?: string[];
   subjectInputs?: string[];
+  workspaceId: string;
 }
 
 export interface EditImageRequest {
   aspectRatio: string;
+  documentId: string;
+  idempotencyKey: string;
   imageDataUrl: string;
   maskDataUrl: string;
   model: string;
   prompt: string;
   size: string;
+  workspaceId: string;
 }
 
 export interface RefineImageRequest {
   aspectRatio: string;
+  documentId: string;
+  idempotencyKey: string;
   imageDataUrl: string;
   instruction: string;
   mode: string;
   model: string;
   preserveStrength: string;
   size: string;
+  workspaceId: string;
 }
 
 export interface GenerateTextRequest {
@@ -122,10 +148,19 @@ export async function requestGenerateImage(payload: GenerateImageRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
-  if (!response.ok) throw new Error(formatApiError(result.error));
-  if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  const result = await response.json() as {
+    asset?: RemoteImageAssetDto;
+    job?: { id?: string };
+    message?: string;
+    error?: unknown;
+  };
+  if (!response.ok) throw new AiRequestError(response.status, result.error);
+  if (!result.asset) throw new Error(result.message || 'OpenRouter не вернул изображение.');
+  return {
+    asset: mapRemoteImageAsset(result.asset),
+    jobId: result.job?.id,
+    message: result.message,
+  };
 }
 
 export async function requestEditImage(payload: EditImageRequest) {
@@ -134,10 +169,15 @@ export async function requestEditImage(payload: EditImageRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
-  if (!response.ok) throw new Error(formatApiError(result.error));
+  const result = await response.json() as {
+    imageDataUrl?: string | null;
+    job?: { id?: string };
+    message?: string;
+    error?: unknown;
+  };
+  if (!response.ok) throw new AiRequestError(response.status, result.error);
   if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  return { imageDataUrl: result.imageDataUrl, jobId: result.job?.id, message: result.message };
 }
 
 export async function requestRefineImage(payload: RefineImageRequest) {
@@ -146,10 +186,15 @@ export async function requestRefineImage(payload: RefineImageRequest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const result = await response.json() as { imageDataUrl?: string | null; message?: string; error?: unknown };
-  if (!response.ok) throw new Error(formatApiError(result.error));
+  const result = await response.json() as {
+    imageDataUrl?: string | null;
+    job?: { id?: string };
+    message?: string;
+    error?: unknown;
+  };
+  if (!response.ok) throw new AiRequestError(response.status, result.error);
   if (!result.imageDataUrl) throw new Error(result.message || 'OpenRouter не вернул изображение.');
-  return { imageDataUrl: result.imageDataUrl, message: result.message };
+  return { imageDataUrl: result.imageDataUrl, jobId: result.job?.id, message: result.message };
 }
 
 export async function requestGenerateText(payload: GenerateTextRequest) {
@@ -241,4 +286,10 @@ export function formatApiError(error: unknown) {
   if (typeof error === 'string') return error;
   if (!error) return 'OpenRouter request failed';
   return JSON.stringify(error).slice(0, 500);
+}
+
+function readApiErrorCode(error: unknown) {
+  if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
 }

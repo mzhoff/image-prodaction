@@ -1,0 +1,1 @@
+ALTER TABLE "asset" ADD CONSTRAINT "asset_generation_job_id_generation_job_id_fk" FOREIGN KEY ("generation_job_id") REFERENCES "public"."generation_job"("id") ON DELETE set null ON UPDATE no action;

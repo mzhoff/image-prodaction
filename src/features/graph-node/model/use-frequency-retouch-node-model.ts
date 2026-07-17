@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { FrequencyRetouchNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { frequencyRetouchImageBlob, type FrequencyRetouchValues } from '../lib/frequency-retouch-image';
 
@@ -106,7 +106,7 @@ export function useFrequencyRetouchNodeModel(node: ProductionNode) {
         const file = await frequencyRetouchImageBlob(sourceBlob, values, `retouched-${Date.now()}.png`, data.maskDataUrl);
         if (processingRef.current !== runId) return;
 
-        const asset = await saveImageAsset(file);
+        const asset = await saveTransientImageAsset(file);
         addAsset(asset);
         updateNodeDataSilent(node.id, {
           message: '',

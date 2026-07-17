@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import {
+  isAssetInLibrary,
+  persistAssetToLibrary,
+} from '@/entities/production-graph/lib/persist-asset-to-library';
 import { getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import type { AssetRecord, GenerationResultMetadata, ProductionNode } from '@/entities/production-graph/model/types';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
@@ -32,6 +36,11 @@ export function useCanvasImageViewer({ assets, nodesById, showToast }: UseCanvas
   const showNextImageViewerVersion = useCallback(() => {
     setContextImageViewer((viewer) => (viewer ? { ...viewer, index: wrapImageIndex(viewer.index + 1, imageViewerAssetIds.length) } : viewer));
   }, [imageViewerAssetIds.length]);
+  const saveImageViewerAssetToLibrary = useCallback(async () => {
+    if (!imageViewerAsset) throw new Error('Активное изображение не найдено.');
+    await persistAssetToLibrary(imageViewerAsset);
+    showToast('Image saved to Library.');
+  }, [imageViewerAsset, showToast]);
 
   const downloadAssets = useCallback(async (assetIds: string[]) => {
     const selectedAssets = uniqueStrings(assetIds)
@@ -67,7 +76,9 @@ export function useCanvasImageViewer({ assets, nodesById, showToast }: UseCanvas
       onClose: closeImageViewer,
       onNext: showNextImageViewerVersion,
       onPrevious: showPreviousImageViewerVersion,
+      onSaveToLibrary: saveImageViewerAssetToLibrary,
       onSelectVersion: selectImageViewerVersion,
+      savedToLibrary: isAssetInLibrary(imageViewerAsset),
       sourceModel: getNodeSourceModel(imageViewerNode),
       url: imageViewerUrl,
     } : null,

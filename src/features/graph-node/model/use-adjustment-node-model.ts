@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { AdjustmentNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { loadAssetBlob, saveImageAsset } from '@/entities/production-graph/lib/asset-db';
+import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { adjustImageBlob, type ImageAdjustmentValues } from '../lib/adjust-image';
 
@@ -123,7 +123,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
         const file = await adjustImageBlob(sourceBlob, values, `adjusted-${Date.now()}.png`);
         if (processingRef.current !== runId) return;
 
-        const asset = await saveImageAsset(file);
+        const asset = await saveTransientImageAsset(file);
         addAsset(asset);
         updateNodeDataSilent(node.id, {
           message: '',

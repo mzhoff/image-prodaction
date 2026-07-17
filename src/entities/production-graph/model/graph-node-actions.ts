@@ -259,6 +259,7 @@ function getClearedGenerationData(node: ProductionNode): Partial<ProductionNodeD
       resultAssetId: undefined,
       resultAssetIds: [],
       resultMetadata: {},
+      generationRequest: undefined,
       message: '',
     } as Partial<ProductionNodeData>;
   }
@@ -280,7 +281,14 @@ function getClearedGenerationData(node: ProductionNode): Partial<ProductionNodeD
       message: '',
     } as Partial<ProductionNodeData>;
   }
-  if (node.type === 'subjectBuilder' || node.type === 'locationBuilder') {
+  if (node.type === 'subjectBuilder') {
+    return {
+      libraryImageAssetIds: [],
+      referenceGenerationRequests: {},
+      message: '',
+    } as Partial<ProductionNodeData>;
+  }
+  if (node.type === 'locationBuilder') {
     return {
       libraryImageAssetIds: [],
       message: '',

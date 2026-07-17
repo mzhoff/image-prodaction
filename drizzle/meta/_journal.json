@@ -22,6 +22,27 @@
       "when": 1784179133999,
       "tag": "0002_sloppy_roland_deschain",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784267753495,
+      "tag": "0003_next_sugar_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784268131361,
+      "tag": "0004_mute_ultimo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784270812820,
+      "tag": "0005_cynical_tinkerer",
+      "breakpoints": true
     }
   ]
 }

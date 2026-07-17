@@ -149,6 +149,10 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.maskDataUrl;
   delete data.message;
   delete data.libraryImageAssetIds;
+  delete data.generationRequest;
+  delete data.editGenerationRequest;
+  delete data.editGenerationRequests;
+  delete data.referenceGenerationRequests;
 
   if (node.type === 'generateImage' || node.type === 'refineImage') {
     data.activeResultIndex = -1;

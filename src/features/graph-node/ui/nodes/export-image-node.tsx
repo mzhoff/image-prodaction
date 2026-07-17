@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Loader2 } from 'lucide-react';
+import { BookmarkPlus, Download, Loader2 } from 'lucide-react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
@@ -38,6 +38,16 @@ export function ExportImageNode({ node }: { node: ProductionNode }) {
         disabled={model.sourceCount === 0 || model.exporting}
       >
         {model.downloadLabel}
+      </PrimaryActionButton>
+      <PrimaryActionButton
+        className="primary-node-button-secondary"
+        icon={model.savingToLibrary
+          ? <Loader2 className="spin" size={17} />
+          : <BookmarkPlus size={17} />}
+        onClick={model.handleSaveToLibrary}
+        disabled={!model.sourceAsset || model.savingToLibrary}
+      >
+        Save current to Library
       </PrimaryActionButton>
       <CollapsibleSection title="Settings">
         <SettingRow label="Format" value={model.data.format} options={exportFormatOptions} onChange={model.handleFormatChange} />

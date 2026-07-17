@@ -16,6 +16,7 @@ const onePixelPng = Buffer.from(
 test('verified user persists a private image and can reset the password', async ({ page }) => {
   let projectId = '';
   let uploadedAssetId = '';
+  let workspaceId = '';
 
   await test.step('register and verify the email through Mailpit', async () => {
     await page.goto('/register');
@@ -50,6 +51,14 @@ test('verified user persists a private image and can reset the password', async 
     await expect(page).toHaveURL(/\/projects\/[^/?#]+$/u);
     projectId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
     expect(projectId).not.toBe('');
+
+    const projectResponse = await page.request.get(`/api/projects/${projectId}`);
+    expect(projectResponse.status()).toBe(200);
+    const projectPayload = await projectResponse.json() as {
+      project?: { workspaceId?: string };
+    };
+    workspaceId = projectPayload.project?.workspaceId ?? '';
+    expect(workspaceId).not.toBe('');
   });
 
   await test.step('upload, autosave and reload an S3-backed image', async () => {
@@ -137,6 +146,90 @@ test('verified user persists a private image and can reset the password', async 
     await expect(page).toHaveURL('/');
     await expect(page.getByRole('dialog', { name: 'Настройки' })).toHaveCount(0);
   });
+
+  await test.step('browse a filtered Library sequence and close the viewer in one action', async () => {
+    const filterPrefix = `library-filter-${runId}`;
+    const firstName = `${filterPrefix}-a.png`;
+    const secondName = `${filterPrefix}-b.png`;
+    const hiddenTechnicalName = `technical-hidden-${runId}.png`;
+
+    await uploadImageThroughApi(page, {
+      documentId: projectId,
+      name: firstName,
+      origin: 'uploaded',
+      workspaceId,
+    });
+    await uploadImageThroughApi(page, {
+      documentId: projectId,
+      name: secondName,
+      origin: 'uploaded',
+      workspaceId,
+    });
+    const rejectedTechnicalUpload = await page.request.post('/api/assets/images', {
+      multipart: {
+        documentId: projectId,
+        file: {
+          name: hiddenTechnicalName,
+          mimeType: 'image/png',
+          buffer: onePixelPng,
+        },
+        workspaceId,
+      },
+    });
+    expect(rejectedTechnicalUpload.status()).toBe(400);
+
+    await page.goto('/library');
+    await expect(page).toHaveURL('/library');
+    await expect(page.getByRole('heading', { name: 'Библиотека' })).toBeVisible();
+    await expect(page.getByRole('searchbox', { name: 'Поиск по библиотеке' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Источник' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Тип медиа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Модель' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Проект' })).toBeVisible();
+    await expect(page.getByText('Templates', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Tutorials', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: `Открыть ${hiddenTechnicalName}` })).toHaveCount(0);
+
+    const search = page.getByRole('searchbox', { name: 'Поиск по библиотеке' });
+    await search.fill(filterPrefix);
+    await page.getByRole('button', { name: 'Найти' }).click();
+    await expect(page).toHaveURL(new RegExp(`/library\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'));
+
+    const filteredLinks = page.getByRole('link', {
+      name: new RegExp(`^Открыть ${escapeRegExp(filterPrefix)}-[ab]\\.png$`, 'u'),
+    });
+    await expect(filteredLinks).toHaveCount(2);
+    const filteredThumbnails = filteredLinks.locator('img');
+    await expect(filteredThumbnails).toHaveCount(2);
+    await expect.poll(() => filteredThumbnails.evaluateAll((images) => (
+      images.every((image) => image instanceof HTMLImageElement && image.naturalWidth > 0)
+    ))).toBe(true);
+    const filteredHrefs = await filteredLinks.evaluateAll((elements) => (
+      elements.map((element) => element.getAttribute('href') ?? '')
+    ));
+    const filteredAssetIds = filteredHrefs.map((href) => (
+      href.split('?', 1)[0]?.split('/').at(-1) ?? ''
+    ));
+    expect(filteredAssetIds).toHaveLength(2);
+    expect(filteredAssetIds.every(Boolean)).toBe(true);
+
+    await filteredLinks.first().click();
+    await expect(page).toHaveURL(
+      new RegExp(`/library/${filteredAssetIds[0]}\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'),
+    );
+    await expect(page.getByRole('dialog', { name: 'Image viewer' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Previous generated image' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Next generated image' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Next generated image' }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/library/${filteredAssetIds[1]}\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'),
+    );
+
+    await page.getByRole('button', { name: 'Close image viewer' }).last().click();
+    await expect(page).toHaveURL(new RegExp(`/library\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'));
+    await expect(page.getByRole('dialog', { name: 'Image viewer' })).toHaveCount(0);
+  });
 });
 
 async function fillLogin(page: Page, email: string, password: string) {
@@ -165,4 +258,49 @@ async function waitForDocumentAutosave(page: Page, projectId: string) {
     && response.status() === 200
   ), { timeout: 20_000 });
   expect(saved.status()).toBe(200);
+}
+
+async function uploadImageThroughApi(
+  page: Page,
+  input: {
+    documentId: string;
+    name: string;
+    origin: 'uploaded' | 'saved';
+    workspaceId: string;
+  },
+) {
+  const multipart: Record<string, string | {
+    buffer: Buffer;
+    mimeType: string;
+    name: string;
+  }> = {
+    documentId: input.documentId,
+    file: {
+      name: input.name,
+      mimeType: 'image/png',
+      buffer: onePixelPng,
+    },
+    workspaceId: input.workspaceId,
+  };
+  multipart.origin = input.origin;
+
+  const response = await page.request.post('/api/assets/images', { multipart });
+  expect(response.status()).toBe(201);
+  const payload = await response.json() as {
+    asset?: {
+      id?: string;
+      libraryVisible?: boolean;
+      origin?: string;
+      status?: string;
+    };
+  };
+  expect(payload.asset?.status).toBe('ready');
+  expect(payload.asset?.origin).toBe(input.origin);
+  expect(payload.asset?.libraryVisible).toBe(true);
+  expect(payload.asset?.id).toBeTruthy();
+  return payload.asset?.id ?? '';
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 }

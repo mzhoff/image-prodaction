@@ -68,20 +68,99 @@ await requestJson(`/api/projects/${projectId}`, {
   json: { expectedRevision: 0, snapshot },
 });
 
-const cleanupAsset = await uploadAsset(ownerCookie, workspaceId, projectId, 'cleanup.png');
-const deletedAsset = await uploadAsset(ownerCookie, workspaceId, projectId, 'delete.png');
-await requestBinary(`/api/assets/${cleanupAsset.id}/content`, {
+const libraryUploadedAsset = await uploadAsset(
+  ownerCookie,
+  workspaceId,
+  projectId,
+  `library-uploaded-${runId}.png`,
+  'uploaded',
+);
+const librarySavedAsset = await uploadAsset(
+  ownerCookie,
+  workspaceId,
+  projectId,
+  `library-saved-${runId}.png`,
+  'saved',
+);
+await requestBinary(`/api/assets/${libraryUploadedAsset.id}/content`, {
   cookie: ownerCookie,
   expectedStatus: 200,
   expectedBytes: onePixelPng,
 });
 
 const outsiderCookie = await register(outsider);
-await requestJson(`/api/assets/${cleanupAsset.id}`, {
+await requestJson(`/api/assets/${libraryUploadedAsset.id}`, {
   cookie: outsiderCookie,
   expectedStatus: 404,
 });
+await requestJson(`/api/assets?workspaceId=${workspaceId}`, {
+  cookie: outsiderCookie,
+  expectedStatus: 403,
+});
 
+const firstLibraryPage = await requestJson(
+  `/api/assets?workspaceId=${workspaceId}&limit=1`,
+  {
+    cookie: ownerCookie,
+    expectedStatus: 200,
+  },
+);
+assert.equal(firstLibraryPage.items.length, 1);
+assert.ok(firstLibraryPage.nextCursor, 'The first Library page should expose an opaque cursor.');
+const secondLibraryPage = await requestJson(
+  `/api/assets?workspaceId=${workspaceId}&limit=1&cursor=${encodeURIComponent(firstLibraryPage.nextCursor)}`,
+  {
+    cookie: ownerCookie,
+    expectedStatus: 200,
+  },
+);
+assert.equal(secondLibraryPage.items.length, 1);
+assert.equal(secondLibraryPage.nextCursor, null);
+assert.deepEqual(
+  new Set([
+    firstLibraryPage.items[0]?.id,
+    secondLibraryPage.items[0]?.id,
+  ]),
+  new Set([libraryUploadedAsset.id, librarySavedAsset.id]),
+);
+assert.deepEqual(
+  new Set(firstLibraryPage.facets.origins.map((facet: { value: string }) => facet.value)),
+  new Set(['saved', 'uploaded']),
+);
+assert.deepEqual(
+  firstLibraryPage.facets.mediaKinds,
+  [{ count: 2, value: 'image' }],
+);
+assert.deepEqual(
+  firstLibraryPage.facets.documents.map((facet: { id: string }) => facet.id),
+  [projectId],
+);
+
+const filteredLibrary = await requestJson(
+  `/api/assets?workspaceId=${workspaceId}`
+    + `&origin=uploaded&mediaKind=image&documentId=${projectId}`
+    + `&search=${encodeURIComponent(`library-uploaded-${runId}`)}`,
+  {
+    cookie: ownerCookie,
+    expectedStatus: 200,
+  },
+);
+assert.deepEqual(
+  filteredLibrary.items.map((item: { id: string }) => item.id),
+  [libraryUploadedAsset.id],
+);
+assert.equal(filteredLibrary.items[0]?.origin, 'uploaded');
+assert.equal(filteredLibrary.items[0]?.mediaKind, 'image');
+assert.equal(filteredLibrary.items[0]?.document?.id, projectId);
+
+await rejectUploadWithoutDurableOrigin(ownerCookie, workspaceId, projectId);
+const deletedAsset = await uploadAsset(
+  ownerCookie,
+  workspaceId,
+  projectId,
+  `delete-${runId}.png`,
+  'uploaded',
+);
 await requestEmpty(`/api/assets/${deletedAsset.id}`, {
   cookie: ownerCookie,
   expectedStatus: 204,
@@ -108,10 +187,27 @@ await requestEmpty(`/api/projects/${projectId}`, {
   expectedStatus: 204,
   method: 'DELETE',
 });
-await requestJson(`/api/assets/${cleanupAsset.id}`, {
+const preservedLibraryAsset = await requestJson(`/api/assets/${libraryUploadedAsset.id}`, {
   cookie: ownerCookie,
-  expectedStatus: 404,
+  expectedStatus: 200,
 });
+assert.equal(preservedLibraryAsset.asset.documentId, null);
+
+const libraryAfterProjectDeletion = await requestJson(
+  `/api/assets?workspaceId=${workspaceId}`,
+  {
+    cookie: ownerCookie,
+    expectedStatus: 200,
+  },
+);
+assert.deepEqual(
+  new Set(libraryAfterProjectDeletion.items.map((item: { id: string }) => item.id)),
+  new Set([libraryUploadedAsset.id, librarySavedAsset.id]),
+);
+assert.equal(
+  libraryAfterProjectDeletion.items.every((item: { document: unknown }) => item.document === null),
+  true,
+);
 
 await requestJson('/api/auth/sign-out', {
   cookie: ownerCookie,
@@ -193,10 +289,17 @@ async function register(input: typeof owner) {
   return verifiedCookie;
 }
 
-async function uploadAsset(cookie: string, workspaceId: string, documentId: string, name: string) {
+async function uploadAsset(
+  cookie: string,
+  workspaceId: string,
+  documentId: string,
+  name: string,
+  origin: 'uploaded' | 'saved',
+) {
   const formData = new FormData();
   formData.set('workspaceId', workspaceId);
   formData.set('documentId', documentId);
+  formData.set('origin', origin);
   formData.set('file', new File([onePixelPng], name, { type: 'image/png' }));
   const payload = await requestJson('/api/assets/images', {
     body: formData,
@@ -205,7 +308,26 @@ async function uploadAsset(cookie: string, workspaceId: string, documentId: stri
     method: 'POST',
   });
   assert.equal(payload.asset.status, 'ready');
+  assert.equal(payload.asset.origin, origin);
+  assert.equal(payload.asset.libraryVisible, true);
   return payload.asset as { id: string };
+}
+
+async function rejectUploadWithoutDurableOrigin(
+  cookie: string,
+  workspaceId: string,
+  documentId: string,
+) {
+  const formData = new FormData();
+  formData.set('workspaceId', workspaceId);
+  formData.set('documentId', documentId);
+  formData.set('file', new File([onePixelPng], 'technical-output.png', { type: 'image/png' }));
+  await requestJson('/api/assets/images', {
+    body: formData,
+    cookie,
+    expectedStatus: 400,
+    method: 'POST',
+  });
 }
 
 async function requestJson(path: string, options: SmokeRequestOptions) {

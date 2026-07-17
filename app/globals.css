@@ -6,6 +6,7 @@
 @import "../src/app/styles/assistant-shell.css";
 @import "../src/app/styles/document-view.css";
 @import "../src/app/styles/workspace-view.css";
+@import "../src/app/styles/library.css";
 @import "../src/app/styles/canvas-section.css";
 @import "../src/app/styles/crop-node.css";
 @import "../src/app/styles/shared-controls.css";
