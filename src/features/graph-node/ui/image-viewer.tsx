@@ -2,8 +2,9 @@
 
 import Image from 'next/image';
 import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Mic, RotateCcw, WandSparkles, X } from 'lucide-react';
-import { useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { memo, useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
+import { getImageViewerThumbnailWindow } from '@/features/graph-node/lib/image-viewer-thumbnail-window';
 import { cn } from '@/shared/lib/cn';
 import { DarkSelect } from '@/shared/ui/dark-select';
 import { RangeSlider } from '@/shared/ui/range-slider';
@@ -73,6 +74,10 @@ export function ImageViewer({
     [items],
   );
   const currentItem = assetId ? itemsById.get(assetId) : undefined;
+  const visibleThumbnails = useMemo(
+    () => getImageViewerThumbnailWindow(historyAssetIds, currentIndex),
+    [currentIndex, historyAssetIds],
+  );
   const hasToolPanel = maskModel.canMaskEdit || Boolean(viewerPanel);
   const customPanelOpen = Boolean(viewerPanel?.active);
   const editorOpen = maskModel.maskOpen || customPanelOpen;
@@ -115,6 +120,17 @@ export function ImageViewer({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasHistory, onClose, onNext, onPrevious]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, []);
 
   return (
     <div
@@ -162,6 +178,8 @@ export function ImageViewer({
               width={width}
               height={height}
               unoptimized
+              loading="eager"
+              decoding="async"
               draggable={false}
               className="image-viewer-media"
             />
@@ -260,7 +278,7 @@ export function ImageViewer({
               <ChevronRight size={24} />
             </button>
             <div className="image-viewer-thumbnail-strip" aria-label="Generated image variations">
-              {historyAssetIds.map((historyAssetId, index) => (
+              {visibleThumbnails.map(({ assetId: historyAssetId, index }) => (
                 <ImageViewerThumbnail
                   key={historyAssetId}
                   active={index === currentIndex}
@@ -279,7 +297,7 @@ export function ImageViewer({
   );
 }
 
-function ImageViewerThumbnail({
+const ImageViewerThumbnail = memo(function ImageViewerThumbnail({
   active,
   assetId,
   index,
@@ -311,9 +329,11 @@ function ImageViewerThumbnail({
         fill
         sizes="80px"
         unoptimized
+        loading="lazy"
+        decoding="async"
         draggable={false}
         className="image-viewer-thumbnail-media"
       />
     </button>
   );
-}
+});
