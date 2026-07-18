@@ -161,7 +161,6 @@
   height: auto;
   max-height: 90vh;
   border-radius: 8px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
 }
 
 .image-viewer-content-with-meta .image-viewer-media {
@@ -257,8 +256,7 @@
   overflow-x: auto;
   padding: 8px;
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(14px);
+  background: rgba(18, 18, 18, 0.96);
   scrollbar-color: rgba(255, 255, 255, 0.44) transparent;
 }
 
@@ -284,10 +282,7 @@
   border: 2px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
-  opacity: 0.72;
-  transition:
-    border-color 140ms ease,
-    opacity 140ms ease;
+  opacity: 0.86;
 }
 
 .image-viewer-thumbnail:focus {
@@ -295,8 +290,7 @@
 }
 
 .image-viewer-thumbnail:hover {
-  border-color: rgba(255, 255, 255, 0.62);
-  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .image-viewer-thumbnail-active {

@@ -220,13 +220,18 @@ test('verified user persists a private image and can reset the password', async 
     await expect(page.getByRole('dialog', { name: 'Image viewer' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Previous generated image' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Next generated image' })).toBeVisible();
+    const previewImage = page.getByRole('dialog', { name: 'Image viewer' }).locator('.image-viewer-media');
+    await expect(previewImage).toBeVisible();
+    await expect.poll(() => previewImage.evaluate((image) => (
+      image instanceof HTMLImageElement ? image.naturalWidth : 0
+    ))).toBeGreaterThan(0);
 
     await page.getByRole('button', { name: 'Next generated image' }).click();
     await expect(page).toHaveURL(
       new RegExp(`/library/${filteredAssetIds[1]}\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'),
     );
 
-    await page.getByRole('button', { name: 'Close image viewer' }).last().click();
+    await page.keyboard.press('Escape');
     await expect(page).toHaveURL(new RegExp(`/library\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'));
     await expect(page.getByRole('dialog', { name: 'Image viewer' })).toHaveCount(0);
   });

@@ -11,7 +11,7 @@ import {
   Upload,
   Video,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { BrandSelect } from '@/shared/ui/brand-select';
 import type { BrandSelectOption } from '@/shared/ui/brand-select';
@@ -197,9 +197,18 @@ export function LibraryPage() {
   );
 }
 
-function LibraryCard({ item, filterQuery }: { item: LibraryAssetItem; filterQuery: string }) {
+const LibraryCard = memo(function LibraryCard({
+  item,
+  filterQuery,
+}: {
+  item: LibraryAssetItem;
+  filterQuery: string;
+}) {
   const previewHref = `/library/${encodeURIComponent(item.id)}${filterQuery ? `?${filterQuery}` : ''}`;
-  const [previewUrl, setPreviewUrl] = useState(item.thumbnailUrl || item.contentUrl);
+  const preferredPreviewUrl = item.thumbnailUrl || item.contentUrl;
+  const [previewUrl, setPreviewUrl] = useState(preferredPreviewUrl);
+
+  useEffect(() => setPreviewUrl(preferredPreviewUrl), [preferredPreviewUrl]);
 
   return (
     <article className="library-card">
@@ -211,6 +220,8 @@ function LibraryCard({ item, filterQuery }: { item: LibraryAssetItem; filterQuer
             fill
             sizes="(max-width: 760px) 100vw, (max-width: 1200px) 33vw, 280px"
             unoptimized
+            loading="lazy"
+            decoding="async"
             onError={() => {
               if (previewUrl !== item.contentUrl) setPreviewUrl(item.contentUrl);
             }}
@@ -243,7 +254,7 @@ function LibraryCard({ item, filterQuery }: { item: LibraryAssetItem; filterQuer
       </div>
     </article>
   );
-}
+});
 
 function LibrarySkeleton() {
   return (
