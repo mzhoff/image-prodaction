@@ -231,7 +231,7 @@ test('verified user persists a private image and can reset the password', async 
       new RegExp(`/library/${filteredAssetIds[1]}\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'),
     );
 
-    await page.keyboard.press('Escape');
+    await page.getByRole('dialog', { name: 'Image viewer' }).locator('.image-viewer-close').click();
     await expect(page).toHaveURL(new RegExp(`/library\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'));
     await expect(page.getByRole('dialog', { name: 'Image viewer' })).toHaveCount(0);
   });
