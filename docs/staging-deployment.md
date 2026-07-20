@@ -23,8 +23,9 @@ successful push to `main` then:
 3. streams the image over SSH without using a container registry;
 4. runs database migrations;
 5. starts web, worker, PostgreSQL, MinIO, and Caddy;
-6. checks both application readiness and worker health;
-7. rolls back the application image when either health check fails.
+6. recreates Caddy so a synchronized ingress configuration is always loaded;
+7. checks both application readiness and worker health;
+8. rolls back the application image when either health check fails.
 
 The GitHub Actions SSH key is restricted on the server to the
 `reverie-ci-deploy` command. It cannot open a shell or port forwarding session.
@@ -43,9 +44,11 @@ Persistent Docker volumes contain PostgreSQL, MinIO, and Caddy state.
 
 ## Access
 
-The application is available at `https://reverieapp.ru`. Requests to the
-server IP are redirected to the canonical domain, except for deployment health
-checks. The public DNS zone contains only the apex
+The application is available at `https://reverieapp.ru`. Plain HTTP requests to
+the server IP are redirected to the canonical domain; HTTPS on the bare IP is
+not part of the public contract. Deployment health checks use the canonical
+domain and therefore verify DNS, TLS, ingress, database, object storage, and the
+worker together. The public DNS zone contains only the apex
 `A reverieapp.ru -> 89.124.115.57` record; `www` is intentionally not used.
 PostgreSQL and MinIO
 must not publish host ports. Administrative access to them is performed through
