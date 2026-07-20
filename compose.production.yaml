@@ -2,6 +2,7 @@ name: reverie-stage
 
 x-app-environment: &app-environment
   NODE_ENV: production
+  APP_BASE_URL: ${PUBLIC_APP_URL:-https://reverieapp.ru}
   DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
   S3_ENDPOINT: http://minio:9000
   S3_REGION: ${S3_REGION:-us-east-1}
@@ -10,9 +11,9 @@ x-app-environment: &app-environment
   S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
   S3_FORCE_PATH_STYLE: "true"
   S3_MAX_IMAGE_BYTES: ${S3_MAX_IMAGE_BYTES:-15728640}
-  BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
+  BETTER_AUTH_URL: ${PUBLIC_APP_URL:-https://reverieapp.ru}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
-  BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:?BETTER_AUTH_TRUSTED_ORIGINS is required}
+  BETTER_AUTH_TRUSTED_ORIGINS: ${PUBLIC_TRUSTED_ORIGINS:-https://reverieapp.ru}
   AUTH_ALLOW_SIGN_UP: ${AUTH_ALLOW_SIGN_UP:-false}
   AUTH_REQUIRE_EMAIL_VERIFICATION: "false"
   EMAIL_TRANSPORT: disabled
@@ -20,7 +21,7 @@ x-app-environment: &app-environment
   PROVIDER_CREDENTIALS_MASTER_KEY_VERSION: ${PROVIDER_CREDENTIALS_MASTER_KEY_VERSION:-v1}
   PROVIDER_CREDENTIALS_FINGERPRINT_KEY: ${PROVIDER_CREDENTIALS_FINGERPRINT_KEY:?PROVIDER_CREDENTIALS_FINGERPRINT_KEY is required}
   AI_PROVIDER_RUNTIME: ${AI_PROVIDER_RUNTIME:-openrouter}
-  OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:?OPENROUTER_SITE_URL is required}
+  OPENROUTER_SITE_URL: ${PUBLIC_APP_URL:-https://reverieapp.ru}
 
 services:
   postgres:
@@ -95,8 +96,6 @@ services:
   migrate:
     image: reverie-app:${APP_IMAGE_TAG:?APP_IMAGE_TAG is required}
     restart: "no"
-    env_file:
-      - .env.production
     environment: *app-environment
     command:
       - npm
@@ -112,8 +111,6 @@ services:
   web:
     image: reverie-app:${APP_IMAGE_TAG:?APP_IMAGE_TAG is required}
     restart: unless-stopped
-    env_file:
-      - .env.production
     environment: *app-environment
     depends_on:
       postgres:
@@ -141,8 +138,6 @@ services:
       - npm
       - run
       - worker
-    env_file:
-      - .env.production
     environment:
       <<: *app-environment
       WORKER_READY_FILE: /tmp/reverie-generation-worker-ready

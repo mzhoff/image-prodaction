@@ -10,6 +10,8 @@ machine while preserving container boundaries:
 - public self-registration is disabled;
 - email delivery and mandatory email verification are disabled;
 - runtime secrets exist only in `/opt/image-prodaction/.env.production`.
+- the canonical public origin is `https://reverieapp.ru`;
+- Caddy obtains and renews the domain certificate automatically.
 
 ## Deployment flow
 
@@ -41,9 +43,18 @@ Persistent Docker volumes contain PostgreSQL, MinIO, and Caddy state.
 
 ## Access
 
-The application is available at `https://89.124.115.57`. PostgreSQL and MinIO
+The application is available at `https://reverieapp.ru`. Requests to the
+server IP are redirected to the canonical domain, except for deployment health
+checks. The public DNS zone contains only the apex
+`A reverieapp.ru -> 89.124.115.57` record; `www` is intentionally not used.
+PostgreSQL and MinIO
 must not publish host ports. Administrative access to them is performed through
 an explicitly created SSH tunnel or a short-lived diagnostic container.
+
+`PUBLIC_APP_URL` is the single source of truth for application, authentication,
+and OpenRouter callback origins. `PUBLIC_TRUSTED_ORIGINS` contains only exact
+frontend origins. These values are public configuration; database, S3,
+authentication, and provider secrets remain server-only.
 
 ## Test accounts
 

@@ -1,19 +1,37 @@
 {
 	admin off
-	auto_https off
-	default_sni 89.124.115.57
 }
 
-http://89.124.115.57 {
-	redir https://89.124.115.57{uri} permanent
-}
-
-https://89.124.115.57 {
-	tls /etc/letsencrypt/live/gigonom-ip/fullchain.pem /etc/letsencrypt/live/gigonom-ip/privkey.pem
+(reverie_app) {
 	encode zstd gzip
 	reverse_proxy web:3000
 	log {
 		output stdout
 		format json
 	}
+}
+
+reverieapp.ru {
+	import reverie_app
+}
+
+https://89.124.115.57 {
+	tls /etc/letsencrypt/live/gigonom-ip/fullchain.pem /etc/letsencrypt/live/gigonom-ip/privkey.pem
+
+	@health path /api/health/*
+	handle @health {
+		reverse_proxy web:3000
+	}
+	handle {
+		redir https://reverieapp.ru{uri} permanent
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+http://89.124.115.57 {
+	redir https://reverieapp.ru{uri} permanent
 }
