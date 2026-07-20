@@ -64,7 +64,8 @@ create_runtime_environment() {
   environment_file="$(mktemp)"
 
   printf '%s\n' \
-    'APP_BASE_URL=https://89.124.115.57' \
+    'PUBLIC_APP_URL=https://reverieapp.ru' \
+    'PUBLIC_TRUSTED_ORIGINS=https://reverieapp.ru' \
     'POSTGRES_DB=image_prodaction' \
     'POSTGRES_USER=reverie' \
     "POSTGRES_PASSWORD=$postgres_password" \
@@ -77,9 +78,7 @@ create_runtime_environment() {
     "S3_SECRET_ACCESS_KEY=$minio_password" \
     'S3_FORCE_PATH_STYLE=true' \
     'S3_MAX_IMAGE_BYTES=15728640' \
-    'BETTER_AUTH_URL=https://89.124.115.57' \
     "BETTER_AUTH_SECRET=$auth_secret" \
-    'BETTER_AUTH_TRUSTED_ORIGINS=https://89.124.115.57' \
     'AUTH_ALLOW_SIGN_UP=false' \
     'AUTH_REQUIRE_EMAIL_VERIFICATION=false' \
     'EMAIL_TRANSPORT=disabled' \
@@ -87,7 +86,6 @@ create_runtime_environment() {
     'PROVIDER_CREDENTIALS_MASTER_KEY_VERSION=v1' \
     "PROVIDER_CREDENTIALS_FINGERPRINT_KEY=$provider_fingerprint" \
     'AI_PROVIDER_RUNTIME=openrouter' \
-    'OPENROUTER_SITE_URL=https://89.124.115.57' \
     'WORKER_READY_FILE=/tmp/reverie-generation-worker-ready' \
     'WORKER_HEALTH_STALE_AFTER_MS=45000' \
     > "$environment_file"

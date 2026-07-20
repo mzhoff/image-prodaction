@@ -15,15 +15,18 @@
 ## Required runtime configuration
 
 - `DATABASE_URL`;
-- `BETTER_AUTH_URL`;
+- `PUBLIC_APP_URL`;
 - `BETTER_AUTH_SECRET`;
-- `BETTER_AUTH_TRUSTED_ORIGINS`;
+- `PUBLIC_TRUSTED_ORIGINS`;
 - `S3_REGION`;
 - `S3_BUCKET`;
 - S3 credentials через workload identity либо secret manager;
 - provider keys для включённых AI-интеграций.
 
-`NEXT_PUBLIC_BETTER_AUTH_URL` является публичной настройкой. Database, auth secret, S3 secret и provider keys публичными не являются.
+`PUBLIC_APP_URL`, `PUBLIC_TRUSTED_ORIGINS` и `NEXT_PUBLIC_BETTER_AUTH_URL`
+являются публичными настройками. Compose передаёт canonical URL в
+`BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` и `OPENROUTER_SITE_URL`.
+Database, auth secret, S3 secret и provider keys публичными не являются.
 
 ## Rollback
 

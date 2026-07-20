@@ -112,6 +112,19 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Validate production deployment configuration
+        run: |
+          docker compose \
+            --env-file .env.production.example \
+            --file compose.production.yaml \
+            config --quiet
+          docker run --rm \
+            --volume "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine \
+            caddy adapt \
+              --config /etc/caddy/Caddyfile \
+              --adapter caddyfile \
+              --pretty > /dev/null
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Start production web and worker
