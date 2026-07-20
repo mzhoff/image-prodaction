@@ -95,58 +95,6 @@ create_runtime_environment() {
   rm -f "$environment_file"
 }
 
-install_certificate_renewal() {
-  install -m 755 /dev/null /usr/local/sbin/reverie-renew-ip-cert
-  cat > /usr/local/sbin/reverie-renew-ip-cert <<'SCRIPT'
-#!/usr/bin/env bash
-set -euo pipefail
-
-caddy_was_running=0
-if docker ps --format '{{.Names}}' | grep -qx reverie-caddy; then
-  caddy_was_running=1
-  docker stop reverie-caddy >/dev/null
-fi
-
-restart_caddy() {
-  if [[ "$caddy_was_running" = 1 ]]; then
-    docker start reverie-caddy >/dev/null || true
-  fi
-}
-trap restart_caddy EXIT
-
-/opt/certbot-venv/bin/certbot renew \
-  --cert-name gigonom-ip \
-  --non-interactive \
-  --logs-dir /var/log/letsencrypt \
-  --work-dir /var/lib/letsencrypt \
-  --config-dir /etc/letsencrypt
-SCRIPT
-  chmod 755 /usr/local/sbin/reverie-renew-ip-cert
-
-  cat > /etc/systemd/system/reverie-renew-ip-cert.service <<'UNIT'
-[Unit]
-Description=Renew Reverie staging IP certificate
-After=docker.service
-Requires=docker.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/reverie-renew-ip-cert
-UNIT
-  cat > /etc/systemd/system/reverie-renew-ip-cert.timer <<'UNIT'
-[Unit]
-Description=Daily renewal check for Reverie staging IP certificate
-
-[Timer]
-OnCalendar=*-*-* 03:17:00
-RandomizedDelaySec=1h
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-UNIT
-}
-
 install_backup_timer() {
   cat > /etc/systemd/system/reverie-backup.service <<'UNIT'
 [Unit]
@@ -176,11 +124,10 @@ UNIT
 
 install_ci_key
 create_runtime_environment
-install_certificate_renewal
 install_backup_timer
 
 systemctl daemon-reload
-systemctl enable --now reverie-renew-ip-cert.timer reverie-backup.timer
+systemctl enable --now reverie-backup.timer
 systemctl enable --now unattended-upgrades.service
 
 printf 'server-provisioning=complete\n'

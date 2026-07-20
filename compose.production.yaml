@@ -171,7 +171,6 @@ services:
       - "443:443"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
       - caddy_data:/data
       - caddy_config:/config
     mem_limit: 160m

@@ -5,7 +5,7 @@ deploy_root=/opt/image-prodaction
 compose_file="$deploy_root/compose.production.yaml"
 runtime_env="$deploy_root/.env.production"
 release_env="$deploy_root/.release.env"
-public_base_url=https://89.124.115.57
+public_base_url=https://reverieapp.ru
 
 sync_config() {
   local archive staging archive_entry
@@ -73,7 +73,8 @@ apply_release() {
   "${compose_args[@]}" up --detach --wait --wait-timeout 120 postgres minio
   "${compose_args[@]}" run --rm minio-init
   "${compose_args[@]}" run --rm migrate
-  "${compose_args[@]}" up --detach --remove-orphans web worker caddy
+  "${compose_args[@]}" up --detach --remove-orphans web worker
+  "${compose_args[@]}" up --detach --force-recreate caddy
 
   if ! wait_for_endpoint "$public_base_url/api/health/ready" 120 \
     || ! wait_for_endpoint "$public_base_url/api/health/worker" 120; then
