@@ -1,108 +1,111 @@
-# Executable Pipeline Platform: context and iteration plan
+# Платформа исполняемых пайплайнов: контекст и план итераций
 
-Date: 2026-07-31
+Дата: 2026-07-31
 
-Status: accepted product direction and implementation plan
+Статус: принятое продуктовое направление и план реализации
 
-Working branch: `codex/executable-pipeline-runtime`
+Рабочая ветка: `codex/executable-pipeline-runtime`
 
-## 1. Decision
+## 1. Принятое решение
 
-Image Production is not a complete marketing-management system and should not
-absorb LMS, Content Ops, calendar, approval, student-management, or chat-product
-responsibilities.
+Image Production — не полноценная система управления маркетингом. Он не должен
+забирать на себя ответственность LMS, Content Ops, календаря, согласования,
+управления учениками или чат-продукта.
 
-Image Production has two product responsibilities:
+У Image Production есть две продуктовые зоны ответственности:
 
-1. `Pipeline Studio`
-   - visually create and edit workflows;
-   - test nodes and connections;
-   - declare typed inputs and outputs;
-   - publish an immutable executable version;
-   - inspect structure, runs, artifacts, and technical diagnostics.
-2. `Pipeline Runtime`
-   - accept a typed execution request;
-   - resolve a published pipeline version;
-   - queue and execute the compiled graph;
-   - store run and node-run state;
-   - return typed artifacts;
-   - measure latency, throughput, failures, retries, and provider cost.
+1. `Pipeline Studio` — студия пайплайнов:
+   - визуальное создание и редактирование процессов;
+   - тестирование нод и связей;
+   - объявление типизированных входов и выходов;
+   - публикация неизменяемой исполняемой версии;
+   - просмотр структуры, запусков, артефактов и технической диагностики.
+2. `Pipeline Runtime` — среда исполнения:
+   - приём типизированного запроса на исполнение;
+   - определение опубликованной версии пайплайна;
+   - постановка скомпилированного графа в очередь и его исполнение;
+   - хранение состояния всего запуска и отдельных нод;
+   - возврат типизированных артефактов;
+   - измерение задержек, пропускной способности, ошибок, повторов и стоимости
+     провайдеров.
 
-Content Ops, LMS, and ChatModule are independent product consumers. They own
-their user workflows and business metrics, and call Pipeline Runtime through a
-stable contract.
+Content Ops, LMS и ChatModule — самостоятельные продукты-потребители. Каждый из
+них управляет собственными пользовательскими процессами и бизнес-метриками, а
+Pipeline Runtime вызывает через стабильный контракт.
 
-## 2. Ecosystem roles
+## 2. Роли в экосистеме
 
 ```text
 Account Platform
-  one identity subject and product entitlements
+  единая учётная запись и права доступа к продуктам
 
 Image Production / Pipeline Studio
-  author, test, publish, inspect
+  создание, тестирование, публикация и контроль пайплайнов
 
 Executable Pipeline Core
-  contracts, compiler, version registry, queue, executor, run ledger
+  контракты, компилятор, реестр версий, очередь, исполнитель, журнал запусков
 
 Content Ops / Reverie
-  content plan, campaign workflow, approval, publishing, marketing outcomes
+  контент-план, кампании, согласование, публикация, маркетинговые результаты
 
 LMS / Course Factory
-  courses, lessons, assignments, review, course versions, learning outcomes
+  курсы, уроки, задания, проверка, версии курсов, результаты обучения
 
 ChatModule
-  product help, structured interaction, allowed capability invocation,
-  run progress and result presentation
+  помощь по продукту, структурированное взаимодействие, запуск разрешённых
+  возможностей, отображение прогресса и результата
 ```
 
-The final public names `Reverie`, `Revery`, and `Content Ops` are not fixed by
-this document. They must not leak into core domain contracts.
+Финальные публичные названия `Reverie`, `Revery` и `Content Ops` этим документом
+не закрепляются. Эти названия не должны проникать в контракты ядра.
 
-## 3. Logical boundary now, physical extraction later
+## 3. Сейчас — логическая граница, позже — физическое выделение
 
-The first pilot stays in this repository and reuses the current PostgreSQL,
-object storage, provider adapters, and worker deployment.
+Первый пилот остаётся в текущем репозитории и использует существующие
+PostgreSQL, объектное хранилище, адаптеры провайдеров и развёртывание воркера.
 
-The runtime must nevertheless be implemented as an extractable backend module:
+При этом среда исполнения должна быть реализована как самостоятельный
+бэкенд-модуль, который впоследствии можно будет легко выделить:
 
 ```text
 src/modules/executable-pipelines/
-  contracts/   public types, DTOs, events, error taxonomy
-  core/        compiler, state machines, execution rules
-  server/      application services and worker composition
-  adapters/    PostgreSQL, object storage, provider/node handlers
-  testing/     fakes and in-memory adapters
+  contracts/   публичные типы, DTO, события и классификация ошибок
+  core/        компилятор, машины состояний и правила исполнения
+  server/      прикладные сервисы и сборка воркера
+  adapters/    PostgreSQL, объектное хранилище, провайдеры и обработчики нод
+  testing/     заглушки и адаптеры в памяти для тестов
 ```
 
-Dependency direction:
+Направление зависимостей:
 
 ```text
-app/API/worker composition
+сборка приложения / API / воркера
   -> server
     -> core
       -> contracts
 
-adapters implement ports declared by contracts/core
+adapters реализуют порты, объявленные в contracts/core
 ```
 
-`core` and `contracts` must not import:
+`core` и `contracts` не должны импортировать:
 
 - Next.js;
-- environment variables;
-- PostgreSQL or Drizzle;
+- переменные окружения;
+- PostgreSQL или Drizzle;
 - S3;
 - OpenRouter;
-- Content Ops, LMS, or ChatModule types;
-- browser or canvas UI code.
+- типы Content Ops, LMS или ChatModule;
+- браузерный код или код визуального редактора.
 
-Extraction into a separate package, repository, database, or service happens
-only after at least two real consumers, independent release pressure, or
-runtime scaling/security requirements justify the DevOps cost.
+Выделение в отдельный пакет, репозиторий, базу данных или сервис выполняется
+только после появления как минимум двух реальных потребителей либо
+самостоятельных требований к релизному циклу, масштабированию или безопасности.
+До этого стоимость дополнительного DevOps-контура не оправдана.
 
-## 4. Consumer contract
+## 4. Контракт с продуктами-потребителями
 
-Consumers call a semantic capability, not a canvas node and not an unversioned
-document:
+Потребители вызывают смысловую возможность продукта, а не конкретную ноду
+визуального редактора и не неопубликованный документ:
 
 ```text
 content.plan.generate
@@ -114,7 +117,8 @@ course.cover.generate
 assistant.product_action.execute
 ```
 
-A consumer-side binding maps the stable capability to a published pipeline:
+На стороне продукта-потребителя хранится привязка стабильной возможности к
+опубликованному пайплайну:
 
 ```text
 capabilityKey
@@ -126,10 +130,10 @@ configuration
 status
 ```
 
-This allows a pipeline to be updated, disabled, rolled back, or replaced
-without migrating the consumer's domain data.
+Благодаря этому пайплайн можно обновить, отключить, откатить или заменить без
+миграции доменных данных продукта-потребителя.
 
-## 5. Runtime API target
+## 5. Целевая модель Runtime API
 
 ```http
 POST /v1/pipelines/{publicId}/runs
@@ -138,215 +142,227 @@ POST /v1/runs/{runId}/cancel
 GET  /v1/runs/{runId}/artifacts
 ```
 
-The first production consumer uses service-to-service authentication and an
-`Idempotency-Key`. Long operations return `202` with `runId`; polling is the
-first delivery mechanism. Signed webhooks follow after the persisted run
-foundation is proven.
+Первый промышленный потребитель использует межсервисную аутентификацию и
+заголовок `Idempotency-Key`. Долгие операции возвращают `202` и `runId`.
+На первом этапе потребитель периодически запрашивает состояние запуска.
+Подписанные вебхуки добавляются после проверки надёжности постоянного хранения
+состояния запусков.
 
-Published pipeline versions are immutable. Editing a canvas document never
-changes a running endpoint silently.
+Опубликованные версии пайплайнов неизменяемы. Редактирование документа в
+визуальной студии не должно незаметно менять уже работающий endpoint.
 
-## 6. Runtime and business observability
+## 6. Техническая и бизнес-наблюдаемость
 
-Pipeline Runtime owns technical metrics:
+Pipeline Runtime отвечает за технические метрики:
 
-- queued/running counts;
-- queue wait;
-- p50/p95 run duration;
-- node duration;
-- success/failure/cancel rate;
-- retries and lease loss;
-- duplicate suppression;
-- provider usage and cost;
-- artifact retention.
+- количество запусков в очереди и в работе;
+- время ожидания в очереди;
+- медианное время и p95 длительности запуска;
+- длительность исполнения отдельных нод;
+- долю успешных запусков, ошибок и отмен;
+- количество повторов и потерь аренды задачи воркером;
+- подавление дублирующихся запросов;
+- использование и стоимость провайдеров;
+- срок хранения артефактов.
 
-Consumer products own business metrics:
+Продукты-потребители отвечают за бизнес-метрики:
 
-- Content Ops: time to approved post, revision count, publication outcome;
-- LMS: time to approved module, factual/methodical corrections, published use;
-- ChatModule: task completion, confirmation, handoff, user outcome.
+- Content Ops: время до согласованного поста, количество правок, результат
+  публикации;
+- LMS: время до согласованного модуля, фактические и методические исправления,
+  использование опубликованного курса;
+- ChatModule: выполнение задачи, подтверждение действия, передача оператору и
+  пользовательский результат.
 
-Technical success must not be reported as business value.
+Технически успешный запуск нельзя автоматически считать достигнутой
+бизнес-ценностью.
 
-## 7. ChatModule role
+## 7. Роль ChatModule
 
-ChatModule is a consumer and interaction layer, not another pipeline engine.
+ChatModule — потребитель и слой взаимодействия с пользователем, а не ещё один
+движок пайплайнов.
 
-It has two separate modes:
+У него есть два отдельных режима:
 
-1. Help mode
-   - explain the product;
-   - search documentation and contextual knowledge;
-   - answer without starting a paid or mutating operation.
-2. Action mode
-   - resolve an allowed capability from ProductProfile/RuntimeContext;
-   - collect typed input;
-   - request explicit confirmation when the action is paid, publishing, or
-     otherwise consequential;
-   - start a run;
-   - show progress and typed result blocks.
+1. Режим помощи:
+   - объясняет работу продукта;
+   - ищет по документации и контекстным знаниям;
+   - отвечает без запуска платной операции или операции, изменяющей данные.
+2. Режим действий:
+   - определяет разрешённую возможность через
+     `ProductProfile`/`RuntimeContext`;
+   - собирает типизированные входные данные;
+   - запрашивает явное подтверждение, если действие платное, связано с
+     публикацией или имеет другие существенные последствия;
+   - запускает пайплайн;
+   - показывает прогресс и типизированные блоки результата.
 
-Only repeatable, long-running, expensive, auditable, or multi-step actions
-should become executable pipelines. A simple chat answer does not need a
-durable pipeline run.
+Исполняемыми пайплайнами должны становиться повторяемые, долгие, дорогие,
+проверяемые или многошаговые действия. Простой ответ в чате не требует
+постоянного журнала исполнения пайплайна.
 
-## 8. Synergy pilot positioning
+## 8. Позиционирование пилота для Synergy
 
-Do not sell a generic ecosystem or pipeline builder as the first pilot.
-Select one vertical outcome:
+Первый пилот не следует продавать как универсальную экосистему или конструктор
+пайплайнов. Необходимо выбрать один вертикальный бизнес-результат.
 
-### Marketing
-
-```text
-approved brief
-  -> content plan
-  -> posts and visual variants
-  -> human review
-  -> approved export/publication package
-```
-
-### Education
+### Маркетинг
 
 ```text
-approved sources and learning goals
-  -> course outline
-  -> lesson drafts, assignments, rubric
-  -> cover and short voiceover
-  -> methodist review
-  -> approved course package
+согласованный бриф
+  -> контент-план
+  -> посты и варианты визуалов
+  -> проверка человеком
+  -> согласованный пакет для экспорта или публикации
 ```
 
-The shared runtime is the technical advantage and scale story, not the pilot's
-user-facing scope. Game24 can be the first internal education consumer and
-evidence case.
+### Образование
 
-## 9. First implementation iteration
+```text
+согласованные источники и цели обучения
+  -> структура курса
+  -> черновики уроков, задания и критерии проверки
+  -> обложка и короткая озвучка
+  -> проверка методистом
+  -> согласованный пакет курса
+```
 
-Goal: prove an extractable runtime domain before adding public UI or
-product-specific integrations.
+Общая среда исполнения — это техническое преимущество и основа для
+масштабирования, но не пользовательский объём первого пилота. Game24 может стать
+первым внутренним образовательным потребителем и подтверждающим кейсом.
 
-### Slice A — contracts and compiler
+## 9. Первая итерация реализации
 
-- public pipeline definition and run contracts;
-- stable error taxonomy;
-- validation of node ids, dependencies, declared inputs and outputs;
-- deterministic topological execution levels;
-- explicit handler type and handler version;
-- rejection of cycles and unsupported definitions.
+Цель: подтвердить работоспособность изолированного домена исполнения до
+добавления публичного интерфейса и интеграций с конкретными продуктами.
 
-### Slice B — executor
+### Срез A — контракты и компилятор
 
-- handler registry behind a port;
-- execution by topological level;
-- parallel execution inside one safe level;
-- typed input resolution;
-- per-node result and failure information;
-- cancellation through `AbortSignal`;
-- no direct provider dependency in core.
+- публичные контракты определения пайплайна и его запуска;
+- стабильная классификация ошибок;
+- проверка идентификаторов нод, зависимостей, объявленных входов и выходов;
+- детерминированное построение топологических уровней исполнения;
+- явное указание типа и версии обработчика;
+- отклонение циклических и неподдерживаемых графов.
 
-### Slice C — run state and queue port
+### Срез B — исполнитель
 
-- idempotent run creation contract;
-- run statuses and allowed transitions;
-- claim, lease, heartbeat, cancel, success, and failure;
-- bounded retries;
-- worker that cannot commit after lease loss;
-- in-memory adapter and deterministic tests first.
+- реестр обработчиков за абстрактным портом;
+- исполнение по топологическим уровням;
+- параллельное исполнение нод внутри одного безопасного уровня;
+- типизированное определение входных данных;
+- информация о результате или ошибке каждой ноды;
+- отмена через `AbortSignal`;
+- отсутствие прямой зависимости ядра от конкретного провайдера.
 
-### Slice D — persistent adapter
+### Срез C — состояние запуска и порт очереди
+
+- контракт идемпотентного создания запуска;
+- статусы запуска и разрешённые переходы;
+- получение задачи, аренда, heartbeat, отмена, успешное и ошибочное завершение;
+- ограниченные повторы;
+- воркер не может записать результат после потери аренды задачи;
+- сначала — адаптер в памяти и детерминированные тесты.
+
+### Срез D — постоянное хранение
 
 - `executable_pipeline`;
-- immutable `pipeline_version`;
+- неизменяемая `pipeline_version`;
 - `pipeline_endpoint`;
 - `pipeline_run`;
 - `pipeline_node_run`;
-- PostgreSQL `FOR UPDATE SKIP LOCKED` queue adapter;
-- request/result payload references in object storage;
-- migration and persistence smoke test.
+- адаптер очереди PostgreSQL с `FOR UPDATE SKIP LOCKED`;
+- ссылки на входные данные и результаты в объектном хранилище;
+- миграция и smoke-тест постоянного хранения.
 
-### Slice E — first API and consumer
+### Срез E — первый API и первый потребитель
 
-- publish one code-configured/test pipeline;
-- `POST run`, `GET status`, `cancel`, and `artifacts`;
-- one service account;
-- polling;
-- one Content Ops or LMS adapter;
-- one real end-to-end run with cost and latency evidence.
+- публикация одного тестового пайплайна, заданного в коде;
+- `POST run`, `GET status`, `cancel` и `artifacts`;
+- одна сервисная учётная запись;
+- получение статуса периодическими запросами;
+- один адаптер Content Ops или LMS;
+- один реальный сквозной запуск с зафиксированной стоимостью и временем.
 
-## 10. Explicitly deferred
+## 10. Что явно отложено
 
-- separate repository or database;
-- public marketplace;
-- user-defined JavaScript or containers;
-- scheduler;
-- anonymous endpoints;
-- full visual debugger;
-- automatic provider optimization;
-- client self-service integration settings;
-- video runtime;
-- simultaneous implementation of Content Ops and LMS shells.
+- отдельный репозиторий или база данных;
+- публичный маркетплейс;
+- пользовательский JavaScript или пользовательские контейнеры;
+- планировщик;
+- анонимные endpoint’ы;
+- полноценный визуальный отладчик;
+- автоматическая оптимизация выбора провайдера;
+- клиентский интерфейс самостоятельной настройки интеграций;
+- исполнение видео-пайплайнов;
+- одновременная реализация оболочек Content Ops и LMS.
 
-## 11. Definition of done for the branch
+## 11. Критерии готовности ветки
 
-- the new domain has public contracts and no product-specific imports;
-- compiler rejects invalid graphs deterministically;
-- executor runs a supported graph through injected handlers;
-- queue/worker behavior is covered for retry, cancellation, and lease loss;
-- PostgreSQL persistence is either implemented or recorded as the next
-  explicitly scoped commit with no fake production claim;
-- architecture, typecheck, tests, and build are green;
-- documentation distinguishes implemented behavior from the target API;
-- no secrets, generated build artifacts, database dumps, or temporary reports
-  are committed.
+- новый домен имеет публичные контракты и не импортирует код конкретных
+  продуктов;
+- компилятор детерминированно отклоняет некорректные графы;
+- исполнитель запускает поддерживаемый граф через внедряемые обработчики;
+- поведение очереди и воркера покрыто тестами повторов, отмены и потери аренды;
+- постоянное хранение PostgreSQL либо реализовано, либо явно зафиксировано как
+  следующий ограниченный по объёму коммит без заявления о готовности к
+  промышленной эксплуатации;
+- проверки архитектуры, типов, тестов и сборки проходят успешно;
+- документация разделяет уже реализованное поведение и целевой API;
+- секреты, сгенерированные артефакты сборки, дампы базы и временные отчёты не
+  попадают в репозиторий.
 
-## 12. Open decisions for later, not blockers for Slice A-C
+## 12. Открытые решения, не блокирующие срезы A–C
 
-- which vertical becomes the first external pilot: marketing or education;
-- whether the first consumer is Content Ops or Game24 LMS;
-- which node types are admitted into the first production handler registry;
-- whether Synergy permits OpenRouter or requires another/on-prem provider;
-- final ecosystem and product names;
-- extraction trigger thresholds for a separate service.
+- какое направление станет первым внешним пилотом: маркетинг или образование;
+- кто станет первым потребителем: Content Ops или LMS Game24;
+- какие типы нод войдут в первый промышленный реестр обработчиков;
+- разрешает ли Synergy использование OpenRouter или требует другого либо
+  локального провайдера;
+- финальные названия экосистемы и продуктов;
+- пороговые условия для выделения среды исполнения в отдельный сервис.
 
-## 13. Implemented in the first branch slice
+## 13. Что реализовано в первом срезе ветки
 
-Implemented:
+Уже реализовано:
 
-- isolated `contracts`, `core`, `server`, `adapters`, and `testing` boundaries;
-- versioned pipeline definition contract;
-- deterministic compiler with dependency and cycle validation;
-- injected handler registry and level-based executor;
-- typed input validation and declared output resolution;
-- idempotent run service and explicit cancel service;
-- queue/worker ports with claim, lease, heartbeat, retry, cancellation, and
-  fencing after lease loss;
-- in-memory adapter with deterministic unit tests;
-- PostgreSQL schema for pipeline, version, endpoint, run, and node run;
-- PostgreSQL queue adapter using `FOR UPDATE SKIP LOCKED`;
-- additive migration `0008_wide_tattoo.sql`;
-- persistence smoke for idempotency, retry, cancellation, and stale-attempt
-  rejection;
-- CI hook for the persistence smoke;
-- architecture check preventing infrastructure imports in contracts/core.
+- изолированные зоны `contracts`, `core`, `server`, `adapters` и `testing`;
+- версионируемый контракт определения пайплайна;
+- детерминированный компилятор с проверкой зависимостей и циклов;
+- внедряемый реестр обработчиков и исполнитель по уровням;
+- проверка типов входных данных и получение объявленных выходов;
+- идемпотентный сервис запуска и явный сервис отмены;
+- порты очереди и воркера с получением задачи, арендой, heartbeat, повторами,
+  отменой и защитой после потери аренды;
+- адаптер в памяти с детерминированными модульными тестами;
+- схема PostgreSQL для пайплайна, версии, endpoint’а, запуска и запуска ноды;
+- адаптер очереди PostgreSQL с использованием `FOR UPDATE SKIP LOCKED`;
+- расширяющая миграция `0008_wide_tattoo.sql`;
+- persistence smoke-тест для идемпотентности, повторов, отмены и отклонения
+  результата устаревшей попытки;
+- запуск persistence smoke-теста в CI;
+- архитектурная проверка, запрещающая инфраструктурные импорты в
+  `contracts`/`core`.
 
-Still not implemented and must not be presented as ready:
+Ещё не реализовано и не должно представляться как готовое:
 
-- Studio publication flow and graph-to-runtime adapter;
-- production node handler registry;
-- node-level checkpoint/resume;
-- public or service runtime API;
-- service account authentication;
-- artifact object-storage adapter and retention job;
-- signed webhooks;
-- production pipeline worker process and health endpoint;
-- Content Ops, LMS, or ChatModule consumer adapter.
+- публикация из Studio и адаптер преобразования визуального графа в исполняемый;
+- промышленный реестр обработчиков нод;
+- контрольные точки и возобновление исполнения на уровне нод;
+- публичный или межсервисный Runtime API;
+- аутентификация сервисных учётных записей;
+- адаптер объектного хранилища артефактов и задача очистки по сроку хранения;
+- подписанные вебхуки;
+- промышленный процесс воркера пайплайнов и endpoint проверки его состояния;
+- адаптеры потребителей Content Ops, LMS или ChatModule.
 
-The first persistence slice stores a bounded input/result JSON payload in
-PostgreSQL for development and contract testing. Before media-heavy or sensitive
-production use, large payloads and artifacts move to private object storage and
-the database keeps references and checksums.
+Первый срез постоянного хранения записывает ограниченный по размеру JSON со
+входными данными и результатом в PostgreSQL. Это допустимо для разработки и
+проверки контрактов. До промышленной работы с медиафайлами или чувствительными
+данными крупные входы и артефакты необходимо перенести в закрытое объектное
+хранилище, оставив в базе ссылки и контрольные суммы.
 
-Whole-run automatic retry must not be enabled for provider handlers that may
-have dispatched a paid operation. Such handlers need provider operation
-reconciliation or node-level idempotency/checkpoints first; otherwise a retry
-could duplicate cost.
+Автоматический повтор всего запуска нельзя включать для обработчиков
+провайдеров, которые могли уже отправить платную операцию. Сначала для них
+необходимо реализовать сверку с операцией провайдера либо идемпотентность и
+контрольные точки на уровне нод. Иначе повтор может привести к двойным расходам.
