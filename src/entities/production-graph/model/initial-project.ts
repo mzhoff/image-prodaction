@@ -3,7 +3,7 @@ import { defaultExtractPrompt } from './extract-presets';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, DEFAULT_NODE_CARD_WIDTH } from './node-layout';
 import { PROJECT_SCHEMA_VERSION } from './project-schema';
 
-const defaultPrompt = 'Создай редакционную обложку для статьи Gigonom: современная B2B/IT-эстетика, чистая композиция, без текста, без логотипов, без интерфейсного шума. Изображение должно объяснять бизнес-смысл статьи через метафору процессов, данных, автоматизации и роста.';
+const defaultPrompt = 'Создай редакционную обложку для B2B/IT-статьи: современная технологичная эстетика, чистая композиция, без текста, без логотипов, без интерфейсного шума. Изображение должно объяснять бизнес-смысл статьи через метафору процессов, данных, автоматизации и роста.';
 
 export const initialNodes: ProductionNode[] = [
   {

@@ -66,6 +66,7 @@ create_runtime_environment() {
   printf '%s\n' \
     'PUBLIC_APP_URL=https://reverieapp.ru' \
     'PUBLIC_TRUSTED_ORIGINS=https://reverieapp.ru' \
+    'FEEDBACK_UPSTREAM=api:8080' \
     'POSTGRES_DB=image_prodaction' \
     'POSTGRES_USER=reverie' \
     "POSTGRES_PASSWORD=$postgres_password" \

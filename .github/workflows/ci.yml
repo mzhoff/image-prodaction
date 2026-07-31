@@ -119,6 +119,7 @@ jobs:
             --file compose.production.yaml \
             config --quiet
           docker run --rm \
+            --env FEEDBACK_UPSTREAM=api:8080 \
             --volume "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.10.2-alpine \
             caddy adapt \
