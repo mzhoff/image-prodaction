@@ -102,7 +102,7 @@ Publication node должна учитывать не только площад�
 
 Это позволит собирать готовые production-пайплайны для конкретных контентных единиц:
 
-- `Gigonom / TechWave / Telegram article`;
+- `Reverie / Product update / Telegram article`;
 - `Product launch / LinkedIn post`;
 - `Short vertical video / TikTok`;
 - `Research summary / VC article`;

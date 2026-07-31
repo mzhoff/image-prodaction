@@ -31,8 +31,11 @@ The root-level `pages/` directory is intentionally present as a placeholder for 
 `entities` contains domain state and business rules. For this project it is mainly the production graph: nodes, edges, ports, assets and history.
 
 `modules` contains backend domain boundaries that do not fit frontend FSD:
-`provider-connections`, `generation` and `usage`. Their public entrypoints keep
-provider-specific code out of orchestration.
+`provider-connections`, `generation`, `usage`, and `executable-pipelines`.
+Their public entrypoints keep provider-specific and infrastructure code out of
+orchestration. Executable pipeline contracts/core are deliberately independent
+from Next.js, PostgreSQL, object storage, provider adapters, and canvas UI so the
+runtime can be extracted after the product hypothesis is proven.
 
 `shared` contains reusable low-level pieces: UI atoms, small hooks, API wrappers and file utilities.
 

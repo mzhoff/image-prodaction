@@ -163,6 +163,8 @@ services:
     image: caddy:2.10.2-alpine
     container_name: reverie-caddy
     restart: unless-stopped
+    environment:
+      FEEDBACK_UPSTREAM: ${FEEDBACK_UPSTREAM:-api:8080}
     depends_on:
       web:
         condition: service_healthy

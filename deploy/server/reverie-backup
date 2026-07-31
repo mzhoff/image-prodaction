@@ -24,6 +24,8 @@ docker compose \
   > "$destination/postgres.dump"
 
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  --env HOME=/tmp \
   --network reverie-stage_default \
   --volume "$destination:/backup" \
   --env "MC_HOST_reverie=http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@minio:9000" \
