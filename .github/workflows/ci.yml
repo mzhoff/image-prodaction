@@ -142,6 +142,8 @@ jobs:
         run: npm run test:backend-smoke
       - name: Generation persistence smoke
         run: npm run test:generation-persistence-smoke
+      - name: Executable pipeline persistence smoke
+        run: npm run test:pipeline-persistence-smoke
       - name: Browser critical-path E2E
         run: npx playwright test
       - name: Build production container

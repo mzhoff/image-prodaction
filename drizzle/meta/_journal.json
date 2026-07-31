@@ -57,6 +57,13 @@
       "when": 1784290627293,
       "tag": "0007_same_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785471988877,
+      "tag": "0008_wide_tattoo",
+      "breakpoints": true
     }
   ]
 }

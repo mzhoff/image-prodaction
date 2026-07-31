@@ -34,6 +34,21 @@ for (const absolutePath of files) {
   ) {
     violations.push(`${path}: provider core must stay framework- and environment-agnostic.`);
   }
+
+  if (
+    /^src\/modules\/executable-pipelines\/(?:contracts|core)\//.test(path)
+    && (
+      source.includes('process.env')
+      || /from ['"]next\//.test(source)
+      || /from ['"]@\/shared\/db\//.test(source)
+      || /from ['"].*provider-connections/.test(source)
+      || /from ['"].*production-graph/.test(source)
+    )
+  ) {
+    violations.push(
+      `${path}: executable pipeline contracts/core must stay extractable and infrastructure-agnostic.`,
+    );
+  }
 }
 
 if (violations.length) {
