@@ -22,6 +22,9 @@ x-app-environment: &app-environment
   PROVIDER_CREDENTIALS_FINGERPRINT_KEY: ${PROVIDER_CREDENTIALS_FINGERPRINT_KEY:?PROVIDER_CREDENTIALS_FINGERPRINT_KEY is required}
   AI_PROVIDER_RUNTIME: ${AI_PROVIDER_RUNTIME:-openrouter}
   OPENROUTER_SITE_URL: ${PUBLIC_APP_URL:-https://reverieapp.ru}
+  PRODACTION_FEEDBACK_ENDPOINT: ${PRODACTION_FEEDBACK_ENDPOINT:-https://feedback.apption.space/v1/submissions}
+  PRODACTION_FEEDBACK_APPLICATION_ID: ${PRODACTION_FEEDBACK_APPLICATION_ID:-image-production}
+  PRODACTION_FEEDBACK_BUILD_NUMBER: ${PRODACTION_FEEDBACK_BUILD_NUMBER:-unknown}
 
 services:
   postgres:
@@ -163,8 +166,6 @@ services:
     image: caddy:2.10.2-alpine
     container_name: reverie-caddy
     restart: unless-stopped
-    environment:
-      FEEDBACK_UPSTREAM: ${FEEDBACK_UPSTREAM:-api:8080}
     depends_on:
       web:
         condition: service_healthy

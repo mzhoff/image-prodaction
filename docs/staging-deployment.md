@@ -4,8 +4,6 @@ The temporary staging environment runs all Reverie components on one virtual
 machine while preserving container boundaries:
 
 - Caddy is the only public service and terminates HTTPS;
-- `/api/feedback/*` is reserved for the independently deployed feedback API
-  service on the shared ingress network;
 - the Next.js web application and generation worker use one immutable image;
 - PostgreSQL and MinIO are available only inside the Docker network;
 - Mailpit is intentionally excluded;
@@ -43,15 +41,10 @@ The GitHub Actions SSH key is restricted on the server to the
 ```
 
 Persistent Docker volumes contain PostgreSQL, MinIO, and Caddy state.
-The feedback API and its PostgreSQL database live in a separate Compose
-project. Image Production owns only the public ingress route; it does not own
-or share the feedback database.
-
-`FEEDBACK_UPSTREAM` contains the Docker network address of the external
-feedback service. It defaults to the Compose service name `api:8080`, so the
-current shared-network deployment keeps working without a coordinated
-cross-repository release. A dedicated neutral alias can replace this temporary
-service-name address later through `FEEDBACK_UPSTREAM`.
+PRODaction Feedback and its PostgreSQL database live on a separate host. Image
+Production does not own or share that database. The web server sends validated
+requests directly to `PRODACTION_FEEDBACK_ENDPOINT`; Caddy no longer exposes a
+local feedback proxy.
 
 ## Access
 

@@ -13,7 +13,7 @@
   top: 27px;
   left: 28px;
   display: flex;
-  width: 298px;
+  width: 360px;
   height: 40px;
   align-items: center;
   gap: 7px;
@@ -21,7 +21,8 @@
   background: #fafaf9;
   padding: 6px;
 }
-.document-title-pill button {
+.document-title-pill button,
+.document-title-back {
   display: grid;
   width: 28px;
   height: 28px;
@@ -31,19 +32,37 @@
   background: transparent;
   color: #111;
   padding: 0;
+  text-decoration: none;
 }
-.document-title-pill button:hover {
+.document-title-pill button:hover,
+.document-title-back:hover {
   background: #eaeaea;
 }
-.document-title-pill strong {
+.document-title-pill input {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  outline: none;
+  background: transparent;
   color: #000;
+  padding: 3px 5px;
   font-size: 16px;
   font-weight: 650;
   line-height: 19px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.document-title-pill input:hover {
+  border-color: #e5e7eb;
+}
+
+.document-title-pill input:focus {
+  border-color: #93c5fd;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
 }
 .document-node-palette {
   position: absolute;

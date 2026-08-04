@@ -4,7 +4,7 @@ import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
 import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
-import { Menu, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
@@ -13,6 +13,7 @@ import { CanvasNodeLayer } from './canvas-node-layer';
 import { CanvasSectionLayer } from './canvas-section-layer';
 import { CanvasToolbar } from './canvas-toolbar';
 import { DocumentNodePalette } from './document-node-palette';
+import { DocumentTitleBar } from './document-title-bar';
 import { OpenRouterBalance } from './openrouter-balance';
 
 interface ProductionCanvasProps {
@@ -53,12 +54,16 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         onContextMenu={model.openCanvasMenu}
         style={{ cursor: model.cursor }}
       >
-        <div className="document-title-pill">
-          <button type="button" aria-label="Open document menu">
-            <Menu size={16} />
-          </button>
-          <strong>{projectTitle}</strong>
-        </div>
+        <DocumentTitleBar
+          favorite={model.documentFavorite}
+          onCloseCanvasMenu={model.closeContextMenu}
+          onExportProject={model.exportProjectSnapshot}
+          onMoveToTrash={model.moveDocumentToTrash}
+          onNotify={model.showToast}
+          onRename={model.renameDocument}
+          onToggleFavorite={model.setDocumentFavorite}
+          title={projectTitle}
+        />
         <DocumentNodePalette
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
@@ -81,6 +86,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             onStartDrag={model.startSectionDrag}
             onStartResize={model.startSectionResize}
             sectionColorPreviews={model.sectionColorPreviews}
+            sectionPublications={model.sectionPublications}
             sections={model.sections}
             selectedSectionSet={model.selectedSectionSet}
           />

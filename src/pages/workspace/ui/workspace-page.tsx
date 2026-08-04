@@ -20,6 +20,7 @@ import { ContextMenu } from '@/shared/ui/context-menu';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { useWorkspaceShell } from './workspace-shell-context';
+import { ExecutablePipelinesSection } from './executable-pipelines-section';
 
 const templateCards = [
   { image: '/workspace-assets/template-01.png', title: 'Change face' },
@@ -63,6 +64,18 @@ export function WorkspacePage({ section = 'my-files' }: WorkspacePageProps) {
     return matchesFavorite && matchesSearch;
   }), [favoritesOnly, searchQuery, section, sectionProjects]);
   const sectionTitle = section === 'trash' ? 'Trash' : section === 'pipelines' ? 'Pipelines' : 'My Files';
+
+  if (section === 'pipelines') {
+    return (
+      <>
+        <header className="workspace-header">
+          <h1>{workspace.activeWorkspace?.name ?? 'Workspace Name'}</h1>
+          {workspace.error ? <p className="workspace-load-error" role="alert">{workspace.error}</p> : null}
+        </header>
+        <ExecutablePipelinesSection workspaceId={workspace.activeWorkspace?.id} />
+      </>
+    );
+  }
 
   const createProject = async () => {
     if (creatingProject) return;

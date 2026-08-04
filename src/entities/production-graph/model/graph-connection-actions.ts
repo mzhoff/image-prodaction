@@ -3,6 +3,7 @@ import { validateGenerateImageReferenceLimit } from './connection-rules';
 import {
   canConnectPorts,
   getPortById,
+  getTextPromptVariables,
 } from './node-definitions';
 import {
   compactDynamicInputNodeState,
@@ -20,7 +21,7 @@ import { getConnectionErrorMessage } from './graph-store-errors';
 import { withHistory } from './graph-history';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
-import type { CompositionNodeData, GraphEdge, ProductionNode, ProductionNodeData } from './types';
+import type { CompositionNodeData, GraphEdge, ProductionNode, ProductionNodeData, TextPromptNodeData } from './types';
 
 export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
@@ -357,5 +358,32 @@ function connectEdgeState(
     nextState = compactDynamicInputNodeState(nextState.nodes, nextState.edges, nodeId);
   }
 
+  nextState = insertConnectedTextPromptMention(nextState, connectedEdge.id);
+
   return { edges: nextState.edges, nodes: nextState.nodes };
+}
+
+function insertConnectedTextPromptMention(
+  state: { edges: GraphEdge[]; nodes: ProductionNode[] },
+  edgeId: string,
+) {
+  const edge = state.edges.find((item) => item.id === edgeId);
+  if (!edge) return state;
+  const target = state.nodes.find((node) => node.id === edge.targetNodeId);
+  if (target?.type !== 'textPrompt') return state;
+  const data = target.data as TextPromptNodeData;
+  if (data.text.trim()) return state;
+  const variable = getTextPromptVariables(target).find((item) => item.id === edge.targetPortId);
+  if (!variable) return state;
+
+  return {
+    ...state,
+    nodes: state.nodes.map((node) => node.id === target.id ? {
+      ...node,
+      data: {
+        ...data,
+        text: `@${variable.alias}`,
+      },
+    } as ProductionNode : node),
+  };
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import { Bot, Send, X } from 'lucide-react';
+import { Bot, MessageSquareText, Send, X } from 'lucide-react';
 import { useState } from 'react';
+import { FeedbackPanel } from './feedback-panel';
 
 interface AssistantShellProps {
   open: boolean;
@@ -15,6 +16,8 @@ interface AssistantMessage {
   text: string;
 }
 
+type AssistantShellTab = 'assistant' | 'feedback';
+
 const initialMessages: AssistantMessage[] = [
   {
     id: 'welcome',
@@ -24,6 +27,7 @@ const initialMessages: AssistantMessage[] = [
 ];
 
 export function AssistantShell({ open, contextLabel, onClose }: AssistantShellProps) {
+  const [activeTab, setActiveTab] = useState<AssistantShellTab>('assistant');
   const [messages, setMessages] = useState(initialMessages);
   const [value, setValue] = useState('');
 
@@ -46,15 +50,15 @@ export function AssistantShell({ open, contextLabel, onClose }: AssistantShellPr
     <section
       className={`assistant-shell ${open ? 'assistant-shell-open' : ''}`}
       aria-hidden={!open}
-      aria-label="AI assistant chat"
+      aria-label="Assistant and feedback"
     >
       <header className="assistant-shell-header">
         <div className="assistant-shell-title">
           <span>
-            <Bot size={18} />
+            {activeTab === 'assistant' ? <Bot size={18} /> : <MessageSquareText size={18} />}
           </span>
           <div>
-            <strong>AI Assistant</strong>
+            <strong>{activeTab === 'assistant' ? 'AI Assistant' : 'Feedback'}</strong>
             <small>{contextLabel}</small>
           </div>
         </div>
@@ -62,30 +66,69 @@ export function AssistantShell({ open, contextLabel, onClose }: AssistantShellPr
           <X size={18} />
         </button>
       </header>
-      <div className="assistant-shell-thread">
-        {messages.map((message) => (
-          <div className={`assistant-shell-message assistant-shell-message-${message.role}`} key={message.id}>
-            {message.text}
-          </div>
-        ))}
-      </div>
-      <form
-        className="assistant-shell-composer"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit();
-        }}
-      >
-        <input
-          aria-label="Message assistant"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Ask about this product..."
-        />
-        <button type="submit" aria-label="Send message">
-          <Send size={16} />
+      <div className="assistant-shell-tabs" role="tablist" aria-label="Assistant panel">
+        <button
+          aria-controls="assistant-shell-assistant-panel"
+          aria-selected={activeTab === 'assistant'}
+          onClick={() => setActiveTab('assistant')}
+          role="tab"
+          type="button"
+        >
+          Assistant
         </button>
-      </form>
+        <button
+          aria-controls="assistant-shell-feedback-panel"
+          aria-selected={activeTab === 'feedback'}
+          onClick={() => setActiveTab('feedback')}
+          role="tab"
+          type="button"
+        >
+          Feedback
+        </button>
+      </div>
+
+      {activeTab === 'assistant' ? (
+        <div
+          aria-label="Assistant"
+          className="assistant-shell-assistant-panel"
+          id="assistant-shell-assistant-panel"
+          role="tabpanel"
+        >
+          <div className="assistant-shell-thread">
+            {messages.map((message) => (
+              <div className={`assistant-shell-message assistant-shell-message-${message.role}`} key={message.id}>
+                {message.text}
+              </div>
+            ))}
+          </div>
+          <form
+            className="assistant-shell-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <input
+              aria-label="Message assistant"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder="Ask about this product..."
+            />
+            <button type="submit" aria-label="Send message">
+              <Send size={16} />
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div
+          aria-label="Feedback"
+          className="assistant-shell-feedback-panel"
+          id="assistant-shell-feedback-panel"
+          role="tabpanel"
+        >
+          <FeedbackPanel contextLabel={contextLabel} />
+        </div>
+      )}
     </section>
   );
 }

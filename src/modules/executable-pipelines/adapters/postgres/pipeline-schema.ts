@@ -16,6 +16,7 @@ import type {
   PipelineInputs,
   PipelineRunCompletion,
 } from '../../contracts/pipeline-contracts';
+import type { StudioPipelineSourceMetadata } from '../../contracts/pipeline-publication-contracts';
 import { user } from '@/shared/db/schema/auth';
 import { document } from '@/shared/db/schema/document';
 import { workspace } from '@/shared/db/schema/workspace';
@@ -51,6 +52,7 @@ export const executablePipeline = pgTable('executable_pipeline', {
     .references(() => workspace.id, { onDelete: 'cascade' }),
   originDocumentId: uuid('origin_document_id')
     .references(() => document.id, { onDelete: 'set null' }),
+  originSectionId: text('origin_section_id'),
   createdByUserId: text('created_by_user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'restrict' }),
@@ -69,6 +71,10 @@ export const executablePipeline = pgTable('executable_pipeline', {
     table.updatedAt,
   ),
   index('executable_pipeline_origin_document_idx').on(table.originDocumentId),
+  uniqueIndex('executable_pipeline_origin_section_unique').on(
+    table.originDocumentId,
+    table.originSectionId,
+  ),
 ]);
 
 export const pipelineVersion = pgTable('pipeline_version', {
@@ -78,6 +84,7 @@ export const pipelineVersion = pgTable('pipeline_version', {
     .references(() => executablePipeline.id, { onDelete: 'cascade' }),
   version: integer('version').notNull(),
   compiledPlan: jsonb('compiled_plan').$type<CompiledPipelinePlan>().notNull(),
+  sourceMetadata: jsonb('source_metadata').$type<StudioPipelineSourceMetadata | null>(),
   checksum: text('checksum').notNull(),
   publishedByUserId: text('published_by_user_id')
     .notNull()
@@ -145,6 +152,7 @@ export const pipelineRun = pgTable('pipeline_run', {
   errorMessage: text('error_message'),
   estimatedCostUsd: numeric('estimated_cost_usd', { precision: 20, scale: 8 }),
   actualCostUsd: numeric('actual_cost_usd', { precision: 20, scale: 8 }),
+  totalTokens: numeric('total_tokens', { precision: 20, scale: 0 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   enqueuedAt: timestamp('enqueued_at', { withTimezone: true }).defaultNow().notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }),
