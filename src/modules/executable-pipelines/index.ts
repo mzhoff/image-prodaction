@@ -1,4 +1,9 @@
 export type {
+  ExecutablePipelineCatalog,
+  ExecutablePipelineCatalogItem,
+  ExecutablePipelineCatalogMetrics,
+} from './contracts/pipeline-catalog-contracts';
+export type {
   CompiledPipelinePlan,
   ExecutablePipelineDefinition,
   NewPipelineRun,
@@ -22,6 +27,11 @@ export type {
   PipelineValueContract,
   PipelineValueKind,
 } from './contracts/pipeline-contracts';
+export type {
+  StudioPipelineBoundary,
+  StudioPipelinePublication,
+  StudioPipelineSourceMetadata,
+} from './contracts/pipeline-publication-contracts';
 export {
   PipelineDomainError,
   PipelineNodeHandlerError,

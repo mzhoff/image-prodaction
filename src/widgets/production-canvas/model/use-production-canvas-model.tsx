@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, RotateCcw, Trash2, Unlock, Upload } from 'lucide-react';
+import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, PlayCircle, RotateCcw, Trash2, Unlock, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { getNodeCurrentImageAssetId, getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
@@ -16,6 +16,7 @@ import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { normalizeNodeDisplayState } from '@/entities/production-graph/model/project-schema';
+import { useStudioPipelinePublications } from '@/modules/executable-pipelines/adapters/studio/use-studio-pipeline-publications';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
 import { NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
 import { useCanvasClipboard } from './use-canvas-clipboard';
@@ -111,6 +112,10 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     projectId,
     resetProject: resetProjectForRoute,
     subscribeToProjectChanges,
+  });
+  const studioPipelines = useStudioPipelinePublications({
+    exportSnapshot: exportProjectSnapshotForRoute,
+    projectId,
   });
 
   useEffect(() => {
@@ -271,61 +276,81 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     closeContextMenu();
   }, [canvas, closeContextMenu, createNode]);
 
-  const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => [
-    {
-      id: 'export-section-pipeline',
-      label: 'Export Pipeline',
-      icon: <Download size={14} />,
-      onSelect: () => exportSectionPipelineTemplate(section.id, section.title),
-    },
-    {
-      id: 'rename-section',
-      label: 'Rename group',
-      icon: <Pencil size={14} />,
-      onSelect: () => {
-        const title = window.prompt('Group name', section.title);
-        if (title) graph.renameSection(section.id, title);
+  const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => {
+    const publication = studioPipelines.publicationsBySectionId.get(section.id);
+    const publishing = studioPipelines.publishingSectionIds.has(section.id);
+    return [
+      {
+        id: 'make-section-executable',
+        label: publication ? 'Publish executable version' : 'Make executable',
+        icon: <PlayCircle size={14} />,
+        disabled: publishing || !projectId,
+        onSelect: () => {
+          void studioPipelines.publishSection(section.id)
+            .then((nextPublication) => showToast(
+              `Executable pipeline published: v${nextPublication.version}.`,
+            ))
+            .catch((error) => showToast(
+              error instanceof Error ? error.message : 'Could not publish executable pipeline.',
+            ));
+        },
       },
-    },
-    {
-      id: 'duplicate-section',
-      label: 'Duplicate group',
-      icon: <Copy size={14} />,
-      onSelect: () => graph.duplicateSection(section.id),
-    },
-    {
-      id: 'section-color',
-      kind: 'color',
-      label: 'Background',
-      icon: <Palette size={14} />,
-      value: sectionColorPreviews[section.id] ?? section.color ?? '#d9d9d9',
-      onPreview: (color) => {
-        setSectionColorPreviews((previews) => ({ ...previews, [section.id]: color }));
+      {
+        id: 'export-section-pipeline',
+        label: 'Export Pipeline',
+        icon: <Download size={14} />,
+        separatorBefore: true,
+        onSelect: () => exportSectionPipelineTemplate(section.id, section.title),
       },
-      onCommit: (color) => {
-        setSectionColorPreviews((previews) => {
-          const { [section.id]: _preview, ...nextPreviews } = previews;
-          return nextPreviews;
-        });
-        graph.setSectionColor(section.id, color);
+      {
+        id: 'rename-section',
+        label: 'Rename group',
+        icon: <Pencil size={14} />,
+        onSelect: () => {
+          const title = window.prompt('Group name', section.title);
+          if (title) graph.renameSection(section.id, title);
+        },
       },
-    },
-    {
-      id: 'toggle-section-lock',
-      label: section.locked ? 'Unlock group' : 'Lock group',
-      icon: section.locked ? <Unlock size={14} /> : <Lock size={14} />,
-      separatorBefore: true,
-      onSelect: () => graph.toggleSectionLock(section.id),
-    },
-    {
-      id: 'delete-section',
-      label: 'Delete group',
-      icon: <Trash2 size={14} />,
-      destructive: true,
-      separatorBefore: true,
-      onSelect: () => graph.deleteSection(section.id),
-    },
-  ], [exportSectionPipelineTemplate, graph, sectionColorPreviews]);
+      {
+        id: 'duplicate-section',
+        label: 'Duplicate group',
+        icon: <Copy size={14} />,
+        onSelect: () => graph.duplicateSection(section.id),
+      },
+      {
+        id: 'section-color',
+        kind: 'color',
+        label: 'Background',
+        icon: <Palette size={14} />,
+        value: sectionColorPreviews[section.id] ?? section.color ?? '#d9d9d9',
+        onPreview: (color) => {
+          setSectionColorPreviews((previews) => ({ ...previews, [section.id]: color }));
+        },
+        onCommit: (color) => {
+          setSectionColorPreviews((previews) => {
+            const { [section.id]: _preview, ...nextPreviews } = previews;
+            return nextPreviews;
+          });
+          graph.setSectionColor(section.id, color);
+        },
+      },
+      {
+        id: 'toggle-section-lock',
+        label: section.locked ? 'Unlock group' : 'Lock group',
+        icon: section.locked ? <Unlock size={14} /> : <Lock size={14} />,
+        separatorBefore: true,
+        onSelect: () => graph.toggleSectionLock(section.id),
+      },
+      {
+        id: 'delete-section',
+        label: 'Delete group',
+        icon: <Trash2 size={14} />,
+        destructive: true,
+        separatorBefore: true,
+        onSelect: () => graph.deleteSection(section.id),
+      },
+    ];
+  }, [exportSectionPipelineTemplate, graph, projectId, sectionColorPreviews, showToast, studioPipelines]);
 
   const getCanvasMenuActions = useCallback((worldPoint: { x: number; y: number }): ContextMenuAction[] => [
     {
@@ -514,19 +539,14 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
 
   const openSectionMenu = useCallback((section: GraphSection, event: ReactMouseEvent) => {
     closeContextMenu();
-    if (graph.selectedSectionSet.has(section.id)) {
-      contextMenu.openContextMenu(event, getSectionMenuActions(section), 236);
-      return;
-    }
-
-    const worldPoint = canvas.screenToWorld(event.nativeEvent) ?? { x: 0, y: 0 };
-    contextMenu.openContextMenu(event, getCanvasMenuActions(worldPoint));
-  }, [canvas, closeContextMenu, contextMenu, getCanvasMenuActions, getSectionMenuActions, graph.selectedSectionSet]);
+    graph.selectSection(section.id);
+    contextMenu.openContextMenu(event, getSectionMenuActions(section), 260);
+  }, [closeContextMenu, contextMenu, getSectionMenuActions, graph]);
 
   const handleCanvasMouseDown = (event: ReactMouseEvent) => {
     if (event.button !== 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest('[data-node-id]') || target.closest('button')) return;
+    if (target.closest('[data-node-id]') || target.closest('button, input, [data-canvas-ui]')) return;
     if (event.shiftKey && target.closest('[data-canvas-section]')) return;
     closeContextMenu();
     if (canvasTool === 'section') {
@@ -610,6 +630,11 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     renameSection: graph.renameSection,
     deleteSelected: graph.deleteSelected,
     documentName: documentSync.documentName,
+    documentFavorite: documentSync.favorite,
+    documentStatus: documentSync.documentStatus,
+    moveDocumentToTrash: documentSync.moveDocumentToTrash,
+    renameDocument: documentSync.renameDocument,
+    setDocumentFavorite: documentSync.setDocumentFavorite,
     documentSync: documentSync.syncState,
     workspaceId: documentSync.workspaceId,
     selectedSet: graph.selectedSet,
@@ -617,6 +642,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     selectSection: graph.selectSection,
     sectionDraftStyle: sectionDrawing.sectionDraftStyle,
     sectionColorPreviews,
+    sectionPublications: studioPipelines.publicationsBySectionId,
     sections: graph.sections,
     setCanvasTool,
     startConnection,
@@ -624,6 +650,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     startSectionDrag,
     startSectionResize,
     showAssistantHint: () => showToast('Assistant will be connected in the product chat.'),
+    showToast,
     toastMessage,
     toggleGenerateComposing,
     undo: graph.undo,

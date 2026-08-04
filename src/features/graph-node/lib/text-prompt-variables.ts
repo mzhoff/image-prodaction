@@ -11,6 +11,10 @@ export function composeTextPromptResult(
   variableSlots: TextPromptVariableValue[],
 ) {
   let result = text ?? '';
+  if (!result.trim()) {
+    const connectedValues = variableSlots.map((slot) => slot.value.trim()).filter(Boolean);
+    if (connectedValues.length === 1) return connectedValues[0];
+  }
   const slots = getMentionAliasEntries(variableSlots)
     .sort((first, second) => second.alias.length - first.alias.length);
 

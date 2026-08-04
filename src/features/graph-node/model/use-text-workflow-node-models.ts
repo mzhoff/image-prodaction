@@ -143,8 +143,21 @@ export function useTextPromptNodeModel(node: ProductionNode) {
       value,
     };
   }), [edges, node.id, nodes, variables]);
+  const connectedVariableSlots = variableSlots.filter((slot) => slot.connected);
+  const singleConnectedSlot = connectedVariableSlots.length === 1 ? connectedVariableSlots[0] : undefined;
+  const storedVariable = singleConnectedSlot
+    ? variables.find((variable) => variable.id === singleConnectedSlot.portId)
+    : undefined;
+  const storedMention = singleConnectedSlot ? `@${storedVariable?.alias ?? singleConnectedSlot.alias}` : undefined;
+  const sourceMention = singleConnectedSlot ? `@${singleConnectedSlot.alias}` : undefined;
+  const passthroughMention = storedMention && (!data.text.trim() || data.text.trim() === sourceMention)
+    ? storedMention
+    : undefined;
   const sourceCount = variableSlots.filter((slot) => slot.value.trim()).length;
-  const result = useMemo(() => composeTextPromptResult(data.text, variableSlots), [data.text, variableSlots]);
+  const result = useMemo(
+    () => composeTextPromptResult(passthroughMention ?? data.text, variableSlots),
+    [data.text, passthroughMention, variableSlots],
+  );
   const resultSectionFilters = useTextSectionFilters({
     disabledFilterIds: data.disabledResultFilterIds,
     onDisabledFilterIdsChange: (disabledResultFilterIds) => updateNodeData(node.id, { disabledResultFilterIds }),
@@ -155,6 +168,7 @@ export function useTextPromptNodeModel(node: ProductionNode) {
 
   useEffect(() => {
     const nextData: Partial<TextPromptNodeData> = {};
+    if (passthroughMention && data.text !== passthroughMention) nextData.text = passthroughMention;
     if (data.result !== result) nextData.result = result;
     if (data.sourceCount !== sourceCount) nextData.sourceCount = sourceCount;
     if (data.textareaHeight !== textareaHeight) nextData.textareaHeight = textareaHeight;
@@ -162,7 +176,7 @@ export function useTextPromptNodeModel(node: ProductionNode) {
     if (!samePromptVariables(data.variables, variables)) nextData.variables = variables;
     if (Object.keys(nextData).length === 0) return;
     updateNodeDataSilent(node.id, nextData);
-  }, [data.result, data.sourceCount, data.textareaHeight, data.variableDisplayMode, data.variables, node.id, result, sourceCount, textareaHeight, updateNodeDataSilent, variableDisplayMode, variables]);
+  }, [data.result, data.sourceCount, data.text, data.textareaHeight, data.variableDisplayMode, data.variables, node.id, passthroughMention, result, sourceCount, textareaHeight, updateNodeDataSilent, variableDisplayMode, variables]);
 
   const handleAddVariable = useCallback(() => {
     if (variables.length >= TEXT_PROMPT_VARIABLE_MAX_INPUTS) return undefined;

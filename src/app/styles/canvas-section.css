@@ -77,6 +77,58 @@ html.canvas-section-resizing-diagonal-2 * {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
 }
 
+.canvas-section-badge-executable {
+  top: -104px;
+  padding: 10px 14px;
+}
+
+.canvas-section-badge-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.canvas-section-executable-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #075985;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 16px;
+}
+
+.canvas-section-selected .canvas-section-executable-status {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.canvas-section-executable-contract {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.canvas-section-executable-contract span {
+  border: 1px solid rgba(7, 89, 133, 0.18);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.64);
+  color: #334155;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 14px;
+}
+
+.canvas-section-selected .canvas-section-executable-contract span {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
 .canvas-section-selected .canvas-section-badge {
   border-color: color-mix(in srgb, var(--section-accent) 62%, #111);
   background: color-mix(in srgb, var(--section-accent) 62%, #111);

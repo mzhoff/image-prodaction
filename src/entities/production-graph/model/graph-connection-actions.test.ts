@@ -339,6 +339,24 @@ test('text prompt variables keep one edge per variable slot and allow moving wit
   assert.equal(sourceBResult.targetPortId, 'variable-0');
 });
 
+test('connecting text to an empty prompt inserts the variable mention', () => {
+  resetState({
+    nodes: [textSourceA, textPromptTargetWithVariables],
+  });
+
+  const result = useProductionGraphStore.getState().connect(
+    'text-source-a',
+    'text',
+    'prompt-target',
+    'variable-0',
+  );
+
+  assert.equal(result.ok, true);
+  const target = useProductionGraphStore.getState().nodes.find((node) => node.id === 'prompt-target');
+  assert.ok(target);
+  assert.equal((target.data as { text?: string }).text, '@Variable 1');
+});
+
 test('export image node allows multiple image edges each on its own dynamic port', () => {
   resetState({
     nodes: [

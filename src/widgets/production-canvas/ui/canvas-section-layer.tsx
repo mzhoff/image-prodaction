@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { sortSectionsForRender } from '@/entities/production-graph/model/graph-section-layout';
 import type { GraphSection } from '@/entities/production-graph/model/types';
+import type { StudioPipelinePublication } from '@/modules/executable-pipelines/contracts/pipeline-publication-contracts';
 import { cn } from '@/shared/lib/cn';
+import { Workflow } from 'lucide-react';
 import type { SectionResizeHandle } from '../model/use-section-resize';
 
 interface CanvasSectionLayerProps {
@@ -13,6 +15,7 @@ interface CanvasSectionLayerProps {
   onStartDrag: (section: GraphSection, event: ReactPointerEvent<HTMLElement>) => void;
   onStartResize: (section: GraphSection, handle: SectionResizeHandle, event: ReactPointerEvent<HTMLElement>) => void;
   sectionColorPreviews?: Record<string, string>;
+  sectionPublications?: ReadonlyMap<string, StudioPipelinePublication>;
   sections: GraphSection[];
   selectedSectionSet: Set<string>;
 }
@@ -25,6 +28,7 @@ export function CanvasSectionLayer({
   onStartDrag,
   onStartResize,
   sectionColorPreviews,
+  sectionPublications,
   sections,
   selectedSectionSet,
 }: CanvasSectionLayerProps) {
@@ -37,6 +41,7 @@ export function CanvasSectionLayer({
           key={section.id}
           section={section}
           previewColor={sectionColorPreviews?.[section.id]}
+          publication={sectionPublications?.get(section.id)}
           selected={selectedSectionSet.has(section.id)}
           onRenameSection={onRenameSection}
           onSectionContextMenu={onSectionContextMenu}
@@ -57,6 +62,7 @@ function CanvasSection({
   onStartResize,
   section,
   previewColor,
+  publication,
   selected,
 }: {
   onRenameSection: (sectionId: string, title: string) => void;
@@ -66,6 +72,7 @@ function CanvasSection({
   onStartResize: (section: GraphSection, handle: SectionResizeHandle, event: ReactPointerEvent<HTMLElement>) => void;
   section: GraphSection;
   previewColor?: string;
+  publication?: StudioPipelinePublication;
   selected: boolean;
 }) {
   const cancelEditRef = useRef(false);
@@ -125,7 +132,7 @@ function CanvasSection({
       } as CSSProperties}
     >
       <div
-        className="canvas-section-badge"
+        className={cn('canvas-section-badge', publication && 'canvas-section-badge-executable')}
         onDoubleClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -136,32 +143,53 @@ function CanvasSection({
           if (selected && !section.locked) onStartDrag(section, event);
         }}
       >
-        {editing ? (
-          <input
-            ref={inputRef}
-            size={Math.max(8, draftTitle.length || 8)}
-            value={draftTitle}
-            onBlur={commitTitle}
-            onChange={(event) => setDraftTitle(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                commitTitle();
-              }
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                cancelEditRef.current = true;
-                setDraftTitle(section.title);
-                setEditing(false);
-              }
-            }}
-            onPointerDown={(event) => {
-              event.stopPropagation();
-            }}
-          />
-        ) : (
-          section.title
-        )}
+        <div className="canvas-section-badge-title">
+          {editing ? (
+            <input
+              ref={inputRef}
+              size={Math.max(8, draftTitle.length || 8)}
+              value={draftTitle}
+              onBlur={commitTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  commitTitle();
+                }
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancelEditRef.current = true;
+                  setDraftTitle(section.title);
+                  setEditing(false);
+                }
+              }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+            />
+          ) : (
+            <span>{section.title}</span>
+          )}
+          {publication ? (
+            <span className="canvas-section-executable-status" title={`Endpoint: ${publication.endpointPublicId}`}>
+              <Workflow size={15} /> Executable v{publication.version}
+            </span>
+          ) : null}
+        </div>
+        {publication ? (
+          <div className="canvas-section-executable-contract">
+            {publication.inputs.map((input) => (
+              <span key={`${input.nodeId}-${input.portId}`}>
+                Input: {input.nodeTitle} · {input.kind}
+              </span>
+            ))}
+            {publication.outputs.map((output) => (
+              <span key={`${output.nodeId}-${output.portId}`}>
+                Output: {output.nodeTitle} · {output.kind}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
       {selected && !section.locked ? (
         <>

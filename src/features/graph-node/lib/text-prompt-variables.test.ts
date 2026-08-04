@@ -29,6 +29,15 @@ test('composeTextPromptResult ignores connected variables that are not reference
   assert.equal(result, 'Create a poster.');
 });
 
+test('composeTextPromptResult passes through the only connected value when the prompt is empty', () => {
+  const result = composeTextPromptResult(
+    '',
+    [{ alias: 'Generated text', value: 'Ready server result' }],
+  );
+
+  assert.equal(result, 'Ready server result');
+});
+
 test('composeTextPromptResult supports source node aliases and legacy variable aliases', () => {
   const result = composeTextPromptResult(
     'Audience: @Целевая аудитория\nProblem: @Variable 2',

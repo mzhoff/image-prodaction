@@ -64,6 +64,20 @@
       "when": 1785471988877,
       "tag": "0008_wide_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785530054754,
+      "tag": "0009_cute_vargas",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785532604640,
+      "tag": "0010_ambitious_raider",
+      "breakpoints": true
     }
   ]
 }

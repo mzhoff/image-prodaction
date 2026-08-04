@@ -1,0 +1,1 @@
+ALTER TABLE "pipeline_run" ADD COLUMN "total_tokens" numeric(20, 0);

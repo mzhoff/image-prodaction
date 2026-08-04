@@ -1,11 +1,13 @@
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 
 export interface DocumentProject {
+  favorite: boolean;
   id: string;
   name: string;
   revision: number;
   schemaVersion: number;
   snapshot?: ProjectExport;
+  status: 'active' | 'trash';
   workspaceId: string;
 }
 
@@ -47,6 +49,17 @@ export async function saveDocumentProjectSnapshot(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ expectedRevision, snapshot }),
+  }).then((result) => result.project);
+}
+
+export async function updateDocumentProjectMetadata(
+  projectId: string,
+  metadata: { favorite?: boolean; name?: string; status?: 'active' | 'trash' },
+) {
+  return requestJson<{ project: DocumentProject }>(`/api/projects/${encodeURIComponent(projectId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(metadata),
   }).then((result) => result.project);
 }
 

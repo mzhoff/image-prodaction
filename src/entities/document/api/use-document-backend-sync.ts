@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { activateAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
-import { fetchDocumentProject, saveDocumentProjectSnapshot } from './document-api';
+import {
+  fetchDocumentProject,
+  saveDocumentProjectSnapshot,
+  updateDocumentProjectMetadata,
+} from './document-api';
 import {
   clearDocumentRecoverySnapshot,
   loadDocumentRecoverySnapshot,
@@ -30,12 +34,16 @@ export function useDocumentBackendSync({
   subscribeToProjectChanges,
 }: UseDocumentBackendSyncOptions) {
   const [documentName, setDocumentName] = useState<string>();
+  const [favorite, setFavorite] = useState(false);
+  const [documentStatus, setDocumentStatus] = useState<'active' | 'trash'>('active');
   const [workspaceId, setWorkspaceId] = useState<string>();
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
 
   useEffect(() => {
     if (!projectId) {
       setDocumentName(undefined);
+      setFavorite(false);
+      setDocumentStatus('active');
       setWorkspaceId(undefined);
       setSyncState({ phase: 'idle' });
       return undefined;
@@ -123,6 +131,8 @@ export function useDocumentBackendSync({
           workspaceId: project.workspaceId,
         });
         setDocumentName(project.name);
+        setFavorite(project.favorite);
+        setDocumentStatus(project.status);
         setWorkspaceId(project.workspaceId);
         if (recoverySnapshot) {
           setSyncState({
@@ -168,5 +178,27 @@ export function useDocumentBackendSync({
     };
   }, [exportSnapshot, importSnapshot, projectId, resetProject, subscribeToProjectChanges]);
 
-  return { documentName, syncState, workspaceId };
+  const updateMetadata = useCallback(async (metadata: {
+    favorite?: boolean;
+    name?: string;
+    status?: 'active' | 'trash';
+  }) => {
+    if (!projectId) throw new Error('Document is not connected to the backend.');
+    const project = await updateDocumentProjectMetadata(projectId, metadata);
+    setDocumentName(project.name);
+    setFavorite(project.favorite);
+    setDocumentStatus(project.status);
+    return project;
+  }, [projectId]);
+
+  return {
+    documentName,
+    documentStatus,
+    favorite,
+    renameDocument: (name: string) => updateMetadata({ name }),
+    setDocumentFavorite: (nextFavorite: boolean) => updateMetadata({ favorite: nextFavorite }),
+    moveDocumentToTrash: () => updateMetadata({ status: 'trash' }),
+    syncState,
+    workspaceId,
+  };
 }
