@@ -1,5 +1,8 @@
 import type { ProviderResult } from '@/modules/provider-connections';
 import { executeInternalOpenRouterChat } from '@/modules/generation';
+import { TEXT_SPLITTER_MAX_ITEMS } from '@/entities/production-graph/model/node-definitions';
+import { splitProductionText } from '@/entities/production-graph/model/text-splitter';
+import type { TextSplitterMode } from '@/entities/production-graph/model/types';
 import type {
   PipelineExecutionContext,
   PipelineNodeHandler,
@@ -7,6 +10,13 @@ import type {
   PipelineValue,
 } from '../contracts/pipeline-contracts';
 import { PipelineNodeHandlerError } from '../contracts/pipeline-errors';
+import { isPipelineArtifactReference } from '../core/pipeline-executor';
+import {
+  createOpenRouterImageAnalyzer,
+  createQueuedImageGenerator,
+  type PipelineImageAnalyzer,
+  type PipelineImageGenerator,
+} from './pipeline-image-operations';
 
 interface PipelineHandlerScope {
   actorUserId: string;
@@ -24,13 +34,25 @@ export type PipelineTextGenerator = (input: {
 
 export function createProductionPipelineHandlerRegistry(
   scope: PipelineHandlerScope,
-  dependencies: { generateText?: PipelineTextGenerator } = {},
+  dependencies: {
+    analyzeImage?: PipelineImageAnalyzer;
+    generateImage?: PipelineImageGenerator;
+    generateText?: PipelineTextGenerator;
+  } = {},
 ): PipelineNodeHandlerRegistry {
   const handlers = [
     createTextTemplateHandler(),
     createTextConcatHandler(),
+    createTextSplitHandler(),
+    createTextFormatHandler(),
     createAiTextHandler(
       dependencies.generateText ?? createOpenRouterTextGenerator(scope),
+    ),
+    createAiImageAnalysisHandler(
+      dependencies.analyzeImage ?? createOpenRouterImageAnalyzer(scope),
+    ),
+    createAiImageGenerationHandler(
+      dependencies.generateImage ?? createQueuedImageGenerator(scope),
     ),
   ];
   const byKey = new Map(handlers.map((handler) => [
@@ -40,6 +62,40 @@ export function createProductionPipelineHandlerRegistry(
   return {
     resolve(handlerType, handlerVersion) {
       return byKey.get(`${handlerType}@${handlerVersion}`) ?? null;
+    },
+  };
+}
+
+function createTextSplitHandler(): PipelineNodeHandler {
+  return {
+    handlerType: 'text.split',
+    handlerVersion: '1',
+    async execute(input) {
+      const text = Object.values(input.inputs).filter(isString).join('\n\n');
+      const items = splitProductionText(
+        text,
+        readTextSplitterMode(input.config.mode),
+        readString(input.config.delimiter),
+      ).slice(0, TEXT_SPLITTER_MAX_ITEMS);
+      return {
+        items,
+        ...Object.fromEntries(items.map((item, index) => [`item-${index}`, item])),
+      };
+    },
+  };
+}
+
+function createTextFormatHandler(): PipelineNodeHandler {
+  return {
+    handlerType: 'text.format',
+    handlerVersion: '1',
+    async execute(input) {
+      const connectedText = Object.values(input.inputs).filter(isString).join('\n\n');
+      return {
+        text: normalizePlainText(
+          connectedText || readString(input.config.fallbackText),
+        ),
+      };
     },
   };
 }
@@ -112,6 +168,66 @@ function createAiTextHandler(generateText: PipelineTextGenerator): PipelineNodeH
           nodeId: input.nodeId,
           signal: input.signal,
           text,
+        }),
+      };
+    },
+  };
+}
+
+function createAiImageAnalysisHandler(analyzeImage: PipelineImageAnalyzer): PipelineNodeHandler {
+  return {
+    handlerType: 'ai.image.analyze',
+    handlerVersion: '1',
+    async execute(input) {
+      const artifact = Object.values(input.inputs).find((value) => (
+        isPipelineArtifactReference(value, 'image')
+      ));
+      if (!artifact) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image analysis requires an image artifact.',
+          nodeId: input.nodeId,
+        });
+      }
+      return {
+        text: await analyzeImage({
+          artifact,
+          config: input.config,
+          context: input.context,
+          nodeId: input.nodeId,
+          signal: input.signal,
+        }),
+      };
+    },
+  };
+}
+
+function createAiImageGenerationHandler(generateImage: PipelineImageGenerator): PipelineNodeHandler {
+  return {
+    handlerType: 'ai.image.generate',
+    handlerVersion: '1',
+    async execute(input) {
+      const textInputs = Object.entries(input.inputs).flatMap(([inputKey, value]) => (
+        typeof value === 'string' ? [{ inputKey, text: value }] : []
+      ));
+      const imageInputs = Object.entries(input.inputs).flatMap(([inputKey, value]) => (
+        isPipelineArtifactReference(value, 'image')
+          ? [{ artifact: value, inputKey }]
+          : []
+      ));
+      if (!textInputs.some((entry) => entry.text.trim()) && !readString(input.config.prompt).trim() && imageInputs.length === 0) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image generation requires a prompt or an image reference.',
+          nodeId: input.nodeId,
+        });
+      }
+      return {
+        image: await generateImage({
+          config: input.config,
+          context: input.context,
+          imageInputs,
+          nodeId: input.nodeId,
+          signal: input.signal,
+          textInputs,
         }),
       };
     },
@@ -223,6 +339,19 @@ function readTemperature(value: PipelineValue | undefined) {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.min(2, Math.max(0, value))
     : 1;
+}
+
+function readTextSplitterMode(value: PipelineValue | undefined): TextSplitterMode {
+  return value === 'newline'
+    || value === 'paragraph'
+    || value === 'numbered-list'
+    || value === 'delimiter'
+    ? value
+    : 'delimiter';
+}
+
+function normalizePlainText(value: string) {
+  return value.replace(/\u00a0/g, ' ').trim();
 }
 
 function isString(value: PipelineValue): value is string {

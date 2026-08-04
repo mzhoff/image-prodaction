@@ -61,6 +61,64 @@ test('rejects a section connected to a node outside its boundary', () => {
   );
 });
 
+test('compiles Router away and binds its consumer directly to the real source', () => {
+  const project = createTextProject();
+  project.nodes.splice(1, 0, node('router-node', 'router', 350, { title: 'Router' }));
+  project.edges = [
+    edge('input-node', 'text', 'router-node', 'input'),
+    edge('router-node', 'output', 'generation-node', 'text'),
+    edge('generation-node', 'result', 'result-node', 'variable-0'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.equal(compiled.compiledPlan.definition.nodes.some((item) => item.id === 'router-node'), false);
+  assert.deepEqual(compiled.compiledPlan.definition.nodes[0]?.inputs.text, {
+    inputKey: 'input',
+    source: 'pipeline-input',
+  });
+});
+
+test('compiles Text Splitter and Text Formatter into production handlers', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('input-node', 'textPrompt', 100, { title: 'Input', text: 'Draft' }),
+    node('split-node', 'textSplitter', 500, {
+      title: 'Parts',
+      mode: 'delimiter',
+      delimiter: '*',
+      items: ['one', 'two'],
+    }),
+    node('format-node', 'textFormatter', 900, {
+      title: 'Formatted',
+      presetId: 'telegram-post',
+      plainText: '',
+      richText: '',
+    }),
+  ];
+  project.edges = [
+    edge('input-node', 'text', 'split-node', 'text'),
+    edge('split-node', 'item-0', 'format-node', 'text'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.deepEqual(compiled.compiledPlan.definition.nodes.map((item) => item.handlerType), [
+    'text.split',
+    'text.format',
+  ]);
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    formatted: { nodeId: 'format-node', outputKey: 'text' },
+  });
+});
+
+test('rejects publication when a compiled handler is absent in production', () => {
+  assert.throws(
+    () => compileStudioSection(createTextProject(), 'section-main', {
+      isHandlerSupported: (handlerType) => handlerType !== 'ai.text.generate',
+    }),
+    /is not supported/,
+  );
+});
+
 function createTextProject(): GraphProject {
   return {
     version: 1,

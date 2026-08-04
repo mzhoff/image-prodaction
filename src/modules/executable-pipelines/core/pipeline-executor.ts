@@ -3,6 +3,7 @@ import type {
   PipelineExecutionContext,
   PipelineExecutionResult,
   PipelineInputBinding,
+  PipelineArtifactReference,
   PipelineInputs,
   PipelineNodeDefinition,
   PipelineNodeHandlerRegistry,
@@ -232,12 +233,38 @@ function matchesValueContract(value: PipelineValue, contract: PipelineValueContr
     return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
   }
   if (contract.kind === 'image_collection') {
-    return Array.isArray(value) && value.every(isStructuredArtifact);
+    return Array.isArray(value) && value.every((entry) => isArtifactReference(entry, 'image'));
   }
-  return isStructuredArtifact(value);
+  if (contract.kind === 'image') return isArtifactReference(value, 'image');
+  if (contract.kind === 'audio') return isArtifactReference(value, 'audio');
+  return isStructuredObject(value);
 }
 
-function isStructuredArtifact(value: PipelineValue) {
+export function isPipelineArtifactReference(
+  value: PipelineValue,
+  kind?: PipelineArtifactReference['kind'],
+): value is PipelineArtifactReference & Record<string, PipelineValue> {
+  return isArtifactReference(value, kind);
+}
+
+function isArtifactReference(
+  value: PipelineValue,
+  kind?: PipelineArtifactReference['kind'],
+) {
+  if (!isStructuredObject(value)) return false;
+  if (value.kind !== 'image' && value.kind !== 'audio') return false;
+  if (kind && value.kind !== kind) return false;
+  if (typeof value.assetId !== 'string' || !value.assetId.trim()) return false;
+  if (value.mimeType !== undefined && typeof value.mimeType !== 'string') return false;
+  if (value.sizeBytes !== undefined && (
+    typeof value.sizeBytes !== 'number'
+    || !Number.isSafeInteger(value.sizeBytes)
+    || value.sizeBytes < 0
+  )) return false;
+  return true;
+}
+
+function isStructuredObject(value: PipelineValue): value is Record<string, PipelineValue> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 

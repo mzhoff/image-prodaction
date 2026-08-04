@@ -7,11 +7,20 @@
 запуск. Сам граф исполняет отдельный процесс `pipeline-worker`, поэтому HTTP-запрос
 не ждёт ответа AI-провайдера и не теряет задачу при перезапуске web-приложения.
 
-Первая версия промышленного registry поддерживает серверные ноды:
+Промышленный registry поддерживает серверные операции:
 
 - `text.template.render`;
 - `text.concat`;
-- `ai.text.generate` через Workspace OpenRouter connection.
+- `text.split`;
+- `text.format`;
+- `ai.text.generate` через Workspace OpenRouter connection;
+- `ai.image.analyze` для ноды Extract;
+- `ai.image.generate` через общую очередь генерации и S3/MinIO assets.
+
+`Router` не запускает отдельную операцию: при публикации компилятор прозрачно
+соединяет его вход с потребителем. Публикация отклоняется заранее, если хотя бы
+для одной ноды нет production-handler. Builder-ноды, коррекция изображений и
+публикации в сторонние сервисы пока не входят в серверный registry.
 
 AI-вызов использует отдельный durable generation job и контрольную точку результата.
 Повторная обработка одного `pipelineRunId + nodeId` восстанавливает уже оплаченный
@@ -63,6 +72,25 @@ Authorization: Bearer rvr_pipe_...
 
 Пока задача выполняется, `outputs` равен `null`. После статуса `succeeded` там
 находится объект выходов, автоматически выведенных при публикации pipeline.
+Изображение возвращается не бинарной строкой, а типизированной ссылкой:
+
+```json
+{
+  "image": {
+    "kind": "image",
+    "assetId": "019f...",
+    "mimeType": "image/png",
+    "sizeBytes": 123456,
+    "width": 1024,
+    "height": 1024,
+    "checksumSha256": "...",
+    "contentUrl": "/v1/runs/{runId}/artifacts/{assetId}"
+  }
+}
+```
+
+Содержимое `contentUrl` скачивается тем же Bearer token. Endpoint разрешает
+получить только asset, который действительно объявлен результатом этого run.
 
 ## Отмена
 
@@ -98,4 +126,8 @@ pipeline не конфликтуют.
 Runtime API, получение результата, повтор без второго вызова, конфликт payload,
 метрики и журнал нод.
 
-Генерация изображений и временные ссылки на artifacts входят в следующий этап.
+Для `Import Image` внешний input имеет вид
+`{"kind":"image","assetId":"..."}`. Asset должен существовать в том же
+Workspace. Отдельный service endpoint для загрузки входных файлов остаётся
+следующим этапом; первый внешний image-pipeline уже можно строить как
+`Text Prompt → Generate Image → Preview`.

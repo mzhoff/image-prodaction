@@ -15,6 +15,7 @@ import type {
   StudioPipelinePublication,
   StudioPipelineSourceMetadata,
 } from '../contracts/pipeline-publication-contracts';
+import { isProductionPipelineHandlerSupported } from './pipeline-production-manifest';
 
 export async function listStudioPipelinePublications(input: {
   documentId: string;
@@ -50,7 +51,9 @@ export async function publishStudioPipeline(input: {
 }) {
   const document = await getDocument(input.userId, input.documentId);
   const snapshot = validateDocumentSnapshot(input.snapshot);
-  const compilation = compileStudioSection(snapshot.project, input.sectionId);
+  const compilation = compileStudioSection(snapshot.project, input.sectionId, {
+    isHandlerSupported: isProductionPipelineHandlerSupported,
+  });
   const checksum = checksumPublication(compilation);
   const publishedAt = new Date();
 

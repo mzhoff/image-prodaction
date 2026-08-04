@@ -7,8 +7,10 @@ import type {
   ImageToTextNodeData,
   ProductionNode,
   TextConcatNodeData,
+  TextFormatterNodeData,
   TextGenerationNodeData,
   TextPromptNodeData,
+  TextSplitterNodeData,
 } from '@/entities/production-graph/model/types';
 import type {
   ExecutablePipelineDefinition,
@@ -22,7 +24,10 @@ import type {
   StudioPipelineSourceMetadata,
 } from '../../contracts/pipeline-publication-contracts';
 import { PipelineDomainError } from '../../contracts/pipeline-errors';
-import { compilePipelineDefinition } from '../../core/pipeline-compiler';
+import {
+  compilePipelineDefinition,
+  type PipelineCompilerOptions,
+} from '../../core/pipeline-compiler';
 
 export interface CompiledStudioPipeline {
   compiledPlan: ReturnType<typeof compilePipelineDefinition>;
@@ -32,7 +37,11 @@ export interface CompiledStudioPipeline {
 const BOUNDARY_INPUT_TYPES = new Set<ProductionNode['type']>(['importImage', 'textPrompt']);
 const SINK_TYPES = new Set<ProductionNode['type']>(['preview']);
 
-export function compileStudioSection(project: GraphProject, sectionId: string): CompiledStudioPipeline {
+export function compileStudioSection(
+  project: GraphProject,
+  sectionId: string,
+  options: PipelineCompilerOptions = {},
+): CompiledStudioPipeline {
   const section = project.sections.find((item) => item.id === sectionId);
   if (!section) throw invalidPipeline('Секция не найдена в текущем документе.');
 
@@ -75,11 +84,16 @@ export function compileStudioSection(project: GraphProject, sectionId: string): 
     return createBoundary(node, port.id, name, port.kind);
   });
 
-  const runtimeNodes = nodes.filter((node) => !inputNameByNodeId.has(node.id) && !SINK_TYPES.has(node.type));
+  const runtimeNodes = nodes.filter((node) => (
+    !inputNameByNodeId.has(node.id)
+    && !SINK_TYPES.has(node.type)
+    && node.type !== 'router'
+  ));
   const runtimeNodeIdSet = new Set(runtimeNodes.map((node) => node.id));
   const definitionNodes = runtimeNodes.map((node) => createRuntimeNodeDefinition({
     edges: incomingByNode.get(node.id) ?? [],
     inputNameByNodeId,
+    incomingByNode,
     node,
     nodeById,
     runtimeNodeIdSet,
@@ -91,7 +105,13 @@ export function compileStudioSection(project: GraphProject, sectionId: string): 
   const leafNodes = nodes.filter((node) => (outgoingByNode.get(node.id)?.length ?? 0) === 0);
 
   for (const leaf of leafNodes) {
-    const resolved = resolveLeafOutput(leaf, incomingByNode.get(leaf.id) ?? [], nodeById, runtimeNodeIdSet);
+    const resolved = resolveLeafOutput(
+      leaf,
+      incomingByNode.get(leaf.id) ?? [],
+      incomingByNode,
+      nodeById,
+      runtimeNodeIdSet,
+    );
     if (!resolved) continue;
     const name = createUniqueKey(getNodeTitle(leaf), 'output', usedOutputNames);
     outputs[name] = { nodeId: resolved.node.id, outputKey: resolved.outputKey };
@@ -116,7 +136,7 @@ export function compileStudioSection(project: GraphProject, sectionId: string): 
   };
 
   return {
-    compiledPlan: compilePipelineDefinition(definition),
+    compiledPlan: compilePipelineDefinition(definition, options),
     sourceMetadata: {
       sectionId: section.id,
       sectionTitle: section.title,
@@ -130,6 +150,7 @@ export function compileStudioSection(project: GraphProject, sectionId: string): 
 function createRuntimeNodeDefinition(input: {
   edges: GraphEdge[];
   inputNameByNodeId: ReadonlyMap<string, string>;
+  incomingByNode: ReadonlyMap<string, GraphEdge[]>;
   node: ProductionNode;
   nodeById: ReadonlyMap<string, ProductionNode>;
   runtimeNodeIdSet: ReadonlySet<string>;
@@ -139,8 +160,13 @@ function createRuntimeNodeDefinition(input: {
   const inputCounts = new Map<string, number>();
 
   for (const edge of input.edges) {
-    const source = input.nodeById.get(edge.sourceNodeId);
-    if (!source) continue;
+    const resolvedSource = resolveTransparentSource(
+      edge,
+      input.incomingByNode,
+      input.nodeById,
+    );
+    if (!resolvedSource) continue;
+    const { source, sourcePortId } = resolvedSource;
     const count = inputCounts.get(edge.targetPortId) ?? 0;
     inputCounts.set(edge.targetPortId, count + 1);
     const inputKey = count === 0 ? edge.targetPortId : `${edge.targetPortId}.${count + 1}`;
@@ -153,7 +179,7 @@ function createRuntimeNodeDefinition(input: {
     if (!input.runtimeNodeIdSet.has(source.id)) {
       throw invalidPipeline(`Нода «${getNodeTitle(source)}» не поддерживается как источник серверной операции.`);
     }
-    const sourceOutput = getRuntimeOutput(source, edge.sourcePortId);
+    const sourceOutput = getRuntimeOutput(source, sourcePortId);
     if (!sourceOutput) {
       throw invalidPipeline(`Выход «${edge.sourcePortId}» ноды «${getNodeTitle(source)}» нельзя исполнить на сервере.`);
     }
@@ -210,6 +236,27 @@ function getRuntimeDescriptor(node: ProductionNode): { handlerType: string; conf
         },
       };
     }
+    case 'textSplitter': {
+      const data = node.data as TextSplitterNodeData;
+      return {
+        handlerType: 'text.split',
+        config: {
+          activeItemIndex: data.activeItemIndex ?? 0,
+          delimiter: data.delimiter,
+          mode: data.mode,
+        },
+      };
+    }
+    case 'textFormatter': {
+      const data = node.data as TextFormatterNodeData;
+      return {
+        handlerType: 'text.format',
+        config: {
+          fallbackText: data.result || data.plainText || data.sourceText || '',
+          presetId: data.presetId,
+        },
+      };
+    }
     case 'imageToText': {
       const data = node.data as ImageToTextNodeData;
       return {
@@ -241,15 +288,30 @@ function getRuntimeDescriptor(node: ProductionNode): { handlerType: string; conf
 function resolveLeafOutput(
   leaf: ProductionNode,
   incomingEdges: GraphEdge[],
+  incomingByNode: ReadonlyMap<string, GraphEdge[]>,
   nodeById: ReadonlyMap<string, ProductionNode>,
   runtimeNodeIdSet: ReadonlySet<string>,
 ) {
   if (leaf.type === 'preview') {
     const edge = incomingEdges[0];
-    const source = edge ? nodeById.get(edge.sourceNodeId) : undefined;
-    if (!edge || !source || !runtimeNodeIdSet.has(source.id)) return null;
-    const output = getRuntimeOutput(source, edge.sourcePortId);
+    const resolvedSource = edge
+      ? resolveTransparentSource(edge, incomingByNode, nodeById)
+      : null;
+    const source = resolvedSource?.source;
+    if (!source || !runtimeNodeIdSet.has(source.id)) return null;
+    const output = getRuntimeOutput(source, resolvedSource.sourcePortId);
     return output ? { ...output, node: source, portId: 'image' } : null;
+  }
+
+  if (leaf.type === 'router') {
+    const edge = incomingEdges[0];
+    const resolvedSource = edge
+      ? resolveTransparentSource(edge, incomingByNode, nodeById)
+      : null;
+    const source = resolvedSource?.source;
+    if (!source || !runtimeNodeIdSet.has(source.id)) return null;
+    const output = getRuntimeOutput(source, resolvedSource.sourcePortId);
+    return output ? { ...output, node: source, portId: 'output' } : null;
   }
 
   if (!runtimeNodeIdSet.has(leaf.id)) return null;
@@ -263,9 +325,30 @@ function getRuntimeOutput(node: ProductionNode, sourcePortId: string): { kind: P
   if (node.type === 'textPrompt' && sourcePortId === 'text') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textConcat' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textGeneration' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
+  if (node.type === 'textFormatter' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
+  if (node.type === 'textSplitter' && sourcePortId === 'items') return { kind: 'text_collection', outputKey: 'items' };
+  if (node.type === 'textSplitter' && /^item-\d+$/.test(sourcePortId)) return { kind: 'text', outputKey: sourcePortId };
   if (node.type === 'imageToText' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'generateImage' && sourcePortId === 'image') return { kind: 'image', outputKey: 'image' };
   return null;
+}
+
+function resolveTransparentSource(
+  edge: GraphEdge,
+  incomingByNode: ReadonlyMap<string, GraphEdge[]>,
+  nodeById: ReadonlyMap<string, ProductionNode>,
+  visited = new Set<string>(),
+): { source: ProductionNode; sourcePortId: string } | null {
+  const source = nodeById.get(edge.sourceNodeId);
+  if (!source) return null;
+  if (source.type !== 'router') return { source, sourcePortId: edge.sourcePortId };
+  if (visited.has(source.id)) throw invalidPipeline('Обнаружен цикл из Router-нод.');
+  visited.add(source.id);
+  const routerInputs = incomingByNode.get(source.id) ?? [];
+  if (routerInputs.length !== 1) {
+    throw invalidPipeline(`Router «${getNodeTitle(source)}» должен иметь ровно один вход.`);
+  }
+  return resolveTransparentSource(routerInputs[0]!, incomingByNode, nodeById, visited);
 }
 
 function createBoundary(

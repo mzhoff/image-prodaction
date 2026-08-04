@@ -178,8 +178,10 @@ assert.equal(filteredLibrary.items[0]?.document?.id, projectId);
 const generatedAsset = exerciseFakeGeneration
   ? await exerciseGenerationVertical(ownerCookie, workspaceId, projectId)
   : null;
+let imagePipelineAsset: { id: string } | null = null;
 if (exerciseFakeGeneration) {
   await exercisePipelineRuntime(ownerCookie, projectId);
+  imagePipelineAsset = await exerciseImagePipelineRuntime(ownerCookie, projectId);
 }
 
 await rejectUploadWithoutDurableOrigin(ownerCookie, workspaceId, projectId);
@@ -235,6 +237,7 @@ assert.deepEqual(
     libraryUploadedAsset.id,
     librarySavedAsset.id,
     ...(generatedAsset ? [generatedAsset.id] : []),
+    ...(imagePipelineAsset ? [imagePipelineAsset.id] : []),
   ]),
 );
 assert.equal(
@@ -578,6 +581,77 @@ async function exercisePipelineRuntime(cookie: string, documentId: string) {
   }
 }
 
+async function exerciseImagePipelineRuntime(cookie: string, documentId: string) {
+  const published = await requestJson(`/api/projects/${documentId}/pipelines`, {
+    cookie,
+    expectedStatus: 201,
+    method: 'POST',
+    json: {
+      sectionId: 'section-image-runtime-smoke',
+      snapshot: createImageExecutablePipelineSnapshot(),
+    },
+  });
+  const endpointPublicId = published.pipeline?.endpointPublicId as string;
+  const [endpoint] = await getDb().select({
+    endpointId: pipelineEndpoint.id,
+    createdByUserId: pipelineVersion.publishedByUserId,
+  }).from(pipelineEndpoint)
+    .innerJoin(pipelineVersion, eq(pipelineVersion.id, pipelineEndpoint.activeVersionId))
+    .where(eq(pipelineEndpoint.publicId, endpointPublicId))
+    .limit(1);
+  assert.ok(endpoint, 'Published image pipeline endpoint was not persisted.');
+  const apiKey = await createPipelineApiKey({
+    createdByUserId: endpoint.createdByUserId,
+    endpointId: endpoint.endpointId,
+    label: 'Backend smoke image pipeline',
+    sourceApplication: 'backend-smoke-image',
+  });
+  const authorization = { Authorization: `Bearer ${apiKey.token}` };
+
+  try {
+    const submitted = await requestJson(`/v1/pipelines/${endpointPublicId}/runs`, {
+      expectedStatus: 202,
+      method: 'POST',
+      headers: {
+        ...authorization,
+        'Idempotency-Key': `backend-smoke-image-pipeline-${runId}`,
+      },
+      json: { input: { prompt: 'A one pixel pipeline image' } },
+    });
+    const pipelineRunId = submitted.id as string;
+    let completed: Record<string, any> | null = null;
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const current = await requestJson(`/v1/runs/${pipelineRunId}`, {
+        expectedStatus: 200,
+        headers: authorization,
+      });
+      if (current.status === 'succeeded') {
+        completed = current;
+        break;
+      }
+      if (current.status === 'failed' || current.status === 'canceled') {
+        throw new Error(
+          `Image pipeline run ${pipelineRunId} finished unexpectedly: ${JSON.stringify(current)}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    assert.ok(completed, `Image pipeline run ${pipelineRunId} did not finish before the smoke timeout.`);
+    const artifact = completed.outputs?.preview as Record<string, unknown>;
+    assert.equal(artifact.kind, 'image');
+    assert.equal(typeof artifact.assetId, 'string');
+    assert.equal(typeof artifact.contentUrl, 'string');
+    await requestBinary(artifact.contentUrl as string, {
+      expectedStatus: 200,
+      expectedBytes: onePixelPng,
+      headers: authorization,
+    });
+    return { id: artifact.assetId as string };
+  } finally {
+    await getDb().delete(pipelineApiKey).where(eq(pipelineApiKey.id, apiKey.id));
+  }
+}
+
 async function requestJson(path: string, options: SmokeRequestOptions) {
   const response = await request(path, options);
   const payload = await response.json().catch(() => null);
@@ -676,6 +750,35 @@ function createExecutablePipelineSnapshot() {
   snapshot.project.edges = [
     productionEdge('input-node', 'text', 'generation-node', 'text'),
     productionEdge('generation-node', 'result', 'result-node', 'variable-0'),
+  ];
+  return snapshot;
+}
+
+function createImageExecutablePipelineSnapshot() {
+  const snapshot = createEmptySnapshot() as Record<string, any>;
+  snapshot.project.nodes = [
+    productionNode('prompt-node', 'textPrompt', 100, {
+      title: 'Prompt',
+      text: 'Draft image prompt',
+    }),
+    productionNode('image-generation-node', 'generateImage', 500, {
+      title: 'Generate Image',
+      model: 'google/gemini-2.5-flash-image',
+      prompt: '',
+      aspectRatio: '1:1',
+      size: '1K',
+    }),
+    productionNode('preview-node', 'preview', 900, { title: 'Preview' }),
+  ];
+  snapshot.project.sections = [{
+    id: 'section-image-runtime-smoke',
+    title: 'Image Runtime Smoke Pipeline',
+    position: { x: 0, y: 0 },
+    size: { width: 1800, height: 1200 },
+  }];
+  snapshot.project.edges = [
+    productionEdge('prompt-node', 'text', 'image-generation-node', 'prompt'),
+    productionEdge('image-generation-node', 'image', 'preview-node', 'image'),
   ];
   return snapshot;
 }

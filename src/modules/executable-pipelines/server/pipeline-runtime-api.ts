@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import {
+  AssetNotFoundError,
+  AssetNotReadyError,
+  getAssetContent,
+} from '@/entities/asset/server/asset-service';
 import { apiError } from '@/shared/api/api-error';
 import { createUuidV7, isUuidV7 } from '@/shared/lib/id';
 import { createPostgresPipelineRunStore } from '../adapters/postgres/postgres-pipeline-run-store';
@@ -113,6 +118,42 @@ export async function cancelPipelineRuntimeRun(request: Request, runId: string) 
   }
 }
 
+export async function getPipelineRuntimeArtifact(
+  request: Request,
+  runId: string,
+  assetId: string,
+) {
+  try {
+    if (!isUuidV7(runId) || !isUuidV7(assetId)) {
+      return apiError('pipeline_run_not_found', 'Pipeline artifact was not found.', 404);
+    }
+    const identity = await authenticatePipelineApiRequest(request);
+    const store = createPostgresPipelineRunStore();
+    const run = await store.findById(runId);
+    if (!run || run.pipelineId !== identity.pipelineId || run.status !== 'succeeded') {
+      return apiError('pipeline_run_not_found', 'Pipeline artifact was not found.', 404);
+    }
+    const result = await store.getResult(run.id);
+    if (!result || !containsAssetReference(result.outputs, assetId)) {
+      return apiError('pipeline_run_not_found', 'Pipeline artifact was not found.', 404);
+    }
+    const content = await getAssetContent(identity.publishedByUserId, assetId);
+    if (content.asset.workspaceId !== run.workspaceId) {
+      return apiError('pipeline_run_not_found', 'Pipeline artifact was not found.', 404);
+    }
+    return new Response(content.object.body, {
+      headers: {
+        'Cache-Control': 'private, max-age=31536000, immutable',
+        'Content-Length': String(content.object.contentLength ?? content.byteSize),
+        'Content-Type': content.contentType,
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
+  } catch (error) {
+    return toPipelineRuntimeError(error);
+  }
+}
+
 function toRuntimeRun(input: {
   endpointPublicId: string;
   idempotentReplay: boolean;
@@ -187,6 +228,13 @@ function isPipelineValue(value: unknown): value is PipelineValue {
   return Object.values(value).every(isPipelineValue);
 }
 
+function containsAssetReference(value: PipelineValue, assetId: string): boolean {
+  if (Array.isArray(value)) return value.some((entry) => containsAssetReference(entry, assetId));
+  if (!value || typeof value !== 'object') return false;
+  if (value.assetId === assetId && (value.kind === 'image' || value.kind === 'audio')) return true;
+  return Object.values(value).some((entry) => containsAssetReference(entry, assetId));
+}
+
 function toPipelineRuntimeError(error: unknown) {
   if (error instanceof PipelineApiKeyAuthenticationError) {
     const response = apiError('unauthorized', error.message, 401);
@@ -200,6 +248,12 @@ function toPipelineRuntimeError(error: unknown) {
         ? 404
         : 422;
     return apiError(error.code, error.message, status);
+  }
+  if (error instanceof AssetNotFoundError) {
+    return apiError('pipeline_run_not_found', 'Pipeline artifact was not found.', 404);
+  }
+  if (error instanceof AssetNotReadyError) {
+    return apiError('pipeline_artifact_not_ready', 'Pipeline artifact is not ready.', 409);
   }
   console.error('Pipeline Runtime API request failed', {
     errorName: error instanceof Error ? error.name : 'UnknownError',

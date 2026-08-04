@@ -8,7 +8,7 @@ import { PipelineDomainError } from '../contracts/pipeline-errors';
 import { createTextPipelineFixture } from '../testing/pipeline-fixtures';
 import { createStaticPipelineHandlerRegistry } from '../testing/static-pipeline-handler-registry';
 import { compilePipelineDefinition } from './pipeline-compiler';
-import { executeCompiledPipeline } from './pipeline-executor';
+import { executeCompiledPipeline, validatePipelineInputValues } from './pipeline-executor';
 
 test('executor resolves bindings and runs independent nodes in one level', async () => {
   const started: string[] = [];
@@ -96,6 +96,19 @@ test('executor reports a missing declared node output safely', async () => {
       && error.code === 'pipeline_node_output_missing'
     ),
   );
+});
+
+test('image inputs require a typed artifact reference instead of arbitrary JSON', () => {
+  const contracts = {
+    image: { kind: 'image' as const, required: true },
+  };
+  assert.throws(
+    () => validatePipelineInputValues(contracts, { image: { assetId: 'asset-1' } }),
+    /does not match kind "image"/,
+  );
+  assert.doesNotThrow(() => validatePipelineInputValues(contracts, {
+    image: { assetId: 'asset-1', kind: 'image' },
+  }));
 });
 
 function createTextHandlers(started: string[]): PipelineNodeHandler[] {
