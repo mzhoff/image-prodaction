@@ -127,6 +127,8 @@ jobs:
               --pretty > /dev/null
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
+      - name: Executable pipeline persistence smoke
+        run: npm run test:pipeline-persistence-smoke
       - name: Start production web and worker
         run: |
           mkdir -p .next/standalone/public .next/standalone/.next/static
@@ -145,8 +147,6 @@ jobs:
         run: npm run test:backend-smoke
       - name: Generation persistence smoke
         run: npm run test:generation-persistence-smoke
-      - name: Executable pipeline persistence smoke
-        run: npm run test:pipeline-persistence-smoke
       - name: Browser critical-path E2E
         run: npx playwright test
       - name: Build production container
