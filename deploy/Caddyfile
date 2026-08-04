@@ -4,9 +4,6 @@
 
 (reverie_app) {
 	encode zstd gzip
-	handle_path /api/feedback/* {
-		reverse_proxy {$FEEDBACK_UPSTREAM}
-	}
 	handle {
 		reverse_proxy web:3000
 	}
