@@ -572,7 +572,7 @@
 }
 .workspace-pipeline-table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 1220px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -592,6 +592,7 @@
 .workspace-pipeline-table th:nth-child(5) { width: 9%; }
 .workspace-pipeline-table th:nth-child(6) { width: 10%; }
 .workspace-pipeline-table th:nth-child(7) { width: 9%; }
+.workspace-pipeline-table th:nth-child(8) { width: 10%; }
 .workspace-pipeline-table td {
   height: 76px;
   border-top: 1px solid #ededee;
@@ -842,6 +843,6 @@
     flex-basis: auto;
   }
   .workspace-pipeline-table {
-    min-width: 1040px;
+    min-width: 1140px;
   }
 }

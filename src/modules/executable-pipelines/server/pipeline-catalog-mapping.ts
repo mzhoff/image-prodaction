@@ -59,7 +59,7 @@ function fallbackInputs(plan: CompiledPipelinePlan): StudioPipelineBoundary[] {
 
 function fallbackOutputs(plan: CompiledPipelinePlan): StudioPipelineBoundary[] {
   return Object.entries(plan.definition.outputs).map(([name, binding]) => ({
-    kind: inferOutputKind(plan, binding.nodeId, binding.outputKey),
+    kind: inferPipelineOutputKind(plan, binding.nodeId, binding.outputKey),
     name,
     nodeId: binding.nodeId,
     nodeTitle: name,
@@ -67,7 +67,7 @@ function fallbackOutputs(plan: CompiledPipelinePlan): StudioPipelineBoundary[] {
   }));
 }
 
-function inferOutputKind(
+export function inferPipelineOutputKind(
   plan: CompiledPipelinePlan,
   nodeId: string,
   outputKey: string,
