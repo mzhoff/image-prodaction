@@ -123,6 +123,29 @@ export const pipelineEndpoint = pgTable('pipeline_endpoint', {
   uniqueIndex('pipeline_endpoint_public_id_unique').on(table.publicId),
 ]);
 
+export const pipelineApiKey = pgTable('pipeline_api_key', {
+  id: uuid('id').primaryKey(),
+  endpointId: uuid('endpoint_id')
+    .notNull()
+    .references(() => pipelineEndpoint.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  sourceApplication: text('source_application').notNull(),
+  tokenPrefix: text('token_prefix').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'restrict' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (table) => [
+  uniqueIndex('pipeline_api_key_token_prefix_unique').on(table.tokenPrefix),
+  index('pipeline_api_key_endpoint_active_idx').on(
+    table.endpointId,
+    table.revokedAt,
+  ),
+]);
+
 export const pipelineRun = pgTable('pipeline_run', {
   id: uuid('id').primaryKey(),
   workspaceId: uuid('workspace_id')
@@ -165,8 +188,9 @@ export const pipelineRun = pgTable('pipeline_run', {
     .$onUpdate(() => new Date())
     .notNull(),
 }, (table) => [
-  uniqueIndex('pipeline_run_workspace_idempotency_unique').on(
-    table.workspaceId,
+  uniqueIndex('pipeline_run_pipeline_source_idempotency_unique').on(
+    table.pipelineId,
+    table.sourceApplication,
     table.idempotencyKey,
   ),
   index('pipeline_run_claim_idx').on(

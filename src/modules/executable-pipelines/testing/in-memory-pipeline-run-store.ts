@@ -22,7 +22,8 @@ export function createInMemoryPipelineRunStore(
   return {
     async createOrFind(input) {
       const existing = [...runs.values()].find((run) => (
-        run.workspaceId === input.workspaceId
+        run.pipelineId === input.pipelineId
+        && run.sourceApplication === input.sourceApplication
         && run.idempotencyKey === input.idempotencyKey
       ));
       if (existing) return { created: false, run: cloneRun(existing) };

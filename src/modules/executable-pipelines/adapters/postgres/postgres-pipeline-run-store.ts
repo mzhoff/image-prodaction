@@ -35,7 +35,8 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
   return {
     async createOrFind(input) {
       const existing = await findPipelineRunByIdempotency(
-        input.workspaceId,
+        input.pipelineId,
+        input.sourceApplication,
         input.idempotencyKey,
       );
       if (existing) return { created: false, run: toPipelineRunJob(existing) };
@@ -69,12 +70,17 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
         inputPayload: input.input,
         maxAttempts: input.maxAttempts,
       }).onConflictDoNothing({
-        target: [pipelineRun.workspaceId, pipelineRun.idempotencyKey],
+        target: [
+          pipelineRun.pipelineId,
+          pipelineRun.sourceApplication,
+          pipelineRun.idempotencyKey,
+        ],
       }).returning();
       if (created) return { created: true, run: toPipelineRunJob(created) };
 
       const raced = await findPipelineRunByIdempotency(
-        input.workspaceId,
+        input.pipelineId,
+        input.sourceApplication,
         input.idempotencyKey,
       );
       if (!raced) throw new Error('Pipeline run could not be created or found.');
@@ -217,6 +223,8 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
       const [completed] = await getDb().update(pipelineRun).set({
         status: 'succeeded',
         resultPayload: input.result,
+        actualCostUsd: input.result.usage?.actualCostUsd ?? null,
+        totalTokens: input.result.usage?.totalTokens ?? null,
         retryable: false,
         leaseExpiresAt: null,
         retryAvailableAt: null,

@@ -1,0 +1,2 @@
+DROP INDEX "pipeline_run_workspace_idempotency_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "pipeline_run_pipeline_source_idempotency_unique" ON "pipeline_run" USING btree ("pipeline_id","source_application","idempotency_key");

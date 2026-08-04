@@ -43,7 +43,9 @@ export {
 } from './core/pipeline-compiler';
 export {
   executeCompiledPipeline,
+  validatePipelineInputValues,
   type ExecuteCompiledPipelineInput,
+  type PipelineExecutionObserver,
 } from './core/pipeline-executor';
 export {
   createPipelineRun,

@@ -129,6 +129,10 @@ export interface PipelineRunJob {
 export interface PipelineRunCompletion {
   nodeOutputs: Record<string, PipelineNodeOutputs>;
   outputs: PipelineNodeOutputs;
+  usage?: {
+    actualCostUsd: string | null;
+    totalTokens: string | null;
+  };
 }
 
 export type PipelineHeartbeatResult = 'canceled' | 'lost' | 'renewed';

@@ -32,3 +32,4 @@ export {
   recoverExpiredShortAiJobs,
   type ShortAiRecoveryDependencies,
 } from './server/short-ai-recovery';
+export { executeInternalOpenRouterChat } from './server/internal-short-ai-execution';

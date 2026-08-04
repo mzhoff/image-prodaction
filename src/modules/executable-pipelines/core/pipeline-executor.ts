@@ -19,14 +19,30 @@ export interface ExecuteCompiledPipelineInput {
   context: PipelineExecutionContext;
   handlers: PipelineNodeHandlerRegistry;
   inputs: PipelineInputs;
+  observer?: PipelineExecutionObserver;
   plan: CompiledPipelinePlan;
   signal: AbortSignal;
+}
+
+export interface PipelineExecutionObserver {
+  onNodeFailed?(input: {
+    error: PipelineDomainError;
+    node: PipelineNodeDefinition;
+  }): Promise<void> | void;
+  onNodeStarted?(input: {
+    inputs: PipelineInputs;
+    node: PipelineNodeDefinition;
+  }): Promise<void> | void;
+  onNodeSucceeded?(input: {
+    node: PipelineNodeDefinition;
+    outputs: PipelineNodeOutputs;
+  }): Promise<void> | void;
 }
 
 export async function executeCompiledPipeline(
   input: ExecuteCompiledPipelineInput,
 ): Promise<PipelineExecutionResult> {
-  validatePipelineInputs(input.plan.definition.inputs, input.inputs);
+  validatePipelineInputValues(input.plan.definition.inputs, input.inputs);
   throwIfAborted(input.signal);
 
   const nodesById = new Map(
@@ -84,6 +100,10 @@ async function executeNode(
   );
 
   try {
+    await input.observer?.onNodeStarted?.({
+      inputs: structuredClone(resolvedInputs),
+      node: structuredClone(node),
+    });
     const result = await handler.execute({
       config: structuredClone(node.config),
       context: input.context,
@@ -92,23 +112,34 @@ async function executeNode(
       signal: input.signal,
     });
     throwIfAborted(input.signal);
-    return structuredClone(result);
-  } catch (error) {
-    if (input.signal.aborted) throw abortedError();
-    if (error instanceof PipelineNodeHandlerError) {
-      throw new PipelineNodeHandlerError({
-        code: error.code,
-        message: error.message,
-        nodeId: error.nodeId ?? node.id,
-        retryable: error.retryable,
-      });
-    }
-    if (error instanceof PipelineDomainError) throw error;
-    throw new PipelineNodeHandlerError({
-      message: 'Pipeline node handler failed.',
-      nodeId: node.id,
-      retryable: false,
+    const outputs = structuredClone(result);
+    await input.observer?.onNodeSucceeded?.({
+      node: structuredClone(node),
+      outputs,
     });
+    return outputs;
+  } catch (error) {
+    const normalized = input.signal.aborted
+      ? abortedError()
+      : error instanceof PipelineNodeHandlerError
+        ? new PipelineNodeHandlerError({
+          code: error.code,
+          message: error.message,
+          nodeId: error.nodeId ?? node.id,
+          retryable: error.retryable,
+        })
+        : error instanceof PipelineDomainError
+          ? error
+          : new PipelineNodeHandlerError({
+            message: 'Pipeline node handler failed.',
+            nodeId: node.id,
+            retryable: false,
+          });
+    await input.observer?.onNodeFailed?.({
+      error: normalized,
+      node: structuredClone(node),
+    });
+    throw normalized;
   }
 }
 
@@ -159,7 +190,7 @@ function resolvePipelineOutputs(
   );
 }
 
-function validatePipelineInputs(
+export function validatePipelineInputValues(
   contracts: Record<string, PipelineValueContract>,
   values: PipelineInputs,
 ) {

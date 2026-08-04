@@ -37,7 +37,8 @@ export function ExecutablePipelinesSection({ workspaceId }: ExecutablePipelinesS
 
   const copyEndpoint = async (endpointPublicId: string) => {
     try {
-      await copyTextToClipboard(endpointPublicId);
+      const path = getPipelineRunEndpointPath(endpointPublicId);
+      await copyTextToClipboard(`${window.location.origin}${path}`);
       setCopiedEndpoint(endpointPublicId);
       if (copyResetTimerRef.current) clearTimeout(copyResetTimerRef.current);
       copyResetTimerRef.current = setTimeout(() => setCopiedEndpoint(null), 1800);
@@ -125,6 +126,7 @@ function PipelineTableRow({
   onCopy: (endpointPublicId: string) => Promise<void>;
   pipeline: ExecutablePipelineCatalogItem;
 }) {
+  const endpointPath = getPipelineRunEndpointPath(pipeline.endpointPublicId);
   return (
     <tr className="workspace-pipeline-row">
       <td className="workspace-pipeline-name-cell">
@@ -149,13 +151,13 @@ function PipelineTableRow({
       <td><BoundaryList boundaries={pipeline.outputs} direction="Output" /></td>
       <td>
         <div className="workspace-pipeline-endpoint">
-          <code title={pipeline.endpointPublicId}>{pipeline.endpointPublicId}</code>
+          <code title={endpointPath}>{endpointPath}</code>
           <button
             aria-label={copied
               ? `Copied endpoint ${pipeline.endpointPublicId}`
               : `Copy endpoint ${pipeline.endpointPublicId}`}
             onClick={() => void onCopy(pipeline.endpointPublicId)}
-            title={copied ? 'Copied' : 'Copy endpoint ID'}
+            title={copied ? 'Copied' : 'Copy full endpoint URL'}
             type="button"
           >
             {copied ? <Check size={15} /> : <Copy size={15} />}
@@ -167,6 +169,10 @@ function PipelineTableRow({
       <td className="workspace-pipeline-metric">{formatUsd(pipeline.stats.averageCostUsd)}</td>
     </tr>
   );
+}
+
+function getPipelineRunEndpointPath(endpointPublicId: string) {
+  return `/v1/pipelines/${encodeURIComponent(endpointPublicId)}/runs`;
 }
 
 function BoundaryList({

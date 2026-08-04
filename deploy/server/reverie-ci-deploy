@@ -73,11 +73,12 @@ apply_release() {
   "${compose_args[@]}" up --detach --wait --wait-timeout 120 postgres minio
   "${compose_args[@]}" run --rm minio-init
   "${compose_args[@]}" run --rm migrate
-  "${compose_args[@]}" up --detach --remove-orphans web worker
+  "${compose_args[@]}" up --detach --remove-orphans web worker pipeline-worker
   "${compose_args[@]}" up --detach --force-recreate caddy
 
   if ! wait_for_endpoint "$public_base_url/api/health/ready" 120 \
-    || ! wait_for_endpoint "$public_base_url/api/health/worker" 120; then
+    || ! wait_for_endpoint "$public_base_url/api/health/worker" 120 \
+    || ! wait_for_endpoint "$public_base_url/api/health/pipeline-worker" 120; then
     printf 'New release failed health checks.\n' >&2
     rollback "$previous_tag"
     exit 68
@@ -100,7 +101,7 @@ rollback() {
     --env-file "$runtime_env" \
     --env-file "$release_env" \
     --file "$compose_file" \
-    up --detach --remove-orphans web worker caddy
+    up --detach --remove-orphans web worker pipeline-worker caddy
 }
 
 restore_release() {

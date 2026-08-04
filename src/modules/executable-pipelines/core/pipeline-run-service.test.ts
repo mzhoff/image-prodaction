@@ -38,6 +38,27 @@ test('run creation rejects an idempotency key reused for different input', async
   );
 });
 
+test('idempotency keys are isolated between pipelines and source applications', async () => {
+  const store = createInMemoryPipelineRunStore();
+  const input = createPipelineRunFixture();
+  const first = await createPipelineRun(input, store);
+  const otherPipeline = await createPipelineRun({
+    ...input,
+    id: 'run-2',
+    pipelineId: 'pipeline-2',
+  }, store);
+  const otherSource = await createPipelineRun({
+    ...input,
+    id: 'run-3',
+    sourceApplication: 'lms',
+  }, store);
+
+  assert.equal(first.idempotentReplay, false);
+  assert.equal(otherPipeline.idempotentReplay, false);
+  assert.equal(otherSource.idempotentReplay, false);
+  assert.equal(store.list().length, 3);
+});
+
 test('queued run is canceled without being claimed by a worker', async () => {
   const store = createInMemoryPipelineRunStore();
   await createPipelineRun(createPipelineRunFixture(), store);
