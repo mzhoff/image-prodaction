@@ -119,7 +119,8 @@ read_release_tag() {
 write_release_tag() {
   local tag="$1" temporary_file
   temporary_file="$(mktemp "$deploy_root/.release.env.XXXXXX")"
-  printf 'APP_IMAGE_TAG=%s\n' "$tag" > "$temporary_file"
+  printf 'APP_IMAGE_TAG=%s\nPRODACTION_FEEDBACK_BUILD_NUMBER=%s\n' \
+    "$tag" "$tag" > "$temporary_file"
   chmod 600 "$temporary_file"
   mv "$temporary_file" "$release_env"
 }
