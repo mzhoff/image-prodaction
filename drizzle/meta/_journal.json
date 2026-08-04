@@ -78,6 +78,20 @@
       "when": 1785532604640,
       "tag": "0010_ambitious_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785868108997,
+      "tag": "0011_wise_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785869001183,
+      "tag": "0012_magical_shiver_man",
+      "breakpoints": true
     }
   ]
 }

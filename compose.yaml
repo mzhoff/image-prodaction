@@ -146,6 +146,35 @@ services:
       retries: 10
       start_period: 15s
 
+  pipeline-worker:
+    build: .
+    restart: unless-stopped
+    command: ["npm", "run", "pipeline-worker"]
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: true
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/image_prodaction
+      S3_ENDPOINT: http://minio:9000
+      OPENROUTER_SITE_URL: http://web:3000
+      PIPELINE_WORKER_READY_FILE: /tmp/reverie-pipeline-worker-ready
+      AI_PROVIDER_RUNTIME: ${AI_PROVIDER_RUNTIME:-}
+      CI: ${CI:-false}
+      FAKE_AI_PROVIDER_CREDENTIAL: ${FAKE_AI_PROVIDER_CREDENTIAL:-fake-valid-credential}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/reverie-pipeline-worker-ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
 volumes:
   postgres_data:
   minio_data:

@@ -11,11 +11,13 @@ import { getDb } from '@/shared/db/client';
 import { pipelineRun } from './pipeline-schema';
 
 export async function findPipelineRunByIdempotency(
-  workspaceId: string,
+  pipelineId: string,
+  sourceApplication: string,
   idempotencyKey: string,
 ) {
   const [record] = await getDb().select().from(pipelineRun).where(and(
-    eq(pipelineRun.workspaceId, workspaceId),
+    eq(pipelineRun.pipelineId, pipelineId),
+    eq(pipelineRun.sourceApplication, sourceApplication),
     eq(pipelineRun.idempotencyKey, idempotencyKey),
   )).limit(1);
   return record;

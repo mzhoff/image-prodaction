@@ -100,8 +100,10 @@ test('route policy uses segment boundaries for public endpoints', () => {
   assert.equal(isPublicPagePath('/login/reset'), false);
   assert.equal(isPublicApiPath('/api/auth/sign-in/email'), true);
   assert.equal(isPublicApiPath('/api/health/ready'), true);
+  assert.equal(isPublicApiPath('/v1/pipelines/example/runs'), true);
   assert.equal(isPublicApiPath('/api/auth-private'), false);
   assert.equal(isPublicApiPath('/api/healthcheck'), false);
+  assert.equal(isPublicApiPath('/v10/pipelines/example/runs'), false);
 });
 
 test('post-auth redirect allows local product pages and rejects open redirects', () => {
@@ -110,6 +112,7 @@ test('post-auth redirect allows local product pages and rejects open redirects',
   assert.equal(getSafePostAuthPath('//evil.example/path'), '/');
   assert.equal(getSafePostAuthPath('/\\evil.example/path'), '/');
   assert.equal(getSafePostAuthPath('/api/projects'), '/');
+  assert.equal(getSafePostAuthPath('/v1/runs/example'), '/');
   assert.equal(getSafePostAuthPath('/login'), '/');
   assert.equal(getSafePostAuthPath('/reset-password?token=secret'), '/');
 });

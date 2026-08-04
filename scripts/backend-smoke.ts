@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
+import { config } from 'dotenv';
+import { and, asc, eq } from 'drizzle-orm';
+import {
+  pipelineApiKey,
+  pipelineEndpoint,
+  pipelineNodeRun,
+  pipelineRun,
+  pipelineVersion,
+} from '../src/modules/executable-pipelines/adapters/postgres/pipeline-schema.ts';
+import { createPipelineApiKey } from '../src/modules/executable-pipelines/server/pipeline-api-key-service.ts';
 import { CURRENT_TERMS_VERSION } from '../src/shared/auth/terms-contract.ts';
+import { getDb, getPostgresPool } from '../src/shared/db/client.ts';
 import { waitForEmailLink } from './mailpit-client.ts';
+
+config({ path: '.env.local' });
+config({ path: '.env' });
 
 const baseUrl = new URL(process.env.SMOKE_BASE_URL ?? 'http://localhost:3004');
 const requireEmailVerification = process.env.SMOKE_REQUIRE_EMAIL_VERIFICATION === 'true';
@@ -164,6 +178,9 @@ assert.equal(filteredLibrary.items[0]?.document?.id, projectId);
 const generatedAsset = exerciseFakeGeneration
   ? await exerciseGenerationVertical(ownerCookie, workspaceId, projectId)
   : null;
+if (exerciseFakeGeneration) {
+  await exercisePipelineRuntime(ownerCookie, projectId);
+}
 
 await rejectUploadWithoutDurableOrigin(ownerCookie, workspaceId, projectId);
 const deletedAsset = await uploadAsset(
@@ -237,6 +254,7 @@ await requestJson('/api/projects', {
 });
 
 console.log(`Backend smoke passed against ${baseUrl.origin}.`);
+await getPostgresPool().end();
 
 async function register(input: typeof owner) {
   const response = await request('/api/auth/sign-up/email', {
@@ -439,6 +457,127 @@ async function exerciseGenerationVertical(
   return completed.asset as { id: string };
 }
 
+async function exercisePipelineRuntime(cookie: string, documentId: string) {
+  const published = await requestJson(`/api/projects/${documentId}/pipelines`, {
+    cookie,
+    expectedStatus: 201,
+    method: 'POST',
+    json: {
+      sectionId: 'section-runtime-smoke',
+      snapshot: createExecutablePipelineSnapshot(),
+    },
+  });
+  const endpointPublicId = published.pipeline?.endpointPublicId as string;
+  assert.ok(endpointPublicId, 'Pipeline publication did not return an endpoint public id.');
+
+  const [endpoint] = await getDb().select({
+    endpointId: pipelineEndpoint.id,
+    createdByUserId: pipelineVersion.publishedByUserId,
+  }).from(pipelineEndpoint)
+    .innerJoin(pipelineVersion, eq(pipelineVersion.id, pipelineEndpoint.activeVersionId))
+    .where(eq(pipelineEndpoint.publicId, endpointPublicId))
+    .limit(1);
+  assert.ok(endpoint, 'Published pipeline endpoint was not persisted.');
+
+  const apiKey = await createPipelineApiKey({
+    createdByUserId: endpoint.createdByUserId,
+    endpointId: endpoint.endpointId,
+    label: 'Backend smoke pipeline runtime',
+    sourceApplication: 'backend-smoke',
+  });
+  const idempotencyKey = `backend-smoke-pipeline-${runId}`;
+  const authorization = { Authorization: `Bearer ${apiKey.token}` };
+
+  try {
+    await requestJson(`/v1/pipelines/${endpointPublicId}/runs`, {
+      expectedStatus: 401,
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      json: { input: { input: 'Executable pipeline smoke input' } },
+    });
+
+    const submitted = await requestJson(`/v1/pipelines/${endpointPublicId}/runs`, {
+      expectedStatus: 202,
+      method: 'POST',
+      headers: {
+        ...authorization,
+        'Idempotency-Key': idempotencyKey,
+      },
+      json: { input: { input: 'Executable pipeline smoke input' } },
+    });
+    const pipelineRunId = submitted.id as string;
+    assert.ok(pipelineRunId, 'Pipeline runtime did not return a run id.');
+    assert.equal(submitted.status, 'queued');
+
+    let completed: Record<string, any> | null = null;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const current = await requestJson(`/v1/runs/${pipelineRunId}`, {
+        expectedStatus: 200,
+        headers: authorization,
+      });
+      if (current.status === 'succeeded') {
+        completed = current;
+        break;
+      }
+      if (current.status === 'failed' || current.status === 'canceled') {
+        throw new Error(
+          `Pipeline run ${pipelineRunId} finished unexpectedly: ${JSON.stringify(current)}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    assert.ok(completed, `Pipeline run ${pipelineRunId} did not finish before the smoke timeout.`);
+    assert.equal(typeof completed.outputs?.result, 'string');
+    assert.ok(completed.outputs.result.length > 0);
+
+    const replay = await requestJson(`/v1/pipelines/${endpointPublicId}/runs`, {
+      expectedStatus: 202,
+      method: 'POST',
+      headers: {
+        ...authorization,
+        'Idempotency-Key': idempotencyKey,
+      },
+      json: { input: { input: 'Executable pipeline smoke input' } },
+    });
+    assert.equal(replay.id, pipelineRunId);
+    assert.equal(replay.idempotentReplay, true);
+
+    await requestJson(`/v1/pipelines/${endpointPublicId}/runs`, {
+      expectedStatus: 409,
+      method: 'POST',
+      headers: {
+        ...authorization,
+        'Idempotency-Key': idempotencyKey,
+      },
+      json: { input: { input: 'Conflicting input' } },
+    });
+
+    const [storedRun] = await getDb().select({
+      actualCostUsd: pipelineRun.actualCostUsd,
+      status: pipelineRun.status,
+      totalTokens: pipelineRun.totalTokens,
+    }).from(pipelineRun).where(eq(pipelineRun.id, pipelineRunId)).limit(1);
+    assert.equal(storedRun?.status, 'succeeded');
+    assert.equal(storedRun?.totalTokens, '15');
+    assert.equal(Number(storedRun?.actualCostUsd), 0.001);
+
+    const storedNodeRuns = await getDb().select({
+      nodeId: pipelineNodeRun.nodeId,
+      status: pipelineNodeRun.status,
+    }).from(pipelineNodeRun).where(and(
+      eq(pipelineNodeRun.pipelineRunId, pipelineRunId),
+      eq(pipelineNodeRun.attemptCount, 1),
+    )).orderBy(asc(pipelineNodeRun.nodeId));
+    assert.deepEqual(storedNodeRuns, [
+      { nodeId: 'generation-node', status: 'succeeded' },
+      { nodeId: 'result-node', status: 'succeeded' },
+    ]);
+  } finally {
+    await getDb().delete(pipelineApiKey).where(eq(pipelineApiKey.id, apiKey.id));
+  }
+}
+
 async function requestJson(path: string, options: SmokeRequestOptions) {
   const response = await request(path, options);
   const payload = await response.json().catch(() => null);
@@ -506,6 +645,69 @@ function createEmptySnapshot() {
       sections: {},
     },
     assetsManifest: [],
+  };
+}
+
+function createExecutablePipelineSnapshot() {
+  const snapshot = createEmptySnapshot() as Record<string, any>;
+  snapshot.project.nodes = [
+    productionNode('input-node', 'textPrompt', 100, {
+      title: 'Input',
+      text: 'Draft',
+    }),
+    productionNode('generation-node', 'textGeneration', 500, {
+      title: 'Text Gen',
+      model: 'google/gemini-2.5-flash',
+      instruction: 'Rewrite the input in one concise sentence.',
+      outputStyle: 'plain',
+    }),
+    productionNode('result-node', 'textPrompt', 900, {
+      title: 'Result',
+      text: '@Generated text',
+      variables: [{ id: 'variable-0', alias: 'Generated text' }],
+    }),
+  ];
+  snapshot.project.sections = [{
+    id: 'section-runtime-smoke',
+    title: 'Runtime Smoke Pipeline',
+    position: { x: 0, y: 0 },
+    size: { width: 1800, height: 1200 },
+  }];
+  snapshot.project.edges = [
+    productionEdge('input-node', 'text', 'generation-node', 'text'),
+    productionEdge('generation-node', 'result', 'result-node', 'variable-0'),
+  ];
+  return snapshot;
+}
+
+function productionNode(
+  id: string,
+  type: string,
+  x: number,
+  data: Record<string, unknown>,
+) {
+  return {
+    id,
+    type,
+    position: { x, y: 200 },
+    size: { width: 280, height: 360 },
+    status: 'idle',
+    data,
+  };
+}
+
+function productionEdge(
+  sourceNodeId: string,
+  sourcePortId: string,
+  targetNodeId: string,
+  targetPortId: string,
+) {
+  return {
+    id: `${sourceNodeId}-${targetNodeId}`,
+    sourceNodeId,
+    sourcePortId,
+    targetNodeId,
+    targetPortId,
   };
 }
 

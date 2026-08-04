@@ -138,6 +138,9 @@ jobs:
           npm run worker > /tmp/reverie-worker.log 2>&1 &
           echo "$!" > /tmp/reverie-worker.pid
           node scripts/wait-for-url.mjs http://localhost:3004/api/health/worker 60000
+          npm run pipeline-worker > /tmp/reverie-pipeline-worker.log 2>&1 &
+          echo "$!" > /tmp/reverie-pipeline-worker.pid
+          node scripts/wait-for-url.mjs http://localhost:3004/api/health/pipeline-worker 60000
       - name: Backend critical-path smoke
         run: npm run test:backend-smoke
       - name: Generation persistence smoke
@@ -153,6 +156,7 @@ jobs:
         run: |
           cp /tmp/reverie-app.log ./reverie-app.log 2>/dev/null || true
           cp /tmp/reverie-worker.log ./reverie-worker.log 2>/dev/null || true
+          cp /tmp/reverie-pipeline-worker.log ./reverie-pipeline-worker.log 2>/dev/null || true
           docker logs reverie-minio > minio.log 2>&1 || true
           docker logs reverie-mailpit > mailpit.log 2>&1 || true
       - name: Upload Playwright and service artifacts
@@ -165,6 +169,7 @@ jobs:
             test-results/
             reverie-app.log
             reverie-worker.log
+            reverie-pipeline-worker.log
             minio.log
             mailpit.log
           if-no-files-found: ignore
@@ -177,6 +182,9 @@ jobs:
           fi
           if [ -f /tmp/reverie-worker.pid ]; then
             kill "$(cat /tmp/reverie-worker.pid)" 2>/dev/null || true
+          fi
+          if [ -f /tmp/reverie-pipeline-worker.pid ]; then
+            kill "$(cat /tmp/reverie-pipeline-worker.pid)" 2>/dev/null || true
           fi
           docker rm --force reverie-minio reverie-mailpit 2>/dev/null || true
 

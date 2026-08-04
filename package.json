@@ -7,6 +7,8 @@
     "dev": "next dev",
     "dev:local": "next dev -p 3004",
     "worker": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/generation-worker.ts",
+    "pipeline-worker": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/pipeline-worker.ts",
+    "pipeline:key:create": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/create-pipeline-api-key.ts",
     "build": "next build",
     "check:architecture": "node scripts/check-architecture.mjs",
     "start": "next start",

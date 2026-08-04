@@ -25,6 +25,8 @@ x-app-environment: &app-environment
   PRODACTION_FEEDBACK_ENDPOINT: ${PRODACTION_FEEDBACK_ENDPOINT:-https://feedback.apption.space/v1/submissions}
   PRODACTION_FEEDBACK_APPLICATION_ID: ${PRODACTION_FEEDBACK_APPLICATION_ID:-image-production}
   PRODACTION_FEEDBACK_BUILD_NUMBER: ${PRODACTION_FEEDBACK_BUILD_NUMBER:-unknown}
+  PIPELINE_WORKER_HEALTH_STALE_AFTER_MS: ${PIPELINE_WORKER_HEALTH_STALE_AFTER_MS:-45000}
+  PIPELINE_WORKER_DEGRADED_AFTER_ERRORS: ${PIPELINE_WORKER_DEGRADED_AFTER_ERRORS:-3}
 
 services:
   postgres:
@@ -154,6 +156,37 @@ services:
       test:
         - CMD-SHELL
         - test -f /tmp/reverie-generation-worker-ready
+      interval: 10s
+      timeout: 3s
+      retries: 15
+      start_period: 20s
+    mem_limit: 896m
+    cpus: 1.5
+    logging: *service-logging
+
+  pipeline-worker:
+    image: reverie-app:${APP_IMAGE_TAG:?APP_IMAGE_TAG is required}
+    restart: unless-stopped
+    command:
+      - npm
+      - run
+      - pipeline-worker
+    environment:
+      <<: *app-environment
+      PIPELINE_WORKER_READY_FILE: /tmp/reverie-pipeline-worker-ready
+      PIPELINE_WORKER_POLL_MS: ${PIPELINE_WORKER_POLL_MS:-500}
+      PIPELINE_WORKER_LEASE_MS: ${PIPELINE_WORKER_LEASE_MS:-60000}
+      PIPELINE_WORKER_LEASE_HEARTBEAT_MS: ${PIPELINE_WORKER_LEASE_HEARTBEAT_MS:-20000}
+      PIPELINE_WORKER_HEARTBEAT_INTERVAL_MS: ${PIPELINE_WORKER_HEARTBEAT_INTERVAL_MS:-10000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -f /tmp/reverie-pipeline-worker-ready
       interval: 10s
       timeout: 3s
       retries: 15
