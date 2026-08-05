@@ -74,6 +74,9 @@ export function inferPipelineOutputKind(
 ): PipelineValueKind {
   const handlerType = plan.definition.nodes.find((node) => node.id === nodeId)?.handlerType;
   if (handlerType === 'ai.image.generate') return 'image';
+  if (handlerType === 'image.export') {
+    return outputKey === 'images' ? 'image_collection' : 'image';
+  }
   if (handlerType === 'text.split' && outputKey === 'items') return 'text_collection';
   if (handlerType === 'text.template.render'
     || handlerType === 'text.concat'

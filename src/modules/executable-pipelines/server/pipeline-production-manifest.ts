@@ -49,6 +49,14 @@ export const PRODUCTION_PIPELINE_NODE_MANIFEST = [
     sideEffect: 'storage-write',
     timeoutMs: 600_000,
   }),
+  operation({
+    handlerType: 'image.export',
+    inputs: { '*': 'image' },
+    outputs: { image: 'image', images: 'image_collection' },
+    deterministic: true,
+    sideEffect: 'storage-write',
+    timeoutMs: 180_000,
+  }),
 ] as const satisfies readonly PipelineNodeOperationManifest[];
 
 export function isProductionPipelineHandlerSupported(

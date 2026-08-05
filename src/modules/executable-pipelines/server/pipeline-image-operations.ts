@@ -3,12 +3,19 @@ import sharp from 'sharp';
 import {
   getAssetContent,
   getAssetMetadata,
+  getMaxImageUploadBytes,
   type AssetDto,
+  uploadImageAsset,
 } from '@/entities/asset/server/asset-service';
 import {
   getGenerationJob,
   type GenerationJobDto,
 } from '@/entities/generation/server/generation-orchestrator';
+import type {
+  ExportImageBackground,
+  ExportImageFormat,
+  ExportImageScale,
+} from '@/entities/production-graph/model/types';
 import type {
   GenerateLayerInputs,
   GenerateReferenceSlot,
@@ -55,6 +62,21 @@ export type PipelineImageGenerator = (input: {
   signal: AbortSignal;
   textInputs: Array<{ inputKey: string; text: string }>;
 }) => Promise<PipelineArtifactReference>;
+
+export type PipelineImageExporter = (input: {
+  artifacts: PipelineArtifactReference[];
+  config: Record<string, PipelineValue>;
+  context: PipelineExecutionContext;
+  nodeId: string;
+  signal: AbortSignal;
+}) => Promise<PipelineArtifactReference[]>;
+
+interface PipelineImageExportOptions {
+  background: ExportImageBackground;
+  format: ExportImageFormat;
+  quality: number;
+  scale: ExportImageScale;
+}
 
 export function createOpenRouterImageAnalyzer(
   scope: PipelineImageOperationScope,
@@ -193,6 +215,100 @@ export function createQueuedImageGenerator(
   };
 }
 
+export function createSharpImageExporter(
+  scope: PipelineImageOperationScope,
+): PipelineImageExporter {
+  return async (input) => {
+    const options = readImageExportOptions(input.config, input.nodeId);
+    const exported: PipelineArtifactReference[] = [];
+
+    for (let index = 0; index < input.artifacts.length; index += 1) {
+      throwIfPipelineAborted(input.signal);
+      const source = input.artifacts[index]!;
+      const content = await getAssetContent(scope.actorUserId, source.assetId);
+      if (content.asset.workspaceId !== input.context.workspaceId || content.asset.mediaKind !== 'image') {
+        throw handlerError('Export source does not belong to the pipeline workspace.', input.nodeId);
+      }
+      const bytes = new Uint8Array(await new Response(content.object.body).arrayBuffer());
+      let transformed: Awaited<ReturnType<typeof transformPipelineExportImage>>;
+      try {
+        transformed = await transformPipelineExportImage(bytes, options);
+      } catch {
+        throw handlerError('Image export transformation failed.', input.nodeId);
+      }
+      throwIfPipelineAborted(input.signal);
+      const asset = await uploadImageAsset({
+        bytes: transformed.bytes,
+        claimedContentType: transformed.contentType,
+        documentId: scope.documentId ?? null,
+        libraryVisible: false,
+        maxBytes: getMaxImageUploadBytes(),
+        metadata: {
+          export: {
+            background: options.background,
+            format: options.format,
+            quality: options.quality,
+            scale: options.scale,
+          },
+          pipelineId: input.context.pipelineId,
+          pipelineNodeId: input.nodeId,
+          pipelineRunId: input.context.runId,
+          sourceAssetId: source.assetId,
+        },
+        operation: 'pipeline_image_export',
+        origin: 'unknown',
+        originalName: createExportFileName(
+          content.asset.originalName,
+          transformed.extension,
+          index,
+          input.artifacts.length,
+        ),
+        userId: scope.actorUserId,
+        workspaceId: input.context.workspaceId,
+      });
+      exported.push(toPipelineImageArtifact(asset, input.context.runId));
+    }
+
+    return exported;
+  };
+}
+
+export async function transformPipelineExportImage(
+  bytes: Uint8Array,
+  options: PipelineImageExportOptions,
+) {
+  const metadata = await sharp(bytes).rotate().metadata();
+  let image = sharp(bytes).rotate();
+  const scale = Number(options.scale);
+  if (scale < 1 && metadata.width && metadata.height) {
+    image = image.resize({
+      fit: 'fill',
+      height: Math.max(1, Math.round(metadata.height * scale)),
+      width: Math.max(1, Math.round(metadata.width * scale)),
+    });
+  }
+  const background = options.format === 'jpeg' && options.background === 'transparent'
+    ? 'white'
+    : options.background;
+  if (background !== 'transparent') {
+    image = image.flatten({ background: background === 'black' ? '#000000' : '#ffffff' });
+  }
+
+  const result = options.format === 'png'
+    ? await image.png().toBuffer({ resolveWithObject: true })
+    : options.format === 'jpeg'
+      ? await image.jpeg({ quality: options.quality }).toBuffer({ resolveWithObject: true })
+      : await image.webp({ quality: options.quality }).toBuffer({ resolveWithObject: true });
+  const contentType = options.format === 'jpeg' ? 'image/jpeg' : `image/${options.format}`;
+  return {
+    bytes: new Uint8Array(result.data),
+    contentType,
+    extension: options.format === 'jpeg' ? 'jpg' : options.format,
+    height: result.info.height,
+    width: result.info.width,
+  };
+}
+
 async function waitForGenerationJob(input: {
   actorUserId: string;
   initialJob: GenerationJobDto;
@@ -316,6 +432,55 @@ function requireString(value: PipelineValue | undefined, label: string) {
   const normalized = readString(value).trim();
   if (!normalized) throw new Error(`${label} is required.`);
   return normalized;
+}
+
+function readImageExportOptions(
+  config: Record<string, PipelineValue>,
+  nodeId: string,
+): PipelineImageExportOptions {
+  const format = config.format;
+  const scale = config.scale;
+  const background = config.background;
+  if (format !== 'png' && format !== 'jpeg' && format !== 'webp') {
+    throw handlerError('Image export format is invalid.', nodeId);
+  }
+  if (scale !== '1' && scale !== '0.75' && scale !== '0.5' && scale !== '0.25') {
+    throw handlerError('Image export scale is invalid.', nodeId);
+  }
+  if (background !== 'transparent' && background !== 'white' && background !== 'black') {
+    throw handlerError('Image export background is invalid.', nodeId);
+  }
+  const parsedQuality = Number.parseInt(readString(config.quality), 10);
+  return {
+    background,
+    format,
+    quality: Number.isFinite(parsedQuality)
+      ? Math.min(100, Math.max(1, parsedQuality))
+      : 90,
+    scale,
+  };
+}
+
+function createExportFileName(
+  sourceName: string,
+  extension: string,
+  index: number,
+  total: number,
+) {
+  const baseName = sourceName
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^\wа-яА-ЯёЁ-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    || 'reverie-export';
+  const prefix = total > 1 ? `${String(index + 1).padStart(String(total).length, '0')}-` : '';
+  return `${prefix}${baseName}.${extension}`;
+}
+
+function throwIfPipelineAborted(signal: AbortSignal) {
+  if (signal.aborted) {
+    throw signal.reason ?? new Error('Pipeline execution was aborted.');
+  }
 }
 
 function toDataUrl(bytes: Uint8Array, contentType: string) {

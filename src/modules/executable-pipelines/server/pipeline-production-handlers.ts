@@ -4,6 +4,7 @@ import { TEXT_SPLITTER_MAX_ITEMS } from '@/entities/production-graph/model/node-
 import { splitProductionText } from '@/entities/production-graph/model/text-splitter';
 import type { TextSplitterMode } from '@/entities/production-graph/model/types';
 import type {
+  PipelineArtifactReference,
   PipelineExecutionContext,
   PipelineNodeHandler,
   PipelineNodeHandlerRegistry,
@@ -14,7 +15,9 @@ import { isPipelineArtifactReference } from '../core/pipeline-executor';
 import {
   createOpenRouterImageAnalyzer,
   createQueuedImageGenerator,
+  createSharpImageExporter,
   type PipelineImageAnalyzer,
+  type PipelineImageExporter,
   type PipelineImageGenerator,
 } from './pipeline-image-operations';
 
@@ -36,6 +39,7 @@ export function createProductionPipelineHandlerRegistry(
   scope: PipelineHandlerScope,
   dependencies: {
     analyzeImage?: PipelineImageAnalyzer;
+    exportImage?: PipelineImageExporter;
     generateImage?: PipelineImageGenerator;
     generateText?: PipelineTextGenerator;
   } = {},
@@ -53,6 +57,9 @@ export function createProductionPipelineHandlerRegistry(
     ),
     createAiImageGenerationHandler(
       dependencies.generateImage ?? createQueuedImageGenerator(scope),
+    ),
+    createImageExportHandler(
+      dependencies.exportImage ?? createSharpImageExporter(scope),
     ),
   ];
   const byKey = new Map(handlers.map((handler) => [
@@ -230,6 +237,42 @@ function createAiImageGenerationHandler(generateImage: PipelineImageGenerator): 
           textInputs,
         }),
       };
+    },
+  };
+}
+
+function createImageExportHandler(exportImage: PipelineImageExporter): PipelineNodeHandler {
+  return {
+    handlerType: 'image.export',
+    handlerVersion: '1',
+    async execute(input) {
+      const artifacts = Object.entries(input.inputs)
+        .filter((entry): entry is [string, PipelineArtifactReference] => (
+          isPipelineArtifactReference(entry[1], 'image')
+        ))
+        .sort(([first], [second]) => compareInputKeys(first, second))
+        .map(([, artifact]) => artifact);
+      if (artifacts.length === 0) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image export requires at least one image artifact.',
+          nodeId: input.nodeId,
+        });
+      }
+      const images = await exportImage({
+        artifacts,
+        config: input.config,
+        context: input.context,
+        nodeId: input.nodeId,
+        signal: input.signal,
+      });
+      const image = images[0];
+      if (!image) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image export did not produce an artifact.',
+          nodeId: input.nodeId,
+        });
+      }
+      return { image, images };
     },
   };
 }

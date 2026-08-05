@@ -126,6 +126,14 @@ test('production image handlers return typed results through injected durable se
         calls.push(`analyze:${artifact.assetId}`);
         return 'Description';
       },
+      exportImage: async ({ artifacts }) => {
+        calls.push(`export:${artifacts.map((artifact) => artifact.assetId).join(',')}`);
+        return artifacts.map((artifact, index) => ({
+          ...artifact,
+          assetId: `asset-export-${index + 1}`,
+          mimeType: 'image/webp',
+        }));
+      },
       generateImage: async ({ textInputs }) => {
         calls.push(`generate:${textInputs[0]?.text}`);
         return {
@@ -139,8 +147,10 @@ test('production image handlers return typed results through injected durable se
   );
   const analyze = registry.resolve('ai.image.analyze', '1');
   const generate = registry.resolve('ai.image.generate', '1');
+  const exportImage = registry.resolve('image.export', '1');
   assert.ok(analyze);
   assert.ok(generate);
+  assert.ok(exportImage);
   assert.deepEqual(await analyze.execute({
     config: { model: 'model', prompt: 'Describe' },
     context,
@@ -162,5 +172,37 @@ test('production image handlers return typed results through injected durable se
       sizeBytes: 128,
     },
   });
-  assert.deepEqual(calls, ['analyze:asset-input', 'generate:Draw a house']);
+  assert.deepEqual(await exportImage.execute({
+    config: { background: 'white', format: 'webp', quality: '90', scale: '1' },
+    context,
+    inputs: {
+      'image-1': { assetId: 'asset-second', kind: 'image' },
+      'image-0': { assetId: 'asset-first', kind: 'image' },
+    },
+    nodeId: 'export',
+    signal: new AbortController().signal,
+  }), {
+    image: {
+      assetId: 'asset-export-1',
+      kind: 'image',
+      mimeType: 'image/webp',
+    },
+    images: [
+      {
+        assetId: 'asset-export-1',
+        kind: 'image',
+        mimeType: 'image/webp',
+      },
+      {
+        assetId: 'asset-export-2',
+        kind: 'image',
+        mimeType: 'image/webp',
+      },
+    ],
+  });
+  assert.deepEqual(calls, [
+    'analyze:asset-input',
+    'generate:Draw a house',
+    'export:asset-first,asset-second',
+  ]);
 });

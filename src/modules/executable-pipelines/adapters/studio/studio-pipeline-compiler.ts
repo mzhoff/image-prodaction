@@ -1,6 +1,7 @@
 import { getNodeIdsInsideSectionTree } from '@/entities/production-graph/model/graph-section-membership';
 import { getNodePorts, getTextPromptVariables } from '@/entities/production-graph/model/node-definitions';
 import type {
+  ExportImageNodeData,
   GenerateImageNodeData,
   GraphEdge,
   GraphProject,
@@ -280,6 +281,18 @@ function getRuntimeDescriptor(node: ProductionNode): { handlerType: string; conf
         },
       };
     }
+    case 'exportImage': {
+      const data = node.data as ExportImageNodeData;
+      return {
+        handlerType: 'image.export',
+        config: {
+          background: data.background,
+          format: data.format,
+          quality: data.quality,
+          scale: data.scale,
+        },
+      };
+    }
     default:
       throw invalidPipeline(`Нода «${getNodeTitle(node)}» (${node.type}) пока не имеет серверного исполнителя.`);
   }
@@ -292,6 +305,17 @@ function resolveLeafOutput(
   nodeById: ReadonlyMap<string, ProductionNode>,
   runtimeNodeIdSet: ReadonlySet<string>,
 ) {
+  if (leaf.type === 'exportImage') {
+    if (!runtimeNodeIdSet.has(leaf.id) || incomingEdges.length === 0) return null;
+    const collection = incomingEdges.length > 1;
+    return {
+      kind: collection ? 'image_collection' as const : 'image' as const,
+      node: leaf,
+      outputKey: collection ? 'images' : 'image',
+      portId: collection ? 'images' : 'image',
+    };
+  }
+
   if (leaf.type === 'preview') {
     const edge = incomingEdges[0];
     const resolvedSource = edge
