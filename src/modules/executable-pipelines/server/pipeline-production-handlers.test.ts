@@ -31,6 +31,24 @@ test('production text handlers render variables and concatenate inputs determini
   });
   assert.deepEqual(rendered, { text: 'Title: Ready' });
 
+  const renderedSourceAlias = await template.execute({
+    config: {
+      template: 'Композиция:\n@Композиция\nLegacy: @Variable 1',
+      variables: [{
+        id: 'variable-0',
+        alias: 'Композиция',
+        mentionAliases: ['Variable 1'],
+      }],
+    },
+    context,
+    inputs: { 'variable-0': 'Вид с высоты птичьего полета; бюджет $1 и $&' },
+    nodeId: 'template-source-alias',
+    signal: new AbortController().signal,
+  });
+  assert.deepEqual(renderedSourceAlias, {
+    text: 'Композиция:\nВид с высоты птичьего полета; бюджет $1 и $&\nLegacy: Вид с высоты птичьего полета; бюджет $1 и $&',
+  });
+
   const concatenated = await concat.execute({
     config: {
       separator: 'space',

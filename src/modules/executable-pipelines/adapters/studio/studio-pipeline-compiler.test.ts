@@ -24,6 +24,42 @@ test('infers a text prompt root as input and a text result leaf as output', () =
   assert.equal(compiled.sourceMetadata.outputs[0]?.nodeTitle, 'Result');
 });
 
+test('compiles connected Text Prompt titles as runtime mention aliases', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('composition-input', 'textPrompt', 100, {
+      title: 'Композиция',
+      text: 'Старое значение',
+    }),
+    node('prompt-node', 'textPrompt', 500, {
+      title: 'Prompt',
+      text: 'Композиция:\n@Композиция',
+      variables: [{ id: 'variable-0', alias: 'Variable 1' }],
+    }),
+    node('distractor-input', 'textPrompt', 900, {
+      title: 'Чужой источник',
+      text: 'Не использовать',
+    }),
+    node('distractor-prompt', 'textPrompt', 1200, {
+      title: 'Другой Prompt',
+      text: '@Чужой источник',
+      variables: [{ id: 'variable-0', alias: 'Variable 1' }],
+    }),
+  ];
+  project.edges = [
+    edge('distractor-input', 'text', 'distractor-prompt', 'variable-0'),
+    edge('composition-input', 'text', 'prompt-node', 'variable-0'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  const promptNode = compiled.compiledPlan.definition.nodes.find((item) => item.id === 'prompt-node');
+  assert.deepEqual(promptNode?.config.variables, [{
+    id: 'variable-0',
+    alias: 'Композиция',
+    mentionAliases: ['Variable 1'],
+  }]);
+});
+
 test('uses Preview as an explicit image output boundary', () => {
   const project = createTextProject();
   project.nodes = [

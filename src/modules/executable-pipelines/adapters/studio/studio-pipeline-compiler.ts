@@ -1,5 +1,6 @@
 import { getNodeIdsInsideSectionTree } from '@/entities/production-graph/model/graph-section-membership';
 import { getNodePorts, getTextPromptVariables } from '@/entities/production-graph/model/node-definitions';
+import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type {
   ExportImageNodeData,
   GenerateImageNodeData,
@@ -156,7 +157,11 @@ function createRuntimeNodeDefinition(input: {
   nodeById: ReadonlyMap<string, ProductionNode>;
   runtimeNodeIdSet: ReadonlySet<string>;
 }): PipelineNodeDefinition {
-  const descriptor = getRuntimeDescriptor(input.node);
+  const descriptor = getRuntimeDescriptor(input.node, {
+    edges: input.edges,
+    incomingByNode: input.incomingByNode,
+    nodeById: input.nodeById,
+  });
   const bindings: Record<string, PipelineInputBinding> = {};
   const inputCounts = new Map<string, number>();
 
@@ -200,7 +205,14 @@ function createRuntimeNodeDefinition(input: {
   };
 }
 
-function getRuntimeDescriptor(node: ProductionNode): { handlerType: string; config: Record<string, PipelineValue> } {
+function getRuntimeDescriptor(
+  node: ProductionNode,
+  graph: {
+    edges: GraphEdge[];
+    incomingByNode: ReadonlyMap<string, GraphEdge[]>;
+    nodeById: ReadonlyMap<string, ProductionNode>;
+  },
+): { handlerType: string; config: Record<string, PipelineValue> } {
   switch (node.type) {
     case 'textPrompt': {
       const data = node.data as TextPromptNodeData;
@@ -208,7 +220,7 @@ function getRuntimeDescriptor(node: ProductionNode): { handlerType: string; conf
         handlerType: 'text.template.render',
         config: {
           template: data.text ?? '',
-          variables: getTextPromptVariables(node).map((variable) => ({ id: variable.id, alias: variable.alias })),
+          variables: getTextPromptRuntimeVariables(node, graph),
         },
       };
     }
@@ -296,6 +308,39 @@ function getRuntimeDescriptor(node: ProductionNode): { handlerType: string; conf
     default:
       throw invalidPipeline(`Нода «${getNodeTitle(node)}» (${node.type}) пока не имеет серверного исполнителя.`);
   }
+}
+
+function getTextPromptRuntimeVariables(
+  node: ProductionNode,
+  graph: {
+    edges: GraphEdge[];
+    incomingByNode: ReadonlyMap<string, GraphEdge[]>;
+    nodeById: ReadonlyMap<string, ProductionNode>;
+  },
+) {
+  return getTextPromptVariables(node).map((variable) => {
+    const edge = graph.edges.find((candidate) => (
+      candidate.targetNodeId === node.id && candidate.targetPortId === variable.id
+    ));
+    const source = edge
+      ? resolveTransparentSource(edge, graph.incomingByNode, graph.nodeById)?.source
+      : undefined;
+    const sourceAlias = getCustomTextPromptSourceAlias(source);
+    const alias = sourceAlias ?? variable.alias;
+    return {
+      id: variable.id,
+      alias,
+      ...(sourceAlias && sourceAlias !== variable.alias
+        ? { mentionAliases: [variable.alias] }
+        : {}),
+    };
+  });
+}
+
+function getCustomTextPromptSourceAlias(source: ProductionNode | undefined) {
+  const title = source?.data.title?.trim();
+  if (!source || !title) return undefined;
+  return title === getNodeDefinition(source.type).title ? undefined : title;
 }
 
 function resolveLeafOutput(

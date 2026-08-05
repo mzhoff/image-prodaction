@@ -120,12 +120,19 @@ function createTextTemplateHandler(): PipelineNodeHandler {
       }
 
       let text = template;
-      for (const variable of variables.sort((first, second) => (
+      const mentions = variables.flatMap((variable) => variable.aliases.map((alias) => ({
+        alias,
+        id: variable.id,
+      }))).sort((first, second) => (
         second.alias.length - first.alias.length
-      ))) {
-        const value = input.inputs[variable.id];
+      ));
+      for (const mention of mentions) {
+        const value = input.inputs[mention.id];
         if (typeof value !== 'string') continue;
-        text = text.replace(new RegExp(`@${escapeRegExp(variable.alias)}\\b`, 'gu'), value);
+        text = text.replace(
+          createTemplateMentionRegex(mention.alias),
+          (_match, prefix: string) => `${prefix}${value}`,
+        );
       }
       return { text };
     },
@@ -345,10 +352,21 @@ function readTemplateVariables(value: PipelineValue | undefined) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
     const id = item.id;
     const alias = item.alias;
-    return typeof id === 'string' && typeof alias === 'string' && id && alias
-      ? [{ id, alias }]
+    if (typeof id !== 'string' || typeof alias !== 'string' || !id || !alias) return [];
+    const mentionAliases = Array.isArray(item.mentionAliases)
+      ? item.mentionAliases.filter((candidate): candidate is string => (
+          typeof candidate === 'string' && Boolean(candidate.trim())
+        ))
       : [];
+    return [{
+      id,
+      aliases: Array.from(new Set([alias, ...mentionAliases].map((candidate) => candidate.trim()))),
+    }];
   });
+}
+
+function createTemplateMentionRegex(alias: string) {
+  return new RegExp(`(^|[\\s([{])@${escapeRegExp(alias)}(?=$|[\\s.,;:!?)}\\]"'])`, 'gu');
 }
 
 function resolveSeparator(separator: string, customSeparator: string) {
