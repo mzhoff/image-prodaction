@@ -198,17 +198,23 @@ function BoundaryList({
       {boundaries.map((boundary) => (
         <span
           aria-label={`${direction} ${getKindLabel(boundary.kind)}: ${boundary.nodeTitle}`}
-          className={`workspace-pipeline-boundary workspace-pipeline-boundary-${direction.toLowerCase()}`}
-          data-tooltip={`${boundary.nodeTitle} · ${boundary.name}`}
+          className={`workspace-pipeline-boundary workspace-pipeline-boundary-${getBoundaryColorKind(boundary.kind)}`}
+          data-tooltip={`${boundary.nodeTitle} · ${getKindLabel(boundary.kind)}`}
           key={`${boundary.nodeId}-${boundary.portId}-${boundary.name}`}
           tabIndex={0}
-          title={`${boundary.nodeTitle} · ${boundary.name}`}
+          title={`${boundary.nodeTitle} · ${getKindLabel(boundary.kind)}`}
         >
-          {getKindLabel(boundary.kind)}
+          <span className="workspace-pipeline-boundary-label">{boundary.nodeTitle}</span>
         </span>
       ))}
     </div>
   );
+}
+
+function getBoundaryColorKind(kind: PipelineValueKind) {
+  if (kind === 'text' || kind === 'text_collection') return 'text';
+  if (kind === 'image' || kind === 'image_collection') return 'image';
+  return 'other';
 }
 
 function getKindLabel(kind: PipelineValueKind) {

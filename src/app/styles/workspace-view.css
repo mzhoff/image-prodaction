@@ -678,6 +678,7 @@
 .workspace-pipeline-boundary {
   position: relative;
   display: inline-flex;
+  max-width: 100%;
   align-items: center;
   border-radius: 5px;
   padding: 4px 6px;
@@ -685,13 +686,23 @@
   font-weight: 700;
   outline: none;
 }
-.workspace-pipeline-boundary-input {
-  background: #eef8f2;
-  color: #2e7a4c;
+.workspace-pipeline-boundary-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.workspace-pipeline-boundary-output {
-  background: #fff3e5;
-  color: #a15d15;
+.workspace-pipeline-boundary-text {
+  background: #eef8f2;
+  color: #15803d;
+}
+.workspace-pipeline-boundary-image {
+  background: #edf1ff;
+  color: #001caa;
+}
+.workspace-pipeline-boundary-other {
+  background: #f1f1f3;
+  color: #616168;
 }
 .workspace-pipeline-boundary::after {
   position: absolute;
