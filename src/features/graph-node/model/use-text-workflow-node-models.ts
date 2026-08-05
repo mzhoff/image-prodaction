@@ -16,6 +16,7 @@ import {
   getTextConcatInputCount,
   getTextConcatInputPortId,
 } from '@/entities/production-graph/model/node-definitions';
+import { splitProductionText } from '@/entities/production-graph/model/text-splitter';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import { saveAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import type {
@@ -567,7 +568,7 @@ export function useTextSplitterNodeModel(node: ProductionNode) {
   const sourceText = useMemo(() => (
     getIncomingTextInputs(node.id, 'text', { edges, nodes }).map((input) => input.text).join('\n\n')
   ), [edges, node.id, nodes]);
-  const items = useMemo(() => splitText(sourceText, data.mode, data.delimiter), [data.delimiter, data.mode, sourceText]);
+  const items = useMemo(() => splitProductionText(sourceText, data.mode, data.delimiter), [data.delimiter, data.mode, sourceText]);
   const visibleItems = items.slice(0, TEXT_SPLITTER_MAX_ITEMS);
   const message = items.length > TEXT_SPLITTER_MAX_ITEMS
     ? `Text Split produced ${items.length} fragments. Limit is ${TEXT_SPLITTER_MAX_ITEMS}; use another splitter node for the remaining text.`
@@ -729,19 +730,6 @@ function updateTextResult(data: TextGenerationNodeData, text: string): Partial<T
     result: text,
     resultTexts: items,
   };
-}
-
-function splitText(text: string, mode: TextSplitterMode, delimiter: string) {
-  const source = text.trim();
-  if (!source) return [];
-  if (mode === 'paragraph') return source.split(/\n\s*\n+/).map(cleanItem).filter(Boolean);
-  if (mode === 'delimiter') return source.split(delimiter || '---').map(cleanItem).filter(Boolean);
-  if (mode === 'newline') return source.split(/\n+/).map(cleanItem).filter(Boolean);
-  return source.split(/\n+/).map((line) => line.replace(/^\s*(?:\d+[\).:-]|[-*])\s+/, '')).map(cleanItem).filter(Boolean);
-}
-
-function cleanItem(value: string) {
-  return value.trim();
 }
 
 function clampTemperature(value: number) {

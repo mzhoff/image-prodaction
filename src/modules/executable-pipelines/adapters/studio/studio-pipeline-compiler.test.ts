@@ -24,6 +24,42 @@ test('infers a text prompt root as input and a text result leaf as output', () =
   assert.equal(compiled.sourceMetadata.outputs[0]?.nodeTitle, 'Result');
 });
 
+test('compiles connected Text Prompt titles as runtime mention aliases', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('composition-input', 'textPrompt', 100, {
+      title: 'Композиция',
+      text: 'Старое значение',
+    }),
+    node('prompt-node', 'textPrompt', 500, {
+      title: 'Prompt',
+      text: 'Композиция:\n@Композиция',
+      variables: [{ id: 'variable-0', alias: 'Variable 1' }],
+    }),
+    node('distractor-input', 'textPrompt', 900, {
+      title: 'Чужой источник',
+      text: 'Не использовать',
+    }),
+    node('distractor-prompt', 'textPrompt', 1200, {
+      title: 'Другой Prompt',
+      text: '@Чужой источник',
+      variables: [{ id: 'variable-0', alias: 'Variable 1' }],
+    }),
+  ];
+  project.edges = [
+    edge('distractor-input', 'text', 'distractor-prompt', 'variable-0'),
+    edge('composition-input', 'text', 'prompt-node', 'variable-0'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  const promptNode = compiled.compiledPlan.definition.nodes.find((item) => item.id === 'prompt-node');
+  assert.deepEqual(promptNode?.config.variables, [{
+    id: 'variable-0',
+    alias: 'Композиция',
+    mentionAliases: ['Variable 1'],
+  }]);
+});
+
 test('uses Preview as an explicit image output boundary', () => {
   const project = createTextProject();
   project.nodes = [
@@ -50,6 +86,78 @@ test('uses Preview as an explicit image output boundary', () => {
   assert.equal(compiled.sourceMetadata.outputs[0]?.nodeId, 'preview-node');
 });
 
+test('compiles Export Image as a server operation and image output boundary', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('image-input', 'importImage', 100, { title: 'Reference' }),
+    node('image-generation', 'generateImage', 500, {
+      title: 'Generate Image',
+      model: 'openai/gpt-image-1',
+      prompt: 'Product photo',
+      aspectRatio: '1:1',
+      size: '1K',
+    }),
+    node('image-export', 'exportImage', 900, {
+      title: 'Cover',
+      background: 'white',
+      format: 'webp',
+      quality: '90',
+      scale: '1',
+    }),
+  ];
+  project.edges = [
+    edge('image-input', 'image', 'image-generation', 'reference'),
+    edge('image-generation', 'image', 'image-export', 'image-0'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.deepEqual(compiled.compiledPlan.definition.nodes.map((item) => item.handlerType), [
+    'ai.image.generate',
+    'image.export',
+  ]);
+  assert.deepEqual(compiled.compiledPlan.definition.nodes[1]?.config, {
+    background: 'white',
+    format: 'webp',
+    quality: '90',
+    scale: '1',
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    cover: { nodeId: 'image-export', outputKey: 'image' },
+  });
+  assert.deepEqual(compiled.sourceMetadata.outputs[0], {
+    kind: 'image',
+    name: 'cover',
+    nodeId: 'image-export',
+    nodeTitle: 'Cover',
+    portId: 'image',
+  });
+});
+
+test('Export Image exposes an image collection when several sources are connected', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('image-a', 'importImage', 100, { title: 'First image' }),
+    node('image-b', 'importImage', 200, { title: 'Second image' }),
+    node('image-export', 'exportImage', 900, {
+      title: 'Batch',
+      background: 'transparent',
+      format: 'png',
+      quality: '90',
+      scale: '1',
+    }),
+  ];
+  project.edges = [
+    edge('image-a', 'image', 'image-export', 'image-0'),
+    edge('image-b', 'image', 'image-export', 'image-1'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    batch: { nodeId: 'image-export', outputKey: 'images' },
+  });
+  assert.equal(compiled.sourceMetadata.outputs[0]?.kind, 'image_collection');
+});
+
 test('rejects a section connected to a node outside its boundary', () => {
   const project = createTextProject();
   project.nodes.push(node('outside-node', 'textPrompt', 2400, { title: 'Outside', text: 'x' }));
@@ -58,6 +166,64 @@ test('rejects a section connected to a node outside its boundary', () => {
   assert.throws(
     () => compileStudioSection(project, 'section-main'),
     /за её пределами/,
+  );
+});
+
+test('compiles Router away and binds its consumer directly to the real source', () => {
+  const project = createTextProject();
+  project.nodes.splice(1, 0, node('router-node', 'router', 350, { title: 'Router' }));
+  project.edges = [
+    edge('input-node', 'text', 'router-node', 'input'),
+    edge('router-node', 'output', 'generation-node', 'text'),
+    edge('generation-node', 'result', 'result-node', 'variable-0'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.equal(compiled.compiledPlan.definition.nodes.some((item) => item.id === 'router-node'), false);
+  assert.deepEqual(compiled.compiledPlan.definition.nodes[0]?.inputs.text, {
+    inputKey: 'input',
+    source: 'pipeline-input',
+  });
+});
+
+test('compiles Text Splitter and Text Formatter into production handlers', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('input-node', 'textPrompt', 100, { title: 'Input', text: 'Draft' }),
+    node('split-node', 'textSplitter', 500, {
+      title: 'Parts',
+      mode: 'delimiter',
+      delimiter: '*',
+      items: ['one', 'two'],
+    }),
+    node('format-node', 'textFormatter', 900, {
+      title: 'Formatted',
+      presetId: 'telegram-post',
+      plainText: '',
+      richText: '',
+    }),
+  ];
+  project.edges = [
+    edge('input-node', 'text', 'split-node', 'text'),
+    edge('split-node', 'item-0', 'format-node', 'text'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.deepEqual(compiled.compiledPlan.definition.nodes.map((item) => item.handlerType), [
+    'text.split',
+    'text.format',
+  ]);
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    formatted: { nodeId: 'format-node', outputKey: 'text' },
+  });
+});
+
+test('rejects publication when a compiled handler is absent in production', () => {
+  assert.throws(
+    () => compileStudioSection(createTextProject(), 'section-main', {
+      isHandlerSupported: (handlerType) => handlerType !== 'ai.text.generate',
+    }),
+    /is not supported/,
   );
 });
 

@@ -9,6 +9,7 @@ export type {
   NewPipelineRun,
   PipelineExecutionContext,
   PipelineExecutionResult,
+  PipelineArtifactReference,
   PipelineHeartbeatResult,
   PipelineInputBinding,
   PipelineInputs,

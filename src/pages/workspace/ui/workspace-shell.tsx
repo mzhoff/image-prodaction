@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   GalleryVerticalEnd,
+  FlaskConical,
   Images,
   PanelLeftClose,
   Route,
@@ -37,11 +38,13 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const currentPath = pathname ?? '/';
   const activeNav = currentPath.startsWith('/library')
     ? 'library'
-    : searchParams?.get('section') === 'trash'
-      ? 'trash'
-      : searchParams?.get('section') === 'pipelines'
-        ? 'pipelines'
-        : 'my-files';
+    : currentPath.startsWith('/playground')
+      ? 'playground'
+      : searchParams?.get('section') === 'trash'
+        ? 'trash'
+        : searchParams?.get('section') === 'pipelines'
+          ? 'pipelines'
+          : 'my-files';
   const workspaceOptions = useMemo(() => (
     workspace.activeWorkspace
       ? [{ value: workspace.activeWorkspace.id, label: workspace.activeWorkspace.name }]
@@ -95,67 +98,77 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
 
-          <div className="workspace-profile-area" ref={profileMenuRef}>
-            <button
-              aria-expanded={profileMenuOpen}
-              aria-haspopup="menu"
-              className="workspace-user"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-              type="button"
+          <div className="workspace-sidebar-bottom">
+            <Link
+              aria-current={activeNav === 'playground' ? 'page' : undefined}
+              className={`workspace-playground-link ${activeNav === 'playground' ? 'workspace-playground-link-active' : ''}`}
+              href="/playground"
             >
-              <img src={session?.user.image || '/workspace-assets/avatar-john.png'} alt="" />
-              <span>{session?.user.name || 'Your account'}</span>
-            </button>
-            {profileMenuOpen ? (
-              <div className="workspace-profile-menu" role="menu">
-                <div className="workspace-profile-menu-user">
-                  <img src={session?.user.image || '/workspace-assets/avatar-john.png'} alt="" />
-                  <div>
-                    <strong>{session?.user.name || 'Your account'}</strong>
-                    <span>{session?.user.email || ''}</span>
+              <FlaskConical size={17} />
+              <span>Playground</span>
+            </Link>
+            <div className="workspace-profile-area" ref={profileMenuRef}>
+              <button
+                aria-expanded={profileMenuOpen}
+                aria-haspopup="menu"
+                className="workspace-user"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                type="button"
+              >
+                <img src={session?.user.image || '/workspace-assets/avatar-john.png'} alt="" />
+                <span>{session?.user.name || 'Your account'}</span>
+              </button>
+              {profileMenuOpen ? (
+                <div className="workspace-profile-menu" role="menu">
+                  <div className="workspace-profile-menu-user">
+                    <img src={session?.user.image || '/workspace-assets/avatar-john.png'} alt="" />
+                    <div>
+                      <strong>{session?.user.name || 'Your account'}</strong>
+                      <span>{session?.user.email || ''}</span>
+                    </div>
                   </div>
+                  <Link
+                    href="/settings/account"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    Account settings
+                  </Link>
+                  <Link
+                    href="/settings/providers"
+                    role="menuitem"
+                    onClick={() => setProfileMenuOpen(false)}
+                  >
+                    Workspace settings
+                  </Link>
+                  <BrandSelect
+                    className="workspace-menu-brand-select"
+                    disabled={!workspace.activeWorkspace}
+                    label="Workspace"
+                    value={workspace.activeWorkspace?.id ?? ''}
+                    options={workspaceOptions}
+                    onChange={() => undefined}
+                  />
+                  <div className="workspace-credit-panel">
+                    <span>AI generation credits</span>
+                    <strong>Usage tracking enabled</strong>
+                    <small>Credit balance will appear after the billing policy is connected.</small>
+                  </div>
+                  <button className="workspace-upgrade-button" type="button">Upgrade</button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={async () => {
+                      await signOut();
+                      router.replace('/login');
+                      router.refresh();
+                    }}
+                  >
+                    Sign out
+                  </button>
                 </div>
-                <Link
-                  href="/settings/account"
-                  role="menuitem"
-                  onClick={() => setProfileMenuOpen(false)}
-                >
-                  Account settings
-                </Link>
-                <Link
-                  href="/settings/providers"
-                  role="menuitem"
-                  onClick={() => setProfileMenuOpen(false)}
-                >
-                  Workspace settings
-                </Link>
-                <BrandSelect
-                  className="workspace-menu-brand-select"
-                  disabled={!workspace.activeWorkspace}
-                  label="Workspace"
-                  value={workspace.activeWorkspace?.id ?? ''}
-                  options={workspaceOptions}
-                  onChange={() => undefined}
-                />
-                <div className="workspace-credit-panel">
-                  <span>AI generation credits</span>
-                  <strong>Usage tracking enabled</strong>
-                  <small>Credit balance will appear after the billing policy is connected.</small>
-                </div>
-                <button className="workspace-upgrade-button" type="button">Upgrade</button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={async () => {
-                    await signOut();
-                    router.replace('/login');
-                    router.refresh();
-                  }}
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         </aside>
 
@@ -168,7 +181,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         />
         <AssistantShell
           open={assistantOpen}
-          contextLabel={currentPath.startsWith('/library') ? 'Library' : 'Workspace'}
+          contextLabel={currentPath.startsWith('/library')
+            ? 'Library'
+            : currentPath.startsWith('/playground')
+              ? 'Playground'
+              : 'Workspace'}
           onClose={() => setAssistantOpen(false)}
         />
       </main>

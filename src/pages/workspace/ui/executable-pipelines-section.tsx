@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, Copy, ExternalLink, Route, Search } from 'lucide-react';
+import { Check, Copy, ExternalLink, FlaskConical, Route, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ExecutablePipelineCatalogItem } from '@/modules/executable-pipelines/contracts/pipeline-catalog-contracts';
 import type { PipelineValueKind } from '@/modules/executable-pipelines/contracts/pipeline-contracts';
@@ -85,6 +85,7 @@ export function ExecutablePipelinesSection({ workspaceId }: ExecutablePipelinesS
                   <th className="workspace-pipeline-number-column" scope="col">Invocations</th>
                   <th className="workspace-pipeline-number-column" scope="col">Total tokens</th>
                   <th className="workspace-pipeline-number-column" scope="col">Average cost</th>
+                  <th scope="col">Test</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,6 +168,15 @@ function PipelineTableRow({
       <td className="workspace-pipeline-metric">{integerFormatter.format(pipeline.stats.invocationCount)}</td>
       <td className="workspace-pipeline-metric">{formatIntegerString(pipeline.stats.totalTokens)}</td>
       <td className="workspace-pipeline-metric">{formatUsd(pipeline.stats.averageCostUsd)}</td>
+      <td>
+        <Link
+          className="workspace-pipeline-playground-link"
+          href={`/playground?endpoint=${encodeURIComponent(endpointPath)}`}
+        >
+          <FlaskConical size={13} />
+          Playground
+        </Link>
+      </td>
     </tr>
   );
 }
@@ -188,17 +198,23 @@ function BoundaryList({
       {boundaries.map((boundary) => (
         <span
           aria-label={`${direction} ${getKindLabel(boundary.kind)}: ${boundary.nodeTitle}`}
-          className={`workspace-pipeline-boundary workspace-pipeline-boundary-${direction.toLowerCase()}`}
-          data-tooltip={`${boundary.nodeTitle} · ${boundary.name}`}
+          className={`workspace-pipeline-boundary workspace-pipeline-boundary-${getBoundaryColorKind(boundary.kind)}`}
+          data-tooltip={`${boundary.nodeTitle} · ${getKindLabel(boundary.kind)}`}
           key={`${boundary.nodeId}-${boundary.portId}-${boundary.name}`}
           tabIndex={0}
-          title={`${boundary.nodeTitle} · ${boundary.name}`}
+          title={`${boundary.nodeTitle} · ${getKindLabel(boundary.kind)}`}
         >
-          {getKindLabel(boundary.kind)}
+          <span className="workspace-pipeline-boundary-label">{boundary.nodeTitle}</span>
         </span>
       ))}
     </div>
   );
+}
+
+function getBoundaryColorKind(kind: PipelineValueKind) {
+  if (kind === 'text' || kind === 'text_collection') return 'text';
+  if (kind === 'image' || kind === 'image_collection') return 'image';
+  return 'other';
 }
 
 function getKindLabel(kind: PipelineValueKind) {

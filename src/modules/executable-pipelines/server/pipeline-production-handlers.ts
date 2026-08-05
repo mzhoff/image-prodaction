@@ -1,12 +1,25 @@
 import type { ProviderResult } from '@/modules/provider-connections';
 import { executeInternalOpenRouterChat } from '@/modules/generation';
+import { TEXT_SPLITTER_MAX_ITEMS } from '@/entities/production-graph/model/node-definitions';
+import { splitProductionText } from '@/entities/production-graph/model/text-splitter';
+import type { TextSplitterMode } from '@/entities/production-graph/model/types';
 import type {
+  PipelineArtifactReference,
   PipelineExecutionContext,
   PipelineNodeHandler,
   PipelineNodeHandlerRegistry,
   PipelineValue,
 } from '../contracts/pipeline-contracts';
 import { PipelineNodeHandlerError } from '../contracts/pipeline-errors';
+import { isPipelineArtifactReference } from '../core/pipeline-executor';
+import {
+  createOpenRouterImageAnalyzer,
+  createQueuedImageGenerator,
+  createSharpImageExporter,
+  type PipelineImageAnalyzer,
+  type PipelineImageExporter,
+  type PipelineImageGenerator,
+} from './pipeline-image-operations';
 
 interface PipelineHandlerScope {
   actorUserId: string;
@@ -24,13 +37,29 @@ export type PipelineTextGenerator = (input: {
 
 export function createProductionPipelineHandlerRegistry(
   scope: PipelineHandlerScope,
-  dependencies: { generateText?: PipelineTextGenerator } = {},
+  dependencies: {
+    analyzeImage?: PipelineImageAnalyzer;
+    exportImage?: PipelineImageExporter;
+    generateImage?: PipelineImageGenerator;
+    generateText?: PipelineTextGenerator;
+  } = {},
 ): PipelineNodeHandlerRegistry {
   const handlers = [
     createTextTemplateHandler(),
     createTextConcatHandler(),
+    createTextSplitHandler(),
+    createTextFormatHandler(),
     createAiTextHandler(
       dependencies.generateText ?? createOpenRouterTextGenerator(scope),
+    ),
+    createAiImageAnalysisHandler(
+      dependencies.analyzeImage ?? createOpenRouterImageAnalyzer(scope),
+    ),
+    createAiImageGenerationHandler(
+      dependencies.generateImage ?? createQueuedImageGenerator(scope),
+    ),
+    createImageExportHandler(
+      dependencies.exportImage ?? createSharpImageExporter(scope),
     ),
   ];
   const byKey = new Map(handlers.map((handler) => [
@@ -40,6 +69,40 @@ export function createProductionPipelineHandlerRegistry(
   return {
     resolve(handlerType, handlerVersion) {
       return byKey.get(`${handlerType}@${handlerVersion}`) ?? null;
+    },
+  };
+}
+
+function createTextSplitHandler(): PipelineNodeHandler {
+  return {
+    handlerType: 'text.split',
+    handlerVersion: '1',
+    async execute(input) {
+      const text = Object.values(input.inputs).filter(isString).join('\n\n');
+      const items = splitProductionText(
+        text,
+        readTextSplitterMode(input.config.mode),
+        readString(input.config.delimiter),
+      ).slice(0, TEXT_SPLITTER_MAX_ITEMS);
+      return {
+        items,
+        ...Object.fromEntries(items.map((item, index) => [`item-${index}`, item])),
+      };
+    },
+  };
+}
+
+function createTextFormatHandler(): PipelineNodeHandler {
+  return {
+    handlerType: 'text.format',
+    handlerVersion: '1',
+    async execute(input) {
+      const connectedText = Object.values(input.inputs).filter(isString).join('\n\n');
+      return {
+        text: normalizePlainText(
+          connectedText || readString(input.config.fallbackText),
+        ),
+      };
     },
   };
 }
@@ -57,12 +120,19 @@ function createTextTemplateHandler(): PipelineNodeHandler {
       }
 
       let text = template;
-      for (const variable of variables.sort((first, second) => (
+      const mentions = variables.flatMap((variable) => variable.aliases.map((alias) => ({
+        alias,
+        id: variable.id,
+      }))).sort((first, second) => (
         second.alias.length - first.alias.length
-      ))) {
-        const value = input.inputs[variable.id];
+      ));
+      for (const mention of mentions) {
+        const value = input.inputs[mention.id];
         if (typeof value !== 'string') continue;
-        text = text.replace(new RegExp(`@${escapeRegExp(variable.alias)}\\b`, 'gu'), value);
+        text = text.replace(
+          createTemplateMentionRegex(mention.alias),
+          (_match, prefix: string) => `${prefix}${value}`,
+        );
       }
       return { text };
     },
@@ -114,6 +184,102 @@ function createAiTextHandler(generateText: PipelineTextGenerator): PipelineNodeH
           text,
         }),
       };
+    },
+  };
+}
+
+function createAiImageAnalysisHandler(analyzeImage: PipelineImageAnalyzer): PipelineNodeHandler {
+  return {
+    handlerType: 'ai.image.analyze',
+    handlerVersion: '1',
+    async execute(input) {
+      const artifact = Object.values(input.inputs).find((value) => (
+        isPipelineArtifactReference(value, 'image')
+      ));
+      if (!artifact) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image analysis requires an image artifact.',
+          nodeId: input.nodeId,
+        });
+      }
+      return {
+        text: await analyzeImage({
+          artifact,
+          config: input.config,
+          context: input.context,
+          nodeId: input.nodeId,
+          signal: input.signal,
+        }),
+      };
+    },
+  };
+}
+
+function createAiImageGenerationHandler(generateImage: PipelineImageGenerator): PipelineNodeHandler {
+  return {
+    handlerType: 'ai.image.generate',
+    handlerVersion: '1',
+    async execute(input) {
+      const textInputs = Object.entries(input.inputs).flatMap(([inputKey, value]) => (
+        typeof value === 'string' ? [{ inputKey, text: value }] : []
+      ));
+      const imageInputs = Object.entries(input.inputs).flatMap(([inputKey, value]) => (
+        isPipelineArtifactReference(value, 'image')
+          ? [{ artifact: value, inputKey }]
+          : []
+      ));
+      if (!textInputs.some((entry) => entry.text.trim()) && !readString(input.config.prompt).trim() && imageInputs.length === 0) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image generation requires a prompt or an image reference.',
+          nodeId: input.nodeId,
+        });
+      }
+      return {
+        image: await generateImage({
+          config: input.config,
+          context: input.context,
+          imageInputs,
+          nodeId: input.nodeId,
+          signal: input.signal,
+          textInputs,
+        }),
+      };
+    },
+  };
+}
+
+function createImageExportHandler(exportImage: PipelineImageExporter): PipelineNodeHandler {
+  return {
+    handlerType: 'image.export',
+    handlerVersion: '1',
+    async execute(input) {
+      const artifacts = Object.entries(input.inputs)
+        .filter((entry): entry is [string, PipelineArtifactReference] => (
+          isPipelineArtifactReference(entry[1], 'image')
+        ))
+        .sort(([first], [second]) => compareInputKeys(first, second))
+        .map(([, artifact]) => artifact);
+      if (artifacts.length === 0) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image export requires at least one image artifact.',
+          nodeId: input.nodeId,
+        });
+      }
+      const images = await exportImage({
+        artifacts,
+        config: input.config,
+        context: input.context,
+        nodeId: input.nodeId,
+        signal: input.signal,
+      });
+      const image = images[0];
+      if (!image) {
+        throw new PipelineNodeHandlerError({
+          message: 'Image export did not produce an artifact.',
+          nodeId: input.nodeId,
+        });
+      }
+      return { image, images };
     },
   };
 }
@@ -186,10 +352,21 @@ function readTemplateVariables(value: PipelineValue | undefined) {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
     const id = item.id;
     const alias = item.alias;
-    return typeof id === 'string' && typeof alias === 'string' && id && alias
-      ? [{ id, alias }]
+    if (typeof id !== 'string' || typeof alias !== 'string' || !id || !alias) return [];
+    const mentionAliases = Array.isArray(item.mentionAliases)
+      ? item.mentionAliases.filter((candidate): candidate is string => (
+          typeof candidate === 'string' && Boolean(candidate.trim())
+        ))
       : [];
+    return [{
+      id,
+      aliases: Array.from(new Set([alias, ...mentionAliases].map((candidate) => candidate.trim()))),
+    }];
   });
+}
+
+function createTemplateMentionRegex(alias: string) {
+  return new RegExp(`(^|[\\s([{])@${escapeRegExp(alias)}(?=$|[\\s.,;:!?)}\\]"'])`, 'gu');
 }
 
 function resolveSeparator(separator: string, customSeparator: string) {
@@ -223,6 +400,19 @@ function readTemperature(value: PipelineValue | undefined) {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.min(2, Math.max(0, value))
     : 1;
+}
+
+function readTextSplitterMode(value: PipelineValue | undefined): TextSplitterMode {
+  return value === 'newline'
+    || value === 'paragraph'
+    || value === 'numbered-list'
+    || value === 'delimiter'
+    ? value
+    : 'delimiter';
+}
+
+function normalizePlainText(value: string) {
+  return value.replace(/\u00a0/g, ' ').trim();
 }
 
 function isString(value: PipelineValue): value is string {

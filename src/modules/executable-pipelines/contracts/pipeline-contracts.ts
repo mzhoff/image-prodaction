@@ -8,6 +8,17 @@ export type PipelineValue =
 export type PipelineInputs = Record<string, PipelineValue>;
 export type PipelineNodeOutputs = Record<string, PipelineValue>;
 
+export type PipelineArtifactReference = {
+  assetId: string;
+  checksumSha256?: string;
+  contentUrl?: string;
+  height?: number | null;
+  kind: 'audio' | 'image';
+  mimeType?: string;
+  sizeBytes?: number;
+  width?: number | null;
+} & Record<string, PipelineValue>;
+
 export type PipelineValueKind =
   | 'audio'
   | 'boolean'

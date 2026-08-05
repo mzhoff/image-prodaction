@@ -59,7 +59,7 @@ function fallbackInputs(plan: CompiledPipelinePlan): StudioPipelineBoundary[] {
 
 function fallbackOutputs(plan: CompiledPipelinePlan): StudioPipelineBoundary[] {
   return Object.entries(plan.definition.outputs).map(([name, binding]) => ({
-    kind: inferOutputKind(plan, binding.nodeId),
+    kind: inferPipelineOutputKind(plan, binding.nodeId, binding.outputKey),
     name,
     nodeId: binding.nodeId,
     nodeTitle: name,
@@ -67,11 +67,21 @@ function fallbackOutputs(plan: CompiledPipelinePlan): StudioPipelineBoundary[] {
   }));
 }
 
-function inferOutputKind(plan: CompiledPipelinePlan, nodeId: string): PipelineValueKind {
+export function inferPipelineOutputKind(
+  plan: CompiledPipelinePlan,
+  nodeId: string,
+  outputKey: string,
+): PipelineValueKind {
   const handlerType = plan.definition.nodes.find((node) => node.id === nodeId)?.handlerType;
   if (handlerType === 'ai.image.generate') return 'image';
+  if (handlerType === 'image.export') {
+    return outputKey === 'images' ? 'image_collection' : 'image';
+  }
+  if (handlerType === 'text.split' && outputKey === 'items') return 'text_collection';
   if (handlerType === 'text.template.render'
     || handlerType === 'text.concat'
+    || handlerType === 'text.split'
+    || handlerType === 'text.format'
     || handlerType === 'ai.text.generate'
     || handlerType === 'ai.image.analyze') return 'text';
   return 'json';
