@@ -2,18 +2,30 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { $forEachSelectedTextNode, $patchStyleText } from '@lexical/selection';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   $getSelection,
   $isRangeSelection,
-  $setSelection,
-  type LexicalEditor,
   type RangeSelection,
-  type TextFormatType,
 } from 'lexical';
-import { TELEGRAM_TEXT_FORMAT, TELEGRAM_TEXT_STYLE } from '../lib/telegram-rich-text';
+import { TELEGRAM_TEXT_STYLE } from '../lib/telegram-rich-text';
 import { FLOATING_CONTEXT_MENU_CLOSE_EVENT } from '@/shared/ui/floating-context-menu';
+import {
+  applyLink,
+  applyTelegramStyle,
+  applyTextFormat,
+  capitalizeText,
+  copySelectedText,
+  cutSelectedText,
+  getLinkDialogPosition,
+  getMenuPosition,
+  getSelectedRangeClone,
+  normalizeLinkUrl,
+  pasteClipboardText,
+  readClipboardText,
+  removeSelectedFormatting,
+  transformSelectedText,
+} from './telegram-message-editor-actions';
 
 interface TelegramContextMenuState {
   x: number;
@@ -49,14 +61,6 @@ const ALL_CONTEXT_MENU_FEATURES: TelegramTextContextMenuFeature[] = [
   'spoiler',
   'case',
 ];
-
-const LEXICAL_TEXT_FORMAT_MASK: Partial<Record<TextFormatType, number>> = {
-  bold: TELEGRAM_TEXT_FORMAT.bold,
-  code: TELEGRAM_TEXT_FORMAT.code,
-  italic: TELEGRAM_TEXT_FORMAT.italic,
-  strikethrough: TELEGRAM_TEXT_FORMAT.strike,
-  underline: TELEGRAM_TEXT_FORMAT.underline,
-};
 
 export function TelegramTextContextMenuPlugin({ features = ALL_CONTEXT_MENU_FEATURES }: { features?: readonly TelegramTextContextMenuFeature[] }) {
   const [editor] = useLexicalComposerContext();
@@ -283,157 +287,4 @@ function TelegramLinkPopover({
       </div>
     </form>
   );
-}
-
-function applyTextFormat(editor: LexicalEditor, format: TextFormatType) {
-  const mask = LEXICAL_TEXT_FORMAT_MASK[format];
-  if (!mask) return;
-
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-
-    $forEachSelectedTextNode((textNode) => {
-      textNode.setFormat(textNode.getFormat() | mask);
-    });
-    selection.setFormat(selection.format | mask);
-  });
-}
-
-function applyTelegramStyle(editor: LexicalEditor, property: string, value: string, savedSelection?: RangeSelection | null) {
-  editor.update(() => {
-    restoreSelection(savedSelection);
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-    $patchStyleText(selection, { [property]: value });
-  });
-}
-
-function applyLink(editor: LexicalEditor, url: string, savedSelection?: RangeSelection | null) {
-  applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.link, encodeURIComponent(url), savedSelection);
-}
-
-function copySelectedText(editor: LexicalEditor) {
-  const text = getSelectedText(editor);
-  if (!text) return;
-  void writeClipboardText(text);
-}
-
-function cutSelectedText(editor: LexicalEditor) {
-  const text = getSelectedText(editor);
-  if (!text) return;
-
-  void writeClipboardText(text);
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-    selection.removeText();
-  });
-}
-
-async function pasteClipboardText(editor: LexicalEditor) {
-  const text = await readClipboardText();
-  if (!text) return;
-
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection)) return;
-    selection.insertText(text);
-  });
-}
-
-function removeSelectedFormatting(editor: LexicalEditor) {
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-
-    selection.setFormat(0);
-    selection.setStyle('');
-    $forEachSelectedTextNode((textNode) => {
-      textNode.setFormat(0);
-      textNode.setStyle('');
-    });
-  });
-}
-
-function getSelectedText(editor: LexicalEditor) {
-  let text = '';
-  editor.getEditorState().read(() => {
-    const selection = $getSelection();
-    text = $isRangeSelection(selection) && !selection.isCollapsed() ? selection.getTextContent() : '';
-  });
-  return text;
-}
-
-function getSelectedRangeClone(editor: LexicalEditor) {
-  let clonedSelection: RangeSelection | null = null;
-  editor.getEditorState().read(() => {
-    const selection = $getSelection();
-    clonedSelection = $isRangeSelection(selection) && !selection.isCollapsed() ? selection.clone() : null;
-  });
-  return clonedSelection;
-}
-
-function restoreSelection(selection: RangeSelection | null | undefined) {
-  if (selection) $setSelection(selection.clone());
-}
-
-async function readClipboardText() {
-  try {
-    return await navigator.clipboard?.readText() ?? '';
-  } catch {
-    return null;
-  }
-}
-
-async function writeClipboardText(text: string) {
-  try {
-    await navigator.clipboard?.writeText(text);
-  } catch {
-    // Clipboard permissions vary by browser; formatting commands should not fail because of that.
-  }
-}
-
-function transformSelectedText(editor: LexicalEditor, transform: (text: string) => string) {
-  editor.update(() => {
-    const selection = $getSelection();
-    if (!$isRangeSelection(selection) || selection.isCollapsed()) return;
-
-    $forEachSelectedTextNode((textNode) => {
-      textNode.setTextContent(transform(textNode.getTextContent()));
-    });
-  });
-}
-
-function capitalizeText(value: string) {
-  return value.toLocaleLowerCase().replace(/\p{L}[\p{L}\p{M}]*/gu, (word) => {
-    const [firstCharacter = '', ...rest] = Array.from(word);
-    return `${firstCharacter.toLocaleUpperCase()}${rest.join('')}`;
-  });
-}
-
-function normalizeLinkUrl(value: string | null | undefined) {
-  const trimmed = value?.trim();
-  if (!trimmed) return '';
-  if (/^(https?:|mailto:|tel:)/i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
-}
-
-function getMenuPosition(x: number, y: number): TelegramContextMenuState {
-  const width = 278;
-  const height = 480;
-  return {
-    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - width - 8)),
-    y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8)),
-  };
-}
-
-function getLinkDialogPosition(x: number, y: number): TelegramLinkDialogState {
-  const width = 292;
-  const height = 126;
-  return {
-    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - width - 8)),
-    y: Math.min(Math.max(8, y), Math.max(8, window.innerHeight - height - 8)),
-    url: '',
-  };
 }

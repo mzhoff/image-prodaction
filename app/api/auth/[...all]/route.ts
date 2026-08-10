@@ -1,4 +1,4 @@
-import { handleAuthRequest } from '@/shared/auth/handler';
+import { handleAuthRequest } from '@/modules/authentication/server/auth-handler';
 
 export const runtime = 'nodejs';
 

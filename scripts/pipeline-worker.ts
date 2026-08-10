@@ -27,7 +27,6 @@ let consecutiveLoopErrors = 0;
 let currentStatus: WorkerStatus = 'starting';
 let lastLoopErrorAt: string | null = null;
 let lastPollSucceededAt: string | null = null;
-let heartbeatTimer: NodeJS.Timeout | undefined;
 let stopping = false;
 
 const worker = new PipelineWorker({
@@ -64,7 +63,7 @@ await updateHeartbeat('starting');
 await writeFile(readyFile, instanceId, { mode: 0o600 });
 currentStatus = 'running';
 await updateHeartbeat('running');
-heartbeatTimer = setInterval(() => {
+const heartbeatTimer = setInterval(() => {
   void updateHeartbeat(currentStatus, createHealthMetadata()).catch((error: unknown) => {
     console.error('[pipeline-worker] heartbeat failed', {
       message: error instanceof Error ? error.message : 'unknown error',

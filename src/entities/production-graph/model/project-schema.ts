@@ -1,7 +1,9 @@
 import type { AssetRecord, GraphProject } from './types';
+import { PROJECT_SCHEMA_VERSION } from './project-schema-version';
+import type { ProjectSchemaVersion } from './project-schema-version';
 
-export const PROJECT_SCHEMA_VERSION = 1;
-export type ProjectSchemaVersion = typeof PROJECT_SCHEMA_VERSION;
+export { PROJECT_SCHEMA_VERSION } from './project-schema-version';
+export type { ProjectSchemaVersion } from './project-schema-version';
 
 export interface ProjectViewportState {
   x: number;

@@ -1,85 +1,25 @@
 import type {
-  CreateGenerationJobInput,
-  GenerationFailureUsageInput,
-  GenerationUsageInput,
-} from '@/entities/generation/server/generation-orchestrator';
-import {
-  EMPTY_PROVIDER_USAGE,
-  ProviderHttpError,
-  type ProviderAdapter,
-  type ProviderErrorDescriptor,
-  type ProviderExecuteRequest,
-  type ProviderResult,
-  type ProviderUsage,
+  ProviderAdapter,
+  ProviderExecuteRequest,
+  ProviderResult,
 } from '@/modules/provider-connections';
-import type { RecordUsageEventInput } from '@/modules/usage';
 import { resolveRequestId } from '@/shared/api/request-id';
+import {
+  ShortAiExecutionError,
+  type ProviderCallResult,
+  type ShortAiExecutionDependencies,
+  type ShortAiScope,
+} from './short-ai-execution-contracts';
+import {
+  markProviderUsedSafely,
+  normalizeCost,
+  readProviderFailureUsage,
+  recordUsageReliably,
+  toGenerationUsage,
+} from './short-ai-execution-support';
 
-export interface ShortAiScope {
-  documentId?: string;
-  idempotencyKey?: string;
-  metadata?: Record<string, unknown> | null;
-  workspaceId: string;
-}
-
-interface ProviderCallResult<T> {
-  providerOperationId: string | null;
-  result: T;
-  usage: ProviderUsage;
-}
-
-export interface ShortAiExecutionDependencies {
-  adapter: ProviderAdapter;
-  createJob(input: CreateGenerationJobInput): Promise<{
-    id: string;
-    idempotentReplay: boolean;
-    resultObjectKey?: string | null;
-    status: string;
-  }>;
-  failJob(input: {
-    attemptCount: number;
-    errorCode: string;
-    errorMessage: string;
-    jobId: string;
-    retryable: boolean;
-    usage?: GenerationFailureUsageInput;
-  }): Promise<unknown>;
-  markProviderDispatched(input: {
-    attemptCount: number;
-    jobId: string;
-  }): Promise<void>;
-  markProviderUsed(connectionId: string): Promise<void>;
-  recordUsage(input: RecordUsageEventInput): Promise<unknown>;
-  readResult(resultObjectKey: string): Promise<unknown>;
-  resolveCredential(userId: string, workspaceId: string): Promise<{
-    apiKey: string;
-    connection: { id: string };
-  }>;
-  startJob(jobId: string): Promise<{ attemptCount: number }>;
-  saveResult(input: {
-    attemptCount: number;
-    jobId: string;
-    payload: unknown;
-    providerOperationId: string | null;
-    workspaceId: string;
-  }): Promise<void>;
-  succeedJob(input: {
-    attemptCount: number;
-    jobId: string;
-    usage: GenerationUsageInput;
-  }): Promise<unknown>;
-  userId(request: Request): Promise<string>;
-}
-
-export class ShortAiExecutionError extends Error {
-  readonly descriptor: ProviderErrorDescriptor;
-
-  constructor(descriptor: ProviderErrorDescriptor) {
-    super(descriptor.message);
-    this.name = 'ShortAiExecutionError';
-    this.descriptor = descriptor;
-  }
-}
+export * from './short-ai-execution-contracts';
+export { createEmptyProviderCallResult } from './short-ai-execution-support';
 
 export async function executeShortOpenRouterChatCore<T>(input: {
   request: Request;
@@ -97,25 +37,15 @@ export async function executeShortOpenRouterChatCore<T>(input: {
         credential: apiKey,
         signal: input.request.signal,
       });
-      return {
-        providerOperationId: result.providerOperationId,
-        result,
-        usage: result.usage,
-      };
+      return { providerOperationId: result.providerOperationId, result, usage: result.usage };
     },
     transform: input.transform,
   }, dependencies);
 }
 
 export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: {
-  checkpoint?: {
-    deserialize(value: unknown): TResult;
-    serialize(result: TResult): unknown;
-  };
-  invoke(context: {
-    adapter: ProviderAdapter;
-    apiKey: string;
-  }): Promise<ProviderCallResult<TProvider>>;
+  checkpoint?: { deserialize(value: unknown): TResult; serialize(result: TResult): unknown };
+  invoke(context: { adapter: ProviderAdapter; apiKey: string }): Promise<ProviderCallResult<TProvider>>;
   modelId: string;
   operation: string;
   request: Request;
@@ -136,55 +66,17 @@ export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: 
     userId,
     workspaceId: input.scope.workspaceId,
   });
-  if (job.idempotentReplay) {
-    if (job.status === 'succeeded' && job.resultObjectKey) {
-      try {
-        const saved = await dependencies.readResult(job.resultObjectKey);
-        return {
-          job: { id: job.id },
-          result: input.checkpoint
-            ? input.checkpoint.deserialize(saved)
-            : saved as TResult,
-        };
-      } catch {
-        throw new ShortAiExecutionError({
-          classification: 'permanent',
-          code: 'invalid_response',
-          httpStatus: 502,
-          message: 'The saved AI result could not be restored.',
-          providerOperationId: null,
-          retryAfterMs: null,
-        });
-      }
-    }
-    throw new ShortAiExecutionError({
-      classification: 'permanent',
-      code: 'invalid_request',
-      httpStatus: 409,
-      message: job.status === 'succeeded'
-        ? 'This AI request has already been completed.'
-        : 'This AI request has already been accepted.',
-      providerOperationId: null,
-      retryAfterMs: null,
-    });
-  }
+  if (job.idempotentReplay) return restoreIdempotentResult(input, dependencies, job);
 
   const credential = await dependencies.resolveCredential(userId, input.scope.workspaceId);
   const started = await dependencies.startJob(job.id);
   let callResult: ProviderCallResult<TProvider> | null = null;
   let providerCallStarted = false;
   let usageRecorded = false;
-
   try {
-    await dependencies.markProviderDispatched({
-      attemptCount: started.attemptCount,
-      jobId: job.id,
-    });
+    await dependencies.markProviderDispatched({ attemptCount: started.attemptCount, jobId: job.id });
     providerCallStarted = true;
-    callResult = await input.invoke({
-      adapter: dependencies.adapter,
-      apiKey: credential.apiKey,
-    });
+    callResult = await input.invoke({ adapter: dependencies.adapter, apiKey: credential.apiKey });
     await markProviderUsedSafely(dependencies, credential.connection.id);
     await recordUsageReliably(dependencies, {
       attemptCount: started.attemptCount,
@@ -197,27 +89,11 @@ export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: 
       totalTokens: callResult.usage.totalTokens,
     });
     usageRecorded = true;
-
-    let transformed: TResult;
-    try {
-      transformed = await input.transform(callResult.result);
-    } catch {
-      throw new ShortAiExecutionError({
-        classification: 'permanent',
-        code: 'invalid_response',
-        httpStatus: 502,
-        message: 'Provider returned a response that the application could not process.',
-        providerOperationId: callResult.providerOperationId,
-        retryAfterMs: null,
-      });
-    }
-
+    const transformed = await transformSafely(input, callResult);
     await dependencies.saveResult({
       attemptCount: started.attemptCount,
       jobId: job.id,
-      payload: input.checkpoint
-        ? input.checkpoint.serialize(transformed)
-        : transformed,
+      payload: input.checkpoint ? input.checkpoint.serialize(transformed) : transformed,
       providerOperationId: callResult.providerOperationId,
       workspaceId: input.scope.workspaceId,
     });
@@ -226,10 +102,7 @@ export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: 
       jobId: job.id,
       usage: toGenerationUsage(callResult.usage),
     });
-    return {
-      job: { id: job.id },
-      result: transformed,
-    };
+    return { job: { id: job.id }, result: transformed };
   } catch (error) {
     if (providerCallStarted && !callResult) {
       await markProviderUsedSafely(dependencies, credential.connection.id);
@@ -249,8 +122,7 @@ export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: 
         inputTokens: failureUsage.inputTokens,
         outputTokens: failureUsage.outputTokens,
         providerCostUsd: normalizeCost(failureUsage.providerCostUsd),
-        providerOperationId: callResult?.providerOperationId
-          ?? descriptor.providerOperationId,
+        providerOperationId: callResult?.providerOperationId ?? descriptor.providerOperationId,
         succeeded: callResult !== null,
         totalTokens: failureUsage.totalTokens,
       });
@@ -275,60 +147,52 @@ export function getProviderText(result: ProviderResult) {
   return output.text.trim();
 }
 
-export function createEmptyProviderCallResult<T>(
-  result: T,
-  providerOperationId: string | null = null,
-): ProviderCallResult<T> {
-  return {
-    providerOperationId,
-    result,
-    usage: { ...EMPTY_PROVIDER_USAGE },
-  };
+async function restoreIdempotentResult<TProvider, TResult>(
+  input: Parameters<typeof executeShortOpenRouterCallCore<TProvider, TResult>>[0],
+  dependencies: ShortAiExecutionDependencies,
+  job: { id: string; resultObjectKey?: string | null; status: string },
+) {
+  if (job.status === 'succeeded' && job.resultObjectKey) {
+    try {
+      const saved = await dependencies.readResult(job.resultObjectKey);
+      return {
+        job: { id: job.id },
+        result: input.checkpoint ? input.checkpoint.deserialize(saved) : saved as TResult,
+      };
+    } catch {
+      throw shortAiError('invalid_response', 502, 'The saved AI result could not be restored.');
+    }
+  }
+  throw shortAiError(
+    'invalid_request',
+    409,
+    job.status === 'succeeded'
+      ? 'This AI request has already been completed.'
+      : 'This AI request has already been accepted.',
+  );
 }
 
-async function markProviderUsedSafely(
-  dependencies: ShortAiExecutionDependencies,
-  connectionId: string,
+async function transformSafely<TProvider, TResult>(
+  input: Parameters<typeof executeShortOpenRouterCallCore<TProvider, TResult>>[0],
+  callResult: ProviderCallResult<TProvider>,
 ) {
   try {
-    await dependencies.markProviderUsed(connectionId);
+    return await input.transform(callResult.result);
   } catch {
-    console.error('OpenRouter provider last-used timestamp could not be updated.');
+    throw new ShortAiExecutionError({
+      classification: 'permanent',
+      code: 'invalid_response',
+      httpStatus: 502,
+      message: 'Provider returned a response that the application could not process.',
+      providerOperationId: callResult.providerOperationId,
+      retryAfterMs: null,
+    });
   }
 }
 
-async function recordUsageReliably(
-  dependencies: ShortAiExecutionDependencies,
-  input: RecordUsageEventInput,
-) {
-  try {
-    await dependencies.recordUsage(input);
-  } catch {
-    await dependencies.recordUsage(input);
-  }
-}
-
-function toGenerationUsage(usage: ProviderUsage): GenerationUsageInput {
-  return {
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-    providerCostUsd: normalizeCost(usage.providerCostUsd),
-    totalTokens: usage.totalTokens,
-  };
-}
-
-function normalizeCost(value: string | null) {
-  if (value === null) return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  return parsed.toFixed(8).replace(/\.?0+$/, '') || '0';
-}
-
-function readProviderFailureUsage(error: unknown): ProviderUsage {
-  let current: unknown = error;
-  for (let depth = 0; depth < 4 && current instanceof Error; depth += 1) {
-    if (current instanceof ProviderHttpError && current.usage) return current.usage;
-    current = current.cause;
-  }
-  return { ...EMPTY_PROVIDER_USAGE };
+function shortAiError(code: 'invalid_request' | 'invalid_response', httpStatus: number, message: string) {
+  return new ShortAiExecutionError({
+    classification: 'permanent', code, httpStatus, message,
+    providerOperationId: null, retryAfterMs: null,
+  });
 }

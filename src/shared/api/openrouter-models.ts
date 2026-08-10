@@ -1,45 +1,16 @@
-export interface OpenRouterRawModel {
-  id: string;
-  name: string;
-  architecture?: {
-    input_modalities?: string[];
-    output_modalities?: string[];
-  };
-  context_length?: number;
-  pricing?: {
-    prompt?: string;
-    completion?: string;
-    audio?: string;
-  };
-  supported_parameters?: string[];
-}
+import type {
+  OpenRouterModelCatalog,
+  OpenRouterModelOption,
+  OpenRouterRawModel,
+  OpenRouterSpeechModelOption,
+} from './openrouter-model-contracts';
 
-export interface OpenRouterModelOption {
-  id: string;
-  name: string;
-  label: string;
-  inputModalities: string[];
-  outputModalities: string[];
-  supportedParameters: string[];
-  aspectRatios?: string[];
-  sizes?: string[];
-}
-
-export interface OpenRouterSpeechModelOption extends OpenRouterModelOption {
-  contextLength?: number;
-  pricing?: {
-    completion?: string;
-    prompt?: string;
-  };
-}
-
-export interface OpenRouterModelCatalog {
-  analysisModels: OpenRouterModelOption[];
-  imageModels: OpenRouterModelOption[];
-  speechModels: OpenRouterSpeechModelOption[];
-  source: 'openrouter' | 'fallback';
-  updatedAt: string;
-}
+export type {
+  OpenRouterModelCatalog,
+  OpenRouterModelOption,
+  OpenRouterRawModel,
+  OpenRouterSpeechModelOption,
+} from './openrouter-model-contracts';
 
 export const DEFAULT_ANALYSIS_MODEL = 'google/gemini-2.5-flash';
 export const DEFAULT_IMAGE_MODEL = 'google/gemini-2.5-flash-image';

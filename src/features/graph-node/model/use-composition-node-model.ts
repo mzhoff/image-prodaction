@@ -7,13 +7,13 @@ import { composeCompositionResult } from './composition-compose-action';
 import { createCompositionGroupActions } from './composition-group-actions';
 import { getAlignedLayerPatch, normalizeCanvasDimension, upsertLayerStyle, upsertLayerStyles } from './composition-layer-style';
 import { isLayerLocked, isLayerVisible } from './composition-layer-tree-model';
-import type { CompositionLayerView, CompositionLayerTreeDragItem, CompositionLayerTreeDropTarget } from './composition-model-types';
-import { getCompositionCanvasSize, compositionAspectRatioOptions, compositionBlendModeOptions, compositionFitOptions, compositionFontOptions, compositionSizeOptions, compositionWeightOptions } from './composition-options';
+import type { CompositionAlignment, CompositionLayerView } from './composition-model-types';
+import { getCompositionCanvasSize, compositionSizeOptions } from './composition-options';
 import { createCompositionSelectionActions } from './composition-selection-actions';
 import { useCompositionDerivedState } from './use-composition-derived-state';
 export { compositionAspectRatioOptions, compositionBlendModeOptions, compositionFitOptions, compositionFontOptions, compositionSizeOptions, compositionWeightOptions } from './composition-options';
 export { getDefaultTextLineHeight } from './composition-layer-style';
-export type { CompositionLayerGroupView, CompositionLayerTreeDragItem, CompositionLayerTreeDropTarget, CompositionLayerTreeItem, CompositionLayerView } from './composition-model-types';
+export type { CompositionAlignment, CompositionLayerGroupView, CompositionLayerTreeDragItem, CompositionLayerTreeDropTarget, CompositionLayerTreeItem, CompositionLayerView } from './composition-model-types';
 
 export function useCompositionNodeModel(node: ProductionNode) {
   const data = node.data as CompositionNodeData;
@@ -295,5 +295,3 @@ export function useCompositionNodeModel(node: ProductionNode) {
     visibleConnectedLayers,
   };
 }
-
-export type CompositionAlignment = 'left' | 'center-x' | 'right' | 'top' | 'center-y' | 'bottom';

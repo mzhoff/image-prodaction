@@ -4,115 +4,33 @@ import {
   count,
   desc,
   eq,
-  ilike,
   inArray,
   isNotNull,
   lt,
   ne,
   or,
-  type SQL,
 } from 'drizzle-orm';
+import { assetSelect, createLibraryConditions } from './asset-library-query';
+import type { AssetRepository } from './asset-repository-contracts';
 import { getDb } from '@/shared/db/client';
 import { asset, assetVariant } from '@/shared/db/schema/asset';
 import { document } from '@/shared/db/schema/document';
 import { membership } from '@/shared/db/schema/workspace';
 
-export type AssetRecord = typeof asset.$inferSelect;
-export type AssetMediaKind = AssetRecord['mediaKind'];
-export type AssetOrigin = AssetRecord['origin'];
-export type AssetVariantRecord = typeof assetVariant.$inferSelect;
-export type AssetVariantPurpose = AssetVariantRecord['purpose'];
-
-export interface AssetLibraryCursor {
-  createdAt: Date;
-  id: string;
-}
-
-export interface AssetLibraryFilters {
-  cursor?: AssetLibraryCursor;
-  documentIds?: string[];
-  limit: number;
-  mediaKinds?: AssetMediaKind[];
-  modelIds?: string[];
-  origins?: AssetOrigin[];
-  providers?: string[];
-  search?: string;
-  userId: string;
-  workspaceId: string;
-}
-
-export type LibraryAssetRecord = AssetRecord & {
-  documentName: string | null;
-  documentStatus: 'active' | 'trash' | null;
-  thumbnailVariantId: string | null;
-};
-
-export interface AssetLibraryFacets {
-  documents: Array<{
-    count: number;
-    id: string;
-    name: string;
-    status: 'active' | 'trash';
-  }>;
-  mediaKinds: Array<{ count: number; value: AssetMediaKind }>;
-  models: Array<{ count: number; modelId: string; provider: string | null }>;
-  origins: Array<{ count: number; value: AssetOrigin }>;
-  providers: Array<{ count: number; value: string }>;
-}
-
-export interface PendingAssetInput {
-  bucket: string;
-  byteSize: number;
-  checksumSha256: string;
-  contentType: string;
-  createdByUserId: string;
-  documentId: string | null;
-  height: number | null;
-  id: string;
-  libraryVisible: boolean;
-  mediaKind: AssetMediaKind;
-  metadata: Record<string, unknown> | null;
-  modelId: string | null;
-  operation: string | null;
-  origin: AssetOrigin;
-  originalName: string;
-  provider: string | null;
-  storageKey: string;
-  width: number | null;
-  workspaceId: string;
-  generationJobId: string | null;
-}
-
-export interface AssetVariantInput {
-  assetId: string;
-  bucket: string;
-  byteSize: number;
-  checksumSha256: string;
-  contentType: string;
-  height: number | null;
-  id: string;
-  purpose: AssetVariantPurpose;
-  storageKey: string;
-  width: number | null;
-}
-
-export interface AssetRepository {
-  createPending(input: PendingAssetInput): Promise<AssetRecord>;
-  findAccessible(assetId: string, userId: string): Promise<AssetRecord | undefined>;
-  findCleanupCandidates(before: Date, limit: number): Promise<AssetRecord[]>;
-  findGeneratedByJobId(generationJobId: string): Promise<AssetRecord | undefined>;
-  findVariant(assetId: string, purpose: AssetVariantPurpose): Promise<AssetVariantRecord | undefined>;
-  listLibrary(input: AssetLibraryFilters): Promise<LibraryAssetRecord[]>;
-  listLibraryFacets(input: { userId: string; workspaceId: string }): Promise<AssetLibraryFacets>;
-  listByDocument(documentId: string): Promise<AssetRecord[]>;
-  listVariants(assetId: string): Promise<AssetVariantRecord[]>;
-  markLibraryVisible(assetId: string): Promise<AssetRecord | undefined>;
-  markDeleted(assetId: string, deletedAt: Date): Promise<void>;
-  markFailed(assetId: string, errorCode: string): Promise<void>;
-  markReady(assetId: string): Promise<AssetRecord>;
-  resetPending(assetId: string): Promise<AssetRecord>;
-  upsertVariant(input: AssetVariantInput): Promise<AssetVariantRecord>;
-}
+export type {
+  AssetLibraryCursor,
+  AssetLibraryFacets,
+  AssetLibraryFilters,
+  AssetMediaKind,
+  AssetOrigin,
+  AssetRecord,
+  AssetRepository,
+  AssetVariantInput,
+  AssetVariantPurpose,
+  AssetVariantRecord,
+  LibraryAssetRecord,
+  PendingAssetInput,
+} from './asset-repository-contracts';
 
 export function createDbAssetRepository(): AssetRepository {
   return {
@@ -353,68 +271,6 @@ export function createDbAssetRepository(): AssetRepository {
       return record;
     },
   };
-}
-
-const assetSelect = {
-  id: asset.id,
-  workspaceId: asset.workspaceId,
-  documentId: asset.documentId,
-  createdByUserId: asset.createdByUserId,
-  bucket: asset.bucket,
-  storageKey: asset.storageKey,
-  originalName: asset.originalName,
-  contentType: asset.contentType,
-  byteSize: asset.byteSize,
-  width: asset.width,
-  height: asset.height,
-  checksumSha256: asset.checksumSha256,
-  mediaKind: asset.mediaKind,
-  origin: asset.origin,
-  libraryVisible: asset.libraryVisible,
-  provider: asset.provider,
-  modelId: asset.modelId,
-  operation: asset.operation,
-  metadata: asset.metadata,
-  generationJobId: asset.generationJobId,
-  status: asset.status,
-  errorCode: asset.errorCode,
-  createdAt: asset.createdAt,
-  updatedAt: asset.updatedAt,
-  deletedAt: asset.deletedAt,
-};
-
-function createLibraryConditions(input: AssetLibraryFilters): SQL[] {
-  const conditions: SQL[] = [
-    eq(asset.workspaceId, input.workspaceId),
-    eq(asset.libraryVisible, true),
-    eq(asset.status, 'ready'),
-  ];
-  if (input.origins?.length) conditions.push(inArray(asset.origin, input.origins));
-  if (input.mediaKinds?.length) conditions.push(inArray(asset.mediaKind, input.mediaKinds));
-  if (input.providers?.length) conditions.push(inArray(asset.provider, input.providers));
-  if (input.modelIds?.length) conditions.push(inArray(asset.modelId, input.modelIds));
-  if (input.documentIds?.length) conditions.push(inArray(asset.documentId, input.documentIds));
-  if (input.search) {
-    const pattern = `%${input.search}%`;
-    const searchCondition = or(
-      ilike(asset.originalName, pattern),
-      ilike(asset.modelId, pattern),
-      ilike(asset.provider, pattern),
-      ilike(asset.operation, pattern),
-    );
-    if (searchCondition) conditions.push(searchCondition);
-  }
-  if (input.cursor) {
-    const cursorCondition = or(
-      lt(asset.createdAt, input.cursor.createdAt),
-      and(
-        eq(asset.createdAt, input.cursor.createdAt),
-        lt(asset.id, input.cursor.id),
-      ),
-    );
-    if (cursorCondition) conditions.push(cursorCondition);
-  }
-  return conditions;
 }
 
 function isNotNullText(column: typeof asset.provider | typeof asset.modelId) {

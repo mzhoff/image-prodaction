@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useEffectEvent, useImperativeHandle, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { AssetRecord } from '@/entities/production-graph/model/types';
@@ -64,6 +64,9 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
   const undoStackRef = useRef<ImageData[]>([]);
   const sizeRef = useRef({ width: 0, height: 0 });
   const assetId = asset?.id;
+  const finishActiveDrawing = useEffectEvent(() => {
+    finishDrawing(activeCanvasRef.current);
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -107,7 +110,7 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
   }, [asset, assetId, height, onHistoryChange, width]);
 
   useEffect(() => {
-    const handleGlobalPointerEnd = () => finishDrawing(activeCanvasRef.current);
+    const handleGlobalPointerEnd = () => finishActiveDrawing();
 
     window.addEventListener('pointerup', handleGlobalPointerEnd, { capture: true });
     window.addEventListener('pointercancel', handleGlobalPointerEnd, { capture: true });
@@ -117,19 +120,19 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
     };
   }, []);
 
-  const pushUndoState = (canvas: HTMLCanvasElement, clearRedo = true) => {
+  const pushUndoState = useCallback((canvas: HTMLCanvasElement, clearRedo = true) => {
     const state = getCanvasState(canvas);
     if (!state) return;
     undoStackRef.current.push(state);
     if (undoStackRef.current.length > MAX_SKETCH_HISTORY) undoStackRef.current.shift();
     if (clearRedo) redoStackRef.current = [];
     onHistoryChange?.();
-  };
+  }, [onHistoryChange]);
 
-  const commitCanvas = (canvas: HTMLCanvasElement) => {
+  const commitCanvas = useCallback((canvas: HTMLCanvasElement) => {
     suppressNextAssetReloadRef.current = true;
     void onCommit(canvas);
-  };
+  }, [onCommit]);
 
   useImperativeHandle(ref, () => ({
     canRedo: () => redoStackRef.current.length > 0,
@@ -160,7 +163,7 @@ export const SketchCanvas = forwardRef<SketchCanvasHandle, SketchCanvasProps>(fu
       onHistoryChange?.();
       commitCanvas(canvas);
     },
-  }), [onCommit, onHistoryChange]);
+  }), [commitCanvas, onHistoryChange, pushUndoState]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (event.button !== 0 && event.button !== 2) return;

@@ -32,8 +32,11 @@ The root-level `pages/` directory is intentionally present as a placeholder for 
 
 `modules` contains backend domain boundaries that do not fit frontend FSD:
 `provider-connections`, `generation`, `usage`, and `executable-pipelines`.
-Their public entrypoints keep provider-specific and infrastructure code out of
-orchestration. Executable pipeline contracts/core are deliberately independent
+Each module follows `contracts → core → server/adapters`: contracts describe the
+stable language of the domain, core contains business rules, server coordinates
+use cases, and adapters integrate PostgreSQL or external providers. Their public
+entrypoints keep provider-specific and infrastructure code out of orchestration.
+Executable pipeline contracts/core are deliberately independent
 from Next.js, PostgreSQL, object storage, provider adapters, and canvas UI so the
 runtime can be extracted after the product hypothesis is proven.
 
@@ -46,11 +49,15 @@ runtime can be extracted after the product hypothesis is proven.
 - The browser never receives a stored raw provider key.
 - Long image generation is executed by a separate worker over a PostgreSQL queue.
 - `npm run check:architecture` prevents product code from restoring the removed
-  global OpenRouter secret or bypassing module boundaries.
+  global OpenRouter secret, importing upward through FSD layers, creating cycles,
+  or bypassing backend module boundaries.
 - Canvas interactions are split into hooks under `src/widgets/production-canvas/model`.
 - Node renderers are split by node type under `src/features/graph-node/ui/nodes`.
 - Global CSS is split by responsibility under `src/app/styles`.
 
 ## File Size Rule
 
-Keep implementation files under 300 lines when practical. If a file grows beyond that, split by responsibility first, not by arbitrary line count.
+Every TypeScript implementation file must stay at or below 300 lines. The
+`npm run check:size` gate has no legacy exceptions. Split by responsibility —
+contracts, use cases, adapters, handlers, hooks, UI blocks and pure helpers —
+instead of moving arbitrary lines into an unrelated file.

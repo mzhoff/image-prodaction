@@ -1,99 +1,21 @@
+import type { GenerationJobDto } from '@/entities/generation/server/generation-orchestrator';
+import { createExponentialBackoffPolicy, type GenerationRetryPolicy } from './retry-policy';
 import {
-  GenerationJobTransitionError,
-  claimNextGenerationJob,
-  failGenerationJob,
-  heartbeatGenerationJob,
-  succeedGenerationJob,
-  type GenerationFailureUsageInput,
-  type GenerationJobDto,
-  type GenerationUsageInput,
-} from '@/entities/generation/server/generation-orchestrator';
+  type GenerationExecutor,
+  type GenerationWorkerEvent,
+  type GenerationWorkerOptions,
+  type GenerationWorkerQueue,
+} from './generation-worker-contracts';
+import { createGenerationWorkerQueue } from './generation-worker-queue';
 import {
-  createExponentialBackoffPolicy,
-  type GenerationRetryPolicy,
-} from './retry-policy';
+  isAbortError,
+  normalizeExecutionFailure,
+  normalizePositiveInteger,
+  waitFor,
+} from './generation-worker-support';
 
-export interface GenerationExecutionResult {
-  assetId?: string | null;
-  usage: GenerationUsageInput;
-}
-
-export interface GenerationExecutor {
-  execute(input: {
-    job: GenerationJobDto;
-    signal: AbortSignal;
-  }): Promise<GenerationExecutionResult>;
-}
-
-export interface GenerationWorkerQueue {
-  claimNext(input: { leaseDurationMs: number }): Promise<GenerationJobDto | null>;
-  fail(input: {
-    attemptCount: number;
-    errorCode: string;
-    errorMessage: string;
-    jobId: string;
-    retryAvailableAt: Date | null;
-    retryable: boolean;
-    usage?: GenerationFailureUsageInput;
-  }): Promise<boolean>;
-  heartbeat(input: {
-    attemptCount: number;
-    jobId: string;
-    leaseDurationMs: number;
-  }): Promise<boolean>;
-  succeed(input: {
-    assetId?: string | null;
-    attemptCount: number;
-    jobId: string;
-    usage: GenerationUsageInput;
-  }): Promise<boolean>;
-}
-
-export interface GenerationWorkerEvent {
-  attemptCount?: number;
-  errorCode?: string;
-  jobId?: string;
-  type:
-    | 'claimed'
-    | 'completed'
-    | 'failed'
-    | 'lease-lost'
-    | 'loop-error'
-    | 'poll-ok'
-    | 'started'
-    | 'stopped';
-}
-
-export interface GenerationWorkerOptions {
-  executor: GenerationExecutor;
-  heartbeatIntervalMs?: number;
-  leaseDurationMs?: number;
-  now?: () => Date;
-  onEvent?: (event: GenerationWorkerEvent) => void;
-  pollIntervalMs?: number;
-  queue?: GenerationWorkerQueue;
-  retryPolicy?: GenerationRetryPolicy;
-  wait?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
-}
-
-export class GenerationExecutionError extends Error {
-  readonly code: string;
-  readonly retryable: boolean;
-  readonly usage?: GenerationFailureUsageInput;
-
-  constructor(input: {
-    code: string;
-    message: string;
-    retryable: boolean;
-    usage?: GenerationFailureUsageInput;
-  }) {
-    super(input.message);
-    this.name = 'GenerationExecutionError';
-    this.code = input.code;
-    this.retryable = input.retryable;
-    this.usage = input.usage;
-  }
-}
+export * from './generation-worker-contracts';
+export { createGenerationWorkerQueue } from './generation-worker-queue';
 
 const DEFAULT_LEASE_DURATION_MS = 60_000;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 20_000;
@@ -158,11 +80,7 @@ export class GenerationWorker {
   async runOnce() {
     const job = await this.queue.claimNext({ leaseDurationMs: this.leaseDurationMs });
     if (!job) return false;
-    this.onEvent?.({
-      type: 'claimed',
-      jobId: job.id,
-      attemptCount: job.attemptCount,
-    });
+    this.onEvent?.({ type: 'claimed', jobId: job.id, attemptCount: job.attemptCount });
     await this.process(job);
     return true;
   }
@@ -172,9 +90,7 @@ export class GenerationWorker {
       try {
         const claimed = await this.runOnce();
         this.onEvent?.({ type: 'poll-ok' });
-        if (!claimed) {
-          await this.waitForNextPoll();
-        }
+        if (!claimed) await this.waitForNextPoll();
       } catch {
         if (this.stopping) return;
         this.onEvent?.({ type: 'loop-error', errorCode: 'worker_loop_error' });
@@ -184,100 +100,78 @@ export class GenerationWorker {
   }
 
   private async process(job: GenerationJobDto) {
-    const executionController = new AbortController();
-    let executionFinished = false;
-    let leaseLost = false;
-    const heartbeatLoop = (async () => {
-      while (!executionFinished) {
-        try {
-          await this.wait(this.heartbeatIntervalMs, executionController.signal);
-        } catch (error) {
-          if (isAbortError(error)) return;
-          throw error;
-        }
-        if (executionFinished) return;
-        try {
-          const renewed = await this.queue.heartbeat({
-            jobId: job.id,
-            attemptCount: job.attemptCount,
-            leaseDurationMs: this.leaseDurationMs,
-          });
-          if (renewed) continue;
-        } catch {
-          // A failed heartbeat is treated as lost ownership. Another worker may
-          // already have reclaimed this attempt, so this worker must not commit.
-        }
-        leaseLost = true;
-        executionController.abort(new Error('Generation job lease was lost.'));
-        this.onEvent?.({
-          type: 'lease-lost',
-          jobId: job.id,
-          attemptCount: job.attemptCount,
-        });
-        return;
-      }
-    })();
-
+    const controller = new AbortController();
+    const state = { executionFinished: false, leaseLost: false };
+    const heartbeatLoop = this.runHeartbeatLoop(job, controller, state);
     try {
-      const result = await this.executor.execute({
-        job,
-        signal: executionController.signal,
-      });
-      if (leaseLost) return;
+      const result = await this.executor.execute({ job, signal: controller.signal });
+      if (state.leaseLost) return;
       const completed = await this.queue.succeed({
         jobId: job.id,
         attemptCount: job.attemptCount,
         assetId: result.assetId,
         usage: result.usage,
       });
-      if (!completed) {
-        this.onEvent?.({
-          type: 'lease-lost',
-          jobId: job.id,
-          attemptCount: job.attemptCount,
-        });
-        return;
-      }
-      this.onEvent?.({
-        type: 'completed',
-        jobId: job.id,
-        attemptCount: job.attemptCount,
-      });
+      if (!completed) return this.emitLeaseLost(job);
+      this.onEvent?.({ type: 'completed', jobId: job.id, attemptCount: job.attemptCount });
     } catch (error) {
-      if (leaseLost) return;
+      if (state.leaseLost) return;
       const failure = normalizeExecutionFailure(error);
       const retryable = failure.retryable && job.attemptCount < job.maxAttempts;
-      const retryAvailableAt = retryable
-        ? new Date(this.now().getTime() + this.retryPolicy.nextDelayMs(job.attemptCount))
-        : null;
       const failed = await this.queue.fail({
         jobId: job.id,
         attemptCount: job.attemptCount,
         errorCode: failure.code,
         errorMessage: failure.message,
         retryable,
-        retryAvailableAt,
+        retryAvailableAt: retryable
+          ? new Date(this.now().getTime() + this.retryPolicy.nextDelayMs(job.attemptCount))
+          : null,
         usage: failure.usage,
       });
-      if (!failed) {
-        this.onEvent?.({
-          type: 'lease-lost',
-          jobId: job.id,
-          attemptCount: job.attemptCount,
-        });
-        return;
-      }
+      if (!failed) return this.emitLeaseLost(job);
       this.onEvent?.({
-        type: 'failed',
-        jobId: job.id,
-        attemptCount: job.attemptCount,
-        errorCode: failure.code,
+        type: 'failed', jobId: job.id, attemptCount: job.attemptCount, errorCode: failure.code,
       });
     } finally {
-      executionFinished = true;
-      executionController.abort();
+      state.executionFinished = true;
+      controller.abort();
       await heartbeatLoop;
     }
+  }
+
+  private async runHeartbeatLoop(
+    job: GenerationJobDto,
+    controller: AbortController,
+    state: { executionFinished: boolean; leaseLost: boolean },
+  ) {
+    while (!state.executionFinished) {
+      try {
+        await this.wait(this.heartbeatIntervalMs, controller.signal);
+      } catch (error) {
+        if (isAbortError(error)) return;
+        throw error;
+      }
+      if (state.executionFinished) return;
+      try {
+        const renewed = await this.queue.heartbeat({
+          jobId: job.id,
+          attemptCount: job.attemptCount,
+          leaseDurationMs: this.leaseDurationMs,
+        });
+        if (renewed) continue;
+      } catch {
+        // A failed heartbeat means this process can no longer safely commit.
+      }
+      state.leaseLost = true;
+      controller.abort(new Error('Generation job lease was lost.'));
+      this.emitLeaseLost(job);
+      return;
+    }
+  }
+
+  private emitLeaseLost(job: GenerationJobDto) {
+    this.onEvent?.({ type: 'lease-lost', jobId: job.id, attemptCount: job.attemptCount });
   }
 
   private async waitForNextPoll() {
@@ -287,93 +181,4 @@ export class GenerationWorker {
       if (!isAbortError(error)) throw error;
     }
   }
-}
-
-export function createGenerationWorkerQueue(): GenerationWorkerQueue {
-  return {
-    claimNext: (input) => claimNextGenerationJob(input),
-    async fail(input) {
-      try {
-        await failGenerationJob(input);
-        return true;
-      } catch (error) {
-        if (error instanceof GenerationJobTransitionError) return false;
-        throw error;
-      }
-    },
-    async heartbeat(input) {
-      return Boolean(await heartbeatGenerationJob(input));
-    },
-    async succeed(input) {
-      try {
-        await succeedGenerationJob(input);
-        return true;
-      } catch (error) {
-        if (error instanceof GenerationJobTransitionError) return false;
-        throw error;
-      }
-    },
-  };
-}
-
-function normalizeExecutionFailure(error: unknown) {
-  if (error instanceof GenerationExecutionError) {
-    return {
-      code: normalizeErrorCode(error.code),
-      message: normalizeErrorMessage(error.message),
-      retryable: error.retryable,
-      usage: error.usage,
-    };
-  }
-  return {
-    code: 'worker_execution_error',
-    message: normalizeErrorMessage(error instanceof Error ? error.message : 'Generation execution failed.'),
-    retryable: true,
-    usage: undefined,
-  };
-}
-
-function normalizeErrorCode(value: string) {
-  const normalized = value.trim().replace(/[^a-zA-Z0-9_.-]+/g, '_').slice(0, 120);
-  return normalized || 'worker_execution_error';
-}
-
-function normalizeErrorMessage(value: string) {
-  return value.trim().replace(/\s+/g, ' ').slice(0, 1_000) || 'Generation execution failed.';
-}
-
-function normalizePositiveInteger(value: number, label: string) {
-  if (!Number.isSafeInteger(value) || value < 1) {
-    throw new Error(`${label} must be a positive safe integer.`);
-  }
-  return value;
-}
-
-function waitFor(milliseconds: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal.aborted) {
-      reject(createAbortError());
-      return;
-    }
-    const timeout = setTimeout(() => {
-      signal.removeEventListener('abort', abort);
-      resolve();
-    }, milliseconds);
-    const abort = () => {
-      clearTimeout(timeout);
-      signal.removeEventListener('abort', abort);
-      reject(createAbortError());
-    };
-    signal.addEventListener('abort', abort, { once: true });
-  });
-}
-
-function createAbortError() {
-  const error = new Error('Operation aborted.');
-  error.name = 'AbortError';
-  return error;
-}
-
-function isAbortError(error: unknown) {
-  return error instanceof Error && error.name === 'AbortError';
 }

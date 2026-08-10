@@ -18,6 +18,7 @@ interface LibraryPreviewProps {
 export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
   const router = useRouter();
   const library = useLibrary();
+  const loadMore = library.loadMore;
   const [fallbackItem, setFallbackItem] = useState<LibraryAssetItem | null>(null);
   const [fallbackPending, setFallbackPending] = useState(false);
   const [fallbackError, setFallbackError] = useState<string | null>(null);
@@ -25,10 +26,10 @@ export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
 
   useEffect(() => {
     if (!library.nextCursor || library.loadingMore || library.error) return;
-    void library.loadMore();
+    void loadMore();
   }, [
     library.error,
-    library.loadMore,
+    loadMore,
     library.loadingMore,
     library.nextCursor,
   ]);

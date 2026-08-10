@@ -19,7 +19,7 @@ import {
 } from '@/modules/generation/server/generation-submission-service';
 import type { QueuedGenerateImagePayload } from '@/modules/generation';
 import { apiError } from '@/shared/api/api-error';
-import { requireApiSession } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import {
   DEFAULT_IMAGE_MODEL,
   getImageModelConfig,

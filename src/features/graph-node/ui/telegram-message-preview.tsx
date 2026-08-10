@@ -138,9 +138,9 @@ function PublicationMediaCell({
     >
       {url ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img className="telegram-media-cell-backdrop" src={url} alt="" draggable={false} />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img className="telegram-media-cell-image" src={url} alt={item.asset.name} draggable={false} />
           {extraCount > 0 ? <span className="telegram-media-extra">+{extraCount}</span> : null}
         </>

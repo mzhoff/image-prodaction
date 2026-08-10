@@ -110,13 +110,14 @@ export function TextSectionResultBox({
 }: TextSectionResultBoxProps) {
   const initialValueRef = useRef(value);
   const initialDisabledFilterIdsRef = useRef(disabledFilterIds);
+  const initialReadOnlyRef = useRef(readOnly);
   const parseOptionsRef = useRef(parseOptions);
   parseOptionsRef.current = parseOptions;
   const handleWheel = useScrollableWheel<HTMLDivElement>();
 
   const editorConfig = useMemo(() => ({
     editorState: () => rebuildEditorState(initialValueRef.current, initialDisabledFilterIdsRef.current, parseOptionsRef.current),
-    editable: !readOnly,
+    editable: !initialReadOnlyRef.current,
     namespace: 'TextSectionResultBox',
     nodes: [TextSectionParagraphNode],
     onError: (error: Error, editor: LexicalEditor) => {

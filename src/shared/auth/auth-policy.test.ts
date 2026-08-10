@@ -10,7 +10,7 @@ import { formatAuthError } from './error-message';
 import {
   enforceAuthAccessPolicy,
   handleAuthRequestSafely,
-} from './handler';
+} from '@/modules/authentication/server/auth-handler';
 import {
   getSafePostAuthPath,
   isGuestOnlyPagePath,
@@ -19,7 +19,7 @@ import {
 } from './route-policy';
 import { CURRENT_TERMS_VERSION } from './terms-contract';
 import { createTermsAcceptanceAdditionalFields } from './terms-policy';
-import { attemptPersonalWorkspaceBootstrap } from './workspace-bootstrap';
+import { attemptPersonalWorkspaceBootstrap } from '@/modules/authentication/server/workspace-bootstrap';
 
 test('auth configuration accepts only explicit origins and enforces a production secret', () => {
   assert.deepEqual(readAuthServerConfig({

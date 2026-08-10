@@ -1,6 +1,7 @@
+// Server-side authentication and workspace-session application service.
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getAuth } from './server';
+import { getAuth } from './auth-server';
 import { ensurePersonalWorkspaceForUser } from './workspace-bootstrap';
 
 export class AuthenticationRequiredError extends Error {

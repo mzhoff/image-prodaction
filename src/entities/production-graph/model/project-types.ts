@@ -1,5 +1,5 @@
 import type { PublicationArtifact } from './publication';
-import type { ProjectSchemaVersion } from './project-schema';
+import type { ProjectSchemaVersion } from './project-schema-version';
 import type { GraphEdge, GraphPoint, GraphSection, GraphSize, NodeStatus, ProductionNodeType } from './graph-core-types';
 import type { LocationRecord, PresetRole, ProductionNodeData, SubjectRecord } from './node-data-types';
 

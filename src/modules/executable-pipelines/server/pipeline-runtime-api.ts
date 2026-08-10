@@ -12,7 +12,6 @@ import type {
   PipelineValue,
 } from '../contracts/pipeline-contracts';
 import { PipelineDomainError } from '../contracts/pipeline-errors';
-import type { PipelineRuntimeRun } from '../contracts/pipeline-runtime-contracts';
 import { requestPipelineRunCancel } from '../core/pipeline-run-service';
 import {
   authenticatePipelineApiRequest,

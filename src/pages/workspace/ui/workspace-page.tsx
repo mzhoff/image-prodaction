@@ -21,26 +21,7 @@ import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { useWorkspaceShell } from './workspace-shell-context';
 import { ExecutablePipelinesSection } from './executable-pipelines-section';
-
-const templateCards = [
-  { image: '/workspace-assets/template-01.png', title: 'Change face' },
-  { image: '/workspace-assets/template-02.png', title: 'Change Clothes' },
-  { image: '/workspace-assets/template-03.png', title: 'Change Face Node' },
-  { image: '/workspace-assets/template-04.png', title: 'Change subscriber' },
-  { image: '/workspace-assets/template-05.png', title: 'Change audio' },
-  { image: '/workspace-assets/template-06.png', title: 'Change Models' },
-  { image: '/workspace-assets/template-07.png', title: 'Change Machine' },
-  { image: '/workspace-assets/template-08.png', title: 'Change face' },
-];
-
-const tutorialCards = [
-  { image: '/workspace-assets/template-03.png', title: 'Build a content pipeline' },
-  { image: '/workspace-assets/template-06.png', title: 'Connect AI models' },
-  { image: '/workspace-assets/template-02.png', title: 'Prepare batch inputs' },
-  { image: '/workspace-assets/template-07.png', title: 'Publish final assets' },
-];
-
-type TemplateTab = 'templates' | 'tutorials';
+import { WorkspaceTemplateBand, type TemplateTab } from './workspace-template-band';
 
 interface WorkspacePageProps {
   section?: Exclude<WorkspaceSection, 'library'>;
@@ -56,7 +37,6 @@ export function WorkspacePage({ section = 'my-files' }: WorkspacePageProps) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [creatingProject, setCreatingProject] = useState(false);
-  const visibleTemplateCards = activeTemplateTab === 'templates' ? templateCards : tutorialCards;
   const sectionProjects = workspace.getProjectsForSection(section);
   const visibleProjects = useMemo(() => sectionProjects.filter((project) => {
     const matchesFavorite = section !== 'trash' && favoritesOnly ? project.favorite : true;
@@ -158,36 +138,7 @@ export function WorkspacePage({ section = 'my-files' }: WorkspacePageProps) {
       </header>
 
       <div className="workspace-content">
-        <section className="workspace-template-band" aria-label="Templates">
-          <div className="workspace-template-tabs">
-            <button
-              aria-selected={activeTemplateTab === 'templates'}
-              className={`workspace-template-tab ${activeTemplateTab === 'templates' ? 'workspace-template-tab-active' : ''}`}
-              onClick={() => setActiveTemplateTab('templates')}
-              role="tab"
-              type="button"
-            >
-              Templates
-            </button>
-            <button
-              aria-selected={activeTemplateTab === 'tutorials'}
-              className={`workspace-template-tab ${activeTemplateTab === 'tutorials' ? 'workspace-template-tab-active' : ''}`}
-              onClick={() => setActiveTemplateTab('tutorials')}
-              role="tab"
-              type="button"
-            >
-              Tutorials
-            </button>
-          </div>
-          <div className="workspace-template-list">
-            {visibleTemplateCards.map((card) => (
-              <button className="workspace-template-card" key={`${card.image}-${card.title}`} type="button">
-                <img src={card.image} alt="" />
-                <span>{card.title}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        <WorkspaceTemplateBand activeTab={activeTemplateTab} onTabChange={setActiveTemplateTab} />
 
         <section className="workspace-files-section" aria-labelledby="workspace-files-title">
           <div className="workspace-files-header">

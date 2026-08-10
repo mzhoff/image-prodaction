@@ -12,7 +12,7 @@ import type {
   ProductionNode,
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestDescribeLocation } from '@/shared/api/ai-client';
+import { requestDescribeLocation } from '../api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 
@@ -41,7 +41,10 @@ export function useLocationBuilderNodeModel(node: ProductionNode) {
       text: input.text,
     })))
   ), [data, textInputs]);
-  const libraryImageAssetIds = data.libraryImageAssetIds ?? [];
+  const libraryImageAssetIds = useMemo(
+    () => data.libraryImageAssetIds ?? [],
+    [data.libraryImageAssetIds],
+  );
   const imageReferenceItems = useMemo(() => {
     const seen = new Set<string>();
     const items: Array<{ assetId: string; edgeId?: string; source: 'input' | 'library' }> = [];

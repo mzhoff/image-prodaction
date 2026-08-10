@@ -1,5 +1,5 @@
 import { VerifyEmailPage } from '@/pages/auth';
-import { getRequestSession } from '@/shared/auth/session';
+import { getRequestSession } from '@/modules/authentication/server/auth-session';
 
 interface VerifyEmailRouteProps {
   searchParams: Promise<{ error?: string }>;

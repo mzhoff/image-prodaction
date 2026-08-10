@@ -1,4 +1,4 @@
-import type { CompositionLayerStyle, CompositionNodeData } from '@/entities/production-graph/model/types';
+import type { CompositionNodeData } from '@/entities/production-graph/model/types';
 import { insertGroupIntoLayerOrder, moveCompositionLayerTreeItem, serializeCompositionGroups } from './composition-layer-tree-model';
 import type { CompositionLayerGroupView, CompositionLayerTreeDragItem, CompositionLayerTreeDropTarget, CompositionLayerView } from './composition-model-types';
 

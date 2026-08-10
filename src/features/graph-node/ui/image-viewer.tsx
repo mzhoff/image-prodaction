@@ -2,26 +2,19 @@
 
 import Image from 'next/image';
 import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Mic, RotateCcw, WandSparkles, X } from 'lucide-react';
-import { memo, useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
 import { getImageViewerThumbnailWindow } from '@/features/graph-node/lib/image-viewer-thumbnail-window';
 import { cn } from '@/shared/lib/cn';
 import { DarkSelect } from '@/shared/ui/dark-select';
 import { RangeSlider } from '@/shared/ui/range-slider';
 import { SaveToLibraryButton } from '@/shared/ui/save-to-library-button';
-import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { ImageMaskEditor } from './image-mask-editor';
-import type { ImageViewerEditorPanel, MaskEditPayload } from './image-viewer-types';
+import { ImageViewerThumbnail } from './image-viewer-thumbnail';
+import type { ImageViewerEditorPanel, ImageViewerItem, MaskEditPayload } from './image-viewer-types';
 import { MAX_MASK_BRUSH_SIZE, MIN_MASK_BRUSH_SIZE, useImageViewerMaskModel } from './use-image-viewer-mask-model';
 
-export interface ImageViewerItem {
-  id: string;
-  height?: number;
-  name?: string;
-  thumbnailUrl?: string;
-  url: string;
-  width?: number;
-}
+export type { ImageViewerItem } from './image-viewer-types';
 
 interface ImageViewerProps {
   asset?: AssetRecord;
@@ -297,44 +290,3 @@ export function ImageViewer({
     </div>
   );
 }
-
-const ImageViewerThumbnail = memo(function ImageViewerThumbnail({
-  active,
-  assetId,
-  index,
-  item,
-  onSelect,
-}: {
-  active: boolean;
-  assetId: string;
-  index: number;
-  item?: ImageViewerItem;
-  onSelect: (index: number) => void;
-}) {
-  const graphUrl = useAssetUrl(item ? undefined : assetId);
-  const url = item?.thumbnailUrl ?? item?.url ?? graphUrl;
-
-  if (!url) return null;
-
-  return (
-    <button
-      type="button"
-      aria-current={active ? 'true' : undefined}
-      aria-label={`Open generated image variation ${index + 1}`}
-      className={cn('image-viewer-thumbnail', active && 'image-viewer-thumbnail-active')}
-      onClick={() => onSelect(index)}
-    >
-      <Image
-        src={url}
-        alt={item?.name ?? `Generated variation ${index + 1}`}
-        fill
-        sizes="80px"
-        unoptimized
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        className="image-viewer-thumbnail-media"
-      />
-    </button>
-  );
-});

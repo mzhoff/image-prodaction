@@ -12,31 +12,32 @@ export function useStudioPipelinePublications(input: {
   exportSnapshot: () => ProjectExport;
   projectId?: string;
 }) {
+  const { exportSnapshot, projectId } = input;
   const [publications, setPublications] = useState<StudioPipelinePublication[]>([]);
   const [publishingSectionIds, setPublishingSectionIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
-    if (!input.projectId) {
+    if (!projectId) {
       setPublications([]);
       return undefined;
     }
     const controller = new AbortController();
-    void fetchStudioPipelinePublications(input.projectId, controller.signal)
+    void fetchStudioPipelinePublications(projectId, controller.signal)
       .then(setPublications)
       .catch((error) => {
         if (!controller.signal.aborted) console.error('Could not load executable pipelines', error);
       });
     return () => controller.abort();
-  }, [input.projectId]);
+  }, [projectId]);
 
   const publishSection = useCallback(async (sectionId: string) => {
-    if (!input.projectId) throw new Error('Сначала сохрани документ в рабочем пространстве.');
+    if (!projectId) throw new Error('Сначала сохрани документ в рабочем пространстве.');
     setPublishingSectionIds((current) => new Set(current).add(sectionId));
     try {
       const publication = await publishStudioPipelineSection(
-        input.projectId,
+        projectId,
         sectionId,
-        input.exportSnapshot(),
+        exportSnapshot(),
       );
       setPublications((current) => [
         publication,
@@ -50,7 +51,7 @@ export function useStudioPipelinePublications(input: {
         return next;
       });
     }
-  }, [input.exportSnapshot, input.projectId]);
+  }, [exportSnapshot, projectId]);
 
   const publicationsBySectionId = useMemo(() => new Map(
     publications.map((publication) => [publication.sectionId, publication]),

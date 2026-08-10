@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ProductionNode, RemoveBackgroundNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestRemoveBackground } from '@/shared/api/ai-client';
+import { requestRemoveBackground } from '../api/ai-client';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';

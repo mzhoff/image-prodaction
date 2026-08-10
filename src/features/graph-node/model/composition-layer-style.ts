@@ -1,6 +1,5 @@
 import type { CompositionLayerKind, CompositionLayerStyle } from '@/entities/production-graph/model/types';
-import type { CompositionLayerView } from './composition-model-types';
-import type { CompositionAlignment } from './use-composition-node-model';
+import type { CompositionAlignment, CompositionLayerView } from './composition-model-types';
 
 export function normalizeCanvasDimension(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value)

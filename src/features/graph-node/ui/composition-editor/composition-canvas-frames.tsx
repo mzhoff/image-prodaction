@@ -10,7 +10,6 @@ export function CompositionLayerFrame({
   canvasHeight,
   canvasWidth,
   hovered,
-  interactive,
   layer,
   locked,
   onHoverChange,
@@ -21,7 +20,6 @@ export function CompositionLayerFrame({
   canvasHeight: number;
   canvasWidth: number;
   hovered: boolean;
-  interactive?: boolean;
   layer: CompositionLayerView;
   locked: boolean;
   onHoverChange: (hovered: boolean) => void;

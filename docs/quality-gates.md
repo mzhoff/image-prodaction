@@ -13,19 +13,26 @@ alone is not enough for changes that affect the backend critical path.
 
 ## Mandatory checks (local, before commit)
 
-1. `npm run db:check`
-2. `npm run db:migrate` twice (migrations must be repeatable)
-3. `npm run typecheck`
-4. `npm test`
-5. `npm run build`
-6. `npm audit --omit=dev --audit-level=high`
-7. `npm run test:backend-smoke` against a running full local contour
-8. `npm run test:e2e` against PostgreSQL, MinIO, Mailpit and the running app
-9. manual regression pass for publish/canvas flows affected by the change
+1. `npm run lint`
+2. `npm run typecheck`
+3. `npm run check:architecture`
+4. `npm run check:size`
+5. `npm run test:coverage`
+6. `npm run db:check`
+7. `npm run db:migrate` twice (migrations must be repeatable)
+8. `npm run build`
+9. `npm audit --omit=dev --audit-level=high`
+10. `npm run test:backend-smoke` against a running full local contour
+11. `npm run test:e2e` against PostgreSQL, MinIO, Mailpit and the running app
+12. manual regression pass for publish/canvas flows affected by the change
 
 CI executes the same hard gates and also builds the production Docker image.
 Failed Playwright runs retain a trace, screenshot and video; CI additionally
 uploads the application, MinIO and Mailpit logs.
+
+Unit coverage cannot fall below 65% of lines, 70% of branches and 60% of
+functions. These are ratchet thresholds, not a target: critical business rules
+still require explicit scenario tests even when the aggregate percentage passes.
 
 ## Critical scenarios (hard)
 

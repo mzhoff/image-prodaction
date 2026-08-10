@@ -3,7 +3,6 @@ import { getDb } from '@/shared/db/client';
 import { document, documentPreference } from '@/shared/db/schema/document';
 import { membership } from '@/shared/db/schema/workspace';
 import { createUuidV7 } from '@/shared/lib/id';
-import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 import { requireWorkspaceMembership } from '@/entities/workspace/server/workspace-service';
 import { validateDocumentSnapshot } from './document-validation';
 
@@ -207,7 +206,7 @@ function toDocumentDto(row: {
   name: string;
   revision: number;
   schemaVersion: number;
-  snapshot: ProjectExport | null;
+  snapshot: unknown | null;
   status: 'active' | 'trash';
   thumbnailAssetId: string | null;
   thumbnailMode: 'auto' | 'manual';
@@ -215,6 +214,7 @@ function toDocumentDto(row: {
   updatedAt: Date;
   workspaceId: string;
 }) {
+  const snapshot = row.snapshot === null ? undefined : validateDocumentSnapshot(row.snapshot);
   return {
     id: row.id,
     workspaceId: row.workspaceId,
@@ -231,7 +231,7 @@ function toDocumentDto(row: {
     updatedAt: row.updatedAt.toISOString(),
     revision: row.revision,
     schemaVersion: row.schemaVersion,
-    snapshot: row.snapshot ?? undefined,
+    snapshot,
   };
 }
 

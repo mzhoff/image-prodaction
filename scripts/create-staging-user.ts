@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { getAuth } from '@/shared/auth/server';
+import { getAuth } from '@/modules/authentication/server/auth-server';
 import { CURRENT_TERMS_VERSION } from '@/shared/auth/terms-contract';
 
 const [rawEmail = '', rawName = '', password = ''] = readFileSync(0, 'utf8')

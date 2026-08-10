@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useEffectEvent, useImperativeHandle, useRef } from 'react';
 import {
   clearCanvas,
   getCanvasPoint,
@@ -8,7 +8,6 @@ import {
   hasAlphaPixels,
   hideBrushCursorElement,
 } from '@/shared/lib/canvas-drawing';
-import { cn } from '@/shared/lib/cn';
 import {
   drawMaskSegment,
   getMaskCanvasDataUrl,
@@ -18,31 +17,11 @@ import {
   type MaskTool,
 } from '../lib/image-mask-canvas';
 import { applyMaskEditorState, getMaskEditorState, type MaskHistoryEntry } from '../lib/mask-editor-state';
+import { ImageMaskCanvasLayer } from './image-mask-canvas-layer';
+import type { ImageMaskEditorHandle, ImageMaskEditorProps } from './image-mask-editor-types';
 
 export type { MaskTool } from '../lib/image-mask-canvas';
-
-export interface ImageMaskEditorHandle {
-  canRedo: () => boolean;
-  canUndo: () => boolean;
-  clear: () => void;
-  getMaskDataUrl: () => string | null;
-  redo: () => void;
-  reset: () => void;
-  undo: () => void;
-}
-
-interface ImageMaskEditorProps {
-  brushSize: number;
-  className?: string;
-  enabled: boolean;
-  height: number;
-  initialMaskDataUrl?: string | null;
-  onHistoryChange?: () => void;
-  onMaskChange?: (maskDataUrl: string | null) => void;
-  onPreviewToolChange?: (tool: MaskTool | null) => void;
-  tool: MaskTool;
-  width: number;
-}
+export type { ImageMaskEditorHandle } from './image-mask-editor-types';
 
 const MAX_MASK_HISTORY = 40;
 
@@ -70,6 +49,12 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   const knownMaskDataUrlRef = useRef<string | null>(initialMaskDataUrl ?? null);
   const redoStackRef = useRef<MaskHistoryEntry[]>([]);
   const undoStackRef = useRef<MaskHistoryEntry[]>([]);
+  const applyLatestInitialMask = useEffectEvent((force = false) => {
+    void applyInitialMaskDataUrl(initialMaskDataUrl ?? null, force);
+  });
+  const finishActiveDrawing = useEffectEvent(() => {
+    finishDrawing(activeCanvasRef.current);
+  });
 
   useEffect(() => {
     const visibleCanvas = canvasRef.current;
@@ -84,11 +69,11 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     clearCanvas(visibleCanvas);
     undoStackRef.current = [];
     redoStackRef.current = [];
-    void applyInitialMaskDataUrl(initialMaskDataUrl ?? null, true);
+    applyLatestInitialMask(true);
   }, [height, width]);
 
   useEffect(() => {
-    void applyInitialMaskDataUrl(initialMaskDataUrl ?? null);
+    applyLatestInitialMask();
   }, [initialMaskDataUrl]);
 
   useEffect(() => {
@@ -99,7 +84,7 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
   }, [enabled, onPreviewToolChange]);
 
   useEffect(() => {
-    const handleGlobalPointerEnd = () => finishDrawing(activeCanvasRef.current);
+    const handleGlobalPointerEnd = () => finishActiveDrawing();
 
     window.addEventListener('pointerup', handleGlobalPointerEnd, { capture: true });
     window.addEventListener('pointercancel', handleGlobalPointerEnd, { capture: true });
@@ -290,35 +275,18 @@ export const ImageMaskEditor = forwardRef<ImageMaskEditorHandle, ImageMaskEditor
     finishDrawing(event.currentTarget);
   };
 
-  return (
-    <div className={cn('image-mask-layer', enabled && 'image-mask-layer-enabled', className)}>
-      <canvas
-        ref={canvasRef}
-        className="image-mask-canvas"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerEnter={(event) => {
-          const activeTool = getPointerTool(event.buttons, tool);
-          onPreviewToolChange?.(activeTool === tool ? null : activeTool);
-          updateMaskCursor(event.currentTarget, cursorRef.current, event.clientX, event.clientY, brushSize, width, activeTool);
-        }}
-        onPointerLeave={() => {
-          if (!drawingRef.current) {
-            hideBrushCursorElement(cursorRef.current);
-            onPreviewToolChange?.(null);
-          }
-        }}
-        onPointerMove={handlePointerMove}
-        onPointerUp={stopDrawing}
-        onPointerCancel={(event) => {
-          stopDrawing(event);
-          hideBrushCursorElement(cursorRef.current);
-        }}
-      />
-      <div ref={cursorRef} className={cn('image-mask-brush-cursor', tool === 'eraser' && 'image-mask-brush-cursor-eraser')} />
-    </div>
-  );
+  return <ImageMaskCanvasLayer
+    brushSize={brushSize}
+    canvasRef={canvasRef}
+    className={className}
+    cursorRef={cursorRef}
+    enabled={enabled}
+    isDrawing={() => drawingRef.current}
+    onPointerDown={handlePointerDown}
+    onPointerMove={handlePointerMove}
+    onPointerStop={stopDrawing}
+    onPreviewToolChange={onPreviewToolChange}
+    tool={tool}
+    width={width}
+  />;
 });

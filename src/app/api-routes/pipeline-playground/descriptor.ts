@@ -1,7 +1,7 @@
 import { getPipelinePlaygroundDescriptor } from '@/modules/executable-pipelines/server/pipeline-playground-service';
 import { parsePipelinePlaygroundEndpoint } from '@/modules/executable-pipelines/core/pipeline-playground-endpoint';
 import { apiError } from '@/shared/api/api-error';
-import { requireApiSession } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { toPipelinePlaygroundErrorResponse } from './error-response';
 
 export async function getPipelinePlaygroundDescriptorResponse(request: Request) {

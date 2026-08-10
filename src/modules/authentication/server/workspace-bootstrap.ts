@@ -1,8 +1,8 @@
-export interface PersonalWorkspaceUser {
-  id: string;
-  email: string;
-  name: string;
-}
+// Retry-safe bridge from authentication lifecycle to the Workspace domain.
+import { ensurePersonalWorkspace } from '@/entities/workspace/server/workspace-service';
+import type { PersonalWorkspaceUser } from '@/shared/auth/personal-workspace-user';
+
+export type { PersonalWorkspaceUser } from '@/shared/auth/personal-workspace-user';
 
 type BootstrapPersonalWorkspace = (user: PersonalWorkspaceUser) => Promise<unknown>;
 type ReportBootstrapFailure = (userId: string) => void;
@@ -26,7 +26,7 @@ export async function ensurePersonalWorkspaceForUser(user: PersonalWorkspaceUser
 
 export async function attemptPersonalWorkspaceBootstrap(
   user: PersonalWorkspaceUser,
-  bootstrap: BootstrapPersonalWorkspace = bootstrapPersonalWorkspace,
+  bootstrap: BootstrapPersonalWorkspace = ensurePersonalWorkspace,
   reportFailure: ReportBootstrapFailure = reportBootstrapFailure,
 ) {
   try {
@@ -36,11 +36,6 @@ export async function attemptPersonalWorkspaceBootstrap(
     reportFailure(user.id);
     return false;
   }
-}
-
-async function bootstrapPersonalWorkspace(user: PersonalWorkspaceUser) {
-  const { ensurePersonalWorkspace } = await import('@/entities/workspace/server/workspace-service');
-  await ensurePersonalWorkspace(user);
 }
 
 function reportBootstrapFailure(userId: string) {

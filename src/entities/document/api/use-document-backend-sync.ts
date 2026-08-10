@@ -162,7 +162,7 @@ export function useDocumentBackendSync({
           clearDocumentRecoverySnapshot(documentId);
           setSyncState({ phase: 'saved' });
         }
-      } catch (error) {
+      } catch {
         if (!active || controller.signal.aborted) return;
         const recoverySnapshot = loadDocumentRecoverySnapshot(documentId);
         if (recoverySnapshot) {

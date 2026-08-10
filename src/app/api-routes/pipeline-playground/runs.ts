@@ -6,7 +6,7 @@ import {
 import { isPipelinePublicId } from '@/modules/executable-pipelines/core/pipeline-playground-endpoint';
 import type { PipelineInputs, PipelineValue } from '@/modules/executable-pipelines/contracts/pipeline-contracts';
 import { apiError } from '@/shared/api/api-error';
-import { requireApiSession } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { isUuidV7 } from '@/shared/lib/id';
 import { toPipelinePlaygroundErrorResponse } from './error-response';
 

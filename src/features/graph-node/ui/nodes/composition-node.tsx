@@ -1,7 +1,7 @@
 'use client';
 
 import { Maximize2, Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
@@ -18,6 +18,9 @@ export function CompositionNode({ node }: { node: ProductionNode }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const hasOutgoingEdge = useProductionGraphStore((state) => state.edges.some((edge) => edge.sourceNodeId === node.id));
   const autoComposeSignatureRef = useRef<string | undefined>(undefined);
+  const composeLatest = useEffectEvent((options?: { silent?: boolean }) => {
+    void model.handleCompose(options);
+  });
   const handleEditorClose = () => {
     setEditorOpen(false);
     void model.handleCompose();
@@ -34,7 +37,7 @@ export function CompositionNode({ node }: { node: ProductionNode }) {
     if (autoComposeSignatureRef.current === model.resultSignature) return;
 
     autoComposeSignatureRef.current = model.resultSignature;
-    void model.handleCompose({ silent: true });
+    composeLatest({ silent: true });
   }, [
     editorOpen,
     hasOutgoingEdge,

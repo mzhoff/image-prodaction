@@ -8,7 +8,7 @@ import type { RefineImageNodeData, RefineImageMode, RefinePreserveStrength, Prod
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
-import { AiRequestError, requestRefineImage } from '@/shared/api/ai-client';
+import { AiRequestError, requestRefineImage } from '../api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { dataUrlToFile, prepareImageForOpenRouter } from '@/shared/lib/image-data-url';

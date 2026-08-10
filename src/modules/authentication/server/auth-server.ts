@@ -1,3 +1,4 @@
+// Authentication application composition; shared auth keeps only low-level contracts.
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
@@ -5,11 +6,11 @@ import {
   assertAuthEmailDeliveryCompatibility,
   readAuthEmailPolicyConfig,
   readAuthServerConfig,
-} from './config';
+} from '@/shared/auth/config';
 import { readEmailDeliveryConfig } from '@/shared/email/config';
 import { dispatchAuthEmail } from '@/shared/email/dispatch';
 import { createSmtpEmailService } from '@/shared/email/service';
-import { termsAcceptanceAdditionalFields } from './terms-policy';
+import { termsAcceptanceAdditionalFields } from '@/shared/auth/terms-policy';
 import { ensurePersonalWorkspaceForUser } from './workspace-bootstrap';
 
 let authPromise: ReturnType<typeof createAuth> | undefined;

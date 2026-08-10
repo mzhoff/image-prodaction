@@ -5,7 +5,7 @@ import {
   isPublicApiPath,
   isPublicPagePath,
 } from '@/shared/auth/route-policy';
-import { getRequestSession } from '@/shared/auth/session';
+import { getRequestSession } from '@/modules/authentication/server/auth-session';
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

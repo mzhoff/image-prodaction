@@ -1,4 +1,4 @@
-import type { TextToSpeechLanguage, TextToSpeechResponseFormat } from '@/entities/production-graph/model/types';
+import type { TextToSpeechLanguage, TextToSpeechResponseFormat } from './speech-contracts';
 
 export interface OpenRouterSpeechCapabilities {
   formats: TextToSpeechResponseFormat[];

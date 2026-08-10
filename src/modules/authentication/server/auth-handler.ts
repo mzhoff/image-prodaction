@@ -1,5 +1,6 @@
-import { getAuth } from './server';
-import { readAuthAccessPolicyConfig } from './config';
+// Better Auth HTTP adapter with product-safe error responses.
+import { readAuthAccessPolicyConfig } from '@/shared/auth/config';
+import { getAuth } from './auth-server';
 
 type AuthHandler = (request: Request) => Promise<Response>;
 

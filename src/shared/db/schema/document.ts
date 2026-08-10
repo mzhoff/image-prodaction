@@ -1,6 +1,5 @@
 import { relations } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 import { user } from './auth';
 import { workspace } from './workspace';
 
@@ -17,7 +16,7 @@ export const document = pgTable('document', {
     .references(() => user.id, { onDelete: 'restrict' }),
   name: text('name').notNull(),
   status: documentStatus('status').default('active').notNull(),
-  snapshot: jsonb('snapshot').$type<ProjectExport | null>(),
+  snapshot: jsonb('snapshot').$type<unknown | null>(),
   thumbnailAssetId: uuid('thumbnail_asset_id'),
   thumbnailMode: documentThumbnailMode('thumbnail_mode').default('auto').notNull(),
   thumbnailUpdatedAt: timestamp('thumbnail_updated_at', { withTimezone: true }),

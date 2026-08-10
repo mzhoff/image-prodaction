@@ -58,15 +58,13 @@ const worker = new GenerationWorker({
   },
 });
 
-let heartbeatTimer: NodeJS.Timeout | undefined;
-let reconciliationTimer: NodeJS.Timeout | undefined;
 let stopping = false;
 
 await updateHeartbeat('starting');
 await writeFile(readyFile, instanceId, { mode: 0o600 });
 currentStatus = 'running';
 await updateHeartbeat('running');
-heartbeatTimer = setInterval(() => {
+const heartbeatTimer = setInterval(() => {
   void updateHeartbeat(currentStatus, createHealthMetadata()).catch((error: unknown) => {
     console.error('[generation-worker] heartbeat failed', {
       message: error instanceof Error ? error.message : 'unknown error',
@@ -75,7 +73,7 @@ heartbeatTimer = setInterval(() => {
 }, heartbeatIntervalMs);
 heartbeatTimer.unref();
 void reconcileUsage();
-reconciliationTimer = setInterval(() => {
+const reconciliationTimer = setInterval(() => {
   void reconcileUsage();
 }, readPositiveInteger('USAGE_RECONCILIATION_INTERVAL_MS', 30_000));
 reconciliationTimer.unref();

@@ -155,8 +155,10 @@ function ContextMenuColorItem({ action, onClose }: { action: ContextMenuColorAct
 
   useEffect(() => {
     return () => {
-      commitLatestValue();
+      if (previewTimerRef.current) window.clearTimeout(previewTimerRef.current);
       removeCommitListenersRef.current?.();
+      const nextValue = latestValueRef.current;
+      if (nextValue !== committedValueRef.current) onCommitRef.current(nextValue);
     };
   }, []);
 
@@ -166,7 +168,7 @@ function ContextMenuColorItem({ action, onClose }: { action: ContextMenuColorAct
     previewTimerRef.current = null;
   };
 
-  const schedulePreview = (nextValue: string) => {
+  const schedulePreview = () => {
     clearPreviewTimer();
     if (!onPreviewRef.current) return;
     previewTimerRef.current = window.setTimeout(() => {
@@ -190,7 +192,7 @@ function ContextMenuColorItem({ action, onClose }: { action: ContextMenuColorAct
     selectingRef.current = true;
     latestValueRef.current = nextValue;
     setValue(nextValue);
-    schedulePreview(nextValue);
+    schedulePreview();
   };
 
   const beginSelection = () => {

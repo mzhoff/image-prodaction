@@ -5,7 +5,6 @@ import {
   type ProviderCredentialSummary,
   type ProviderExecuteRequest,
   type ProviderModel,
-  type ProviderOperationStatus,
   type ProviderOutput,
   type ProviderResult,
   type ProviderUsage,

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { isSettingsSection, SettingsPage } from '@/pages/settings';
-import { requirePageSession } from '@/shared/auth/session';
+import { requirePageSession } from '@/modules/authentication/server/auth-session';
 
 interface SettingsRouteProps {
   params: Promise<{ section: string }>;

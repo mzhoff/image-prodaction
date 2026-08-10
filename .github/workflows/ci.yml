@@ -106,10 +106,14 @@ jobs:
           npm run db:migrate
       - name: Typecheck
         run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - name: Check architecture boundaries
         run: npm run check:architecture
-      - name: Unit tests
-        run: npm test
+      - name: Enforce implementation file-size limit
+        run: npm run check:size
+      - name: Unit tests with coverage thresholds
+        run: npm run test:coverage
       - name: Production build
         run: npm run build
       - name: Validate production deployment configuration

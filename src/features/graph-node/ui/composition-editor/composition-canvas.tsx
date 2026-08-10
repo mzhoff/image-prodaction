@@ -242,7 +242,6 @@ export function CompositionCanvas({
           key={layer.id}
           canvasHeight={canvasHeight}
           canvasWidth={canvasWidth}
-          interactive={interactive}
           layer={layer}
           locked={Boolean(onIsLayerLocked?.(layer))}
           selected={Boolean(selectedLayerIds?.includes(layer.id))}

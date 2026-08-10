@@ -43,6 +43,7 @@ browser after it is saved.
 - [Workspace AI execution implementation plan](./docs/workspace-ai-execution-implementation-plan.md)
 - [Executable Pipelines architecture](./docs/executable-pipelines-architecture.md)
 - [Quality gates](./docs/quality-gates.md)
+- [Architecture refactoring plan](./docs/architecture-refactoring.md)
 
 ## Useful Scripts
 
@@ -50,9 +51,12 @@ browser after it is saved.
 npm run dev:local   # Start local app on port 3004
 npm run worker      # Start the durable generation worker
 npm run dev         # Start Next.js on default port 3000
+npm run lint        # Run the zero-warning ESLint gate
 npm run check:architecture # Verify modular boundaries
+npm run check:size  # Enforce the 300-line implementation limit
 npm run typecheck   # Run TypeScript checks
 npm run test        # Run focused unit tests
+npm run test:coverage # Run all unit tests with coverage thresholds
 npm run test:generation-persistence-smoke # Verify PostgreSQL + MinIO generation fences
 npm run test:workflow-contract  # Contract-level tests
 npm run build       # Build production bundle

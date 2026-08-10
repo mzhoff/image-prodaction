@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createDocument, listDocuments } from '@/entities/document/server/document-service';
 import { ensurePersonalWorkspace } from '@/entities/workspace/server/workspace-service';
 import { apiError } from '@/shared/api/api-error';
-import { requireApiSession } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { isUuidV7 } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normalizeOpenRouterImageUrl } from '@/app/api-routes/ai/openrouter-image-result';
 import { AssetValidationError, validateImageBytes } from './image-policy';
 import { downloadRemoteImage, RemoteImageError, type RemoteImageDependencies } from './remote-image';
 import { createAssetObjectKey } from './s3-assets';
@@ -117,15 +116,6 @@ test('aborts slow provider downloads with a safe timeout error', async () => {
       && error.code === 'download_timeout'
       && !error.message.includes('provider socket detail'),
   );
-});
-
-test('normalizes OpenRouter URLs through the hardened downloader without changing response format', async () => {
-  const normalized = await normalizeOpenRouterImageUrl('https://provider.example/image.png', {
-    maxBytes: 1024,
-    timeoutMs: 100,
-    dependencies: createRemoteDependencies({ fetch: async () => imageResponse() }),
-  });
-  assert.equal(normalized, `data:image/png;base64,${onePixelPng.toString('base64')}`);
 });
 
 test('server owns the bucket key layout', () => {

@@ -41,3 +41,4 @@ export interface CompositionLayerTreeState {
   locked: boolean;
   visible: boolean;
 }
+export type CompositionAlignment = 'left' | 'center-x' | 'right' | 'top' | 'center-y' | 'bottom';

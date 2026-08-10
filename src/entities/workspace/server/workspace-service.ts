@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { membership, workspace } from '@/shared/db/schema/workspace';
 import { createUuidV7 } from '@/shared/lib/id';
-import type { PersonalWorkspaceUser } from '@/shared/auth/workspace-bootstrap';
+import type { PersonalWorkspaceUser } from '@/shared/auth/personal-workspace-user';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member';
 

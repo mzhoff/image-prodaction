@@ -10,7 +10,7 @@ import {
   normalizeExtractPresetSelection,
 } from '@/entities/production-graph/model/extract-presets';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestAnalyzeImage } from '@/shared/api/ai-client';
+import { requestAnalyzeImage } from '../api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';

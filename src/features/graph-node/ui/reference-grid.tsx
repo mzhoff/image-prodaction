@@ -58,7 +58,7 @@ function NodeReferenceCell({
     <div className="entity-reference-cell">
       {url ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img src={url} alt={`${altPrefix} ${index + 1}`} draggable={false} />
           <button
             type="button"

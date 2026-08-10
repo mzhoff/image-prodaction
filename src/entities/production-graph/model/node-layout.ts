@@ -1,6 +1,6 @@
 import type { GraphSize, ProductionNodeType } from './types';
 import { getNodeDefinition } from './node-registry';
-import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, DEFAULT_NODE_CARD_WIDTH } from './node-defaults';
+import { DEFAULT_NODE_CARD_WIDTH } from './node-defaults';
 
 export { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, DEFAULT_NODE_CARD_WIDTH } from './node-defaults';
 

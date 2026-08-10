@@ -23,6 +23,7 @@ import {
   WandSparkles,
 } from 'lucide-react';
 import {
+  createElement,
   createContext,
   useCallback,
   useContext,
@@ -78,7 +79,10 @@ export function NodeTitle({
 }) {
   const renameNode = useProductionGraphStore((state) => state.renameNode);
   const nodeId = useContext(NodeTitleRenameNodeContext);
-  const onRenameNode = onRename ?? (nodeId ? (nextTitle: string) => renameNode(nodeId, nextTitle) : undefined);
+  const renameContextNode = useCallback((nextTitle: string) => {
+    if (nodeId) renameNode(nodeId, nextTitle);
+  }, [nodeId, renameNode]);
+  const onRenameNode = onRename ?? (nodeId ? renameContextNode : undefined);
 
   const [editing, setEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
@@ -132,11 +136,12 @@ export function NodeTitle({
   };
 
   const Icon = getNodeIcon(title, nodeType);
+  const icon = Icon ? createElement(Icon, { size: 16 }) : null;
 
   return (
     <h2 className={cn('node-title', muted && 'node-title-muted')}>
       <span className="node-title-main">
-        {Icon ? <Icon size={16} /> : null}
+        {icon}
         {editing ? (
           <input
             ref={inputRef}

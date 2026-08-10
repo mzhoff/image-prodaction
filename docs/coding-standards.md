@@ -21,6 +21,18 @@ Current project layers:
 Additional rule:
 - shared behavior must be extracted when duplicated across feature areas.
 - If two nodes have identical behavior (ports, context handling, text formatting, history integration), factor into shared hook/component.
+- FSD imports may point only to the same layer or a lower layer. Cross-slice
+  dependencies must go through a stable public contract.
+
+Backend modules use four explicit responsibility zones:
+
+- `contracts` — domain language and stable input/output types
+- `core` — pure business rules without Next.js, database or provider code
+- `server` — use cases, authorization and orchestration
+- `adapters` — PostgreSQL, OpenRouter and other infrastructure integrations
+
+Route handlers translate HTTP only; they do not own business rules or database
+queries. Provider adapters do not leak provider-specific payloads into core.
 
 ## CSS and visual naming
 
@@ -52,6 +64,10 @@ Additional rule:
 
 ## Lint/checking strategy
 
-- Mirror SecuritySphere checks and rules where feasible.
-- Before commit: run local checks (no hard CI dependency before public deployment).
-- CI enforcement starts after production deployment.
+- ESLint runs with zero warnings.
+- Architecture checks reject upward FSD imports, forbidden backend dependencies
+  and import cycles.
+- TypeScript implementation files are limited to 300 lines with no baseline
+  exceptions.
+- CI enforces lint, types, architecture, file size, coverage, database checks,
+  production build, smoke tests and browser E2E.

@@ -9,20 +9,11 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
-import { $patchStyleText } from '@lexical/selection';
 import {
   $createParagraphNode,
   $createTextNode,
-  $createRangeSelection,
   $getRoot,
-  $isRangeSelection,
-  $isTextNode,
-  $setSelection,
-  $getSelection,
   type LexicalEditor,
-  type LexicalNode,
-  type RangeSelection,
-  type TextNode,
 } from 'lexical';
 import {
   normalizeTelegramPlainText,
@@ -32,6 +23,7 @@ import {
 import { splitTelegramMessageParagraphs } from '../lib/telegram-message-blocks';
 import { cn } from '@/shared/lib/cn';
 import { TelegramTextContextMenuPlugin, type TelegramTextContextMenuFeature } from './telegram-message-editor-context-menu';
+import { TelegramMessageCharacterLimitPlugin } from './telegram-message-character-limit-plugin';
 
 interface TelegramMessageEditorProps {
   contextMenuFeatures?: readonly TelegramTextContextMenuFeature[];
@@ -162,41 +154,6 @@ function TelegramMessageSyncPlugin({ richText, value }: Pick<TelegramMessageEdit
   return null;
 }
 
-function TelegramMessageCharacterLimitPlugin({ characterLimit }: { characterLimit?: number }) {
-  const [editor] = useLexicalComposerContext();
-
-  useEffect(() => {
-    if (typeof characterLimit !== 'number') {
-      clearCharacterLimit(editor);
-      return;
-    }
-
-    if (characterLimit <= 0) {
-      clearCharacterLimit(editor);
-      return;
-    }
-
-    applyCharacterLimit(editor, characterLimit);
-  }, [characterLimit, editor]);
-
-  return (
-    <OnChangePlugin
-      ignoreHistoryMergeTagChange
-      ignoreSelectionChange
-      onChange={(_editorState, editor, tags) => {
-        if (typeof characterLimit !== 'number' || tags.has('character-limit-highlight')) return;
-
-        if (characterLimit <= 0) {
-          clearCharacterLimit(editor);
-          return;
-        }
-
-        applyCharacterLimit(editor, characterLimit);
-      }}
-    />
-  );
-}
-
 function parseRichEditorState(editor: LexicalEditor, richText: string | undefined) {
   const normalizedRichText = normalizeTelegramRichText(richText);
   if (!normalizedRichText) return null;
@@ -235,117 +192,4 @@ function rebuildEditorState(value: string | undefined) {
     paragraph.append($createTextNode(block.trim()));
     root.append(paragraph);
   }
-}
-
-function applyCharacterLimit(editor: LexicalEditor, characterLimit: number) {
-  editor.update(() => {
-  const textNodes = getAllTextNodes($getRoot(), []);
-    const totalCharacters = textNodes.reduce((sum, node) => sum + node.node.getTextContent().length, 0);
-
-    if (totalCharacters <= characterLimit) {
-      clearOverLimitStyle(textNodes);
-      return;
-    }
-
-    const previousSelection = saveSelection();
-    clearOverLimitStyle(textNodes);
-    applyOverLimitStyle(textNodes, characterLimit);
-    restoreSelection(previousSelection);
-  }, { tag: 'character-limit-highlight' });
-}
-
-function clearCharacterLimit(editor: LexicalEditor) {
-  editor.update(() => {
-    clearOverLimitStyle(getAllTextNodes($getRoot(), []));
-  }, { tag: 'character-limit-highlight' });
-}
-
-function applyOverLimitStyle(textNodes: TextNodeEntry[], characterLimit: number) {
-  let position = 0;
-  for (const node of textNodes) {
-    const textLength = node.node.getTextContent().length;
-    if (textLength === 0) {
-      continue;
-    }
-
-    const start = position;
-    const end = position + textLength;
-    if (end <= characterLimit) {
-      position = end;
-      continue;
-    }
-
-    const overflowStart = Math.max(characterLimit - start, 0);
-    if (overflowStart <= 0) {
-      applyOverLimitStyleToTextNode(node.node, 0, textLength);
-    } else if (overflowStart < textLength) {
-      applyOverLimitStyleToTextNode(node.node, overflowStart, textLength);
-    }
-
-    if (start >= characterLimit) {
-      position = end;
-      continue;
-    }
-
-    position = end;
-  }
-}
-
-function applyOverLimitStyleToTextNode(node: TextNodeEntry['node'], start: number, end: number) {
-  const rangeSelection = $createRangeSelection();
-  rangeSelection.setTextNodeRange(node, start, node, end);
-  $patchStyleText(rangeSelection, { '--telegram-over-limit': '1' });
-}
-
-function clearOverLimitStyle(textNodes: TextNodeEntry[]) {
-  for (const node of textNodes) {
-    const style = node.node.getStyle();
-    const nextStyle = stripTextStyleProperty(style, '--telegram-over-limit');
-    if (nextStyle !== style) {
-      node.node.setStyle(nextStyle);
-    }
-  }
-}
-
-function saveSelection() {
-  const selection = $getSelection();
-  return $isRangeSelection(selection) ? selection.clone() : null;
-}
-
-function restoreSelection(selection: RangeSelection | null) {
-  if ($isRangeSelection(selection)) {
-    $setSelection(selection);
-  }
-}
-
-function getAllTextNodes(node: LexicalNode, nodes: TextNodeEntry[]): TextNodeEntry[] {
-  if ($isTextNode(node)) {
-    nodes.push({ node });
-    return nodes;
-  }
-
-  const getChildren = (node as { getChildren?: () => LexicalNode[] }).getChildren;
-  if (!getChildren) {
-    return nodes;
-  }
-
-  for (const child of getChildren.call(node)) {
-    getAllTextNodes(child, nodes);
-  }
-
-  return nodes;
-}
-
-function stripTextStyleProperty(style: string, property: string) {
-  if (!style) return '';
-  return style
-    .split(';')
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-    .filter((part) => !part.startsWith(`${property}:`))
-    .join('; ');
-}
-
-interface TextNodeEntry {
-  node: TextNode;
 }

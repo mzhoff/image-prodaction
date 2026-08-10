@@ -14,3 +14,12 @@ export interface ImageViewerEditorPanel {
   height?: number;
   toolbar?: ReactNode;
 }
+
+export interface ImageViewerItem {
+  id: string;
+  height?: number;
+  name?: string;
+  thumbnailUrl?: string;
+  url: string;
+  width?: number;
+}

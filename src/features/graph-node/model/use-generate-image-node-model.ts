@@ -4,17 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { appendGenerationResult, getGenerationHistory, selectGenerationResult } from '@/entities/production-graph/model/generation-history';
 import type { GenerateImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import {
-  AiRequestError,
-  requestEditImage,
-  requestGenerateImage,
-  requestGenerationJob,
-} from '@/shared/api/ai-client';
+import { requestGenerateImage, requestGenerationJob } from '../api/ai-client';
 import { DEFAULT_IMAGE_MODEL, MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
-import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
 import { createRequestFingerprint } from '@/shared/lib/request-fingerprint';
 import {
   buildGeneratePayload,
@@ -22,6 +15,10 @@ import {
   getGenerateInputSummary,
 } from '../lib/generate-node-inputs';
 import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
+import {
+  createGenerateImageMaskEditAction,
+  shouldDiscardGenerationRequest,
+} from './generate-image-mask-edit-action';
 
 interface UseGenerateImageNodeModelParams {
   composingOpen: boolean;
@@ -231,58 +228,17 @@ export function useGenerateImageNodeModel({
     }
   };
 
-  const handleMaskEdit = async ({ assetId, maskDataUrl, model, prompt }: { assetId: string; maskDataUrl: string; model: string; prompt: string }) => {
-    try {
-      setNodeStatus(node.id, 'running');
-      const sourceAsset = assets.find((asset) => asset.id === assetId);
-      if (!sourceAsset) throw new Error('Активное изображение не найдено в локальном графе.');
-      const sourceBlob = await loadAssetBlob(sourceAsset);
-      if (!sourceBlob) throw new Error('Не удалось прочитать активное изображение из локального хранилища.');
-
-      const scope = getActiveAssetScope();
-      if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
-      const requestPayload = {
-        ...scope,
-        aspectRatio: selectedAspectRatio,
-        imageDataUrl: await blobToDataUrl(sourceBlob),
-        maskDataUrl,
-        model,
-        prompt,
-        size: selectedSize,
-      };
-      const fingerprint = await createRequestFingerprint(requestPayload);
-      const idempotencyKey = data.editGenerationRequest?.fingerprint === fingerprint
-        ? data.editGenerationRequest.idempotencyKey
-        : crypto.randomUUID();
-      updateNodeDataSilent(node.id, {
-        editGenerationRequest: { fingerprint, idempotencyKey },
-      });
-      const result = await requestEditImage({ ...requestPayload, idempotencyKey });
-      const file = await dataUrlToFile(result.imageDataUrl, `edited-${Date.now()}.png`);
-      const editedAsset = await saveTransientImageAsset(file);
-      addAsset(editedAsset);
-      updateNodeData(node.id, {
-        ...appendGenerationResult(data, editedAsset.id),
-        resultMetadata: {
-          ...data.resultMetadata,
-          [editedAsset.id]: {
-            aspectRatio: selectedAspectRatio,
-            model,
-            size: selectedSize,
-          },
-        },
-        editGenerationRequest: undefined,
-        message: result.message,
-      });
-      setNodeStatus(node.id, 'success');
-    } catch (error) {
-      setNodeStatus(node.id, 'error');
-      if (shouldDiscardGenerationRequest(error)) {
-        updateNodeDataSilent(node.id, { editGenerationRequest: undefined });
-      }
-      throw error;
-    }
-  };
+  const handleMaskEdit = createGenerateImageMaskEditAction({
+    addAsset,
+    assets,
+    data,
+    nodeId: node.id,
+    selectedAspectRatio,
+    selectedSize,
+    setNodeStatus,
+    updateNodeData,
+    updateNodeDataSilent,
+  });
 
   return {
     allSectionsOpen,
@@ -312,10 +268,4 @@ export function useGenerateImageNodeModel({
     toggleAllSections,
     getInputState: (portId: string) => getGenerateInputKinds(node.id, portId, edges, nodes),
   };
-}
-
-function shouldDiscardGenerationRequest(error: unknown) {
-  return error instanceof AiRequestError
-    && error.code !== 'generation_in_progress'
-    && error.status < 500;
 }

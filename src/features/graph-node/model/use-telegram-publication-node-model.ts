@@ -6,7 +6,6 @@ import {
   getPublicationMetrics,
   validatePublicationArtifact,
   type PublicationAttachment,
-  type PublicationComponent,
   type PublicationValidationReport,
 } from '@/entities/production-graph/model/publication';
 import {
@@ -14,16 +13,14 @@ import {
   getPublicationContentUnitDefinition,
   getPublicationPlatformDefinition,
 } from '@/entities/production-graph/model/publication-platforms';
-import { getIncomingImageCollectionInputs, getIncomingTextCollectionInputs, type GraphImageInputItem, type GraphTextInputItem } from '@/entities/production-graph/model/graph-io';
+import { getIncomingImageCollectionInputs, getIncomingTextCollectionInputs } from '@/entities/production-graph/model/graph-io';
 import {
-  TELEGRAM_MEDIA_MAX_INPUTS,
-  TELEGRAM_MEDIA_MIN_INPUTS,
   getTelegramMediaInputPortId,
   getTelegramMediaInputPortIndex,
 } from '@/entities/production-graph/model/node-definitions';
 import type { AssetRecord, ProductionNode, TelegramPublicationNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { requestFormatTelegramText } from '@/shared/api/ai-client';
+import { requestFormatTelegramText } from '../api/ai-client';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import {
   getTelegramMessageCharacterLimit,
@@ -36,6 +33,16 @@ import {
   normalizeTelegramPlainText,
   type TelegramMessageEditorValue,
 } from '../lib/telegram-rich-text';
+import {
+  areStringArraysEqual,
+  createPublicationComponents,
+  getConnectedRichText,
+  getTelegramMediaSlotCountFromInputs,
+  isTelegramMediaTargetPort,
+  moveItem,
+  sortTelegramImageInputs,
+  uniqueByAssetId,
+} from './telegram-publication-values';
 
 const TELEGRAM_CONTENT_UNIT = getPublicationContentUnitDefinition(DEFAULT_PUBLICATION_CONTENT_UNIT_ID);
 const TELEGRAM_PLATFORM = getPublicationPlatformDefinition('telegram');
@@ -276,82 +283,4 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
     textInputs,
     validation,
   };
-}
-
-function isTelegramMediaTargetPort(portId: string) {
-  return portId === 'media' || getTelegramMediaInputPortIndex(portId) >= 0;
-}
-
-function sortTelegramImageInputs<T extends GraphImageInputItem>(items: T[]) {
-  return [...items].sort((first, second) => {
-    const firstPortIndex = first.targetPortId === 'media' ? 0 : getTelegramMediaInputPortIndex(first.targetPortId);
-    const secondPortIndex = second.targetPortId === 'media' ? 0 : getTelegramMediaInputPortIndex(second.targetPortId);
-    if (firstPortIndex !== secondPortIndex) return firstPortIndex - secondPortIndex;
-    return (first.collectionIndex ?? 0) - (second.collectionIndex ?? 0);
-  });
-}
-
-function getConnectedRichText(textInputs: GraphTextInputItem[]) {
-  return textInputs.find((input) => {
-    if (!input.richText) return false;
-    return normalizeTelegramPlainText(getPlainTextFromTelegramRichText(input.richText)) === normalizeTelegramPlainText(input.text);
-  })?.richText ?? '';
-}
-
-function getTelegramMediaSlotCountFromInputs(
-  connectedPortIds: string[],
-  storedInputCount: number | undefined,
-) {
-  const connectedIndices = connectedPortIds
-    .map((portId) => getTelegramMediaInputPortIndex(portId))
-    .filter((index) => index >= 0)
-    .sort((left, right) => left - right);
-  const maxConnectedIndex = connectedIndices.length > 0 ? connectedIndices.at(-1)! : -1;
-  const usedCount = connectedIndices.length;
-  const storedCount = Math.floor(Number(storedInputCount) || TELEGRAM_MEDIA_MIN_INPUTS);
-  const baseCount = usedCount === 0
-    ? storedCount
-    : Math.max(storedCount, maxConnectedIndex + 2);
-  return Math.min(
-    TELEGRAM_MEDIA_MAX_INPUTS,
-    Math.max(TELEGRAM_MEDIA_MIN_INPUTS, baseCount),
-  );
-}
-
-function createPublicationComponents(messageText: string): PublicationComponent[] {
-  const trimmedMessage = messageText.trim();
-  if (!trimmedMessage) return [];
-
-  return [{
-    id: 'telegram-message',
-    type: 'body',
-    slot: 'body',
-    order: 0,
-    contentText: trimmedMessage,
-  }];
-}
-
-function uniqueByAssetId<T extends { assetId: string }>(items: T[]) {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    if (!item.assetId || seen.has(item.assetId)) return false;
-    seen.add(item.assetId);
-    return true;
-  });
-}
-
-function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
-  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) {
-    return items;
-  }
-
-  const nextItems = [...items];
-  const [item] = nextItems.splice(fromIndex, 1);
-  nextItems.splice(toIndex, 0, item);
-  return nextItems;
-}
-
-function areStringArraysEqual(left: string[] | undefined, right: string[]) {
-  if (!left || left.length !== right.length) return false;
-  return left.every((item, index) => item === right[index]);
 }

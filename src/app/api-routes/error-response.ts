@@ -1,5 +1,5 @@
 import { apiError } from '@/shared/api/api-error';
-import { AuthenticationRequiredError } from '@/shared/auth/session';
+import { AuthenticationRequiredError } from '@/modules/authentication/server/auth-session';
 import { DocumentConflictError, DocumentNotFoundError } from '@/entities/document/server/document-service';
 import { DocumentValidationError } from '@/entities/document/server/document-validation';
 import { WorkspaceAccessError } from '@/entities/workspace/server/workspace-service';

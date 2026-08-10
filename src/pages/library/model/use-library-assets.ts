@@ -16,7 +16,7 @@ export function useLibraryAssets(workspaceId: string | undefined, filters: Libra
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const filterKey = JSON.stringify(filters);
-  const stableFilters = useMemo(() => filters, [filterKey]);
+  const stableFilters = useMemo(() => JSON.parse(filterKey) as LibraryFilters, [filterKey]);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     if (!workspaceId) {

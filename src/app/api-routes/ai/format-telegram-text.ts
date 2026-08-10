@@ -3,7 +3,7 @@ import {
   assertTelegramFormattingPreservesText,
   createTelegramEditorValueFromSegments,
   parseTelegramFormatSegmentsPayload,
-} from '@/features/graph-node/lib/telegram-rich-text';
+} from '@/modules/telegram-formatting/core';
 import { DEFAULT_ANALYSIS_MODEL, PREFERRED_ANALYSIS_MODEL_IDS } from '@/shared/api/openrouter-models';
 import {
   executeShortOpenRouterChat,

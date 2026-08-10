@@ -1,5 +1,5 @@
 import { ensurePersonalWorkspace, listUserWorkspaces } from '@/entities/workspace/server/workspace-service';
-import { requireApiSession } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { toApiErrorResponse } from '../error-response';
 
 export async function getWorkspaces(request: Request) {

@@ -1,6 +1,6 @@
 import { apiError } from '@/shared/api/api-error';
-import { requireApiSession } from '@/shared/auth/session';
-import { AuthenticationRequiredError } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
+import { AuthenticationRequiredError } from '@/modules/authentication/server/auth-session';
 import {
   createFeedbackSubmission,
   FeedbackDraftValidationError,

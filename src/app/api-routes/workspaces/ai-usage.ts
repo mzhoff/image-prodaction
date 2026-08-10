@@ -1,6 +1,6 @@
 import { getWorkspaceUsage } from '@/modules/usage';
 import { apiError } from '@/shared/api/api-error';
-import { requireApiSession } from '@/shared/auth/session';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { isUuidV7 } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
