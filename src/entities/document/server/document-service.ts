@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { document, documentPreference } from '@/shared/db/schema/document';
 import { membership } from '@/shared/db/schema/workspace';
@@ -31,6 +31,9 @@ export async function listDocuments(userId: string) {
     name: document.name,
     status: document.status,
     snapshot: document.snapshot,
+    thumbnailAssetId: document.thumbnailAssetId,
+    thumbnailMode: document.thumbnailMode,
+    thumbnailUpdatedAt: document.thumbnailUpdatedAt,
     schemaVersion: document.schemaVersion,
     revision: document.revision,
     createdAt: document.createdAt,
@@ -121,6 +124,48 @@ export async function saveDocumentSnapshot(input: {
   return toDocumentDto({ ...updated, favorite: current.favorite });
 }
 
+export async function setDocumentThumbnail(input: {
+  assetId: string;
+  documentId: string;
+  mode: 'auto' | 'manual';
+  userId: string;
+}) {
+  const [current] = await selectAccessibleDocument(input.userId, input.documentId);
+  if (!current) throw new DocumentNotFoundError();
+
+  if (input.mode === 'auto' && current.thumbnailMode === 'manual') {
+    return {
+      applied: false,
+      previousAssetId: current.thumbnailAssetId,
+      project: toDocumentDto(current),
+    };
+  }
+
+  const conditions = [eq(document.id, input.documentId)];
+  if (input.mode === 'auto') conditions.push(ne(document.thumbnailMode, 'manual'));
+  const [updated] = await getDb().update(document).set({
+    thumbnailAssetId: input.assetId,
+    thumbnailMode: input.mode,
+    thumbnailUpdatedAt: new Date(),
+  }).where(and(...conditions)).returning();
+
+  if (!updated) {
+    const [latest] = await selectAccessibleDocument(input.userId, input.documentId);
+    if (!latest) throw new DocumentNotFoundError();
+    return {
+      applied: false,
+      previousAssetId: latest.thumbnailAssetId,
+      project: toDocumentDto(latest),
+    };
+  }
+
+  return {
+    applied: true,
+    previousAssetId: current.thumbnailAssetId,
+    project: toDocumentDto({ ...updated, favorite: current.favorite }),
+  };
+}
+
 export async function permanentlyDeleteDocument(userId: string, documentId: string) {
   const current = await getDocument(userId, documentId);
   if (current.status !== 'trash') throw new DocumentConflictError(current.revision);
@@ -134,6 +179,9 @@ async function selectAccessibleDocument(userId: string, documentId: string) {
     name: document.name,
     status: document.status,
     snapshot: document.snapshot,
+    thumbnailAssetId: document.thumbnailAssetId,
+    thumbnailMode: document.thumbnailMode,
+    thumbnailUpdatedAt: document.thumbnailUpdatedAt,
     schemaVersion: document.schemaVersion,
     revision: document.revision,
     createdAt: document.createdAt,
@@ -161,6 +209,9 @@ function toDocumentDto(row: {
   schemaVersion: number;
   snapshot: ProjectExport | null;
   status: 'active' | 'trash';
+  thumbnailAssetId: string | null;
+  thumbnailMode: 'auto' | 'manual';
+  thumbnailUpdatedAt: Date | null;
   updatedAt: Date;
   workspaceId: string;
 }) {
@@ -168,7 +219,12 @@ function toDocumentDto(row: {
     id: row.id,
     workspaceId: row.workspaceId,
     name: row.name,
-    thumbnailUrl: '/workspace-assets/project-blog-pipeline.png',
+    thumbnailUrl: row.thumbnailAssetId
+      ? `/api/assets/${row.thumbnailAssetId}/content?variant=thumbnail`
+      : '/workspace-assets/project-blog-pipeline.png',
+    thumbnailMode: row.thumbnailMode,
+    thumbnailAvailable: Boolean(row.thumbnailAssetId),
+    thumbnailUpdatedAt: row.thumbnailUpdatedAt?.toISOString(),
     favorite: row.favorite ?? false,
     status: row.status,
     createdAt: row.createdAt.toISOString(),

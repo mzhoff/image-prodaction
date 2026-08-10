@@ -29,10 +29,16 @@ export function CanvasEdges({
         if (!path) return null;
         const edgeDataKind = getEdgeDataKind(edge, nodesById, edges);
         const edgeHasData = getEdgeHasData(edge, nodesById, edges);
+        const stroke = getEdgeStroke(edgeDataKind);
         return (
           <path
             key={edge.id}
             d={path}
+            fill="none"
+            stroke={stroke}
+            strokeDasharray={edgeHasData ? undefined : '8 7'}
+            strokeLinecap="round"
+            strokeWidth={3}
             className={`edge-path ${getEdgeKindClass(edgeDataKind)} ${edgeHasData ? 'edge-path-has-data' : 'edge-path-empty'}`}
           />
         );
@@ -40,6 +46,10 @@ export function CanvasEdges({
       {connectionDraft ? (
         <path
           d={getDraftPath(connectionDraft)}
+          fill="none"
+          stroke={getEdgeStroke(getDraftKind(connectionDraft, nodesById, edges))}
+          strokeLinecap="round"
+          strokeWidth={3}
           className={`edge-path edge-path-draft ${getEdgeKindClass(getDraftKind(connectionDraft, nodesById, edges))}`}
         />
       ) : null}
@@ -86,4 +96,15 @@ function getEdgeKindClass(kind: string) {
   if (kind === 'location') return 'edge-path-location';
   if (kind === 'publication') return 'edge-path-publication';
   return 'edge-path-text';
+}
+
+function getEdgeStroke(kind: string) {
+  if (kind === 'image') return '#052cd9';
+  if (kind === 'subject') return '#7c3aed';
+  if (kind === 'location') return '#0f766e';
+  if (kind === 'publication') return '#2aabee';
+  if (kind === 'video') return '#f97316';
+  if (kind === 'audio') return '#22c55e';
+  if (kind === 'empty') return '#9ca3af';
+  return '#16a34a';
 }

@@ -9,12 +9,21 @@ export function createGraphUiStateActions(set: StoreSet): Pick<
 > {
   return {
     setProjectUiViewport: (viewport) => {
-      set((state) => ({
-        uiState: {
-          ...state.uiState,
-          viewport,
-        },
-      }));
+      set((state) => {
+        const current = state.uiState.viewport;
+        if (
+          current.x === viewport.x
+          && current.y === viewport.y
+          && current.zoom === viewport.zoom
+        ) return state;
+
+        return {
+          uiState: {
+            ...state.uiState,
+            viewport,
+          },
+        };
+      });
     },
     setNodeUiState: (nodeId, nodeUiState) => {
       const nextNodeState = applyNodeDisplayState(nodeUiState);

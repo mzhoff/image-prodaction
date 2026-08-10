@@ -36,7 +36,7 @@ export function DocumentNodePalette({ onClose, onCreateNode, open }: DocumentNod
   const handleWheel = useScrollableWheel<HTMLDivElement>();
 
   return (
-    <aside className={`document-node-palette ${open ? 'document-node-palette-open' : ''}`} aria-hidden={!open} aria-label="Document tools">
+    <aside className={`document-node-palette ${open ? 'document-node-palette-open' : ''}`} aria-hidden={!open} aria-label="Document tools" data-snapshot-exclude>
       <div className="document-node-palette-tabs" role="tablist" aria-label="Palette sections">
         {paletteTabs.map((tab) => (
           <button

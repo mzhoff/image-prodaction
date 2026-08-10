@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { createGraphUiStateActions } from './graph-ui-state-actions.ts';
 import { normalizeNodeDisplayState, normalizeProjectUiState } from './project-schema.ts';
+import type { ProductionGraphState } from './store-types.ts';
 
 test('normalizeNodeDisplayState maps legacy collapsed flag to Expanded/Collapsed state', () => {
   assert.equal(normalizeNodeDisplayState({ collapsed: true }), 'Collapsed');
@@ -32,4 +34,24 @@ test('normalizeProjectUiState migrates node ui state and filters unknown nodes',
   assert.equal(normalized.nodes.one.state, 'Collapsed');
   assert.equal(normalized.nodes.one.collapsed, true);
   assert.equal('missing' in normalized.nodes, false);
+});
+
+test('setProjectUiViewport ignores an identical restored viewport', () => {
+  const state = {
+    uiState: {
+      nodes: {},
+      sections: {},
+      viewport: { x: 10, y: 20, zoom: 0.8 },
+    },
+  } as ProductionGraphState;
+  let nextState: ProductionGraphState | undefined;
+  const actions = createGraphUiStateActions((partial) => {
+    nextState = typeof partial === 'function'
+      ? partial(state) as ProductionGraphState
+      : partial as ProductionGraphState;
+  });
+
+  actions.setProjectUiViewport({ x: 10, y: 20, zoom: 0.8 });
+
+  assert.strictEqual(nextState, state);
 });

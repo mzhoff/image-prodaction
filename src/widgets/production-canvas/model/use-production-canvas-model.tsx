@@ -24,6 +24,7 @@ import { useCanvasImageImport } from './use-canvas-image-import';
 import { useCanvasImageViewer } from './use-canvas-image-viewer';
 import { useCanvasProjectTransfer } from './use-canvas-project-transfer';
 import { useCanvasToast } from './use-canvas-toast';
+import { useDocumentThumbnailSync } from './use-document-thumbnail-sync';
 import { type ConnectionDropOnEmpty, useConnectionDraft } from './use-connection-draft';
 import { useNodeDrag } from './use-node-drag';
 import { usePortPointMeasurement } from './use-port-point-measurement';
@@ -89,10 +90,11 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
   const exportProjectSnapshotForRoute = graph.exportProjectSnapshot;
   const importPortableProjectForRoute = graph.importPortableProject;
   const resetProjectForRoute = graph.resetProject;
-  const subscribeToProjectChanges = useCallback((listener: () => void) => (
+  const subscribeToProjectChanges = useCallback((
+    listener: (change?: { thumbnailRelevant?: boolean }) => void,
+  ) => (
     useProductionGraphStore.subscribe((state, previous) => {
-      if (
-        state.version !== previous.version
+      const thumbnailRelevant = state.version !== previous.version
         || state.nodes !== previous.nodes
         || state.sections !== previous.sections
         || state.edges !== previous.edges
@@ -102,8 +104,12 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
         || state.locations !== previous.locations
         || state.publications !== previous.publications
         || state.runs !== previous.runs
+        || state.uiState.nodes !== previous.uiState.nodes
+        || state.uiState.sections !== previous.uiState.sections;
+      if (
+        thumbnailRelevant
         || state.uiState !== previous.uiState
-      ) listener();
+      ) listener({ thumbnailRelevant });
     })
   ), []);
   const documentSync = useDocumentBackendSync({
@@ -112,6 +118,13 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     projectId,
     resetProject: resetProjectForRoute,
     subscribeToProjectChanges,
+  });
+  const documentThumbnail = useDocumentThumbnailSync({
+    canvasRef: canvas.containerRef,
+    projectId,
+    saveSequence: documentSync.saveSequence,
+    serverMode: documentSync.thumbnailMode,
+    workspaceId: documentSync.workspaceId,
   });
   const studioPipelines = useStudioPipelinePublications({
     exportSnapshot: exportProjectSnapshotForRoute,
@@ -632,6 +645,9 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     documentName: documentSync.documentName,
     documentFavorite: documentSync.favorite,
     documentStatus: documentSync.documentStatus,
+    documentThumbnailMode: documentThumbnail.thumbnailMode,
+    documentThumbnailPending: documentThumbnail.manualCapturePending,
+    createDocumentThumbnail: documentThumbnail.createManualSnapshot,
     moveDocumentToTrash: documentSync.moveDocumentToTrash,
     renameDocument: documentSync.renameDocument,
     setDocumentFavorite: documentSync.setDocumentFavorite,

@@ -12,6 +12,7 @@ export function AssistantFloatingButton({ className = '', onClick }: AssistantFl
     <button
       type="button"
       className={`assistant-floating-button ${className}`}
+      data-snapshot-exclude
       aria-label="Open assistant"
       onClick={onClick}
     >

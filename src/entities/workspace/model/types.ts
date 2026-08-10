@@ -23,6 +23,8 @@ export interface ProjectSummary {
   workspaceId: string;
   name: string;
   thumbnailUrl: string;
+  thumbnailMode: 'auto' | 'manual';
+  thumbnailAvailable?: boolean;
   favorite: boolean;
   status: ProjectStatus;
   createdAt: string;

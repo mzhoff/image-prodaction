@@ -56,12 +56,15 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
       >
         <DocumentTitleBar
           favorite={model.documentFavorite}
+          onCreateSnapshot={model.createDocumentThumbnail}
           onCloseCanvasMenu={model.closeContextMenu}
           onExportProject={model.exportProjectSnapshot}
           onMoveToTrash={model.moveDocumentToTrash}
           onNotify={model.showToast}
           onRename={model.renameDocument}
           onToggleFavorite={model.setDocumentFavorite}
+          snapshotMode={model.documentThumbnailMode}
+          snapshotPending={model.documentThumbnailPending}
           title={projectTitle}
         />
         <DocumentNodePalette
@@ -113,6 +116,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         <button
           type="button"
           className={`document-floating-action document-floating-action-add ${paletteOpen ? 'document-floating-action-hidden' : ''}`}
+          data-snapshot-exclude
           aria-label="Open node palette"
           aria-expanded={paletteOpen}
           onClick={() => setPaletteOpen(true)}
@@ -125,10 +129,10 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         />
         <AssistantShell open={assistantOpen} contextLabel={projectTitle} onClose={() => setAssistantOpen(false)} />
         {syncProblem && model.documentSync.message ? (
-          <div className="canvas-toast" role="status">{model.documentSync.message}</div>
-        ) : model.toastMessage ? <div className="canvas-toast">{model.toastMessage}</div> : null}
-        {model.boxSelection.rectStyle ? <div className="selection-rect" style={model.boxSelection.rectStyle} /> : null}
-        {model.sectionDraftStyle ? <div className="section-draft-rect" style={model.sectionDraftStyle} /> : null}
+          <div className="canvas-toast" data-snapshot-exclude role="status">{model.documentSync.message}</div>
+        ) : model.toastMessage ? <div className="canvas-toast" data-snapshot-exclude>{model.toastMessage}</div> : null}
+        {model.boxSelection.rectStyle ? <div className="selection-rect" data-snapshot-exclude style={model.boxSelection.rectStyle} /> : null}
+        {model.sectionDraftStyle ? <div className="section-draft-rect" data-snapshot-exclude style={model.sectionDraftStyle} /> : null}
         <ContextMenu menu={model.contextMenu.menu} onClose={model.closeContextMenu} />
         {model.imageViewer ? (
           <ImageViewer

@@ -79,6 +79,7 @@
     "clsx": "2.1.1",
     "drizzle-orm": "^0.45.2",
     "heic2any": "0.0.4",
+    "html-to-image": "^1.11.13",
     "kysely": "^0.28.17",
     "lexical": "^0.45.0",
     "lucide-react": "1.17.0",

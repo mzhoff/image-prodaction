@@ -8,6 +8,9 @@ export interface DocumentProject {
   schemaVersion: number;
   snapshot?: ProjectExport;
   status: 'active' | 'trash';
+  thumbnailAvailable: boolean;
+  thumbnailMode: 'auto' | 'manual';
+  thumbnailUrl: string;
   workspaceId: string;
 }
 
@@ -61,6 +64,24 @@ export async function updateDocumentProjectMetadata(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(metadata),
   }).then((result) => result.project);
+}
+
+export async function uploadDocumentThumbnail(
+  projectId: string,
+  file: File,
+  mode: 'auto' | 'manual',
+) {
+  const formData = new FormData();
+  formData.set('file', file);
+  formData.set('mode', mode);
+
+  return requestJson<{ project: DocumentProject }>(
+    `/api/projects/${encodeURIComponent(projectId)}/thumbnail`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  ).then((result) => result.project);
 }
 
 async function requestJson<T>(input: string, init?: RequestInit) {

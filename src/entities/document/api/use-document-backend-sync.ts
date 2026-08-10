@@ -23,7 +23,9 @@ interface UseDocumentBackendSyncOptions {
   importSnapshot: (snapshot: unknown, expectedKind: 'projectSnapshot') => unknown;
   projectId?: string;
   resetProject: () => void;
-  subscribeToProjectChanges: (listener: () => void) => () => void;
+  subscribeToProjectChanges: (
+    listener: (change?: { thumbnailRelevant?: boolean }) => void,
+  ) => () => void;
 }
 
 export function useDocumentBackendSync({
@@ -36,7 +38,10 @@ export function useDocumentBackendSync({
   const [documentName, setDocumentName] = useState<string>();
   const [favorite, setFavorite] = useState(false);
   const [documentStatus, setDocumentStatus] = useState<'active' | 'trash'>('active');
+  const [thumbnailMode, setThumbnailMode] = useState<'auto' | 'manual'>('auto');
+  const [thumbnailAvailable, setThumbnailAvailable] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>();
+  const [saveSequence, setSaveSequence] = useState(0);
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
 
   useEffect(() => {
@@ -44,7 +49,10 @@ export function useDocumentBackendSync({
       setDocumentName(undefined);
       setFavorite(false);
       setDocumentStatus('active');
+      setThumbnailMode('auto');
+      setThumbnailAvailable(false);
       setWorkspaceId(undefined);
+      setSaveSequence(0);
       setSyncState({ phase: 'idle' });
       return undefined;
     }
@@ -55,6 +63,7 @@ export function useDocumentBackendSync({
     let active = true;
     let changedWhileSaving = false;
     let dirty = false;
+    let thumbnailDirty = false;
     let halted = false;
     let revision = 0;
     let releaseAssetScope = () => {};
@@ -75,6 +84,8 @@ export function useDocumentBackendSync({
       saving = true;
       changedWhileSaving = false;
       dirty = false;
+      const refreshThumbnail = thumbnailDirty;
+      thumbnailDirty = false;
       const snapshot = exportSnapshot();
       saveDocumentRecoverySnapshot(documentId, snapshot);
       setSyncState({ phase: 'saving' });
@@ -83,13 +94,17 @@ export function useDocumentBackendSync({
         const saved = await saveDocumentProjectSnapshot(documentId, snapshot, revision);
         if (!active) return;
         revision = saved.revision;
+        setThumbnailMode(saved.thumbnailMode);
+        setThumbnailAvailable(saved.thumbnailAvailable);
         clearDocumentRecoverySnapshot(documentId);
         setSyncState({ phase: 'saved' });
+        if (refreshThumbnail) setSaveSequence((current) => current + 1);
       } catch (error) {
         if (!active) return;
         const failure = classifyDocumentSyncFailure(error);
         halted = failure.phase === 'conflict';
         dirty = true;
+        thumbnailDirty ||= refreshThumbnail;
         setSyncState(failure);
       } finally {
         saving = false;
@@ -98,9 +113,10 @@ export function useDocumentBackendSync({
     };
     const debouncedSave = createDebouncedAction(() => { void save(); }, AUTOSAVE_DELAY_MS);
 
-    const markDirty = () => {
+    const markDirty = (change?: { thumbnailRelevant?: boolean }) => {
       if (halted) return;
       dirty = true;
+      if (change?.thumbnailRelevant !== false) thumbnailDirty = true;
       if (saving) changedWhileSaving = true;
       setSyncState((current) => current.phase === 'saving' ? current : { phase: 'dirty' });
       debouncedSave.schedule();
@@ -119,6 +135,7 @@ export function useDocumentBackendSync({
         if (recoverySnapshot) {
           importSnapshot(recoverySnapshot, 'projectSnapshot');
           dirty = true;
+          thumbnailDirty = true;
         } else if (project.snapshot) {
           importSnapshot(project.snapshot, 'projectSnapshot');
         } else {
@@ -133,6 +150,8 @@ export function useDocumentBackendSync({
         setDocumentName(project.name);
         setFavorite(project.favorite);
         setDocumentStatus(project.status);
+        setThumbnailMode(project.thumbnailMode);
+        setThumbnailAvailable(project.thumbnailAvailable);
         setWorkspaceId(project.workspaceId);
         if (recoverySnapshot) {
           setSyncState({
@@ -198,7 +217,10 @@ export function useDocumentBackendSync({
     renameDocument: (name: string) => updateMetadata({ name }),
     setDocumentFavorite: (nextFavorite: boolean) => updateMetadata({ favorite: nextFavorite }),
     moveDocumentToTrash: () => updateMetadata({ status: 'trash' }),
+    saveSequence,
     syncState,
+    thumbnailAvailable,
+    thumbnailMode,
     workspaceId,
   };
 }

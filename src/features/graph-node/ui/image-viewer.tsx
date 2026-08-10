@@ -135,6 +135,7 @@ export function ImageViewer({
   return (
     <div
       className={cn('image-viewer-overlay', maskModel.maskOpen && 'image-viewer-overlay-editing')}
+      data-snapshot-exclude
       data-node-interactive
       role="dialog"
       aria-modal="true"

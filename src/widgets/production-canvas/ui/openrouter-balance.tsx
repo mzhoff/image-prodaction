@@ -83,6 +83,7 @@ export function OpenRouterBalance({ workspaceId }: OpenRouterBalanceProps) {
   return (
     <div
       className="openrouter-balance"
+      data-snapshot-exclude
       aria-label={`OpenRouter: осталось ${formatMoney(balance.remaining)}, потрачено ${formatMoney(balance.used)}`}
       role="status"
       title={`Данные OpenRouter обновлены ${formatUpdateTime(balance.updatedAt)}`}

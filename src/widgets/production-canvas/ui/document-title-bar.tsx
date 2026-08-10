@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Menu, Pencil, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Download, Menu, Pencil, Star, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
@@ -10,23 +10,29 @@ import { useContextMenu } from '@/shared/ui/use-context-menu';
 
 interface DocumentTitleBarProps {
   favorite: boolean;
+  onCreateSnapshot: () => Promise<void>;
   onCloseCanvasMenu: () => void;
   onExportProject: () => void;
   onMoveToTrash: () => Promise<unknown>;
   onNotify: (message: string) => void;
   onRename: (name: string) => Promise<{ name: string }>;
   onToggleFavorite: (favorite: boolean) => Promise<unknown>;
+  snapshotMode: 'auto' | 'manual';
+  snapshotPending: boolean;
   title: string;
 }
 
 export function DocumentTitleBar({
   favorite,
+  onCreateSnapshot,
   onCloseCanvasMenu,
   onExportProject,
   onMoveToTrash,
   onNotify,
   onRename,
   onToggleFavorite,
+  snapshotMode,
+  snapshotPending,
   title,
 }: DocumentTitleBarProps) {
   const router = useRouter();
@@ -77,10 +83,23 @@ export function DocumentTitleBar({
       },
     },
     {
+      id: 'snapshot-document',
+      label: snapshotMode === 'manual' ? 'Update snapshot' : 'Make snapshot',
+      icon: <Camera size={14} />,
+      disabled: snapshotPending,
+      separatorBefore: true,
+      onSelect: () => {
+        void onCreateSnapshot()
+          .then(() => onNotify('Project snapshot saved.'))
+          .catch((error) => onNotify(
+            error instanceof Error ? error.message : 'Could not save the project snapshot.',
+          ));
+      },
+    },
+    {
       id: 'export-document',
       label: 'Export project',
       icon: <Download size={14} />,
-      separatorBefore: true,
       onSelect: onExportProject,
     },
     {
@@ -101,7 +120,7 @@ export function DocumentTitleBar({
   ];
 
   return (
-    <div className="document-title-pill" data-canvas-ui>
+    <div className="document-title-pill" data-canvas-ui data-snapshot-exclude>
       <Link className="document-title-back" href="/" aria-label="Back to My Files" title="Back to My Files">
         <ArrowLeft size={16} />
       </Link>

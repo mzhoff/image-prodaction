@@ -5,6 +5,7 @@ import { user } from './auth';
 import { workspace } from './workspace';
 
 export const documentStatus = pgEnum('document_status', ['active', 'trash']);
+export const documentThumbnailMode = pgEnum('document_thumbnail_mode', ['auto', 'manual']);
 
 export const document = pgTable('document', {
   id: uuid('id').primaryKey(),
@@ -17,6 +18,9 @@ export const document = pgTable('document', {
   name: text('name').notNull(),
   status: documentStatus('status').default('active').notNull(),
   snapshot: jsonb('snapshot').$type<ProjectExport | null>(),
+  thumbnailAssetId: uuid('thumbnail_asset_id'),
+  thumbnailMode: documentThumbnailMode('thumbnail_mode').default('auto').notNull(),
+  thumbnailUpdatedAt: timestamp('thumbnail_updated_at', { withTimezone: true }),
   schemaVersion: integer('schema_version').default(1).notNull(),
   revision: integer('revision').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

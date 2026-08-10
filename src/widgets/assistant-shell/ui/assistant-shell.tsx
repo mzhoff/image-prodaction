@@ -49,6 +49,7 @@ export function AssistantShell({ open, contextLabel, onClose }: AssistantShellPr
   return (
     <section
       className={`assistant-shell ${open ? 'assistant-shell-open' : ''}`}
+      data-snapshot-exclude
       aria-hidden={!open}
       aria-label="Assistant and feedback"
     >
