@@ -18,6 +18,20 @@ ChatModule в Image Production. Мы не выпускаем новую верс
 Статусы: `observed`, `workaround-active`, `ready-for-upstream`,
 `upstream-fixed`, `consumer-verified`, `product-only`.
 
+## Архитектурное решение: quality и knowledge принадлежат ChatModule
+
+Решение от 2026-08-11: Image Production не разрабатывает собственную панель
+`Assistant Quality`, собственный редактор knowledge base или параллельную схему
+оценок. Эти возможности должны поставляться ChatModule как включаемые коробочные
+модули и использоваться всеми продуктами без форков.
+
+Host-приложение отвечает только за композицию: подключает опубликованные пакеты,
+передаёт server-side auth/tenant context, сопоставляет права, настраивает
+поддерживаемый persistence/search/storage adapter, монтирует готовую панель и
+явно запускает опубликованные миграции. ChatModule не должен импортировать код
+Image Production, самостоятельно применять миграции или владеть продуктовыми
+секретами.
+
 ## Кандидаты в следующий релиз ChatModule
 
 | ID | Приоритет | Область | Статус | Кратко |
@@ -28,7 +42,8 @@ ChatModule в Image Production. Мы не выпускаем новую верс
 | CM-004 | P2 | OpenRouter connector | `ready-for-upstream` | Нет защищённой диагностики тела provider error |
 | CM-005 | P1 | `chat-ui` / contracts | `workaround-active` | Tool calls всегда выводятся общим списком после сообщений |
 | CM-006 | P2 | `chat-ui` | `workaround-active` | Имя автора нельзя скрыть независимо от avatar/bubble |
-| CM-007 | P1 | evaluation / persistence / SDK | `ready-for-upstream` | Нет контура человеческой оценки ответов ассистента |
+| CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
+| CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
 
 ### CM-001 — browser fetch receiver
 
@@ -124,24 +139,180 @@ ChatModule в Image Production. Мы не выпускаем новую верс
 - **Regression test:** author visibility управляется без CSS override и не
   затрагивает user/support-agent presentation.
 
-### CM-007 — human evaluation и улучшение базы знаний
+### CM-007 — коробочный модуль Assistant Quality
 
 - **Обнаружено:** 2026-08-11 при подготовке пилотного quality-review процесса.
 - **Что уже есть:** conversations, messages, agent turns, tool outputs, модель,
   latency, tokens и cost сохраняются в PostgreSQL.
-- **Чего не хватает:** message/turn evaluation с reviewer, оценкой,
-  категориями ошибки, комментарием, исправленным эталонным ответом, статусом
-  разбора и версией использованной knowledge base; нет review API/SDK и
-  безопасного экспорта eval dataset.
+- **Чего не хватает:** готовой панели, evaluation domain, review API/SDK,
+  persistence contracts и безопасного экспорта eval dataset.
 - **Влияние:** вопросы и ответы можно восстановить технически, но нельзя вести
   воспроизводимый цикл «плохой ответ -> причина -> правка знания -> повторный
   тест -> подтверждение улучшения».
-- **Ожидаемое исправление:** framework-neutral evaluation contracts и store,
-  tenant-scoped API/SDK, связь evaluation с request/response/tool calls и
-  knowledge revision. Admin review UI может оставаться product adapter.
-- **Regression test:** reviewer оценивает конкретную пару вопрос/ответ,
-  сохраняет corrected answer и повторный eval сравнивает новую knowledge
-  revision без изменения исходного аудита.
+- **Владелец функции:** ChatModule. Image Production не создаёт собственную
+  quality-панель и ждёт опубликованный пакет.
+
+#### Обязательные возможности Assistant Quality
+
+- Готовая встраиваемая React-панель и headless SDK/API для продуктов с другим
+  интерфейсом. Панель включается product profile/feature flag и может работать
+  как отдельный защищённый раздел или как встроенный экран host-приложения.
+- Список запросов и ответов с поиском и фильтрами по product, tenant/workspace,
+  периоду, модели, статусу разбора, оценке, категории проблемы и reviewer.
+- Карточка конкретного turn: исходный вопрос, неизменяемый исходный ответ,
+  system/prompt revision, модель, tool calls, источники, knowledge revision,
+  latency, tokens, cost и безопасная диагностика ошибки.
+- Human review: оценка, категории ошибки, теги, комментарий, исправленный
+  эталонный ответ, reviewer/assignee, статус `unreviewed -> in-review ->
+  accepted/needs-fix` и полная история изменений.
+- Создание из проверенных кейсов versioned golden dataset и повторный запуск
+  regression eval после смены модели, prompt или knowledge revision. Результаты
+  разных прогонов сравниваются, исходный production-аудит не переписывается.
+- Quality summary: доля проверенных и полезных ответов, категории ошибок,
+  citation/tool coverage, latency и cost. Агрегаты не заменяют просмотр
+  конкретных ответов.
+- Sampling/queue: возможность отбирать все ответы, случайную долю, ответы с
+  ошибками, высокой стоимостью, негативной оценкой или заданным тегом.
+- Безопасный tenant-scoped export для offline eval с redaction; raw secrets,
+  credentials, приватные provider payloads и лишние персональные данные в UI и
+  экспорт не попадают.
+
+#### Контракты, права и хранение Assistant Quality
+
+- Framework-neutral evaluation contracts/store отделены от UI, Next/Nest
+  adapters и конкретной ORM. Prisma и Drizzle consumers используют одинаковую
+  модель через поддерживаемые persistence adapters.
+- Все request/response/tool/LLM записи получают надёжные связи с конкретным
+  turn и assistant message. Evaluation ссылается на них по стабильным ID.
+- Минимальные permissions: `assistant.quality.read`,
+  `assistant.quality.review`, `assistant.quality.manage`,
+  `assistant.quality.export`. Host сопоставляет их со своими ролями; client-side
+  флаг никогда не считается авторизацией.
+- Миграции версионируются и публикуются вместе с пакетом, но применяются только
+  продуктом. Нужны migration notes, обратимый путь и сохранение исторического
+  аудита.
+- Retention/delete/export policy задаётся host-конфигурацией и исполняется с
+  tenant ownership. Audit trail оценки остаётся неизменяемым и не подменяет
+  исходное сообщение.
+- **Regression tests:** reviewer оценивает конкретную пару вопрос/ответ,
+  сохраняет corrected answer, доступ другого tenant блокируется, export
+  редактирует чувствительные поля, а повторный eval сравнивает новую revision
+  без изменения исходного аудита.
+
+### CM-008 — управляемая Knowledge Base как коробочный модуль
+
+- **Обнаружено:** 2026-08-11. В Image Production знания пока читаются из
+  статических Markdown-файлов consumer и требуют пересборки приложения.
+- **Влияние:** продуктовый эксперт не может безопасно обновлять знания через
+  интерфейс, невозможно точно связать ответ с опубликованной редакцией знаний,
+  а каждый consumer вынужден самостоятельно собирать ingestion/editor/versioning.
+- **Владелец функции:** ChatModule. База знаний должна поставляться как
+  самостоятельная возможность и как часть полного chat-assistant profile.
+
+#### Обязательные возможности Knowledge Base
+
+- Готовая защищённая панель и headless SDK/API: список коллекций и документов,
+  создание, редактирование, предпросмотр, поиск, архивирование и просмотр
+  состояния индексации. UI должен встраиваться в host без копирования логики.
+- Разделение `draft` и `published`, versioned revisions, diff, автор/время
+  изменения, комментарий к публикации, rollback и audit trail. Ассистент читает
+  только опубликованный атомарный snapshot, а не незавершённый draft.
+- Поддержка как минимум ручного текста/Markdown и импортированных документов;
+  дополнительные URL/file/connectors добавляются adapters без зависимости core
+  от конкретного storage, parser, embedding или vector provider.
+- Стабильные сущности collection/document/revision/source/chunk/index и
+  citations. Каждый ответ сохраняет IDs использованных sources и точную
+  `knowledgeRevision`, чтобы источники можно было показать под сообщением и
+  воспроизвести ответ.
+- Безопасный ingestion lifecycle: validation, chunking, indexing status,
+  повторная индексация, controlled failure/retry и атомарное переключение на
+  новую опубликованную revision без периода частично обновлённого индекса.
+- Связь с Assistant Quality: corrected answer можно отправить в очередь
+  knowledge candidates, но он не публикуется автоматически. Editor проверяет
+  предложение, обновляет документ, publisher выпускает revision, после чего
+  запускается regression eval.
+- Импорт/экспорт коллекции с version/schema metadata для переноса между
+  окружениями и продуктами. Большие исходники и индексы хранятся в настроенном
+  object/vector storage, а не внутри npm-пакета или git consumer.
+
+#### Контракты и права Knowledge Base
+
+- Framework-neutral knowledge contracts, retrieval service и events отделены
+  от UI, persistence/search/embedding/storage adapters и LLM provider.
+- Минимальные permissions: `assistant.knowledge.read`,
+  `assistant.knowledge.edit`, `assistant.knowledge.publish`,
+  `assistant.knowledge.manage`. Retrieval агента использует server-owned
+  identity и tenant scope; права редактирования никогда не передаются модели.
+- Product profile задаёт enabled state, locale, limits, adapters и UI mount
+  options. Host может использовать модуль отдельно без чата или вместе с
+  Assistant Quality и runtime ассистента.
+- Миграции и reindex commands поставляются модулем, документируются и
+  запускаются consumer явно. Нужны Prisma/Drizzle compatibility tests и clean
+  installed-consumer smoke test.
+- **Regression tests:** draft недоступен retrieval, публикация атомарно меняет
+  revision, rollback восстанавливает прошлую, другой tenant не читает документы,
+  citation ведёт к точному source/revision, editor без publish permission не
+  может выпустить знания.
+
+### План будущего подключения в Image Production
+
+До релиза этих возможностей в Image Production ничего параллельно не строим.
+После stable-релиза ChatModule consumer-задача ограничивается следующими шагами:
+
+1. Обновить версии опубликованных пакетов и пройти consumer integration checks.
+2. Проверить и явно применить миграции ChatModule к настроенной PostgreSQL.
+3. Подключить Better Auth workspace/tenant context и сопоставить permissions с
+   продуктовыми ролями.
+4. Настроить persistence/search/storage adapters и mount points готовых панелей.
+5. Импортировать текущие Markdown-знания в versioned collection, проверить
+   citations/retrieval и только затем переключить runtime с файлового источника.
+6. Включить функции feature flags сначала локально/canary, затем stable после
+   проверки tenant isolation, миграций, rollback и качества ответов.
+
+### Общий configuration boundary и Definition of Done
+
+Названия API ниже не являются обязательными, но публичный контракт должен
+разделять включение функций, server-side авторизацию и инфраструктурные adapters:
+
+```ts
+createChatModules({
+  productId,
+  quality: {
+    enabled: true,
+    store: qualityStore,
+    authorize: qualityAuthorizer,
+  },
+  knowledge: {
+    enabled: true,
+    store: knowledgeStore,
+    search: knowledgeSearch,
+    storage: knowledgeObjectStorage,
+    authorize: knowledgeAuthorizer,
+  },
+});
+```
+
+- Quality и Knowledge должны устанавливаться независимо и вместе через полный
+  assistant profile. Отключённый модуль не регистрирует routes/jobs и не тянет
+  тяжёлые optional dependencies в browser bundle.
+- UI общается только с tenant-scoped API/SDK; он не получает прямого доступа к
+  базе, storage, provider key или server authorization implementation.
+- Конфигурация валидируется при старте и fail closed: отсутствие auth/store или
+  несовместимая schema version не должно незаметно включать in-memory fallback.
+- Данные принадлежат host-продукту и хранятся в настроенной им инфраструктуре.
+  ChatModule не отправляет разговоры, оценки или knowledge во внешнюю аналитику
+  и не использует их для обучения без отдельного явного opt-in.
+- Публичные packages имеют стабильные exports, SemVer, changelog, migration и
+  rollback notes. Canary проходит package CI и clean installed-consumer tests;
+  stable выпускается после проверки Next + Better Auth + Drizzle consumer и
+  поддерживаемого Prisma/Nest consumer.
+- Нужны доступность с клавиатуры, локализация UI, loading/empty/error states и
+  тесты больших диалогов/коллекций. Product theme подключается через tokens и
+  slots, без копирования компонентов в consumer.
+- **Готовность для Image Production:** опубликованы packages и миграции,
+  документирован RBAC/configuration API, пройдены tenant/security/reindex/eval
+  regression tests и предоставлена инструкция обновления существующего
+  ChatModule consumer.
 
 ## Product-specific наблюдения Image Production
 
