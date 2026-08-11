@@ -1,9 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { activateAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
+import { isDisposableUntouchedDocument } from '@/entities/document/model/document-lifecycle';
 import {
+  clearPendingUntouchedDocument,
+  markPendingUntouchedDocument,
+} from './document-abandonment';
+import {
+  discardEmptyDocumentProject,
   fetchDocumentProject,
   saveDocumentProjectSnapshot,
   updateDocumentProjectMetadata,
@@ -44,9 +50,11 @@ export function useDocumentBackendSync({
   const [revision, setRevision] = useState<number>();
   const [saveSequence, setSaveSequence] = useState(0);
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
+  const discardCandidateRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!projectId) {
+      discardCandidateRef.current = null;
       setDocumentName(undefined);
       setFavorite(false);
       setDocumentStatus('active');
@@ -59,6 +67,7 @@ export function useDocumentBackendSync({
       return undefined;
     }
     const documentId = projectId;
+    discardCandidateRef.current = null;
     setWorkspaceId(undefined);
 
     const controller = new AbortController();
@@ -67,6 +76,7 @@ export function useDocumentBackendSync({
     let dirty = false;
     let thumbnailDirty = false;
     let halted = false;
+    let pageHiding = false;
     let revision = 0;
     let releaseAssetScope = () => {};
     let saving = false;
@@ -118,6 +128,7 @@ export function useDocumentBackendSync({
 
     const markDirty = (change?: { thumbnailRelevant?: boolean }) => {
       if (halted) return;
+      discardCandidateRef.current = null;
       dirty = true;
       if (change?.thumbnailRelevant !== false) thumbnailDirty = true;
       if (saving) changedWhileSaving = true;
@@ -129,12 +140,34 @@ export function useDocumentBackendSync({
       persistRecovery();
     };
 
+    const discardIfUntouched = () => {
+      if (discardCandidateRef.current !== documentId) return;
+      discardCandidateRef.current = null;
+      void discardEmptyDocumentProject(documentId).catch(() => undefined);
+    };
+
+    const handlePageHide = () => {
+      pageHiding = true;
+      if (discardCandidateRef.current === documentId) {
+        markPendingUntouchedDocument(documentId);
+      }
+    };
+
+    const handlePageShow = () => {
+      pageHiding = false;
+      clearPendingUntouchedDocument(documentId);
+    };
+
     async function load() {
       setSyncState({ phase: 'loading' });
       try {
         const project = await fetchDocumentProject(documentId, controller.signal);
         if (!active) return;
+        clearPendingUntouchedDocument(documentId);
         const recoverySnapshot = loadDocumentRecoverySnapshot(documentId);
+        discardCandidateRef.current = !recoverySnapshot && isDisposableUntouchedDocument(project)
+          ? documentId
+          : null;
         if (recoverySnapshot) {
           importSnapshot(recoverySnapshot, 'projectSnapshot');
           dirty = true;
@@ -185,6 +218,8 @@ export function useDocumentBackendSync({
       if (!active) return;
       unsubscribe = subscribeToProjectChanges(markDirty);
       window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('pagehide', handlePageHide);
+      window.addEventListener('pageshow', handlePageShow);
       if (dirty && !halted) debouncedSave.schedule();
     }
 
@@ -192,12 +227,15 @@ export function useDocumentBackendSync({
 
     return () => {
       persistRecovery();
+      if (!pageHiding) discardIfUntouched();
       active = false;
       controller.abort();
       debouncedSave.cancel();
       releaseAssetScope();
       unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, [exportSnapshot, importSnapshot, projectId, resetProject, subscribeToProjectChanges]);
 
@@ -207,6 +245,7 @@ export function useDocumentBackendSync({
     status?: 'active' | 'trash';
   }) => {
     if (!projectId) throw new Error('Document is not connected to the backend.');
+    discardCandidateRef.current = null;
     const project = await updateDocumentProjectMetadata(projectId, metadata);
     setDocumentName(project.name);
     setFavorite(project.favorite);

@@ -14,6 +14,28 @@
   justify-content: space-between;
   overflow: visible;
   background: #f8f8f8;
+  transition: width 160ms ease, flex-basis 160ms ease;
+}
+.workspace-sidebar-collapsed {
+  width: 72px;
+  flex-basis: 72px;
+}
+.workspace-sidebar-collapsed .workspace-logo,
+.workspace-sidebar-collapsed .workspace-nav-item span,
+.workspace-sidebar-collapsed .workspace-playground-link span,
+.workspace-sidebar-collapsed .workspace-user span {
+  display: none;
+}
+.workspace-sidebar-collapsed .workspace-logo-row,
+.workspace-sidebar-collapsed .workspace-nav-item,
+.workspace-sidebar-collapsed .workspace-playground-link,
+.workspace-sidebar-collapsed .workspace-user {
+  justify-content: center;
+}
+.workspace-sidebar-collapsed .workspace-logo-row,
+.workspace-sidebar-collapsed .workspace-user {
+  padding-right: 0;
+  padding-left: 0;
 }
 .workspace-sidebar-top {
   display: grid;
@@ -418,6 +440,24 @@
   display: block;
   width: 100%;
   height: 100%;
+}
+.workspace-project-preview-empty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  background-color: #f8fafb;
+  background-image: radial-gradient(circle, #d8dde1 1px, transparent 1px);
+  background-size: 14px 14px;
+  color: #9aa3aa;
+}
+.workspace-project-preview-empty span {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 5px 9px;
+  font-size: 11px;
 }
 .workspace-project-star {
   position: absolute;

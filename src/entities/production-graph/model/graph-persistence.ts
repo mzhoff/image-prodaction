@@ -88,6 +88,7 @@ export function createGraphPersistStorage(): StateStorage {
 export function clearGraphPersistBackups() {
   const storage = getLocalStorage();
   if (!storage) return;
+  safeRemove(storage, GRAPH_PERSIST_STORAGE_KEY);
   safeRemove(storage, GRAPH_PERSIST_BACKUP_KEY);
   safeRemove(storage, GRAPH_PERSIST_LATEST_KEY);
 }

@@ -2,6 +2,7 @@ import type { ProjectExport } from '@/entities/production-graph/model/project-sc
 
 export interface DocumentProject {
   favorite: boolean;
+  hasEverHadContent: boolean;
   id: string;
   name: string;
   revision: number;
@@ -64,6 +65,13 @@ export async function updateDocumentProjectMetadata(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(metadata),
   }).then((result) => result.project);
+}
+
+export async function discardEmptyDocumentProject(projectId: string) {
+  return requestJson<{ discarded: boolean }>(
+    `/api/projects/${encodeURIComponent(projectId)}/discard-empty`,
+    { method: 'POST', keepalive: true },
+  );
 }
 
 export async function uploadDocumentThumbnail(

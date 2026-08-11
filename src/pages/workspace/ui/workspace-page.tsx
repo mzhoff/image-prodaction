@@ -7,6 +7,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Archive,
   Edit3,
+  FilePlus2,
   Grid2X2,
   List,
   MoreHorizontal,
@@ -195,7 +196,14 @@ export function WorkspacePage({ section = 'my-files' }: WorkspacePageProps) {
                 >
                   <div className="workspace-project-preview">
                     <Link href={`/projects/${project.id}`} aria-label={`Open ${project.name}`}>
-                      <img src={project.thumbnailUrl} alt="" />
+                      {project.thumbnailAvailable && project.thumbnailUrl ? (
+                        <img src={project.thumbnailUrl} alt="" />
+                      ) : (
+                        <span className="workspace-project-preview-empty" aria-hidden="true">
+                          <FilePlus2 size={22} />
+                          <span>Preview will appear after editing</span>
+                        </span>
+                      )}
                     </Link>
                     {project.status === 'active' ? (
                       <button

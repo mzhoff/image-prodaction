@@ -20,6 +20,7 @@ export const document = pgTable('document', {
   thumbnailAssetId: uuid('thumbnail_asset_id'),
   thumbnailMode: documentThumbnailMode('thumbnail_mode').default('auto').notNull(),
   thumbnailUpdatedAt: timestamp('thumbnail_updated_at', { withTimezone: true }),
+  hasEverHadContent: boolean('has_ever_had_content').default(false).notNull(),
   schemaVersion: integer('schema_version').default(1).notNull(),
   revision: integer('revision').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
