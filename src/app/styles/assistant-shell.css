@@ -214,6 +214,14 @@
   display: none;
 }
 
+.image-production-chat .cm-message[data-role='assistant'] .cm-message-meta {
+  justify-content: flex-end;
+}
+
+.image-production-chat .cm-message[data-role='assistant'] .cm-message-meta > span {
+  display: none;
+}
+
 .image-production-chat-error {
   margin: 0 12px 8px;
   border-radius: 10px;

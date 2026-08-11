@@ -16,6 +16,7 @@ import { ChatModuleShell, type ChatAppearanceSettings } from '@prodactionpro/cha
 import { useMemo, type ReactNode } from 'react';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
 import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
+import { getVisibleChatToolCalls } from '../model/chat-tool-call-presentation';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
 
 interface ImageProductionChatProps {
@@ -83,6 +84,10 @@ function ChatContent({ model }: { model: string }) {
     () => prepareChatMessagesForPresentation(state.messages),
     [state.messages],
   );
+  const visibleToolCalls = useMemo(
+    () => getVisibleChatToolCalls(state.pendingToolCalls),
+    [state.pendingToolCalls],
+  );
   const modelOption: ChatModelOption = {
     id: model,
     label: compactModelLabel(model),
@@ -124,7 +129,7 @@ function ChatContent({ model }: { model: string }) {
       subtitle="Image Production knowledge"
       surface="side-panel"
       title="AI Assistant"
-      toolCalls={state.pendingToolCalls}
+      toolCalls={visibleToolCalls}
       visualProfileOptions={VISUAL_OPTIONS}
       helperText={<span>Read-only · {compactModelLabel(model)}</span>}
     />
