@@ -44,6 +44,7 @@ browser after it is saved.
 - [Executable Pipelines architecture](./docs/executable-pipelines-architecture.md)
 - [ChatModule dependency management](./docs/chatmodule-dependency-management.md)
 - [Chat assistant integration](./docs/chat-assistant-integration.md)
+- [ChatModule integration feedback backlog](./docs/chatmodule-feedback-backlog.md)
 - [Quality gates](./docs/quality-gates.md)
 - [Architecture refactoring plan](./docs/architecture-refactoring.md)
 

@@ -8,6 +8,8 @@
 node_modules
 npm-debug.log*
 Worktrees
-docs
+docs/*
+!docs/assistant-knowledge/
+!docs/assistant-knowledge/**
 *.png
 *.log

@@ -8,6 +8,9 @@ persistence, server-owned prompt, read-only tools и UI-композицию.
 В ChatModule `0.5.1` SSE `message.completed` содержит `ChatMessage`, но SDK
 ожидает там `ChatTurnResponse`. После исправления протокола в пакете адаптер
 можно вернуть на `/chat/v1/turn/stream` без изменения UI/runtime-контракта.
+Все найденные при consumer testing замечания накапливаются в
+`docs/chatmodule-feedback-backlog.md` и передаются в ChatModule одним
+согласованным релизным пакетом.
 
 ## Первый этап
 
