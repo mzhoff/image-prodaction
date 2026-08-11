@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const KNOWLEDGE_FILES = [
   'product-overview.md',
+  'executable-pipelines.md',
   'node-catalog.md',
   'assistant-policy.md',
 ] as const;
