@@ -17,6 +17,7 @@ import { useMemo, type ReactNode } from 'react';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
 import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
 import { getVisibleChatToolCalls } from '../model/chat-tool-call-presentation';
+import { useChatThreadAutoScroll } from '../model/use-chat-thread-auto-scroll';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
 
 interface ImageProductionChatProps {
@@ -88,6 +89,7 @@ function ChatContent({ model }: { model: string }) {
     () => getVisibleChatToolCalls(state.pendingToolCalls),
     [state.pendingToolCalls],
   );
+  const { followLatest, rootRef } = useChatThreadAutoScroll(presentedMessages.length);
   const modelOption: ChatModelOption = {
     id: model,
     label: compactModelLabel(model),
@@ -96,43 +98,48 @@ function ChatContent({ model }: { model: string }) {
   };
 
   return (
-    <ChatModuleShell
-      allModelOptions={[modelOption]}
-      allowedModelIdsByMode={createAllowedModels(model)}
-      appearance={APPEARANCE}
-      chatStyleOptions={CHAT_STYLES}
-      className="image-production-chat"
-      fontOptions={FONT_OPTIONS}
-      iconLibraryOptions={ICON_OPTIONS}
-      inputValue={state.inputValue}
-      isTyping={isTyping}
-      messages={presentedMessages}
-      modeOptions={MODE_OPTIONS}
-      modelOptions={[]}
-      onAppearanceChange={() => undefined}
-      onCancel={actions.cancel}
-      onConfirmToolCall={(id) => { void actions.confirmToolCall(id); }}
-      onInputChange={actions.setInputValue}
-      onModeChange={actions.setMode}
-      onModelChange={actions.setModel}
-      onRejectToolCall={(id) => { void actions.rejectToolCall(id); }}
-      onSubmit={() => { void actions.submit(); }}
-      onToggleModelForMode={() => undefined}
-      radiusOptions={RADIUS_OPTIONS}
-      selectedMode={state.selectedMode}
-      selectedModel={state.selectedModel}
-      showAppearanceSettings={false}
-      showAssistantSettings={false}
-      slots={{
-        beforeComposer: state.error ? <div className="image-production-chat-error" role="alert">{state.error}</div> : undefined,
-      }}
-      subtitle="Image Production knowledge"
-      surface="side-panel"
-      title="AI Assistant"
-      toolCalls={visibleToolCalls}
-      visualProfileOptions={VISUAL_OPTIONS}
-      helperText={<span>Read-only · {compactModelLabel(model)}</span>}
-    />
+    <div className="image-production-chat-host" ref={rootRef}>
+      <ChatModuleShell
+        allModelOptions={[modelOption]}
+        allowedModelIdsByMode={createAllowedModels(model)}
+        appearance={APPEARANCE}
+        chatStyleOptions={CHAT_STYLES}
+        className="image-production-chat"
+        fontOptions={FONT_OPTIONS}
+        iconLibraryOptions={ICON_OPTIONS}
+        inputValue={state.inputValue}
+        isTyping={isTyping}
+        messages={presentedMessages}
+        modeOptions={MODE_OPTIONS}
+        modelOptions={[]}
+        onAppearanceChange={() => undefined}
+        onCancel={actions.cancel}
+        onConfirmToolCall={(id) => { void actions.confirmToolCall(id); }}
+        onInputChange={actions.setInputValue}
+        onModeChange={actions.setMode}
+        onModelChange={actions.setModel}
+        onRejectToolCall={(id) => { void actions.rejectToolCall(id); }}
+        onSubmit={() => {
+          followLatest();
+          void actions.submit();
+        }}
+        onToggleModelForMode={() => undefined}
+        radiusOptions={RADIUS_OPTIONS}
+        selectedMode={state.selectedMode}
+        selectedModel={state.selectedModel}
+        showAppearanceSettings={false}
+        showAssistantSettings={false}
+        slots={{
+          beforeComposer: state.error ? <div className="image-production-chat-error" role="alert">{state.error}</div> : undefined,
+        }}
+        subtitle="Image Production knowledge"
+        surface="side-panel"
+        title="AI Assistant"
+        toolCalls={visibleToolCalls}
+        visualProfileOptions={VISUAL_OPTIONS}
+        helperText={<span>Read-only · {compactModelLabel(model)}</span>}
+      />
+    </div>
   );
 }
 

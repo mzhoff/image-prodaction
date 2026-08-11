@@ -45,6 +45,7 @@ export function AssistantShell({
   return (
     <section
       className={`assistant-shell ${open ? 'assistant-shell-open' : ''}`}
+      data-canvas-wheel-block="true"
       data-snapshot-exclude
       aria-hidden={!open}
       aria-label="Assistant and feedback"

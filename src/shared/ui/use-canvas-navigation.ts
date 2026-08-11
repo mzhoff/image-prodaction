@@ -173,7 +173,7 @@ export function useCanvasNavigation({
         return;
       }
 
-      if (shouldLetScrollableInputHandleWheel(event)) return;
+      if (shouldYieldCanvasWheel(event)) return;
 
       event.preventDefault();
       if (middlePanRef.current.active) return;
@@ -241,9 +241,10 @@ export function useCanvasNavigation({
   };
 }
 
-function shouldLetScrollableInputHandleWheel(event: WheelEvent) {
+function shouldYieldCanvasWheel(event: WheelEvent) {
   const target = event.target;
   if (!(target instanceof Element)) return false;
+  if (target.closest('[data-canvas-wheel-block="true"]')) return true;
 
   const scrollable = target.closest('textarea.prompt-box, [data-canvas-wheel-scroll="true"]');
   if (!(scrollable instanceof HTMLElement)) return false;

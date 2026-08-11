@@ -41,9 +41,10 @@ Image Production, самостоятельно применять миграци
 | CM-003 | P0 | Next runtime / SDK / core | `workaround-active` | SSE payload расходится с типом `ChatTurnResponse` |
 | CM-004 | P2 | OpenRouter connector | `ready-for-upstream` | Нет защищённой диагностики тела provider error |
 | CM-005 | P1 | `chat-ui` / contracts | `workaround-active` | Tool calls всегда выводятся общим списком после сообщений |
-| CM-006 | P2 | `chat-ui` | `workaround-active` | Имя автора нельзя скрыть независимо от avatar/bubble |
+| CM-006 | P2 | `chat-ui` | `workaround-active` | Подписи авторов нельзя скрыть независимо от avatar/bubble |
 | CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
 | CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
+| CM-009 | P1 | `chat-ui` / embedded surfaces | `workaround-active` | Лента не следует за новым сообщением и typewriter-анимацией |
 
 ### CM-001 — browser fetch receiver
 
@@ -124,20 +125,21 @@ Image Production, самостоятельно применять миграци
 - **Regression test:** два tool calls одного turn отображаются под его
   assistant message, а следующий ответ получает собственную группу источников.
 
-### CM-006 — visibility автора сообщения
+### CM-006 — visibility авторов сообщений
 
 - **Обнаружено:** 2026-08-11, `showAssistantAvatar: false` и
   `assistantBubble: false`.
 - **Evidence:** avatar и bubble скрываются, но `MessageMeta` продолжает выводить
-  фиксированное имя `Assistant`; публичного appearance-параметра для автора и
-  времени нет.
-- **Consumer workaround:** Image Production скрывает author label scoped CSS,
-  сохраняя время сообщения.
+  фиксированные имена `Assistant` и `User`; публичных appearance-параметров для
+  авторов и времени нет.
+- **Consumer workaround:** Image Production скрывает обе author labels scoped
+  CSS, сохраняя время сообщений.
 - **Ожидаемое исправление:** типизированные настройки
-  `showAssistantAuthor`/`showMessageTime` либо согласованное поведение, при
-  котором скрытие avatar может скрыть и повторяющуюся подпись автора.
-- **Regression test:** author visibility управляется без CSS override и не
-  затрагивает user/support-agent presentation.
+  `showAssistantAuthor`/`showUserAuthor`/`showMessageTime` либо единая
+  role-aware presentation policy. Support-agent identity должна настраиваться
+  отдельно и не исчезать случайно вместе с подписями обычного диалога.
+- **Regression test:** assistant/user author visibility управляется без CSS
+  override, время остаётся доступным, support-agent presentation не затронут.
 
 ### CM-007 — коробочный модуль Assistant Quality
 
@@ -314,6 +316,40 @@ createChatModules({
   regression tests и предоставлена инструкция обновления существующего
   ChatModule consumer.
 
+### CM-009 — follow-to-latest и scroll contract в embedded chat
+
+- **Обнаружено:** 2026-08-11 при длинном ответе в side-panel поверх pipeline
+  canvas.
+- **Evidence:** `.cm-thread` имеет `overflow-y: auto`, но `ChatModuleShell` не
+  хранит ref/состояние позиции и после `onSubmit` не прокручивает ленту. Когда
+  `ChatRichText` постепенно увеличивает высоту typewriter-ответа, viewport
+  остаётся на старом участке переписки.
+- **Влияние:** пользователь отправляет вопрос и не видит ни своё новое
+  сообщение, ни индикатор работы, ни печатающийся ответ без ручной прокрутки.
+- **Consumer workaround:** Image Production при submit включает follow mode,
+  прокручивает `.cm-thread` вниз и через `ResizeObserver` удерживает нижнюю
+  границу во время роста ответа. Ручной уход пользователя от нижней границы
+  отключает follow до возврата вниз или следующей отправки.
+- **Ожидаемое исправление:** ChatModule сам владеет scroll lifecycle:
+  - новый submit немедленно показывает отправленное сообщение и typing state;
+  - пока идёт streaming/typewriter, последняя строка остаётся над composer, а
+    растущий текст уходит вверх;
+  - ручной scroll вверх прекращает принудительное следование и показывает
+    доступную с клавиатуры кнопку «К последнему сообщению»;
+  - возврат к нижней границе или новый submit снова включает follow;
+  - короткий диалог выравнивается по нижней границе, scroll position не
+    сбрасывается при переключении вкладок/режимов;
+  - embedded thread имеет `overscroll-behavior: contain` и стабильный
+    ref/data-атрибут или typed scroll adapter для интеграции с canvas hosts.
+- **Публичный контракт:** sensible default внутри `ChatModuleShell` плюс
+  optional typed policy/callbacks для `autoFollow`, bottom threshold,
+  jump-to-latest visibility и уведомления о follow state. Consumer не должен
+  query-select внутренние `.cm-*` классы.
+- **Regression tests:** submit из середины длинной истории переходит вниз;
+  typewriter удерживает нижнюю границу; ручной scroll вверх не перетягивается
+  обратно; новый submit возобновляет follow; side-panel не прокручивает
+  расположенный под ним canvas.
+
 ## Product-specific наблюдения Image Production
 
 | ID | Статус | Наблюдение |
@@ -323,6 +359,7 @@ createChatModules({
 | IP-003 | `product-only` | Размер и жизненный цикл плавающей панели принадлежат host UI: Image Production ограничивает resize сверху/слева и не размонтирует чат при переходе на Feedback. |
 | IP-004 | `product-only` | ChatModule 0.5.1 уже поддерживает Markdown и typewriter через semantic blocks/metadata; consumer преобразует assistant text в Markdown и анимирует только последний ответ. |
 | IP-005 | `product-only` | До появления per-message source presentation consumer скрывает завершённые read-only tool cards, но не удаляет их audit records из PostgreSQL. |
+| IP-006 | `product-only` | Production canvas обязан уступать wheel/pan события интерактивному overlay ассистента; host помечает shell как canvas-wheel boundary, а canvas navigation не обрабатывает события из этой области. |
 
 ## Новые наблюдения
 
