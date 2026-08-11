@@ -124,6 +124,61 @@
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
+.image-production-chat {
+  width: 100% !important;
+  height: 100%;
+  min-height: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  --cm-thread-top-padding: 18px;
+  --cm-chat-side-gap: 14px;
+  --cm-chat-message-inset: 12px;
+}
+
+.image-production-chat .cm-composer-add-button,
+.image-production-chat .cm-composer-slash-button,
+.image-production-chat .cm-composer-send-button-mic {
+  display: none;
+}
+
+.image-production-chat-error {
+  margin: 0 12px 8px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.assistant-chat-notice {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  min-height: 0;
+  padding: 24px;
+  text-align: center;
+}
+
+.assistant-chat-notice p {
+  margin: 0;
+  color: #52525b;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.assistant-chat-notice button {
+  justify-self: center;
+  border: 0;
+  border-radius: 9px;
+  background: #111;
+  color: #fff;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .assistant-shell-feedback-panel {
   min-height: 0;
   overflow-y: auto;

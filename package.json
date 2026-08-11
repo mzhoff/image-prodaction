@@ -11,6 +11,7 @@
     "pipeline:key:create": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/create-pipeline-api-key.ts",
     "build": "next build",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "check:chatmodule-versions": "node scripts/check-chatmodule-versions.mjs",
     "check:size": "node scripts/check-file-size.mjs",
     "lint": "eslint . --max-warnings=0",
     "start": "next start",
@@ -67,7 +68,7 @@
     "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=20.9.0",
+    "node": ">=24.15.0 <25",
     "npm": ">=10"
   },
   "dependencies": {
@@ -78,6 +79,19 @@
     "@lexical/react": "^0.45.0",
     "@lexical/rich-text": "^0.45.0",
     "@lexical/table": "^0.45.0",
+    "@prodactionpro/chat-application": "0.5.1",
+    "@prodactionpro/chat-auth-better-auth": "0.5.1",
+    "@prodactionpro/chat-connectors": "0.5.1",
+    "@prodactionpro/chat-domain": "0.5.1",
+    "@prodactionpro/chat-persistence-drizzle": "0.5.1",
+    "@prodactionpro/chat-protocol": "0.5.1",
+    "@prodactionpro/chat-runtime-core": "0.5.1",
+    "@prodactionpro/chat-runtime-next": "0.5.1",
+    "@prodactionpro/chat-runtime-react": "0.5.1",
+    "@prodactionpro/chat-sdk": "0.5.1",
+    "@prodactionpro/chat-server-core": "0.5.1",
+    "@prodactionpro/chat-theme": "0.5.1",
+    "@prodactionpro/chat-ui": "0.5.1",
     "better-auth": "^1.6.23",
     "clsx": "2.1.1",
     "drizzle-orm": "^0.45.2",

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import '@prodactionpro/chat-theme/tokens.css';
+import '@prodactionpro/chat-ui/styles.css';
 import './globals.css';
 
 export const metadata: Metadata = {

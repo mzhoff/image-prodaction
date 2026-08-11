@@ -10,6 +10,7 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required to run Drizzle comma
 export default defineConfig({
   schema: [
     './src/shared/db/schema/index.ts',
+    './src/modules/chat-assistant/server/chat-persistence-schema.ts',
     './src/modules/executable-pipelines/adapters/postgres/pipeline-schema.ts',
   ],
   out: './drizzle',

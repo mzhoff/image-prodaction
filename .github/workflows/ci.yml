@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   validate:
@@ -64,7 +65,13 @@ jobs:
         with:
           node-version: 24.15.0
           cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@prodactionpro'
+      - name: Verify ChatModule version family
+        run: npm run check:chatmodule-versions
       - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PRODACTION_PACKAGES_READ_TOKEN }}
         run: npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -154,7 +161,13 @@ jobs:
       - name: Browser critical-path E2E
         run: npx playwright test
       - name: Build production container
-        run: docker build --tag "reverie-ci:${GITHUB_SHA}" .
+        env:
+          PRODACTION_PACKAGES_READ_TOKEN: ${{ secrets.PRODACTION_PACKAGES_READ_TOKEN }}
+        run: >-
+          docker build
+          --secret id=npm_token,env=PRODACTION_PACKAGES_READ_TOKEN
+          --tag "reverie-ci:${GITHUB_SHA}"
+          .
       - name: Collect service logs
         if: failure()
         run: |
@@ -211,6 +224,8 @@ jobs:
           tags: reverie-app:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          secrets: |
+            npm_token=${{ secrets.PRODACTION_PACKAGES_READ_TOKEN }}
       - name: Configure restricted staging SSH key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}

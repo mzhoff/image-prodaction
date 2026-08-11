@@ -187,6 +187,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               ? 'Playground'
               : 'Workspace'}
           onClose={() => setAssistantOpen(false)}
+          route={currentPath}
+          workspaceId={workspace.activeWorkspace?.id}
         />
       </main>
     </WorkspaceShellContext.Provider>

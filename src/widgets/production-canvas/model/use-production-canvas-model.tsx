@@ -273,6 +273,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     renameDocument: documentSync.renameDocument,
     setDocumentFavorite: documentSync.setDocumentFavorite,
     documentSync: documentSync.syncState,
+    documentRevision: documentSync.revision,
     workspaceId: documentSync.workspaceId,
     selectedSet: graph.selectedSet,
     selectedSectionSet: graph.selectedSectionSet,

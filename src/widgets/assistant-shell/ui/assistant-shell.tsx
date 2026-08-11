@@ -1,50 +1,44 @@
 'use client';
 
-import { Bot, MessageSquareText, Send, X } from 'lucide-react';
-import { useState } from 'react';
+import { Bot, MessageSquareText, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ImageProductionChat } from '@/features/chat-assistant/ui/image-production-chat';
 import { FeedbackPanel } from './feedback-panel';
 
 interface AssistantShellProps {
   open: boolean;
   contextLabel: string;
+  documentId?: string;
+  documentRevision?: number;
   onClose: () => void;
-}
-
-interface AssistantMessage {
-  id: string;
-  role: 'assistant' | 'user';
-  text: string;
+  route?: string;
+  selectionIds?: string[];
+  workspaceId?: string;
 }
 
 type AssistantShellTab = 'assistant' | 'feedback';
 
-const initialMessages: AssistantMessage[] = [
-  {
-    id: 'welcome',
-    role: 'assistant',
-    text: 'Я помогу собрать pipeline, найти нужную ноду или объяснить, что происходит на экране. Пока это локальный shell, backend подключим позже.',
-  },
-];
-
-export function AssistantShell({ open, contextLabel, onClose }: AssistantShellProps) {
+export function AssistantShell({
+  open,
+  contextLabel,
+  documentId,
+  documentRevision,
+  onClose,
+  route,
+  selectionIds,
+  workspaceId,
+}: AssistantShellProps) {
   const [activeTab, setActiveTab] = useState<AssistantShellTab>('assistant');
-  const [messages, setMessages] = useState(initialMessages);
-  const [value, setValue] = useState('');
-
-  const submit = () => {
-    const text = value.trim();
-    if (!text) return;
-    setMessages((current) => [
-      ...current,
-      { id: `user-${Date.now()}`, role: 'user', text },
-      {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        text: 'Принял. В этой версии я показываю будущий UX чата. Следующий шаг - подключить реальный ChatModule API и контекст текущего проекта.',
+  const chatContext = useMemo(() => ({
+    ...(documentId ? {
+      document: {
+        id: documentId,
+        ...(documentRevision === undefined ? {} : { revision: String(documentRevision) }),
       },
-    ]);
-    setValue('');
-  };
+    } : {}),
+    ...(route ? { route } : {}),
+    ...(selectionIds?.length ? { selection: { ids: selectionIds.slice(0, 100) } } : {}),
+  }), [documentId, documentRevision, route, selectionIds]);
 
   return (
     <section
@@ -95,30 +89,7 @@ export function AssistantShell({ open, contextLabel, onClose }: AssistantShellPr
           id="assistant-shell-assistant-panel"
           role="tabpanel"
         >
-          <div className="assistant-shell-thread">
-            {messages.map((message) => (
-              <div className={`assistant-shell-message assistant-shell-message-${message.role}`} key={message.id}>
-                {message.text}
-              </div>
-            ))}
-          </div>
-          <form
-            className="assistant-shell-composer"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
-            }}
-          >
-            <input
-              aria-label="Message assistant"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder="Ask about this product..."
-            />
-            <button type="submit" aria-label="Send message">
-              <Send size={16} />
-            </button>
-          </form>
+          <ImageProductionChat context={chatContext} workspaceId={workspaceId} />
         </div>
       ) : (
         <div

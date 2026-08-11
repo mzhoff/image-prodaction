@@ -41,6 +41,7 @@ export function useDocumentBackendSync({
   const [thumbnailMode, setThumbnailMode] = useState<'auto' | 'manual'>('auto');
   const [thumbnailAvailable, setThumbnailAvailable] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>();
+  const [revision, setRevision] = useState<number>();
   const [saveSequence, setSaveSequence] = useState(0);
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
 
@@ -52,6 +53,7 @@ export function useDocumentBackendSync({
       setThumbnailMode('auto');
       setThumbnailAvailable(false);
       setWorkspaceId(undefined);
+      setRevision(undefined);
       setSaveSequence(0);
       setSyncState({ phase: 'idle' });
       return undefined;
@@ -94,6 +96,7 @@ export function useDocumentBackendSync({
         const saved = await saveDocumentProjectSnapshot(documentId, snapshot, revision);
         if (!active) return;
         revision = saved.revision;
+        setRevision(saved.revision);
         setThumbnailMode(saved.thumbnailMode);
         setThumbnailAvailable(saved.thumbnailAvailable);
         clearDocumentRecoverySnapshot(documentId);
@@ -142,6 +145,7 @@ export function useDocumentBackendSync({
           resetProject();
         }
         revision = project.revision;
+        setRevision(project.revision);
         releaseAssetScope();
         releaseAssetScope = activateAssetScope({
           documentId,
@@ -218,6 +222,7 @@ export function useDocumentBackendSync({
     setDocumentFavorite: (nextFavorite: boolean) => updateMetadata({ favorite: nextFavorite }),
     moveDocumentToTrash: () => updateMetadata({ status: 'trash' }),
     saveSequence,
+    revision,
     syncState,
     thumbnailAvailable,
     thumbnailMode,

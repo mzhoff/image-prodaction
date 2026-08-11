@@ -1,0 +1,32 @@
+version: 2
+
+registries:
+  prodactionpro-github-packages:
+    type: npm-registry
+    url: https://npm.pkg.github.com
+    scope: '@prodactionpro'
+    token: ${{ secrets.PRODACTION_PACKAGES_READ_TOKEN }}
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    registries:
+      - prodactionpro-github-packages
+    schedule:
+      interval: daily
+      time: '09:00'
+      timezone: Europe/Moscow
+    allow:
+      - dependency-name: '@prodactionpro/chat-*'
+    groups:
+      chatmodule:
+        patterns:
+          - '@prodactionpro/chat-*'
+    open-pull-requests-limit: 1
+    rebase-strategy: auto
+    reviewers:
+      - mzhoff
+    commit-message:
+      prefix: 'deps(chatmodule)'
+    pull-request-branch-name:
+      separator: '/'

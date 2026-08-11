@@ -4,6 +4,7 @@
 .env
 .env.*
 !.env.example
+.npmrc
 node_modules
 npm-debug.log*
 Worktrees

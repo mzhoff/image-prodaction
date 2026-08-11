@@ -42,6 +42,8 @@ browser after it is saved.
 - [Workspace AI execution architecture](./docs/workspace-ai-execution-architecture.md)
 - [Workspace AI execution implementation plan](./docs/workspace-ai-execution-implementation-plan.md)
 - [Executable Pipelines architecture](./docs/executable-pipelines-architecture.md)
+- [ChatModule dependency management](./docs/chatmodule-dependency-management.md)
+- [Chat assistant integration](./docs/chat-assistant-integration.md)
 - [Quality gates](./docs/quality-gates.md)
 - [Architecture refactoring plan](./docs/architecture-refactoring.md)
 
@@ -53,6 +55,7 @@ npm run worker      # Start the durable generation worker
 npm run dev         # Start Next.js on default port 3000
 npm run lint        # Run the zero-warning ESLint gate
 npm run check:architecture # Verify modular boundaries
+npm run check:chatmodule-versions # Keep all ChatModule packages on one exact version
 npm run check:size  # Enforce the 300-line implementation limit
 npm run typecheck   # Run TypeScript checks
 npm run test        # Run focused unit tests

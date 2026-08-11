@@ -127,7 +127,16 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           className={assistantOpen ? 'assistant-floating-button-hidden' : ''}
           onClick={() => setAssistantOpen(true)}
         />
-        <AssistantShell open={assistantOpen} contextLabel={projectTitle} onClose={() => setAssistantOpen(false)} />
+        <AssistantShell
+          open={assistantOpen}
+          contextLabel={projectTitle}
+          documentId={projectId}
+          documentRevision={model.documentRevision}
+          onClose={() => setAssistantOpen(false)}
+          route={projectId ? `/project/${projectId}` : '/project'}
+          selectionIds={[...model.selectedSet, ...model.selectedSectionSet]}
+          workspaceId={model.workspaceId}
+        />
         {syncProblem && model.documentSync.message ? (
           <div className="canvas-toast" data-snapshot-exclude role="status">{model.documentSync.message}</div>
         ) : model.toastMessage ? <div className="canvas-toast" data-snapshot-exclude>{model.toastMessage}</div> : null}
