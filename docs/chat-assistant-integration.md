@@ -10,7 +10,8 @@ persistence, server-owned prompt, read-only tools и UI-композицию.
 можно вернуть на `/chat/v1/turn/stream` без изменения UI/runtime-контракта.
 Все найденные при consumer testing замечания накапливаются в
 `docs/chatmodule-feedback-backlog.md` и передаются в ChatModule одним
-согласованным релизным пакетом.
+согласованным релизным пакетом. Временные локальные обходы и точные условия их
+удаления перечислены в `docs/chatmodule-consumer-workarounds.md`.
 
 ## Первый этап
 
@@ -51,8 +52,11 @@ CHAT_ASSISTANT_MAX_TOOL_CALLS_PER_TURN=3
 
 ## Управление знаниями и rollback
 
-Знания редактируются Pull Request в `docs/assistant-knowledge`. Технический
-каталог нод читается из `NODE_DEFINITIONS`. Для быстрого отключения установите
+До поставки CM-008 знания редактируются Pull Request в
+`docs/assistant-knowledge`. После появления коробочной Knowledge Base они должны
+быть импортированы в versioned collection, а файловый loader удалён по
+consumer-workaround ledger. Технический каталог нод читается из
+`NODE_DEFINITIONS`. Для быстрого отключения установите
 `CHAT_ASSISTANT_ENABLED=false` и перезапустите web-процесс; существующие записи
 чата при этом не удаляются.
 

@@ -62,6 +62,11 @@ and opens one pull request for the package family. The pull request must pass:
 5. production build and container build;
 6. critical-path smoke and browser E2E.
 
+До merge также открыть `docs/chatmodule-consumer-workarounds.md`, сопоставить
+исправленные upstream CM IDs с активными CW IDs и либо заменить workaround в
+этом PR, либо явно зафиксировать, почему опубликованный контракт ещё не позволяет
+его удалить. Сам dependency bump не считается завершённой интеграцией.
+
 Dependabot polling is not an immediate release notification. When several
 products consume ChatModule, add a release workflow in the ChatModule repository
 that sends a GitHub App-authenticated `repository_dispatch` event to registered

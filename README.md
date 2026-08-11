@@ -45,6 +45,7 @@ browser after it is saved.
 - [ChatModule dependency management](./docs/chatmodule-dependency-management.md)
 - [Chat assistant integration](./docs/chat-assistant-integration.md)
 - [ChatModule integration feedback backlog](./docs/chatmodule-feedback-backlog.md)
+- [ChatModule consumer workaround retirement ledger](./docs/chatmodule-consumer-workarounds.md)
 - [Quality gates](./docs/quality-gates.md)
 - [Architecture refactoring plan](./docs/architecture-refactoring.md)
 
