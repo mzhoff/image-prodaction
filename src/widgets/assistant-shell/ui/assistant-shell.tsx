@@ -1,8 +1,9 @@
 'use client';
 
 import { Bot, MessageSquareText, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { ImageProductionChat } from '@/features/chat-assistant/ui/image-production-chat';
+import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
 
 interface AssistantShellProps {
@@ -29,6 +30,7 @@ export function AssistantShell({
   workspaceId,
 }: AssistantShellProps) {
   const [activeTab, setActiveTab] = useState<AssistantShellTab>('assistant');
+  const { resizeWithKeyboard, size, startResize } = useAssistantShellResize();
   const chatContext = useMemo(() => ({
     ...(documentId ? {
       document: {
@@ -46,7 +48,35 @@ export function AssistantShell({
       data-snapshot-exclude
       aria-hidden={!open}
       aria-label="Assistant and feedback"
+      style={{
+        '--assistant-shell-height': `${size.height}px`,
+        '--assistant-shell-width': `${size.width}px`,
+      } as CSSProperties}
     >
+      <button
+        aria-label="Изменить высоту окна ассистента"
+        className="assistant-shell-resize-handle assistant-shell-resize-handle-top"
+        onKeyDown={(event) => resizeWithKeyboard(event, 'top')}
+        onPointerDown={(event) => startResize(event, 'top')}
+        tabIndex={open ? 0 : -1}
+        type="button"
+      />
+      <button
+        aria-label="Изменить ширину окна ассистента"
+        className="assistant-shell-resize-handle assistant-shell-resize-handle-left"
+        onKeyDown={(event) => resizeWithKeyboard(event, 'left')}
+        onPointerDown={(event) => startResize(event, 'left')}
+        tabIndex={open ? 0 : -1}
+        type="button"
+      />
+      <button
+        aria-label="Изменить размер окна ассистента"
+        className="assistant-shell-resize-handle assistant-shell-resize-handle-top-left"
+        onKeyDown={(event) => resizeWithKeyboard(event, 'top-left')}
+        onPointerDown={(event) => startResize(event, 'top-left')}
+        tabIndex={open ? 0 : -1}
+        type="button"
+      />
       <header className="assistant-shell-header">
         <div className="assistant-shell-title">
           <span>
@@ -82,25 +112,24 @@ export function AssistantShell({
         </button>
       </div>
 
-      {activeTab === 'assistant' ? (
-        <div
-          aria-label="Assistant"
-          className="assistant-shell-assistant-panel"
-          id="assistant-shell-assistant-panel"
-          role="tabpanel"
-        >
-          <ImageProductionChat context={chatContext} workspaceId={workspaceId} />
-        </div>
-      ) : (
-        <div
-          aria-label="Feedback"
-          className="assistant-shell-feedback-panel"
-          id="assistant-shell-feedback-panel"
-          role="tabpanel"
-        >
-          <FeedbackPanel contextLabel={contextLabel} />
-        </div>
-      )}
+      <div
+        aria-label="Assistant"
+        className="assistant-shell-assistant-panel"
+        hidden={activeTab !== 'assistant'}
+        id="assistant-shell-assistant-panel"
+        role="tabpanel"
+      >
+        <ImageProductionChat context={chatContext} workspaceId={workspaceId} />
+      </div>
+      <div
+        aria-label="Feedback"
+        className="assistant-shell-feedback-panel"
+        hidden={activeTab !== 'feedback'}
+        id="assistant-shell-feedback-panel"
+        role="tabpanel"
+      >
+        <FeedbackPanel contextLabel={contextLabel} />
+      </div>
     </section>
   );
 }

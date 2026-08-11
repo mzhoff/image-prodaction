@@ -92,6 +92,8 @@ ChatModule в Image Production. Мы не выпускаем новую верс
 | --- | --- | --- |
 | IP-001 | `product-only` | Для вопроса «продукт + ноды + пайплайн» нужны до трёх read-only tool calls; лимит остаётся server-owned и ограничен cost guard. |
 | IP-002 | `product-only` | Общий запрос к `node_catalog` не должен создавать ложный ответ «нод нет»: consumer возвращает ограниченный полный реестр, если фильтр ничего не нашёл. |
+| IP-003 | `product-only` | Размер и жизненный цикл плавающей панели принадлежат host UI: Image Production ограничивает resize сверху/слева и не размонтирует чат при переходе на Feedback. |
+| IP-004 | `product-only` | ChatModule 0.5.1 уже поддерживает Markdown и typewriter через semantic blocks/metadata; consumer преобразует assistant text в Markdown и анимирует только последний ответ. |
 
 ## Новые наблюдения
 

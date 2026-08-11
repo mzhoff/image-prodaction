@@ -15,6 +15,7 @@ import {
 import { ChatModuleShell, type ChatAppearanceSettings } from '@prodactionpro/chat-ui';
 import { useMemo, type ReactNode } from 'react';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
+import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
 
 interface ImageProductionChatProps {
@@ -78,6 +79,10 @@ function ChatContent({ model }: { model: string }) {
   const state = useChatRuntimeState();
   const actions = useChatRuntimeActions();
   const isTyping = ['loading', 'submitting', 'streaming'].includes(state.phase);
+  const presentedMessages = useMemo(
+    () => prepareChatMessagesForPresentation(state.messages),
+    [state.messages],
+  );
   const modelOption: ChatModelOption = {
     id: model,
     label: compactModelLabel(model),
@@ -96,7 +101,7 @@ function ChatContent({ model }: { model: string }) {
       iconLibraryOptions={ICON_OPTIONS}
       inputValue={state.inputValue}
       isTyping={isTyping}
-      messages={state.messages}
+      messages={presentedMessages}
       modeOptions={MODE_OPTIONS}
       modelOptions={[]}
       onAppearanceChange={() => undefined}
@@ -161,12 +166,12 @@ const MODE_OPTIONS = [{
   description: 'Ответы по утверждённой базе знаний и текущему документу.',
 }];
 const APPEARANCE: ChatAppearanceSettings = {
-  assistantBubble: true,
+  assistantBubble: false,
   chatStyle: 'compact',
   font: 'product',
   iconLibrary: 'lucide',
   radius: 'product',
-  showAssistantAvatar: true,
+  showAssistantAvatar: false,
   showUserAvatar: false,
   visualProfile: 'product-light',
 };
