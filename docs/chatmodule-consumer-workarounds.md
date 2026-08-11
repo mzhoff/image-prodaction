@@ -24,6 +24,7 @@
 | CW-005 | CM-009 | `active` | Consumer query-selects `.cm-thread` и ведёт auto-follow | Встроенный scroll lifecycle ChatModule |
 | CW-006 | CM-009 / IP-006 | `active` | Host объявляет собственную canvas wheel boundary | Stable embedded scroll boundary/adapter пакета |
 | CW-007 | CM-008 | `active` | Knowledge читается из Markdown consumer при build | Управляемый versioned Knowledge Base package |
+| CW-008 | CM-006 / CM-010 | `active` | Consumer порталом добавляет hover time/copy под сообщением | Package-owned message action row и presentation policy |
 
 ## CW-001 — удалить bound browser fetch
 
@@ -65,13 +66,14 @@
 
 ## CW-004 — удалить CSS для подписей ролей
 
-- **Сейчас:** `assistant-shell.css` скрывает `span` внутри `.cm-message-meta` для
-  user/assistant и вручную оставляет время справа.
+- **Сейчас:** `assistant-shell.css` скрывает package `.cm-message-meta` для
+  обычных user/assistant; время временно возвращает CW-008 вне bubble.
 - **Триггер замены:** `ChatAppearanceSettings` получает независимые typed
   параметры для user author, assistant author и message time.
 - **Действие:** включить package settings и удалить role/meta CSS selectors.
-- **Проверка:** `User`/`Assistant` скрыты, время остаётся, support-agent identity
-  не исчезает и CSS consumer не зависит от внутренней DOM-структуры пакета.
+  Полностью закрывать запись вместе с CW-008 после поставки CM-010.
+- **Проверка:** `User`/`Assistant` скрыты, hover time остаётся, support-agent
+  identity не исчезает и CSS consumer не зависит от внутренней DOM-структуры.
 
 ## CW-005 — удалить локальный auto-follow
 
@@ -115,6 +117,24 @@
 - **Проверка:** ответы ссылаются на точные source/revision; draft не читается
   агентом; tenant isolation, publish, rollback и reindex проходят; результат на
   golden questions не хуже файловой версии.
+
+## CW-008 — удалить portal bridge для hover actions
+
+- **Сейчас:** `chat-message-hover-actions.tsx` через `MutationObserver`
+  сопоставляет сообщения с внутренними `.cm-message` по порядку и React portals
+  добавляет под ними строку copy/time. `chat-message-actions.ts` сериализует
+  text/Markdown, а `assistant-shell.css` скрывает package meta и управляет
+  hover/focus.
+- **Триггер замены:** ChatModule поставляет package-owned action row по CM-010 и
+  независимую visibility policy по CM-006; copy и time работают через публичный
+  typed API без обхода DOM.
+- **Действие:** включить package policy/slot, удалить portal component, helper,
+  test и CSS `image-production-chat-message-*`; удалить скрытие package meta.
+  Не держать две строки действий одновременно.
+- **Проверка:** время отсутствует внутри bubble и появляется вместе с copy по
+  hover/focus без layout shift; plain/Markdown копируются; touch работает;
+  support-agent identity сохраняется. Затем выполнить visual regression и
+  проверить длинный диалог совместно с CW-005.
 
 ## Что не удалять автоматически
 

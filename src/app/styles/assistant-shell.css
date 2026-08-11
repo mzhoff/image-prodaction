@@ -227,14 +227,77 @@
   display: none;
 }
 
-.image-production-chat .cm-message[data-role='assistant'] .cm-message-meta,
-.image-production-chat .cm-message[data-role='user'] .cm-message-meta {
-  justify-content: flex-end;
+.image-production-chat .cm-message {
+  row-gap: 4px;
 }
 
-.image-production-chat .cm-message[data-role='assistant'] .cm-message-meta > span,
-.image-production-chat .cm-message[data-role='user'] .cm-message-meta > span {
+.image-production-chat .cm-message[data-author-type='assistant'] .cm-message-meta,
+.image-production-chat .cm-message[data-author-type='user'] .cm-message-meta {
   display: none;
+}
+
+.image-production-chat-message-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  width: max-content;
+  min-height: 22px;
+  color: #71717a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.image-production-chat .cm-message[data-role='user'] .image-production-chat-message-actions {
+  justify-self: end;
+}
+
+.image-production-chat .cm-message:hover .image-production-chat-message-actions,
+.image-production-chat .cm-message:focus-within .image-production-chat-message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.image-production-chat-message-actions time {
+  min-width: 31px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.image-production-chat-message-copy {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.image-production-chat-message-copy:hover,
+.image-production-chat-message-copy:focus-visible {
+  background: #e4e4e7;
+  color: #18181b;
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image-production-chat-message-actions {
+    transition: none;
+  }
+}
+
+@media (hover: none) {
+  .image-production-chat-message-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .image-production-chat-error {

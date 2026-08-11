@@ -49,6 +49,7 @@ Image Production, самостоятельно применять миграци
 | CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
 | CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
 | CM-009 | P1 | `chat-ui` / embedded surfaces | `workaround-active` | Лента не следует за новым сообщением и typewriter-анимацией |
+| CM-010 | P1 | `chat-ui` / message presentation | `workaround-active` | Meta жёстко находится внутри bubble, нет hover actions и copy |
 
 ### CM-001 — browser fetch receiver
 
@@ -353,6 +354,34 @@ createChatModules({
   typewriter удерживает нижнюю границу; ручной scroll вверх не перетягивается
   обратно; новый submit возобновляет follow; side-panel не прокручивает
   расположенный под ним canvas.
+
+### CM-010 — hover actions и timestamp вне message bubble
+
+- **Обнаружено:** 2026-08-11, визуальная проверка диалога в Image Production и
+  сравнение с локальным ReverieApp reference.
+- **Evidence:** `ChatMessageItem` всегда помещает `MessageMeta` первым элементом
+  внутрь `.cm-message-bubble`. Поэтому timestamp пользователя занимает место в
+  заливке сообщения, а у ответа без bubble выглядит как отдельное время над
+  текстом. Публичного per-message action slot и штатного copy action нет.
+- **Ожидаемое поведение:** под bubble/content зарезервирована строка постоянной
+  высоты. Её содержимое скрыто визуально до hover или `focus-within`, но
+  появление времени и действий не меняет высоту ленты. Минимальный набор —
+  локализованное время и доступная с клавиатуры кнопка копирования; после copy
+  показывается короткое подтверждение. На touch actions должны оставаться
+  достижимыми без hover.
+- **Consumer workaround:** Image Production скрывает встроенный meta обычных
+  user/assistant сообщений и через временные MutationObserver + React portals
+  добавляет строку времени/copy в package message element. Support-agent meta
+  не скрывается.
+- **Ожидаемое исправление:** ChatModule владеет этой строкой и предоставляет
+  typed presentation policy либо per-message action slot. Настройки независимо
+  управляют timestamp/copy/feedback и placement `inside-bubble`/`below-message`;
+  copy сериализует пользовательский текст и Markdown без author/time metadata.
+  Consumer не должен query-select `.cm-message` или полагаться на порядок DOM.
+- **Regression tests:** timestamp отсутствует внутри user bubble; meta row не
+  меняет высоту при hover; copy работает для plain text и Markdown; keyboard
+  focus раскрывает actions; touch и reduced-motion режимы пригодны; support
+  identity и его собственные actions не исчезают.
 
 ## Product-specific наблюдения Image Production
 

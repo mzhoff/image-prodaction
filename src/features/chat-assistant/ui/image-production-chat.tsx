@@ -19,6 +19,7 @@ import { prepareChatMessagesForPresentation } from '../model/chat-message-presen
 import { getVisibleChatToolCalls } from '../model/chat-tool-call-presentation';
 import { useChatThreadAutoScroll } from '../model/use-chat-thread-auto-scroll';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
+import { ChatMessageHoverActions } from './chat-message-hover-actions';
 
 interface ImageProductionChatProps {
   context: ChatContextSelectors;
@@ -139,6 +140,7 @@ function ChatContent({ model }: { model: string }) {
         visualProfileOptions={VISUAL_OPTIONS}
         helperText={<span>Read-only · {compactModelLabel(model)}</span>}
       />
+      <ChatMessageHoverActions hostRef={rootRef} messages={presentedMessages} />
     </div>
   );
 }
