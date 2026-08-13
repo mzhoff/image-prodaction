@@ -17,16 +17,16 @@ export const DEFAULT_ASSISTANT_SHELL_SIZE: AssistantShellSize = {
 
 const MIN_ASSISTANT_SHELL_HEIGHT = 420;
 const MIN_ASSISTANT_SHELL_WIDTH = 360;
-const MAX_ASSISTANT_SHELL_HEIGHT = 900;
 const MAX_ASSISTANT_SHELL_WIDTH = 880;
-const VIEWPORT_EDGE_GAP = 44;
+const VIEWPORT_HORIZONTAL_GAP = 44;
+const VIEWPORT_VERTICAL_GAP = 56;
 
 export function clampAssistantShellSize(
   size: AssistantShellSize,
   viewport: AssistantShellViewport,
 ): AssistantShellSize {
-  const maxWidth = Math.max(0, Math.min(MAX_ASSISTANT_SHELL_WIDTH, viewport.width - VIEWPORT_EDGE_GAP));
-  const maxHeight = Math.max(0, Math.min(MAX_ASSISTANT_SHELL_HEIGHT, viewport.height - VIEWPORT_EDGE_GAP));
+  const maxWidth = Math.max(0, Math.min(MAX_ASSISTANT_SHELL_WIDTH, viewport.width - VIEWPORT_HORIZONTAL_GAP));
+  const maxHeight = Math.max(0, viewport.height - VIEWPORT_VERTICAL_GAP);
   const minWidth = Math.min(MIN_ASSISTANT_SHELL_WIDTH, maxWidth);
   const minHeight = Math.min(MIN_ASSISTANT_SHELL_HEIGHT, maxHeight);
 

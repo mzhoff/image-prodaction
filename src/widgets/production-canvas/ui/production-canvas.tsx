@@ -5,7 +5,7 @@ import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
 import { CanvasGrid } from './canvas-grid';
@@ -24,11 +24,22 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
   const model = useProductionCanvasModel({ projectId });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const autoOpenedProjectRef = useRef<string | undefined>(undefined);
   const projectTitle = model.documentName
     ?? (model.documentSync.phase === 'loading' ? 'Загрузка документа…' : 'Untitled Pipeline');
   const syncProblem = model.documentSync.phase === 'conflict'
     || model.documentSync.phase === 'error'
     || model.documentSync.phase === 'recovery';
+
+  useEffect(() => {
+    if (!projectId
+      || !model.workspaceId
+      || model.documentSync.phase !== 'saved'
+      || model.nodes.length !== 0
+      || autoOpenedProjectRef.current === projectId) return;
+    autoOpenedProjectRef.current = projectId;
+    setAssistantOpen(true);
+  }, [model.documentSync.phase, model.nodes.length, model.workspaceId, projectId]);
 
   return (
     <div className="canvas-shell">
@@ -131,9 +142,14 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           open={assistantOpen}
           contextLabel={projectTitle}
           documentId={projectId}
-          documentRevision={model.documentRevision}
+          documentRevision={model.documentRevision === undefined
+            ? undefined
+            : model.documentSync.phase === 'saved'
+              ? String(model.documentRevision)
+              : `unsaved:${model.documentRevision}`}
           onClose={() => setAssistantOpen(false)}
-          route={projectId ? `/project/${projectId}` : '/project'}
+          onPipelineChanged={model.reloadDocumentFromServer}
+          route={projectId ? `/projects/${projectId}` : '/projects'}
           selectionIds={[...model.selectedSet, ...model.selectedSectionSet]}
           workspaceId={model.workspaceId}
         />

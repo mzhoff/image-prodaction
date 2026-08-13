@@ -8,7 +8,7 @@ import {
 test('assistant shell size stays inside product and viewport bounds', () => {
   assert.deepEqual(
     clampAssistantShellSize({ height: 2_000, width: 2_000 }, { height: 1_000, width: 1_200 }),
-    { height: 900, width: 880 },
+    { height: 944, width: 880 },
   );
   assert.deepEqual(
     clampAssistantShellSize({ height: 100, width: 100 }, { height: 800, width: 1_000 }),
@@ -31,6 +31,13 @@ test('dragging the top-left resize handle grows the anchored shell', () => {
 test('small viewports override the desktop minimum without overflowing', () => {
   assert.deepEqual(
     clampAssistantShellSize({ height: 650, width: 420 }, { height: 430, width: 390 }),
-    { height: 386, width: 346 },
+    { height: 374, width: 346 },
+  );
+});
+
+test('large viewports keep the same 28px gap above and below the anchored shell', () => {
+  assert.deepEqual(
+    clampAssistantShellSize({ height: 2_000, width: 420 }, { height: 1_440, width: 2_000 }),
+    { height: 1_384, width: 420 },
   );
 });

@@ -14,13 +14,13 @@ ChatModule в Image Production. Мы не выпускаем новую верс
 - Каждое новое наблюдение получает постоянный ID и дату.
 - Отдельно фиксируются evidence, влияние, временный consumer workaround и
   ожидаемое изменение внешнего пакета.
-- Product-specific улучшения остаются в отдельном разделе и не выдаются за
-  дефект универсального модуля.
+- В handoff остаются только открытые универсальные задачи ChatModule; product-specific
+  решения и уже consumer-verified пункты из рабочего списка удаляются.
 - Запись закрывается только после публикации пакета и повторной проверки в
   установленном consumer, а не после одного теста внутри ChatModule.
 
-Статусы: `observed`, `workaround-active`, `ready-for-upstream`,
-`upstream-fixed`, `consumer-verified`, `product-only`.
+Рабочие статусы: `observed`, `workaround-active`, `ready-for-upstream`,
+`upstream-fixed`.
 
 ## Архитектурное решение: quality и knowledge принадлежат ChatModule
 
@@ -36,115 +36,23 @@ Host-приложение отвечает только за композици�
 Image Production, самостоятельно применять миграции или владеть продуктовыми
 секретами.
 
-## Кандидаты в следующий релиз ChatModule
+## Передача в следующий релиз ChatModule
+
+Этот handoff намеренно содержит только открытые универсальные задачи. Пункты,
+которые уже поставлены ChatModule 0.7.0 и повторно проверены в Image Production,
+удалены из рабочего списка; их история остаётся в Git и в retirement ledger.
+Product-specific поведение Image Production сюда также не включается.
 
 | ID | Приоритет | Область | Статус | Кратко |
 | --- | --- | --- | --- | --- |
-| CM-001 | P1 | `chat-sdk` | `workaround-active` | Browser `fetch` вызывается с неправильным receiver |
-| CM-002 | P1 | contracts / agent | `workaround-active` | Tool name не проверяется на совместимость с OpenAI |
-| CM-003 | P0 | Next runtime / SDK / core | `workaround-active` | SSE payload расходится с типом `ChatTurnResponse` |
-| CM-004 | P2 | OpenRouter connector | `ready-for-upstream` | Нет защищённой диагностики тела provider error |
-| CM-005 | P1 | `chat-ui` / contracts | `workaround-active` | Tool calls всегда выводятся общим списком после сообщений |
-| CM-006 | P2 | `chat-ui` | `workaround-active` | Подписи авторов нельзя скрыть независимо от avatar/bubble |
 | CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
 | CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
-| CM-009 | P1 | `chat-ui` / embedded surfaces | `workaround-active` | Лента не следует за новым сообщением и typewriter-анимацией |
-| CM-010 | P1 | `chat-ui` / message presentation | `workaround-active` | Meta жёстко находится внутри bubble, нет hover actions и copy |
-
-### CM-001 — browser fetch receiver
-
-- **Обнаружено:** 2026-08-11, Image Production + Chrome.
-- **Evidence:** отправка сообщения падала с
-  `Failed to execute 'fetch' on 'Window': Illegal invocation` до вызова API.
-- **Причина:** `RestSseChatClient` сохраняет глобальный `fetch`, а затем вызывает
-  его как метод экземпляра клиента.
-- **Consumer workaround:** передавать
-  `globalThis.fetch.bind(globalThis)` в `fetcher`.
-- **Ожидаемое исправление:** SDK сам создаёт корректно привязанный default
-  fetcher; consumer не обязан знать о browser receiver.
-- **Regression test:** browser-like fetch, который проверяет receiver, проходит
-  через `createChatClient` без пользовательской настройки `fetcher`.
-
-### CM-002 — provider-safe tool names
-
-- **Обнаружено:** 2026-08-11, `openai/gpt-5.4-nano` через OpenRouter.
-- **Evidence:** первый model call принимал `knowledge.search`, но следующий call
-  с tool result получал HTTP 400: имя не соответствует
-  `^[a-zA-Z0-9_-]+$`.
-- **Consumer workaround:** tools переименованы в `knowledge_search` и
-  `node_catalog`, добавлен consumer regression test.
-- **Ожидаемое исправление:** валидировать server-owned tool definitions при
-  сборке агента и возвращать понятную configuration error до provider call.
-- **Regression test:** несовместимое имя отклоняется локально; `_` и `-`
-  принимаются во всём tool-call lifecycle.
-
-### CM-003 — SSE turn result contract
-
-- **Обнаружено:** 2026-08-11, полный успешный model/tool turn.
-- **Evidence:** сервер завершал `/chat/v1/turn/stream` с HTTP 200, после чего
-  `chat-runtime-core` падал на `result.userMessage`/`assistantMessage` как
-  `undefined`.
-- **Причина:** `chat-runtime-next` отображает `message.completed` в SSE
-  `message` с `ChatMessage`, а `run.completed` — в `done` с
-  `ChatTurnResponse`. `chat-sdk` принимает payload `message` за итоговый
-  `ChatTurnResponse` и игнорирует payload `done`.
-- **Consumer workaround:** runtime transport временно вызывает JSON endpoint
-  `/chat/v1/turn`. Cancel signal сохраняется, UI/runtime contract не меняется.
-- **Ожидаемое исправление:** единый типизированный wire contract; SDK возвращает
-  `ChatTurnResponse` только из события, которое действительно содержит полный
-  результат.
-- **Regression test:** сквозной тест
-  `chat-runtime-next -> chat-sdk -> chat-runtime-core` с model/tool turn.
-
-### CM-004 — protected OpenRouter diagnostics
-
-- **Обнаружено:** 2026-08-11 при диагностике provider HTTP 400.
-- **Evidence:** публичная ошибка безопасно обезличивалась, но server-side
-  `OpenRouterRequestError` сохранял только status/code и отбрасывал полезное
-  тело ответа. Точную причину пришлось воспроизводить отдельным запросом.
-- **Consumer workaround:** отсутствует; публичный канал намеренно остаётся
-  безопасным.
-- **Ожидаемое исправление:** optional server-only protected error reporter с
-  redaction и ограничением размера. Raw provider payload не должен попадать в
-  browser, chat history или model context.
-- **Regression test:** protected reporter получает диагностический код, а
-  публичная ошибка не содержит provider body, prompt или credentials.
-
-### CM-005 — привязка tool calls и источников к ответу
-
-- **Обнаружено:** 2026-08-11, ответы по knowledge base в Image Production.
-- **Evidence:** `ChatModuleShell` рендерит все `toolCalls` после всего массива
-  сообщений и показывает raw JSON input. В consumer snapshot все 14 вызовов
-  связаны через `messageId` с вопросами пользователя, но ни один не имеет
-  `agentResponseMessageId`; у 25 LLM calls также не заполнен
-  `responseMessageId`.
-- **Влияние:** пользователь видит внутренние `knowledge_search` вместо
-  компактных источников и не может понять, к какому ответу они относятся.
-- **Consumer workaround:** Image Production показывает только
-  `needs-confirmation` и `failed`; завершённые read-only вызовы остаются в
-  PostgreSQL для аудита, но скрываются из пользовательского чата.
-- **Ожидаемое исправление:** заполнить связь tool/LLM call с итоговым assistant
-  message и добавить presentation policy или slot: скрыть технические детали,
-  показать под конкретным ответом компактный блок «Источники», раскрываемый по
-  запросу. Raw input/output не должен быть default end-user UI.
-- **Regression test:** два tool calls одного turn отображаются под его
-  assistant message, а следующий ответ получает собственную группу источников.
-
-### CM-006 — visibility авторов сообщений
-
-- **Обнаружено:** 2026-08-11, `showAssistantAvatar: false` и
-  `assistantBubble: false`.
-- **Evidence:** avatar и bubble скрываются, но `MessageMeta` продолжает выводить
-  фиксированные имена `Assistant` и `User`; публичных appearance-параметров для
-  авторов и времени нет.
-- **Consumer workaround:** Image Production скрывает обе author labels scoped
-  CSS, сохраняя время сообщений.
-- **Ожидаемое исправление:** типизированные настройки
-  `showAssistantAuthor`/`showUserAuthor`/`showMessageTime` либо единая
-  role-aware presentation policy. Support-agent identity должна настраиваться
-  отдельно и не исчезать случайно вместе с подписями обычного диалога.
-- **Regression test:** assistant/user author visibility управляется без CSS
-  override, время остаётся доступным, support-agent presentation не затронут.
+| CM-011 | P1 | application / SSE / product actions | `ready-for-upstream` | Ошибка prepare превращается в HTTP 500 и не даёт агенту исправить аргументы |
+| CM-012 | P0 | agent / SSE / runtime / UI | `workaround-active` | Нет честного backend-driven прогресса долгого agent turn |
+| CM-013 | P0 | SDK / runtime / UI / idempotency | `workaround-active` | Ошибка не содержит достаточного контракта для безопасного повтора запроса |
+| CM-014 | P2 | `chat-ui` / activity label | `workaround-active` | CSS анимированных точек ломает вложенный public `activityLabel` |
+| CM-015 | P1 | runtime / `chat-ui` / tool status | `workaround-active` | Сохранённый confirmation block дублирует tool card и остаётся после выполнения |
+| CM-016 | P0 | connector / agent / usage / retry policy | `workaround-active` | Transient provider failure требует ручного повтора всего user turn |
 
 ### CM-007 — коробочный модуль Assistant Quality
 
@@ -321,78 +229,166 @@ createChatModules({
   regression tests и предоставлена инструкция обновления существующего
   ChatModule consumer.
 
-### CM-009 — follow-to-latest и scroll contract в embedded chat
+### CM-011 — recoverable ошибка подготовки product action
 
-- **Обнаружено:** 2026-08-11 при длинном ответе в side-panel поверх pipeline
-  canvas.
-- **Evidence:** `.cm-thread` имеет `overflow-y: auto`, но `ChatModuleShell` не
-  хранит ref/состояние позиции и после `onSubmit` не прокручивает ленту. Когда
-  `ChatRichText` постепенно увеличивает высоту typewriter-ответа, viewport
-  остаётся на старом участке переписки.
-- **Влияние:** пользователь отправляет вопрос и не видит ни своё новое
-  сообщение, ни индикатор работы, ни печатающийся ответ без ручной прокрутки.
-- **Consumer workaround:** Image Production при submit включает follow mode,
-  прокручивает `.cm-thread` вниз и через `ResizeObserver` удерживает нижнюю
-  границу во время роста ответа. Ручной уход пользователя от нижней границы
-  отключает follow до возврата вниз или следующей отправки.
-- **Ожидаемое исправление:** ChatModule сам владеет scroll lifecycle:
-  - новый submit немедленно показывает отправленное сообщение и typing state;
-  - пока идёт streaming/typewriter, последняя строка остаётся над composer, а
-    растущий текст уходит вверх;
-  - ручной scroll вверх прекращает принудительное следование и показывает
-    доступную с клавиатуры кнопку «К последнему сообщению»;
-  - возврат к нижней границе или новый submit снова включает follow;
-  - короткий диалог выравнивается по нижней границе, scroll position не
-    сбрасывается при переключении вкладок/режимов;
-  - embedded thread имеет `overscroll-behavior: contain` и стабильный
-    ref/data-атрибут или typed scroll adapter для интеграции с canvas hosts.
-- **Публичный контракт:** sensible default внутри `ChatModuleShell` плюс
-  optional typed policy/callbacks для `autoFollow`, bottom threshold,
-  jump-to-latest visibility и уведомления о follow state. Consumer не должен
-  query-select внутренние `.cm-*` классы.
-- **Regression tests:** submit из середины длинной истории переходит вниз;
-  typewriter удерживает нижнюю границу; ручной scroll вверх не перетягивается
-  обратно; новый submit возобновляет follow; side-panel не прокручивает
-  расположенный под ним canvas.
+- **Обнаружено:** 2026-08-12, первый живой `pipeline_build` в Image Production.
+- **Evidence:** модель передала допустимое по общему JSON Schema, но чужое для
+  конкретной ноды поле. Product gateway безопасно отклонил input, однако
+  `proposeToolCall()` отбросил причину, а SSE route завершился HTTP 500. В UI
+  пользователь увидел только `network error`; failed tool-call audit не был
+  создан, потому что ошибка случилась до `createToolCall()`.
+- **Consumer mitigation:** схема `pipeline_build` стала discriminated per-node,
+  а безопасные misplaced settings пропускаются с заметным warning в preview.
+  Server-only журнал сохраняет ограниченные `errorName/errorMessage/toolCallId`.
+- **Ожидаемое исправление:** preparation failure не должен ломать весь stream.
+  ChatModule должен вызвать protected reporter, сохранить failed proposal audit
+  и вернуть модели структурированный safe tool result для одного исправляющего
+  шага либо показать пользователю понятную retryable ошибку. Raw exception и
+  input не выходят в browser.
+- **Regression tests:** invalid proposal input даёт завершённый SSE lifecycle,
+  один audit record и safe error; модель может исправить tool args в пределах
+  лимита; повтор не создаёт proposal; protected reporter получает cause, а UI
+  не получает stack/provider payload.
+- **Повторное подтверждение, 2026-08-12:** после успешного `node_catalog` второй
+  model call вернул невалидный `pipeline_build`; `chat_llm_calls` сохранил его
+  как успешный оплаченный вызов, но tool-call audit не появился, turn получил
+  `CHAT_AGENT_RUN_FAILED`, а Next stream завершился `failed to pipe response`.
+  Browser снова увидел только `network error`. Это подтверждает, что проблема
+  находится в универсальном lifecycle между provider result validation и SSE,
+  а не в OpenRouter, сети или product execute.
+- **Повторное подтверждение, 2026-08-13:** два `pipeline_update` прошли JSON
+  Schema и дошли до product prepare, но первый попытался занять
+  уже подключённый вход, а второй соединил несовместимые порты.
+  Оба LLM call записаны как `success`, оба turn как
+  `CHAT_AGENT_RUN_FAILED`, а failed `chat_tool_calls` нет, потому что
+  `prepareTool()` вызывается до `createToolCall()`. Это ожидаемая
+  валидационная ошибка, которая должна возвращаться агенту как
+  safe tool result для одной коррекции, а не обрывать SSE.
 
-### CM-010 — hover actions и timestamp вне message bubble
+### CM-012 — backend-driven прогресс долгого agent turn
 
-- **Обнаружено:** 2026-08-11, визуальная проверка диалога в Image Production и
-  сравнение с локальным ReverieApp reference.
-- **Evidence:** `ChatMessageItem` всегда помещает `MessageMeta` первым элементом
-  внутрь `.cm-message-bubble`. Поэтому timestamp пользователя занимает место в
-  заливке сообщения, а у ответа без bubble выглядит как отдельное время над
-  текстом. Публичного per-message action slot и штатного copy action нет.
-- **Ожидаемое поведение:** под bubble/content зарезервирована строка постоянной
-  высоты. Её содержимое скрыто визуально до hover или `focus-within`, но
-  появление времени и действий не меняет высоту ленты. Минимальный набор —
-  локализованное время и доступная с клавиатуры кнопка копирования; после copy
-  показывается короткое подтверждение. На touch actions должны оставаться
-  достижимыми без hover.
-- **Consumer workaround:** Image Production скрывает встроенный meta обычных
-  user/assistant сообщений и через временные MutationObserver + React portals
-  добавляет строку времени/copy в package message element. Support-agent meta
-  не скрывается.
-- **Ожидаемое исправление:** ChatModule владеет этой строкой и предоставляет
-  typed presentation policy либо per-message action slot. Настройки независимо
-  управляют timestamp/copy/feedback и placement `inside-bubble`/`below-message`;
-  copy сериализует пользовательский текст и Markdown без author/time metadata.
-  Consumer не должен query-select `.cm-message` или полагаться на порядок DOM.
-- **Regression tests:** timestamp отсутствует внутри user bubble; meta row не
-  меняет высоту при hover; copy работает для plain text и Markdown; keyboard
-  focus раскрывает actions; touch и reduced-motion режимы пригодны; support
-  identity и его собственные actions не исчезают.
+- **Обнаружено:** 2026-08-12, финальный запрос на сборку пайплайна.
+- **Evidence:** после отправки UI 45 секунд показывал только локальное
+  `Assistant is thinking`, хотя внутри turn могли последовательно выполняться
+  model call, чтение знаний, чтение каталога, подготовка product action и анализ
+  результата. `ToolCallingChatAgent.streamTurn()` публикует `run.started`, затем
+  блокируется на `createTurn()`; runtime не получает промежуточные typed phases.
+- **Влияние:** пользователь не отличает нормальную долгую работу от зависания и
+  не понимает, безопасно ли ждать или отменять запрос.
+- **Ожидаемое исправление:** ChatModule публикует упорядоченные server-owned
+  lifecycle events как минимум для `accepted`, `resolving-context`,
+  `waiting-for-model`, `tool-proposed`, `tool-running`, `analyzing-result` и
+  `finalizing`. Event содержит `turnId`, `requestId`, sequence, `startedAt` и
+  `updatedAt`; текущее состояние сохраняется и восстанавливается после reload
+  или SSE reconnect. Для долгих пауз stream отправляет heartbeat, а terminal
+  success/cancel/timeout/error всегда закрывает activity.
+- **Приватность:** UI показывает только операционный этап, но никогда не
+  chain-of-thought, скрытые рассуждения, raw prompt или tool payload. Текст этапа
+  локализуется UI либо приходит как безопасный presentation label.
+- **UI contract:** package предоставляет стандартный activity renderer с
+  прошедшим временем и публичный slot/policy для consumer theme. Таймер считается
+  на клиенте от server `startedAt`, поэтому переключение вкладки не обнуляет его.
+- **Regression tests:** первый и существующий conversation, model/tool/model,
+  reconnect по `Last-Event-ID`, heartbeat через reverse proxy, cancel и timeout;
+  события монотонны, не дублируются и после terminal state индикатор исчезает.
 
-## Product-specific наблюдения Image Production
+### CM-013 — структурированная ошибка и безопасный retry
 
-| ID | Статус | Наблюдение |
-| --- | --- | --- |
-| IP-001 | `product-only` | Для вопроса «продукт + ноды + пайплайн» нужны до трёх read-only tool calls; лимит остаётся server-owned и ограничен cost guard. |
-| IP-002 | `product-only` | Общий запрос к `node_catalog` не должен создавать ложный ответ «нод нет»: consumer возвращает ограниченный полный реестр, если фильтр ничего не нашёл. |
-| IP-003 | `product-only` | Размер и жизненный цикл плавающей панели принадлежат host UI: Image Production ограничивает resize сверху/слева и не размонтирует чат при переходе на Feedback. |
-| IP-004 | `product-only` | ChatModule 0.5.1 уже поддерживает Markdown и typewriter через semantic blocks/metadata; consumer преобразует assistant text в Markdown и анимирует только последний ответ. |
-| IP-005 | `product-only` | До появления per-message source presentation consumer скрывает завершённые read-only tool cards, но не удаляет их audit records из PostgreSQL. |
-| IP-006 | `product-only` | Production canvas обязан уступать wheel/pan события интерактивному overlay ассистента; host помечает shell как canvas-wheel boundary, а canvas navigation не обрабатывает события из этой области. |
+- **Обнаружено:** 2026-08-12, тот же turn.
+- **Evidence:** SDK отменил запрос ровно через 45 секунд, одновременно с timeout
+  OpenRouter connector. Runtime сохранил только строку ошибки, а синтетический
+  error block всегда получил `retryable: true`; UI не знает `code`, реальный
+  `retryable`, `turnId/requestId`, `retryAfter` и могло ли действие начаться.
+- **Влияние:** безусловный «Повторить» может создать второй turn, proposal,
+  списание или, для менее защищённого consumer tool, повторить изменение.
+- **Ожидаемое исправление:** runtime сохраняет структурированный safe error:
+  `code`, `retryable`, `category`, `turnId`, `requestId`, `attempt`,
+  `retryAfterMs` и `executionState` (`not-started`, `read-only`, `ambiguous`,
+  `mutated`). Package показывает одну, а не две error-панели и стандартную
+  кнопку retry только для разрешённых состояний.
+- **Retry semantics:** повтор является отдельной typed операцией/attempt со
+  ссылкой на исходный turn и исходным message, сохраняет idempotency contract и
+  сначала reconciles состояние при `ambiguous`. Write action нельзя исполнять
+  повторно без нового preview/confirmation; completed turn возвращает прежний
+  результат, а running turn не запускается параллельно.
+- **Presentation/history semantics:** повтор использует тот же логический user
+  message и не добавляет второй одинаковый bubble в UI или второй одинаковый
+  prompt в model context. Отдельные attempts остаются доступными в audit, но не
+  маскируются под новые пользовательские сообщения.
+- **Timeout contract:** provider timeout, server turn deadline и SDK deadline
+  конфигурируются раздельно и идут с запасом в этом порядке. Server успевает
+  сохранить terminal outcome и отправить error до client cancellation.
+- **Regression tests:** provider timeout, offline/network, 408/429/5xx,
+  non-retryable 4xx, первый turn без conversation id, retry после read tool,
+  ambiguous write, двойной клик и reload/reconnect. Ни один сценарий не создаёт
+  двойного изменения или usage charge.
+
+### CM-014 — CSS индикатора не должен ломать custom activity label
+
+- **Обнаружено:** 2026-08-12, Image Production с public `activityLabel`.
+- **Evidence:** `.cm-typing span` задаёт каждому вложенному `span` ширину и
+  высоту `7px`, фон и pulse-анимацию. Поэтому `span` внутри переданного
+  `activityLabel` превращается в дополнительную точку, а текст статуса
+  сжимается и переносится, хотя места в панели достаточно.
+- **Влияние:** публичный ReactNode-slot нельзя безопасно использовать для
+  составной подписи этапа и таймера без знания внутренних CSS-селекторов пакета.
+- **Consumer workaround:** Image Production сбрасывает dot-геометрию только для
+  `.image-production-chat-activity` и принудительно сохраняет статус в одну
+  строку.
+- **Ожидаемое исправление:** стили точек должны применяться только к трём прямым
+  дочерним элементам (`.cm-typing > span`) либо к отдельному публичному классу
+  dot. Контейнер и `b` должны разрешать произвольный `activityLabel`, включая
+  вложенные элементы, без навязывания им размеров, фона и animation.
+- **Regression tests:** ReactNode из текста и `<time>` остаётся в одну строку;
+  его вложенные элементы не анимируются, три штатные точки продолжают
+  пульсировать, длинная локализованная подпись не ломает composer.
+
+### CM-015 — confirmation status не должен дублироваться и устаревать
+
+- **Обнаружено:** 2026-08-12, успешный подтверждённый `pipeline_build`.
+- **Evidence:** ChatModule сохраняет отдельное assistant message с блоком
+  `tool-status(status=needs-confirmation)` и одновременно показывает связанную
+  интерактивную `ChatToolCallPanel`. После подтверждения tool call в PostgreSQL
+  имеет `completed`, но неизменяемый message block продолжает показывать
+  «Требуется подтверждение» после reload.
+- **Влияние:** во время ожидания пользователь видит два одинаковых сообщения, а
+  после успешного действия одно из них сообщает заведомо неверное состояние.
+- **Consumer workaround:** Image Production скрывает `tool-status` blocks и
+  оставляет единственным источником состояния package tool panel/result card.
+- **Ожидаемое исправление:** ChatModule должен иметь один source of truth для
+  lifecycle tool call. Либо status block вычисляется по живой записи tool call,
+  либо не создаётся, когда UI уже рендерит связанную confirmation card. Terminal
+  `completed/rejected/expired/failed` обязан заменить или убрать pending status
+  при текущем turn, reload и reconnect.
+- **Regression tests:** pending write показывает одну карточку с действиями;
+  после confirm отображается только completed result, после reject — terminal
+  result; reload/reconnect не возвращают `needs-confirmation`.
+
+### CM-016 — bounded provider retry внутри одного agent turn
+
+- **Обнаружено:** 2026-08-12, доработка существующего Telegram pipeline.
+- **Evidence:** три последовательных turn завершились через 5 секунд с
+  `OPENROUTER_NETWORK_ERROR`, нулевыми токенами и без tool call. Пользователь
+  вручную повторял одну реплику, хотя ошибка возникла до product action.
+- **Влияние:** технический transient сбой превращается в пользовательскую
+  работу, засоряет историю отдельными turns и заставляет модель повторно читать
+  весь контекст. При этом безусловный retry всего turn небезопасен после write
+  proposal и может повторить действие или списание.
+- **Consumer workaround:** Image Production connector делает до трёх попыток
+  одного provider call с bounded exponential backoff. Это происходит внутри
+  исходного turn до передачи результата agent lifecycle. 401/402/403,
+  cancellation и другие permanent ошибки не повторяются; после исчерпания
+  лимита ошибка возвращается пользователю.
+- **Ожидаемое исправление:** ChatModule connector принимает typed retry policy:
+  max attempts, backoff/jitter, retryable codes, `Retry-After`, общий deadline и
+  protected attempt reporter. Runtime различает provider attempt и user turn,
+  не добавляет повторный user message и сохраняет реальное суммарное usage.
+  Retry после tool proposal/execution подчиняется execution state CM-013, а не
+  connector policy.
+- **Regression tests:** network/DNS, timeout, 429 с `Retry-After`, 502/503/504,
+  401/402/403, cancel во время backoff, исчерпание attempts и успешное
+  восстановление. Один user turn и одно сообщение сохраняются; usage всех
+  оплаченных попыток учитывается; product write не исполняется дважды.
 
 ## Новые наблюдения
 

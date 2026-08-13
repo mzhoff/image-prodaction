@@ -10,7 +10,8 @@ interface AssistantShellProps {
   open: boolean;
   contextLabel: string;
   documentId?: string;
-  documentRevision?: number;
+  documentRevision?: string;
+  onPipelineChanged?: () => void;
   onClose: () => void;
   route?: string;
   selectionIds?: string[];
@@ -25,6 +26,7 @@ export function AssistantShell({
   documentId,
   documentRevision,
   onClose,
+  onPipelineChanged,
   route,
   selectionIds,
   workspaceId,
@@ -35,7 +37,7 @@ export function AssistantShell({
     ...(documentId ? {
       document: {
         id: documentId,
-        ...(documentRevision === undefined ? {} : { revision: String(documentRevision) }),
+        ...(documentRevision === undefined ? {} : { revision: documentRevision }),
       },
     } : {}),
     ...(route ? { route } : {}),
@@ -120,7 +122,11 @@ export function AssistantShell({
         id="assistant-shell-assistant-panel"
         role="tabpanel"
       >
-        <ImageProductionChat context={chatContext} workspaceId={workspaceId} />
+        <ImageProductionChat
+          context={chatContext}
+          onPipelineChanged={onPipelineChanged}
+          workspaceId={workspaceId}
+        />
       </div>
       <div
         aria-label="Feedback"

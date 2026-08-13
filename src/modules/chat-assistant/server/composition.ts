@@ -17,10 +17,10 @@ import {
 } from '@prodactionpro/chat-runtime-next/server';
 import { getDb } from '@/shared/db/client';
 import { buildImageProductionSystemPrompt } from '../core/system-prompt';
-import { imageProductionKnowledgeTools } from '../contracts/image-production-tools';
+import { imageProductionTools } from '../contracts/image-production-tools';
 import { resolveChatPrincipal } from './auth';
 import { readChatAssistantConfig } from './config';
-import { ImageProductionKnowledgeToolGateway } from './knowledge-tool-gateway';
+import { ImageProductionToolGateway } from './knowledge-tool-gateway';
 import { LimitedOpenRouterGateway } from './limited-openrouter-gateway';
 import { admitChatTurn } from './turn-admission';
 import { resolveVerifiedChatContext } from './verified-context';
@@ -46,16 +46,17 @@ function createComposition() {
 
   const store = new DrizzleConversationStore(getDb());
   const eventBus = new InMemoryConversationEventBus();
-  const toolGateway = new ImageProductionKnowledgeToolGateway();
+  const toolGateway = new ImageProductionToolGateway();
   const options: ChatApplicationOptions = {
     agent: {
       maxCostUsdPerTurn: config.maxCostUsdPerTurn,
       maxSteps: config.maxToolCallsPerTurn + 1,
       maxToolCallsPerTurn: config.maxToolCallsPerTurn,
-      tools: imageProductionKnowledgeTools,
+      tools: imageProductionTools,
     },
     allowedModelIdsByMode: {
       'knowledge-base': [config.model],
+      'product-copilot': [config.model],
     },
     assistantProviderResolver: () => ({
       connectionId: 'env:chat-openrouter',
@@ -66,13 +67,16 @@ function createComposition() {
         baseUrl: config.openRouterBaseUrl,
         httpReferer: config.openRouterSiteUrl,
         maxOutputTokens: config.maxOutputTokens,
+        maxAttempts: config.providerMaxAttempts,
+        retryBaseDelayMs: config.providerRetryBaseDelayMs,
+        timeoutMs: config.providerRequestTimeoutMs,
       }),
     }),
     capabilities: {
       attachments: false,
       imageGeneration: false,
       models: [config.model],
-      modes: ['knowledge-base'],
+      modes: ['knowledge-base', 'product-copilot'],
       supportHandoff: false,
       toolCalls: true,
       voiceInput: false,

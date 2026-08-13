@@ -48,12 +48,15 @@ export function useDocumentBackendSync({
   const [thumbnailAvailable, setThumbnailAvailable] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>();
   const [revision, setRevision] = useState<number>();
+  const [reloadSequence, setReloadSequence] = useState(0);
   const [saveSequence, setSaveSequence] = useState(0);
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
   const discardCandidateRef = useRef<string | null>(null);
+  const loadedProjectIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!projectId) {
+      loadedProjectIdRef.current = undefined;
       discardCandidateRef.current = null;
       setDocumentName(undefined);
       setFavorite(false);
@@ -68,7 +71,10 @@ export function useDocumentBackendSync({
     }
     const documentId = projectId;
     discardCandidateRef.current = null;
-    setWorkspaceId(undefined);
+    if (loadedProjectIdRef.current !== documentId) {
+      loadedProjectIdRef.current = documentId;
+      setWorkspaceId(undefined);
+    }
 
     const controller = new AbortController();
     let active = true;
@@ -237,7 +243,7 @@ export function useDocumentBackendSync({
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
     };
-  }, [exportSnapshot, importSnapshot, projectId, resetProject, subscribeToProjectChanges]);
+  }, [exportSnapshot, importSnapshot, projectId, reloadSequence, resetProject, subscribeToProjectChanges]);
 
   const updateMetadata = useCallback(async (metadata: {
     favorite?: boolean;
@@ -260,6 +266,7 @@ export function useDocumentBackendSync({
     renameDocument: (name: string) => updateMetadata({ name }),
     setDocumentFavorite: (nextFavorite: boolean) => updateMetadata({ favorite: nextFavorite }),
     moveDocumentToTrash: () => updateMetadata({ status: 'trash' }),
+    reloadFromServer: () => setReloadSequence((current) => current + 1),
     saveSequence,
     revision,
     syncState,

@@ -1,16 +1,47 @@
 import type { McpToolGateway, ToolExecutionContext } from '@prodactionpro/chat-connectors';
 import { requireWorkspaceMembership, WorkspaceAccessError } from '@/entities/workspace/server/workspace-service';
 import { getAssistantNodeCatalog } from '../core/node-catalog';
+import { CHAT_ASSISTANT_PRODUCT_ID } from '../contracts/assistant-config';
 import {
-  CHAT_ASSISTANT_PRODUCT_ID,
-} from '../contracts/assistant-config';
-import {
+  DOCUMENT_GRAPH_TOOL,
   KNOWLEDGE_SEARCH_TOOL,
   NODE_CATALOG_TOOL,
+  PIPELINE_BUILD_TOOL,
+  PIPELINE_UPDATE_TOOL,
 } from '../contracts/image-production-tools';
+import { readAssistantDocumentGraph } from './document-graph-tool';
 import { searchAssistantKnowledge } from './knowledge-base';
+import {
+  executePipelineBuildProposal,
+  preparePipelineBuildProposal,
+} from './pipeline-action-service';
+import {
+  executePipelineUpdateProposal,
+  preparePipelineUpdateProposal,
+} from './pipeline-update-service';
 
-export class ImageProductionKnowledgeToolGateway implements McpToolGateway {
+export class ImageProductionToolGateway implements McpToolGateway {
+  async prepareTool(request: Parameters<NonNullable<McpToolGateway['prepareTool']>>[0], context: ToolExecutionContext) {
+    const accessFailure = await verifyToolContext(context);
+    if (accessFailure) throw new Error(accessFailure.safeError.message);
+    if (request.toolName !== PIPELINE_BUILD_TOOL && request.toolName !== PIPELINE_UPDATE_TOOL) {
+      throw new Error('This tool does not support a preparation phase.');
+    }
+    try {
+      return request.toolName === PIPELINE_BUILD_TOOL
+        ? await preparePipelineBuildProposal(request, context)
+        : await preparePipelineUpdateProposal(request, context);
+    } catch (error) {
+      console.error('[image-production-pipeline-prepare-error]', {
+        errorMessage: error instanceof Error ? error.message.slice(0, 500) : 'Unknown preparation error',
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        inputShape: summarizePreparationInput(request.input),
+        toolCallId: context.toolCallId,
+      });
+      throw error;
+    }
+  }
+
   async callTool(request: Parameters<McpToolGateway['callTool']>[0], context: ToolExecutionContext) {
     const accessFailure = await verifyToolContext(context);
     if (accessFailure) return accessFailure;
@@ -25,6 +56,15 @@ export class ImageProductionKnowledgeToolGateway implements McpToolGateway {
       const nodes = getAssistantNodeCatalog(query);
       return { ok: true, output: { count: nodes.length, nodes, query } };
     }
+    if (request.toolName === DOCUMENT_GRAPH_TOOL) {
+      return { ok: true, output: await readAssistantDocumentGraph(context) };
+    }
+    if (request.toolName === PIPELINE_BUILD_TOOL) {
+      return executePipelineBuildProposal(request, context);
+    }
+    if (request.toolName === PIPELINE_UPDATE_TOOL) {
+      return executePipelineUpdateProposal(request, context);
+    }
     return {
       ok: false,
       safeError: {
@@ -34,6 +74,25 @@ export class ImageProductionKnowledgeToolGateway implements McpToolGateway {
       },
     };
   }
+}
+
+function summarizePreparationInput(input: Record<string, unknown>) {
+  const nodes = Array.isArray(input.nodes) ? input.nodes : [];
+  const edges = Array.isArray(input.edges) ? input.edges : [];
+  return {
+    edgeCount: edges.length,
+    edgePorts: edges.slice(0, 24).flatMap((edge) => {
+      if (!isRecord(edge)) return [];
+      return [{
+        sourcePortId: readOptionalString(edge.sourcePortId)?.slice(0, 80),
+        targetPortId: readOptionalString(edge.targetPortId)?.slice(0, 80),
+      }];
+    }),
+    nodeCount: nodes.length,
+    nodeTypes: nodes.slice(0, 12).flatMap((node) => (
+      isRecord(node) && typeof node.type === 'string' ? [node.type.slice(0, 80)] : []
+    )),
+  };
 }
 
 async function verifyToolContext(context: ToolExecutionContext) {
@@ -71,4 +130,8 @@ function readOptionalString(value: unknown) {
 
 function readInteger(value: unknown) {
   return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

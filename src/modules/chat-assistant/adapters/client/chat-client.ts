@@ -1,29 +1,12 @@
 'use client';
 
-import type { ChatTurnRequest } from '@prodactionpro/chat-domain';
-import { RestSseChatClient, type ChatStreamOptions } from '@prodactionpro/chat-sdk';
+import { RestSseChatClient } from '@prodactionpro/chat-sdk';
+import { CHAT_ASSISTANT_CLIENT_REQUEST_TIMEOUT_MS } from '../../contracts/assistant-config';
 
 export function createImageProductionChatClient(workspaceId: string) {
-  return new ImageProductionChatClient({
+  return new RestSseChatClient({
     baseUrl: '/api',
     defaultHeaders: () => ({ 'x-workspace-id': workspaceId }),
-    defaultRequestTimeoutMs: 45_000,
-    // ChatModule 0.5.1 stores the browser fetch function and later invokes it
-    // as a client method. Bind it explicitly so native browsers keep the
-    // required global receiver instead of throwing `Illegal invocation`.
-    fetcher: globalThis.fetch.bind(globalThis),
+    defaultRequestTimeoutMs: CHAT_ASSISTANT_CLIENT_REQUEST_TIMEOUT_MS,
   });
-}
-
-class ImageProductionChatClient extends RestSseChatClient {
-  /**
-   * ChatModule 0.5.1 maps `message.completed` to an SSE `message` containing
-   * only ChatMessage, while its SDK interprets that event as ChatTurnResponse.
-   * Use the supported JSON turn endpoint until the package aligns the SSE
-   * protocol. The runtime contract remains unchanged and cancellation still
-   * reaches the server through the request signal.
-   */
-  override streamTurn(payload: ChatTurnRequest, options?: ChatStreamOptions) {
-    return this.createTurn(payload, { signal: options?.signal });
-  }
 }

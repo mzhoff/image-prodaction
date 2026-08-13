@@ -271,6 +271,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     createDocumentThumbnail: documentThumbnail.createManualSnapshot,
     moveDocumentToTrash: documentSync.moveDocumentToTrash,
     renameDocument: documentSync.renameDocument,
+    reloadDocumentFromServer: documentSync.reloadFromServer,
     setDocumentFavorite: documentSync.setDocumentFavorite,
     documentSync: documentSync.syncState,
     documentRevision: documentSync.revision,

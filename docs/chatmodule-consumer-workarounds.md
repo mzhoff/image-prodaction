@@ -1,172 +1,178 @@
 # ChatModule consumer workaround retirement ledger
 
-Этот документ — обязательный чек-лист удаления временного кода Image Production
-после выхода новых версий ChatModule. Backlog описывает, что должен исправить
-внешний модуль; этот ledger описывает, какой consumer-код после этого надо
-заменить или удалить.
+Этот документ фиксирует временный код Image Production, который нельзя
+незаметно превратить в постоянный fork ChatModule. Запись закрывается только
+после обновления опубликованного пакета и проверки установленного consumer.
 
-Главное правило: workaround не становится постоянной архитектурой только потому,
-что сейчас удобен. Но его нельзя удалять только по записи в changelog — сначала
-нужны опубликованный пакет, его migration notes и повторная проверка в
-установленном Image Production consumer.
+Статусы: `active`, `consumer-verified`, `removed`, `keep-product-specific`.
 
-Статусы: `active`, `ready-to-replace`, `consumer-verified`, `removed`,
-`keep-product-specific`.
+## Состояние после перехода на ChatModule 0.7.0
 
-## Активные workarounds
+| ID | Связь | Статус | Результат в consumer |
+| --- | --- | --- | --- |
+| CW-001 | CM-001 | `removed` | Удалён bound browser `fetch`; используется штатный SDK client. |
+| CW-002 | CM-003 | `removed` | Удалён JSON override; turn снова идёт через штатный SSE transport. |
+| CW-003 | CM-005 | `removed` | Удалён локальный фильтр tool cards; используются package presentation policies. |
+| CW-004 | CM-006 | `removed` | Удалён CSS, зависящий от внутренних author/meta классов. |
+| CW-005 | CM-009 | `removed` | Удалены query selector, `ResizeObserver` и локальный auto-follow. |
+| CW-006 | CM-009 / IP-006 | `keep-product-specific` | Host сохраняет canvas wheel boundary: это интеграция overlay с React Flow, а не логика чата. |
+| CW-007 | CM-008 | `active` | Знания пока читаются из product-owned Markdown. |
+| CW-008 | CM-006 / CM-010 | `removed` | Удалены portal/MutationObserver hover actions; используются package message policies. |
+| CW-009 | CM-011 | `active` | Структура графа проверяется строго; bounded settings и частые безопасные замены портов компилируются продуктом и попадают в confirmation preview. |
+| CW-010 | CM-012 | `active` | Product использует public `activityLabel`, elapsed timer и реальные tool lifecycle events, но полный agent progress пока недоступен. |
+| CW-011 | CM-013 | `active` | Product разводит provider/client timeout и предлагает консервативный повтор только для transient error до write proposal. |
+| CW-012 | CM-014 | `active` | Product сбрасывает ошибочную dot-геометрию с вложенного public `activityLabel`; удалить после сужения package CSS-селектора. |
+| CW-013 | CM-015 | `active` | Product скрывает persisted `tool-status`; package tool panel остаётся единственным видимым lifecycle. |
+| CW-014 | CM-016 | `active` | Product connector повторяет transient provider call внутри исходного turn с bounded backoff. |
 
-| ID | Upstream | Статус | Временная реализация | Что должно заменить её |
-| --- | --- | --- | --- | --- |
-| CW-001 | CM-001 | `active` | Consumer передаёт bound browser `fetch` | Receiver-safe default fetcher в `chat-sdk` |
-| CW-002 | CM-003 | `active` | Consumer подменяет SSE turn на JSON endpoint | Исправленный typed SSE transport пакета |
-| CW-003 | CM-005 | `active` | Consumer скрывает завершённые tool calls | Per-message sources/tool presentation ChatModule |
-| CW-004 | CM-006 | `active` | Scoped CSS скрывает `Assistant` и `User` | Typed author/time visibility settings |
-| CW-005 | CM-009 | `active` | Consumer query-selects `.cm-thread` и ведёт auto-follow | Встроенный scroll lifecycle ChatModule |
-| CW-006 | CM-009 / IP-006 | `active` | Host объявляет собственную canvas wheel boundary | Stable embedded scroll boundary/adapter пакета |
-| CW-007 | CM-008 | `active` | Knowledge читается из Markdown consumer при build | Управляемый versioned Knowledge Base package |
-| CW-008 | CM-006 / CM-010 | `active` | Consumer порталом добавляет hover time/copy под сообщением | Package-owned message action row и presentation policy |
+Проверка 0.7.0 включает штатный SSE model/tool/model turn, отсутствие двойных
+сообщений и списаний, package-owned time/copy, скрытые author labels,
+follow-to-latest и package tool renderer. Полная browser-проверка должна
+повторяться при каждом следующем bump.
 
-## CW-001 — удалить bound browser fetch
+## CW-006 — canvas wheel boundary остаётся продуктовым
 
-- **Сейчас:** `src/modules/chat-assistant/adapters/client/chat-client.ts`
-  передаёт `globalThis.fetch.bind(globalThis)`; совместимость закреплена в
-  `chat-client.test.ts`.
-- **Триггер замены:** опубликованная версия `chat-sdk` сама безопасно вызывает
-  browser fetch и содержит regression test для receiver.
-- **Действие:** убрать consumer `fetcher`, использовать package default и
-  заменить тест обхода на smoke test штатного клиента.
-- **Проверка:** list/create conversation и turn работают в Chrome без
-  `Illegal invocation`; workspace header сохраняется.
+`AssistantShell` помечает overlay через `data-canvas-wheel-block`, а
+`use-canvas-navigation.ts` не передаёт wheel/pan событие canvas, если курсор над
+этой областью. Это обязанность host: только Image Production знает, что за
+чатом находится масштабируемый граф. Удалить marker можно лишь если будущий
+публичный embedded-surface contract полностью закроет конфликт.
 
-## CW-002 — вернуть штатный SSE transport
+Проверка: колесо/трекпад над чатом прокручивает чат, над canvas — canvas;
+достижение края истории не прокручивает подложку; zoom canvas продолжает
+работать вне панели.
 
-- **Сейчас:** consumer-класс `ImageProductionChatClient` переопределяет
-  `streamTurn()` и вызывает JSON `/chat/v1/turn`.
-- **Триггер замены:** `chat-runtime-next -> chat-sdk -> chat-runtime-core`
-  публикуют единый wire contract, где итоговый SSE event возвращает полный
-  `ChatTurnResponse`.
-- **Действие:** удалить override и, если он больше ничего не добавляет, весь
-  consumer subclass; вернуть штатный `RestSseChatClient.streamTurn()`.
-- **Проверка:** обычный ответ, model/tool/model turn, cancel, error и reconnect
-  проходят через SSE; нет двойных сообщений и двойного списания.
+## CW-007 — файловая Knowledge Base остаётся временной
 
-## CW-003 — удалить фильтр технических tool cards
+Сейчас `knowledge-base.ts` читает фиксированный набор файлов из
+`docs/assistant-knowledge`, а Dockerfile переносит Markdown в runtime image.
+Когда stable ChatModule поставит CM-008:
 
-- **Сейчас:** `chat-tool-call-presentation.ts` оставляет в UI только
-  `needs-confirmation` и `failed`; `ImageProductionChat` передаёт отфильтрованный
-  массив.
-- **Триггер замены:** ChatModule связывает tool/LLM calls с assistant message и
-  поставляет компактные sources/tool details под конкретным ответом.
-- **Действие:** удалить consumer filter и его тест, перейти на публичную
-  presentation policy/slot пакета. Не возвращать raw input/output в основной
-  пользовательский поток.
-- **Проверка:** read-only knowledge calls показаны как компактные источники под
-  нужным ответом; confirmation и failure остаются заметными; полный audit
-  сохранён в PostgreSQL.
+1. Подключить опубликованные storage/search/auth adapters и миграции.
+2. Импортировать Markdown в draft versioned collection.
+3. Проверить tenant isolation, citations, publish, rollback и reindex.
+4. Переключить agent retrieval на опубликованный snapshot.
+5. Только после rollback-окна удалить loader/test и Docker COPY.
 
-## CW-004 — удалить CSS для подписей ролей
+Исходные документы нельзя удалять до подтверждённого переключения.
 
-- **Сейчас:** `assistant-shell.css` скрывает package `.cm-message-meta` для
-  обычных user/assistant; время временно возвращает CW-008 вне bubble.
-- **Триггер замены:** `ChatAppearanceSettings` получает независимые typed
-  параметры для user author, assistant author и message time.
-- **Действие:** включить package settings и удалить role/meta CSS selectors.
-  Полностью закрывать запись вместе с CW-008 после поставки CM-010.
-- **Проверка:** `User`/`Assistant` скрыты, hover time остаётся, support-agent
-  identity не исчезает и CSS consumer не зависит от внутренней DOM-структуры.
+## CW-009 — защита от ошибки product action prepare
 
-## CW-005 — удалить локальный auto-follow
+ChatModule 0.7.0 пока завершает весь SSE turn ошибкой, если аргументы модели не
+проходят tool schema или product-owned `prepare`. Image Production строго
+проверяет node type, key, edges, ports и лимиты, но принимает максимум 24
+ограниченных settings на ноду. Помимо scalar полей разрешён один
+типизированный bounded-список `textPrompt.variables` до 10 элементов. Затем
+продукт применяет allowlist и
+проверяет значение каждого разрешённого поля; лишнее или неподходящее поле не
+попадает в граф и показывается пользователю как warning в безопасном preview.
+Каталог удаляет общие query-токены вроде `ports`, чтобы запрос трёх нод не
+возвращал модели весь реестр из 26 типов. Server log остаётся bounded и содержит
+только имя ошибки, ограниченное сообщение и tool call ID. Дополнительно product
+gateway до передачи результата ChatModule даёт модели до двух попыток исправить
+невалидные аргументы `pipeline_build`/`pipeline_update`; usage исправляющих
+provider calls суммируется, а ни один write tool до успешной проверки не
+исполняется.
 
-- **Сейчас:** `use-chat-thread-auto-scroll.ts` через внутренние `.cm-thread` и
-  `.cm-message-stack` управляет `scrollTop`/`ResizeObserver`; рядом находятся
-  `chat-scroll-position.ts` и тест. `ImageProductionChat` добавляет wrapper и
-  вручную включает follow перед submit. CSS выравнивает короткий диалог снизу и
-  задаёт `overscroll-behavior`.
-- **Триггер замены:** ChatModule штатно поддерживает follow-to-latest во время
-  submit/streaming/typewriter, отпускание при ручном scroll и jump-to-latest.
-- **Действие:** удалить hook, helper, тест, wrapper и связанные `.cm-thread` /
-  `.cm-message-stack` overrides; использовать только публичный scroll contract.
-- **Проверка:** Enter из середины истории переходит вниз; typewriter растёт
-  вверх над composer; ручной scroll не перетягивается обратно; новый submit
-  возобновляет follow; переключение вкладок не сбрасывает позицию.
+Для топологических замен product compiler делает две ограниченные
+коррекции до создания proposal: замена связи с уже занятого целевого
+порта явно включает старую edge в `removeEdgeIds`, а concat-style alias `text-N`
+на `textPrompt` нормализуется в `variable-N`. Оба изменения показываются в
+preview и по-прежнему требуют явного подтверждения пользователя. Это
+продуктовая компиляция графа, её не нужно удалять после CM-011.
 
-## CW-006 — заменить canvas wheel boundary на стабильный контракт
+После исправления CM-011 в пакете нужно оставить продуктовую валидацию, но
+удалить специальную диагностическую компенсацию и проверить штатный lifecycle:
+ошибка prepare сохраняется как failed action, модель может один раз исправить
+аргументы, пользователь получает безопасное понятное сообщение, а повтор не
+создаёт второго действия или списания.
 
-- **Сейчас:** `AssistantShell` выставляет `data-canvas-wheel-block`, а
-  `use-canvas-navigation.ts` знает этот consumer-specific selector.
-- **Триггер замены:** embedded ChatModule либо сам изолирует wheel/overscroll,
-  либо публикует стабильный ref/data attribute/adapter для scroll region.
-- **Действие:** удалить собственный marker и ветку canvas navigation только если
-  package contract полностью закрывает конфликт. Если upstream исправил только
-  auto-follow, этот workaround пока остаётся.
-- **Проверка:** физическое колесо/трекпад над чатом прокручивает чат, над canvas —
-  canvas; границы истории не передают scroll подложке; zoom с modifier над
-  canvas продолжает работать.
+## CW-010 — временный индикатор этапа и elapsed timer
 
-## CW-007 — мигрировать файловую Knowledge Base
+Image Production показывает прошедшее время локально и меняет подпись только по
+фактам, которые уже доступны через public API: состояние runtime и backend tool
+lifecycle. Между этими событиями используется общее «Анализирую запрос» — это не
+попытка показывать скрытое reasoning. После поставки CM-012 нужно удалить
+product mapping/timer и перейти на package renderer с сохранённым server
+`startedAt`, проверив reload, reconnect, cancel и long-running tool.
 
-- **Сейчас:** `knowledge-base.ts` читает фиксированный список из
-  `docs/assistant-knowledge`; `knowledge-tool-gateway.ts` вызывает локальный
-  поиск, а Dockerfile копирует Markdown в runtime image.
-- **Триггер замены:** stable Knowledge Base package из CM-008 имеет versioned
-  storage, editor/publisher RBAC, retrieval, citations, import и rollback.
-- **Действие:** импортировать текущие документы в draft collection, проверить и
-  опубликовать revision, переключить agent retrieval на package service. После
-  consumer verification удалить файловый loader/test и Docker COPY. Исходные
-  Markdown не удалять до завершения rollback-окна.
-- **Проверка:** ответы ссылаются на точные source/revision; draft не читается
-  агентом; tenant isolation, publish, rollback и reindex проходят; результат на
-  golden questions не хуже файловой версии.
+## CW-011 — временный безопасный повтор
 
-## CW-008 — удалить portal bridge для hover actions
+Provider получает 120 секунд, а browser SDK — 135 секунд, чтобы сервер первым
+зафиксировал и вернул timeout. Локальная кнопка повторно отправляет исходный
+пользовательский текст только для timeout/network/408/502/503/504 и скрывается,
+если после этого сообщения уже появился non-read tool call. Синтетический
+runtime error скрывается, чтобы пользователь видел одну recovery-панель. Пока
+package retry operation отсутствует, consumer также сворачивает и в UI, и в
+контексте провайдера соседние одинаковые user messages от повторных попыток.
+В PostgreSQL failed attempts остаются как audit-записи и не удаляются.
 
-- **Сейчас:** `chat-message-hover-actions.tsx` через `MutationObserver`
-  сопоставляет сообщения с внутренними `.cm-message` по порядку и React portals
-  добавляет под ними строку copy/time. `chat-message-actions.ts` сериализует
-  text/Markdown, а `assistant-shell.css` скрывает package meta и управляет
-  hover/focus.
-- **Триггер замены:** ChatModule поставляет package-owned action row по CM-010 и
-  независимую visibility policy по CM-006; copy и time работают через публичный
-  typed API без обхода DOM.
-- **Действие:** включить package policy/slot, удалить portal component, helper,
-  test и CSS `image-production-chat-message-*`; удалить скрытие package meta.
-  Не держать две строки действий одновременно.
-- **Проверка:** время отсутствует внутри bubble и появляется вместе с copy по
-  hover/focus без layout shift; plain/Markdown копируются; touch работает;
-  support-agent identity сохраняется. Затем выполнить visual regression и
-  проверить длинный диалог совместно с CW-005.
+Это консервативная компенсация: runtime 0.7.0 хранит только строку ошибки и не
+передаёт точный retryable/execution state. После CM-013 удалить локальную
+классификацию, timeout-константу UI, фильтр synthetic error и повтор через новый
+user message, включая consumer deduplication; использовать package retry
+operation с idempotency/reconciliation.
 
-## Что не удалять автоматически
+## CW-012 — временная компенсация CSS activity label
 
-Следующие элементы — не дублирование ChatModule, а product adapters и политика
-Image Production. Их можно менять только отдельным архитектурным решением:
+ChatModule 0.7.0 применяет `.cm-typing span` не только к трём анимированным
+точкам, но и к любому `span` внутри public `activityLabel`. Локальный scoped CSS
+возвращает нормальные размеры, фон и animation нашим вложенным элементам и
+удерживает подпись с таймером в одной строке.
 
-- Better Auth session, workspace membership и tenant ownership на сервере;
+После поставки CM-014 удалить этот reset и проверить составной ReactNode-label
+в установленном consumer: штатные точки анимируются, а текст и `<time>` не
+получают dot-стили и не переносятся при достаточной ширине панели.
+
+## CW-013 — временное скрытие дублирующего confirmation status
+
+Runtime 0.7.0 сохраняет assistant `tool-status` со значением
+`needs-confirmation`, а `ChatToolCallPanel` независимо показывает полноценное
+превью и кнопки. Статический message block не обновляется после terminal status,
+поэтому consumer удаляет такие blocks только из presentation-модели; audit и
+записи PostgreSQL не изменяются.
+
+После поставки CM-015 удалить `hideToolStatusBlocks` и проверить pending,
+confirm, reject, reload и reconnect. В каждом состоянии должна оставаться одна
+актуальная package-owned карточка без устаревшего предупреждения.
+
+## CW-014 — bounded provider retry
+
+`LimitedOpenRouterGateway` повторяет один и тот же provider call максимум три
+раза только для ошибок, которые connector явно пометил `retryable`. Backoff
+ограничен server config, пользовательский turn и message не создаются заново.
+Permanent ошибки ключа, баланса, прав и отмена сразу возвращаются runtime.
+
+После поставки CM-016 удалить `provider-retry.ts` и server retry config, перейти
+на package retry policy и проверить суммарный usage, `Retry-After`, общий turn
+deadline, cancel во время backoff и отсутствие повторного write action.
+
+## Что не является workaround
+
+Эти части принадлежат Image Production и не должны переезжать в универсальный
+пакет:
+
+- Better Auth session, workspace membership и tenant ownership;
 - сопоставление продуктовых ролей с permissions ChatModule;
-- выбор server-side OpenRouter connection и запрет передачи ключа в browser;
-- product context: document id/revision, route, selection и server revalidation;
-- реализации product tools, включая `node_catalog`, и ограничения cost/rate;
-- безопасные provider-compatible IDs `knowledge_search`/`node_catalog`: после
-  CM-002 пакет добавит валидацию, но стабильные имена не надо переименовывать;
-- плавающий resizable host shell, вкладка Feedback и решение не размонтировать
-  чат между вкладками;
-- consumer theme и осознанная Markdown/typewriter presentation policy, пока они
-  используют публичные контракты пакета.
+- server-side OpenRouter connection и запрет ключа в browser;
+- document context, revision, route, selection и server revalidation;
+- определения и реализации `knowledge_search`, `node_catalog`,
+  `document_graph`, `pipeline_build`, `pipeline_update` и будущих product tools;
+- привязка ChatModule conversation к document/user контексту продукта;
+- расчёт координат product nodes, их port compatibility и разрешённые settings;
+- плавающий resizable host shell, Feedback tab и canvas overlay boundary;
+- consumer theme и продуктовый system prompt.
 
 ## Процесс при каждом обновлении ChatModule
 
 1. Dependabot создаёт один PR на всю exact-version семью ChatModule.
-2. Прочитать changelog и migration notes; сопоставить исправления с CM/CW IDs.
-3. Перевести подходящие записи в `ready-to-replace`, но пока не удалять код.
-4. В том же PR или отдельном явно связанном commit заменить workaround на
-   публичный API. Не оставлять одновременно два активных пути.
-5. Выполнить migration/reindex только явной командой продукта; проверить
-   rollback до удаления старого пути.
-6. Прогнать package version check, typecheck, lint, architecture, tests, build,
-   Docker и перечисленные browser scenarios.
-7. После consumer-проверки записать версию ChatModule и commit удаления,
-   перевести CW в `removed`, а CM — в `consumer-verified`.
+2. Changelog и migration notes сопоставляются с CM/CW IDs.
+3. Изменение переводится на публичный API; старый и новый путь одновременно не
+   оставляются.
+4. Миграции применяет продукт явной командой, без reset данных.
+5. Выполняются version check, typecheck, lint, architecture, size, tests, build,
+   database smoke и browser scenarios.
+6. Только после consumer-проверки запись получает статус `removed`.
 
-Dependency bump нельзя автоматически merge, пока активные CW-записи для
-заявленных upstream fixes не рассмотрены. Один успешный monorepo test внутри
-ChatModule не заменяет проверку установленного Image Production consumer.
+Автоматически merge dependency bump нельзя: успешный тест внутри ChatModule не
+заменяет проверку реального Image Production consumer.
