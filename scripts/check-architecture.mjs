@@ -23,8 +23,12 @@ for (const absolutePath of files) {
   const imports = extractImports(source);
   dependencyGraph.set(path, new Set());
 
-  if (source.includes('OPENROUTER_API_KEY')) {
+  if (/\bOPENROUTER_API_KEY\b/.test(source)) {
     violations.push(`${path}: product code must resolve provider credentials from Workspace.`);
+  }
+
+  if (/NEXT_PUBLIC_CHAT_(?:OPENROUTER|TOOL|ASSISTANT_SECRET)/.test(source)) {
+    violations.push(`${path}: chat credentials must remain server-only.`);
   }
 
   if (

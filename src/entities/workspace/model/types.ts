@@ -25,6 +25,7 @@ export interface ProjectSummary {
   thumbnailUrl: string;
   thumbnailMode: 'auto' | 'manual';
   thumbnailAvailable?: boolean;
+  hasEverHadContent: boolean;
   favorite: boolean;
   status: ProjectStatus;
   createdAt: string;

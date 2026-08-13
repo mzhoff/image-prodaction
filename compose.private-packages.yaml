@@ -1,0 +1,28 @@
+services:
+  migrate:
+    build:
+      context: .
+      secrets:
+        - npm_token
+
+  web:
+    build:
+      context: .
+      secrets:
+        - npm_token
+
+  worker:
+    build:
+      context: .
+      secrets:
+        - npm_token
+
+  pipeline-worker:
+    build:
+      context: .
+      secrets:
+        - npm_token
+
+secrets:
+  npm_token:
+    environment: PRODACTION_PACKAGES_READ_TOKEN

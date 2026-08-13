@@ -5,7 +5,7 @@ import type { ProjectSummary, WorkspaceMember, WorkspaceState } from './types';
 export const WORKSPACE_STORAGE_KEY = 'reverie-workspace:v1';
 
 const DEFAULT_WORKSPACE_ID = 'workspace-john';
-const DEFAULT_PROJECT_THUMBNAIL = '/workspace-assets/project-blog-pipeline.png';
+const DEFAULT_PROJECT_THUMBNAIL = '';
 
 const now = '2026-06-26T00:00:00.000Z';
 
@@ -34,6 +34,7 @@ export const defaultWorkspaceState: WorkspaceState = {
       name: 'Blog Articles Pipeline',
       thumbnailUrl: DEFAULT_PROJECT_THUMBNAIL,
       thumbnailMode: 'auto',
+      hasEverHadContent: true,
       favorite: true,
       status: 'active',
       createdAt: now,
@@ -45,6 +46,7 @@ export const defaultWorkspaceState: WorkspaceState = {
       name: 'Campaign Concepts Pipeline',
       thumbnailUrl: '/workspace-assets/template-06.png',
       thumbnailMode: 'auto',
+      hasEverHadContent: true,
       favorite: false,
       status: 'active',
       createdAt: now,
@@ -87,6 +89,7 @@ export function createWorkspaceProject(name = 'Untitled Pipeline'): ProjectSumma
     name,
     thumbnailUrl: DEFAULT_PROJECT_THUMBNAIL,
     thumbnailMode: 'auto',
+    hasEverHadContent: false,
     favorite: false,
     status: 'active',
     createdAt: new Date().toISOString(),
@@ -132,6 +135,7 @@ function normalizeProject(project: Record<string, unknown>, workspaceId: string)
     name: readString(project.name, 'Untitled Pipeline'),
     thumbnailUrl: readString(project.thumbnailUrl, DEFAULT_PROJECT_THUMBNAIL),
     thumbnailMode: project.thumbnailMode === 'manual' ? 'manual' : 'auto',
+    hasEverHadContent: Boolean(project.hasEverHadContent),
     favorite: Boolean(project.favorite),
     status: project.status === 'trash' ? 'trash' : 'active',
     createdAt: readString(project.createdAt, new Date().toISOString()),

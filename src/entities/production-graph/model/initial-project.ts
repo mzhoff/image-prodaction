@@ -1,106 +1,13 @@
 import type { GraphProject, ProductionNode } from './types';
-import { defaultExtractPrompt } from './extract-presets';
-import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO, DEFAULT_NODE_CARD_WIDTH } from './node-layout';
 import { PROJECT_SCHEMA_VERSION } from './project-schema';
 
-const defaultPrompt = 'Создай редакционную обложку для B2B/IT-статьи: современная технологичная эстетика, чистая композиция, без текста, без логотипов, без интерфейсного шума. Изображение должно объяснять бизнес-смысл статьи через метафору процессов, данных, автоматизации и роста.';
-
-export const initialNodes: ProductionNode[] = [
-  {
-    id: 'node-import-style',
-    type: 'importImage',
-    position: { x: -610, y: -210 },
-    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 300 },
-    status: 'idle',
-    data: {
-      title: 'Import',
-    },
-  },
-  {
-    id: 'node-import-composition',
-    type: 'importImage',
-    position: { x: -622, y: 742 },
-    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 282 },
-    status: 'idle',
-    data: {
-      title: 'Import',
-    },
-  },
-  {
-    id: 'node-image-to-text',
-    type: 'imageToText',
-    position: { x: -4, y: 718 },
-    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 468 },
-    status: 'idle',
-    data: {
-      title: 'Extract',
-      model: 'google/gemini-2.5-flash',
-      preset: 'default',
-      presets: ['default'],
-      prompt: defaultExtractPrompt,
-      result: '',
-    },
-  },
-  {
-    id: 'node-generator',
-    type: 'generateImage',
-    position: { x: 760, y: -80 },
-    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 720 },
-    status: 'idle',
-    data: {
-      title: 'Generate Image',
-      model: 'google/gemini-2.5-flash-image',
-      aspectRatio: DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO,
-      size: '1K',
-      prompt: defaultPrompt,
-    },
-  },
-  {
-    id: 'node-preview',
-    type: 'preview',
-    position: { x: 1240, y: 140 },
-    size: { width: DEFAULT_NODE_CARD_WIDTH, height: 360 },
-    status: 'idle',
-    data: {
-      title: 'Preview',
-    },
-  },
-];
+export const initialNodes: ProductionNode[] = [];
 
 export const initialProject: GraphProject = {
   version: PROJECT_SCHEMA_VERSION,
   nodes: initialNodes,
   sections: [],
-  edges: [
-    {
-      id: 'edge-style-to-generator',
-      sourceNodeId: 'node-import-style',
-      sourcePortId: 'image',
-      targetNodeId: 'node-generator',
-      targetPortId: 'style',
-    },
-    {
-      id: 'edge-composition-to-text',
-      sourceNodeId: 'node-import-composition',
-      sourcePortId: 'image',
-      targetNodeId: 'node-image-to-text',
-      targetPortId: 'image',
-    },
-    {
-      id: 'edge-text-to-composer',
-      sourceNodeId: 'node-image-to-text',
-      sourcePortId: 'result',
-      targetNodeId: 'node-generator',
-      targetPortId: 'composition',
-    },
-    {
-      id: 'edge-generator-to-preview',
-      sourceNodeId: 'node-generator',
-      sourcePortId: 'image',
-      targetNodeId: 'node-preview',
-      targetPortId: 'image',
-    },
-  ],
+  edges: [],
   assets: [],
   presets: [],
   subjects: [],

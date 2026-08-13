@@ -1,58 +1,85 @@
 'use client';
 
-import { Bot, MessageSquareText, Send, X } from 'lucide-react';
-import { useState } from 'react';
+import { Bot, MessageSquareText, X } from 'lucide-react';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { ImageProductionChat } from '@/features/chat-assistant/ui/image-production-chat';
+import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
 
 interface AssistantShellProps {
   open: boolean;
   contextLabel: string;
+  documentId?: string;
+  documentRevision?: string;
+  onPipelineChanged?: () => void;
   onClose: () => void;
-}
-
-interface AssistantMessage {
-  id: string;
-  role: 'assistant' | 'user';
-  text: string;
+  route?: string;
+  selectionIds?: string[];
+  workspaceId?: string;
 }
 
 type AssistantShellTab = 'assistant' | 'feedback';
 
-const initialMessages: AssistantMessage[] = [
-  {
-    id: 'welcome',
-    role: 'assistant',
-    text: 'Я помогу собрать pipeline, найти нужную ноду или объяснить, что происходит на экране. Пока это локальный shell, backend подключим позже.',
-  },
-];
-
-export function AssistantShell({ open, contextLabel, onClose }: AssistantShellProps) {
+export function AssistantShell({
+  open,
+  contextLabel,
+  documentId,
+  documentRevision,
+  onClose,
+  onPipelineChanged,
+  route,
+  selectionIds,
+  workspaceId,
+}: AssistantShellProps) {
   const [activeTab, setActiveTab] = useState<AssistantShellTab>('assistant');
-  const [messages, setMessages] = useState(initialMessages);
-  const [value, setValue] = useState('');
-
-  const submit = () => {
-    const text = value.trim();
-    if (!text) return;
-    setMessages((current) => [
-      ...current,
-      { id: `user-${Date.now()}`, role: 'user', text },
-      {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        text: 'Принял. В этой версии я показываю будущий UX чата. Следующий шаг - подключить реальный ChatModule API и контекст текущего проекта.',
+  const { resizeWithKeyboard, size, startResize } = useAssistantShellResize();
+  const chatContext = useMemo(() => ({
+    ...(documentId ? {
+      document: {
+        id: documentId,
+        ...(documentRevision === undefined ? {} : { revision: documentRevision }),
       },
-    ]);
-    setValue('');
-  };
+    } : {}),
+    ...(route ? { route } : {}),
+    ...(selectionIds?.length ? { selection: { ids: selectionIds.slice(0, 100) } } : {}),
+  }), [documentId, documentRevision, route, selectionIds]);
 
   return (
     <section
       className={`assistant-shell ${open ? 'assistant-shell-open' : ''}`}
+      data-canvas-wheel-block="true"
       data-snapshot-exclude
       aria-hidden={!open}
       aria-label="Assistant and feedback"
+      style={{
+        '--assistant-shell-height': `${size.height}px`,
+        '--assistant-shell-width': `${size.width}px`,
+      } as CSSProperties}
     >
+      <button
+        aria-label="Изменить высоту окна ассистента"
+        className="assistant-shell-resize-handle assistant-shell-resize-handle-top"
+        onKeyDown={(event) => resizeWithKeyboard(event, 'top')}
+        onPointerDown={(event) => startResize(event, 'top')}
+        tabIndex={open ? 0 : -1}
+        type="button"
+      />
+      <button
+        aria-label="Изменить ширину окна ассистента"
+        className="assistant-shell-resize-handle assistant-shell-resize-handle-left"
+        onKeyDown={(event) => resizeWithKeyboard(event, 'left')}
+        onPointerDown={(event) => startResize(event, 'left')}
+        tabIndex={open ? 0 : -1}
+        type="button"
+      />
+      <button
+        aria-label="Изменить размер окна ассистента"
+        className="assistant-shell-resize-handle assistant-shell-resize-handle-top-left"
+        onKeyDown={(event) => resizeWithKeyboard(event, 'top-left')}
+        onPointerDown={(event) => startResize(event, 'top-left')}
+        tabIndex={open ? 0 : -1}
+        type="button"
+      />
       <header className="assistant-shell-header">
         <div className="assistant-shell-title">
           <span>
@@ -88,48 +115,28 @@ export function AssistantShell({ open, contextLabel, onClose }: AssistantShellPr
         </button>
       </div>
 
-      {activeTab === 'assistant' ? (
-        <div
-          aria-label="Assistant"
-          className="assistant-shell-assistant-panel"
-          id="assistant-shell-assistant-panel"
-          role="tabpanel"
-        >
-          <div className="assistant-shell-thread">
-            {messages.map((message) => (
-              <div className={`assistant-shell-message assistant-shell-message-${message.role}`} key={message.id}>
-                {message.text}
-              </div>
-            ))}
-          </div>
-          <form
-            className="assistant-shell-composer"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
-            }}
-          >
-            <input
-              aria-label="Message assistant"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder="Ask about this product..."
-            />
-            <button type="submit" aria-label="Send message">
-              <Send size={16} />
-            </button>
-          </form>
-        </div>
-      ) : (
-        <div
-          aria-label="Feedback"
-          className="assistant-shell-feedback-panel"
-          id="assistant-shell-feedback-panel"
-          role="tabpanel"
-        >
-          <FeedbackPanel contextLabel={contextLabel} />
-        </div>
-      )}
+      <div
+        aria-label="Assistant"
+        className="assistant-shell-assistant-panel"
+        hidden={activeTab !== 'assistant'}
+        id="assistant-shell-assistant-panel"
+        role="tabpanel"
+      >
+        <ImageProductionChat
+          context={chatContext}
+          onPipelineChanged={onPipelineChanged}
+          workspaceId={workspaceId}
+        />
+      </div>
+      <div
+        aria-label="Feedback"
+        className="assistant-shell-feedback-panel"
+        hidden={activeTab !== 'feedback'}
+        id="assistant-shell-feedback-panel"
+        role="tabpanel"
+      >
+        <FeedbackPanel contextLabel={contextLabel} />
+      </div>
     </section>
   );
 }

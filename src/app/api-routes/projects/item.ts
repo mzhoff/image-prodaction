@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { cleanupDocumentAssets } from '@/entities/asset/server/asset-service';
 import {
   DocumentConflictError,
+  discardUntouchedDocument,
   getDocument,
   permanentlyDeleteDocument,
   saveDocumentSnapshot,
@@ -72,5 +73,16 @@ export async function deleteProject(request: Request, projectId: string) {
     return new Response(null, { status: 204 });
   } catch (error) {
     return toAssetApiErrorResponse(error);
+  }
+}
+
+export async function postDiscardEmptyProject(request: Request, projectId: string) {
+  try {
+    if (!documentIdSchema.safeParse(projectId).success) return apiError('invalid_project_id', 'Invalid project id.', 400);
+    const session = await requireApiSession(request);
+    const discarded = await discardUntouchedDocument(session.user.id, projectId);
+    return Response.json({ discarded });
+  } catch (error) {
+    return toApiErrorResponse(error);
   }
 }

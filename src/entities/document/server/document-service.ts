@@ -1,4 +1,9 @@
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, ne, notExists, sql } from 'drizzle-orm';
+import {
+  DEFAULT_DOCUMENT_NAME,
+  documentSnapshotHasContent,
+  isDisposableUntouchedDocument,
+} from '@/entities/document/model/document-lifecycle';
 import { getDb } from '@/shared/db/client';
 import { document, documentPreference } from '@/shared/db/schema/document';
 import { membership } from '@/shared/db/schema/workspace';
@@ -33,6 +38,7 @@ export async function listDocuments(userId: string) {
     thumbnailAssetId: document.thumbnailAssetId,
     thumbnailMode: document.thumbnailMode,
     thumbnailUpdatedAt: document.thumbnailUpdatedAt,
+    hasEverHadContent: document.hasEverHadContent,
     schemaVersion: document.schemaVersion,
     revision: document.revision,
     createdAt: document.createdAt,
@@ -49,7 +55,9 @@ export async function listDocuments(userId: string) {
     ))
     .orderBy(desc(document.updatedAt));
 
-  return rows.map(toDocumentDto);
+  return rows
+    .map(toDocumentDto)
+    .filter((project) => project.status === 'trash' || !isDisposableUntouchedDocument(project));
 }
 
 export async function createDocument(input: { name?: string; userId: string; workspaceId: string }) {
@@ -111,6 +119,7 @@ export async function saveDocumentSnapshot(input: {
   const snapshot = validateDocumentSnapshot(input.snapshot);
   const [updated] = await getDb().update(document).set({
     snapshot,
+    hasEverHadContent: current.hasEverHadContent || documentSnapshotHasContent(snapshot),
     schemaVersion: snapshot.schemaVersion,
     revision: sql`${document.revision} + 1`,
     updatedAt: new Date(),
@@ -171,6 +180,38 @@ export async function permanentlyDeleteDocument(userId: string, documentId: stri
   await getDb().delete(document).where(eq(document.id, documentId));
 }
 
+export async function discardUntouchedDocument(userId: string, documentId: string) {
+  const current = await getDocument(userId, documentId);
+  if (!isDisposableUntouchedDocument(current)) return false;
+
+  const database = getDb();
+  const favoritePreference = database.select({ documentId: documentPreference.documentId })
+    .from(documentPreference)
+    .where(and(
+      eq(documentPreference.documentId, documentId),
+      eq(documentPreference.userId, userId),
+      eq(documentPreference.favorite, true),
+    ));
+  const discardedAt = new Date();
+  const [discarded] = await database.update(document).set({
+    status: 'trash',
+    trashedAt: discardedAt,
+    revision: sql`${document.revision} + 1`,
+    updatedAt: discardedAt,
+  }).where(and(
+    eq(document.id, documentId),
+    eq(document.createdByUserId, userId),
+    eq(document.status, 'active'),
+    eq(document.name, DEFAULT_DOCUMENT_NAME),
+    eq(document.hasEverHadContent, false),
+    eq(document.revision, current.revision),
+    isNull(document.thumbnailAssetId),
+    notExists(favoritePreference),
+  )).returning({ id: document.id });
+
+  return Boolean(discarded);
+}
+
 async function selectAccessibleDocument(userId: string, documentId: string) {
   return getDb().select({
     id: document.id,
@@ -181,6 +222,7 @@ async function selectAccessibleDocument(userId: string, documentId: string) {
     thumbnailAssetId: document.thumbnailAssetId,
     thumbnailMode: document.thumbnailMode,
     thumbnailUpdatedAt: document.thumbnailUpdatedAt,
+    hasEverHadContent: document.hasEverHadContent,
     schemaVersion: document.schemaVersion,
     revision: document.revision,
     createdAt: document.createdAt,
@@ -202,6 +244,7 @@ async function selectAccessibleDocument(userId: string, documentId: string) {
 function toDocumentDto(row: {
   createdAt: Date;
   favorite: boolean | null;
+  hasEverHadContent: boolean;
   id: string;
   name: string;
   revision: number;
@@ -221,9 +264,10 @@ function toDocumentDto(row: {
     name: row.name,
     thumbnailUrl: row.thumbnailAssetId
       ? `/api/assets/${row.thumbnailAssetId}/content?variant=thumbnail`
-      : '/workspace-assets/project-blog-pipeline.png',
+      : '',
     thumbnailMode: row.thumbnailMode,
     thumbnailAvailable: Boolean(row.thumbnailAssetId),
+    hasEverHadContent: row.hasEverHadContent,
     thumbnailUpdatedAt: row.thumbnailUpdatedAt?.toISOString(),
     favorite: row.favorite ?? false,
     status: row.status,
@@ -237,5 +281,5 @@ function toDocumentDto(row: {
 
 function normalizeDocumentName(name?: string) {
   const value = name?.trim().replace(/\s+/g, ' ').slice(0, 120);
-  return value || 'Untitled Pipeline';
+  return value || DEFAULT_DOCUMENT_NAME;
 }

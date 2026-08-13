@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   FlaskConical,
   Images,
   PanelLeftClose,
+  PanelLeftOpen,
   Route,
   Trash2,
 } from 'lucide-react';
@@ -22,17 +23,17 @@ import { WorkspaceShellContext } from './workspace-shell-context';
 const navItems = [
   { href: '/', icon: GalleryVerticalEnd, id: 'my-files', label: 'My Files' },
   { href: '/library', icon: Images, id: 'library', label: 'Library' },
-  { href: '/?section=pipelines', icon: Route, id: 'pipelines', label: 'Pipelines' },
-  { href: '/?section=trash', icon: Trash2, id: 'trash', label: 'Trash' },
+  { href: '/pipelines', icon: Route, id: 'pipelines', label: 'Pipelines' },
+  { href: '/trash', icon: Trash2, id: 'trash', label: 'Trash' },
 ] as const;
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const workspace = useWorkspaceProjects();
   const { data: session } = useSession();
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const currentPath = pathname ?? '/';
@@ -40,9 +41,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     ? 'library'
     : currentPath.startsWith('/playground')
       ? 'playground'
-      : searchParams?.get('section') === 'trash'
+      : currentPath.startsWith('/trash')
         ? 'trash'
-        : searchParams?.get('section') === 'pipelines'
+        : currentPath.startsWith('/pipelines')
           ? 'pipelines'
           : 'my-files';
   const workspaceOptions = useMemo(() => (
@@ -72,15 +73,24 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   return (
     <WorkspaceShellContext.Provider value={workspace}>
       <main className="workspace-page">
-        <aside className="workspace-sidebar" aria-label="Workspace navigation">
+        <aside
+          className={`workspace-sidebar ${sidebarCollapsed ? 'workspace-sidebar-collapsed' : ''}`}
+          aria-label="Workspace navigation"
+        >
           <div className="workspace-sidebar-top">
             <div className="workspace-logo-row">
               <Link className="workspace-logo" href="/" aria-label="Reverie home">
                 <img className="workspace-logo-default" src="/brand/reverie-logo-default.webp" alt="" />
                 <img className="workspace-logo-hover" src="/brand/reverie-logo-hover.webp" alt="" />
               </Link>
-              <button className="workspace-icon-button" type="button" aria-label="Collapse sidebar">
-                <PanelLeftClose size={14} />
+              <button
+                className="workspace-icon-button"
+                type="button"
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!sidebarCollapsed}
+                onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+              >
+                {sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
               </button>
             </div>
             <nav className="workspace-nav" aria-label="Studio">
@@ -90,6 +100,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                   href={item.href}
                   key={item.id}
                   aria-current={activeNav === item.id ? 'page' : undefined}
+                  aria-label={sidebarCollapsed ? item.label : undefined}
+                  title={sidebarCollapsed ? item.label : undefined}
                 >
                   <item.icon size={16} />
                   <span>{item.label}</span>
@@ -103,6 +115,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               aria-current={activeNav === 'playground' ? 'page' : undefined}
               className={`workspace-playground-link ${activeNav === 'playground' ? 'workspace-playground-link-active' : ''}`}
               href="/playground"
+              aria-label={sidebarCollapsed ? 'Playground' : undefined}
+              title={sidebarCollapsed ? 'Playground' : undefined}
             >
               <FlaskConical size={17} />
               <span>Playground</span>
@@ -111,6 +125,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               <button
                 aria-expanded={profileMenuOpen}
                 aria-haspopup="menu"
+                aria-label={sidebarCollapsed ? (session?.user.name || 'Your account') : undefined}
                 className="workspace-user"
                 onClick={() => setProfileMenuOpen((open) => !open)}
                 type="button"
@@ -187,6 +202,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               ? 'Playground'
               : 'Workspace'}
           onClose={() => setAssistantOpen(false)}
+          route={currentPath}
+          workspaceId={workspace.activeWorkspace?.id}
         />
       </main>
     </WorkspaceShellContext.Provider>

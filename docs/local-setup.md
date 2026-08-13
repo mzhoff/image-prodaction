@@ -17,7 +17,7 @@
 
 ## Требования
 
-- Node.js `>=20.9.0` (проект проверен на Node `24.15.0`);
+- Node.js `>=24.15.0 <25`;
 - npm `>=10`;
 - Docker Desktop;
 - OpenRouter API key — только для реальных AI-вызовов; он вводится в настройках
@@ -63,6 +63,21 @@ Compose сам передаёт Mailpit тестовую пару `reverie-local
 docker compose up --build -d
 docker compose ps
 ```
+
+После подключения приватных `@prodactionpro/chat-*` package контейнерной сборке
+нужен read-only GitHub Packages token. Не сохраняйте его в `.env.local` или
+`.npmrc` проекта. В zsh передайте его только на время сборки через скрытый ввод
+и дополнительный Compose-файл:
+
+```bash
+read -s 'PRODACTION_PACKAGES_READ_TOKEN?GitHub Packages token: '
+export PRODACTION_PACKAGES_READ_TOKEN
+docker compose -f compose.yaml -f compose.private-packages.yaml up --build -d
+unset PRODACTION_PACKAGES_READ_TOKEN
+```
+
+BuildKit монтирует token как временный secret: он не становится переменной
+запущенного приложения и не попадает в Docker image.
 
 У PostgreSQL, Mailpit, web и worker должен появиться статус `healthy`, а
 `minio-init` и `migrate` должны один раз завершиться с кодом `0`. Это нормальное

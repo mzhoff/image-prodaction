@@ -7,6 +7,11 @@ import {
   fetchWorkspaceState,
   updateWorkspaceProject,
 } from '@/entities/workspace/api/workspace-api';
+import { discardEmptyDocumentProject } from '@/entities/document/api/document-api';
+import {
+  clearPendingUntouchedDocument,
+  listPendingUntouchedDocuments,
+} from '@/entities/document/api/document-abandonment';
 import type { ProjectSummary, WorkspaceRecord, WorkspaceSection } from '@/entities/workspace/model/types';
 
 export function useWorkspaceProjects() {
@@ -31,7 +36,19 @@ export function useWorkspaceProjects() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void refresh(controller.signal);
+    const initialize = async () => {
+      const pendingDocuments = listPendingUntouchedDocuments();
+      await Promise.all(pendingDocuments.map(async (documentId) => {
+        try {
+          await discardEmptyDocumentProject(documentId);
+          clearPendingUntouchedDocument(documentId);
+        } catch {
+          // Retry on the next Workspace visit; the server decides whether the document is still disposable.
+        }
+      }));
+      await refresh(controller.signal);
+    };
+    void initialize();
     return () => controller.abort();
   }, [refresh]);
 
