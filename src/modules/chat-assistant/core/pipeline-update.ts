@@ -5,6 +5,7 @@ import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-re
 import type {
   GraphEdge,
   GraphProject,
+  AssetRecord,
   ProductionNode,
   ProductionNodeData,
   ProductionNodeType,
@@ -12,10 +13,11 @@ import type {
 import { createId } from '@/shared/lib/id';
 import { PIPELINE_NODE_CONFIGURABLE_FIELDS } from '../contracts/image-production-tools';
 import {
-  expandTextConcatInputPorts,
   sanitizePipelineNodeSettings,
   type SanitizedPipelineNodeSettings,
 } from './pipeline-build';
+import { expandDynamicInputPorts } from './pipeline-dynamic-inputs';
+import { normalizeUnambiguousEdgePorts } from './pipeline-edge-normalization';
 import { reflowPipelineUpdate, type PipelineNodeMove } from './pipeline-update-layout';
 import { normalizeTextPromptTargetPort } from './pipeline-update-port-normalization';
 
@@ -30,6 +32,7 @@ export const pipelineUpdateInputSchema = z.object({
   nodes: z.array(z.object({
     key: nodeKeySchema,
     settings: settingsSchema.optional(),
+    sourceAttachmentIndex: z.number().int().min(0).max(2).optional(),
     type: nodeTypeSchema,
   }).strict()).max(12).default([]),
   updates: z.array(z.object({ nodeId: idSchema, settings: settingsSchema }).strict()).max(12).default([]),
@@ -54,8 +57,15 @@ export const pipelineUpdateInputSchema = z.object({
 export type PipelineUpdateInput = z.infer<typeof pipelineUpdateInputSchema>;
 
 export interface PreparedPipelineUpdatePatch {
+  assets?: AssetRecord[];
   addedEdges: GraphEdge[];
   addedNodes: ProductionNode[];
+  attachmentImports: Array<{
+    attachmentId?: string;
+    attachmentIndex: number;
+    attachmentName?: string;
+    nodeId: string;
+  }>;
   movedNodes: PipelineNodeMove[];
   removeEdgeIds: string[];
   summary: string;
@@ -96,7 +106,7 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
     const source = allByRef.get(edge.sourceNodeRef);
     const target = allByRef.get(edge.targetNodeRef);
     if (!source || !target) throw new Error('Pipeline update edge references an unknown node.');
-    expandTextConcatInputPorts(target, edge.targetPortId);
+    expandDynamicInputPorts(target, edge.targetPortId);
     captureSystemNodeSettings(target, currentById, settingsByNodeId);
     const targetPortId = normalizeTextPromptTargetPort({
       currentById,
@@ -105,10 +115,19 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
       target,
       warnings,
     });
-    if (!canConnectPorts(source, edge.sourcePortId, target, targetPortId)) {
+    const normalized = normalizeUnambiguousEdgePorts({
+      source,
+      sourceLabel: edge.sourceNodeRef,
+      sourcePortId: edge.sourcePortId,
+      target,
+      targetLabel: edge.targetNodeRef,
+      targetPortId,
+      warnings,
+    });
+    if (!canConnectPorts(source, normalized.sourcePortId, target, normalized.targetPortId)) {
       throw new Error(`Ports ${edge.sourceNodeRef}.${edge.sourcePortId} and ${edge.targetNodeRef}.${targetPortId} are incompatible.`);
     }
-    const targetKey = `${target.id}:${targetPortId}`;
+    const targetKey = `${target.id}:${normalized.targetPortId}`;
     if (newlyOccupiedTargets.has(targetKey)) {
       throw new Error(`Target port ${edge.targetNodeRef}.${targetPortId} is used more than once in this update.`);
     }
@@ -116,15 +135,24 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
     if (replacedEdge) {
       explicitRemoveEdgeIds.add(replacedEdge.id);
       existingEdgeByTarget.delete(targetKey);
-      warnings.push(`Связь ${replacedEdge.id} будет заменена: вход ${edge.targetNodeRef}.${targetPortId} уже был занят.`);
+      warnings.push(`Связь ${replacedEdge.id} будет заменена: вход ${edge.targetNodeRef}.${normalized.targetPortId} уже был занят.`);
     }
     newlyOccupiedTargets.add(targetKey);
-    return createEdge(source, edge.sourcePortId, target, targetPortId);
+    return createEdge(source, normalized.sourcePortId, target, normalized.targetPortId);
   });
 
   const patch: PreparedPipelineUpdatePatch = {
     addedEdges,
     addedNodes: Array.from(newByKey.values()),
+    attachmentImports: input.nodes.flatMap((spec) => {
+      if (spec.sourceAttachmentIndex === undefined) return [];
+      if (spec.type !== 'importImage') {
+        throw new Error(`sourceAttachmentIndex is supported only for importImage (${spec.key}).`);
+      }
+      const node = newByKey.get(spec.key);
+      if (!node) throw new Error(`New import node ${spec.key} was not prepared.`);
+      return [{ attachmentIndex: spec.sourceAttachmentIndex, nodeId: node.id }];
+    }),
     movedNodes: [],
     removeEdgeIds: Array.from(explicitRemoveEdgeIds),
     summary: input.summary,
@@ -156,6 +184,7 @@ export function applyPipelineUpdatePatch(project: GraphProject, patch: PreparedP
   const moves = new Map((patch.movedNodes ?? []).map((move) => [move.nodeId, move.position]));
   return {
     ...project,
+    assets: appendUniqueAssets(project.assets, patch.assets ?? []),
     edges: [...project.edges.filter((edge) => !removeIds.has(edge.id)), ...patch.addedEdges],
     nodes: [
       ...project.nodes.map((node) => ({
@@ -170,6 +199,11 @@ export function applyPipelineUpdatePatch(project: GraphProject, patch: PreparedP
     selectedNodeIds: patch.addedNodes.map((node) => node.id),
     selectedSectionIds: [],
   };
+}
+
+function appendUniqueAssets(current: AssetRecord[], added: AssetRecord[]) {
+  const currentIds = new Set(current.map((asset) => asset.id));
+  return [...current, ...added.filter((asset) => !currentIds.has(asset.id))];
 }
 
 function createNewNodes(input: PipelineUpdateInput, warnings: string[]) {

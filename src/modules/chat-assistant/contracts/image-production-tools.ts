@@ -78,6 +78,7 @@ export const imageProductionTools: AgentToolDefinition[] = [
       'Use node_catalog first and only pass settings listed in configurableFields for each node type.',
       'Set documentName to a concise task-oriented name instead of Untitled Pipeline.',
       'Represent user-editable text inputs such as notes, briefs, topics or source text with separate textPrompt nodes connected to the consuming node.',
+      'To reuse an image attached to the latest user message on the canvas, add an importImage node with sourceAttachmentIndex 0 for the first image, 1 for the second, or 2 for the third. The product materializes it as a durable asset only after UI confirmation.',
     ].join(' '),
     riskLevel: 'write',
     inputSchema: {
@@ -140,6 +141,7 @@ export const imageProductionTools: AgentToolDefinition[] = [
       'Use document_graph first and reference its real node and edge ids.',
       'The update may add nodes, update allowlisted settings, remove named edges and add replacement edges.',
       'Use textPrompt plus textConcat when independently editable notes, rules or style must feed one textGeneration input.',
+      'A newly added importImage may use sourceAttachmentIndex 0..2 to reference the corresponding image from the latest user message with attachments.',
       'To replace textConcat with a template, configure textPrompt.variables as variable-0..variable-9, reference them as @Alias in settings.text, and connect sources to the matching variable-N input ports.',
       'The exact top-level fields are summary, nodes, updates, removeEdgeIds, edges and optional layout; omit unchanged arrays.',
       'This action never runs generation, publishes, exports or deletes nodes, and always requires a separate UI confirmation.',

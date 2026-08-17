@@ -1,8 +1,20 @@
 'use client';
 
-import { Bot, MessageSquareText, X } from 'lucide-react';
-import { useMemo, useState, type CSSProperties } from 'react';
-import { ImageProductionChat } from '@/features/chat-assistant/ui/image-production-chat';
+import { Bot, ImagePlus, MessageSquareText, X } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from 'react';
+import {
+  ImageProductionChat,
+  type AssistantAttachmentDropTarget,
+} from '@/features/chat-assistant/ui/image-production-chat';
+import { shouldCaptureAssistantAttachmentDrop } from '../model/assistant-attachment-drop';
 import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
 
@@ -32,6 +44,9 @@ export function AssistantShell({
   workspaceId,
 }: AssistantShellProps) {
   const [activeTab, setActiveTab] = useState<AssistantShellTab>('assistant');
+  const [attachmentDropActive, setAttachmentDropActive] = useState(false);
+  const attachmentDropDepthRef = useRef(0);
+  const attachmentDropTargetRef = useRef<AssistantAttachmentDropTarget | undefined>(undefined);
   const { resizeWithKeyboard, size, startResize } = useAssistantShellResize();
   const chatContext = useMemo(() => ({
     ...(documentId ? {
@@ -44,18 +59,77 @@ export function AssistantShell({
     ...(selectionIds?.length ? { selection: { ids: selectionIds.slice(0, 100) } } : {}),
   }), [documentId, documentRevision, route, selectionIds]);
 
+  const resetAttachmentDrop = useCallback(() => {
+    attachmentDropDepthRef.current = 0;
+    setAttachmentDropActive(false);
+  }, []);
+  const registerAttachmentDropTarget = useCallback((target?: AssistantAttachmentDropTarget) => {
+    attachmentDropTargetRef.current = target;
+    if (!target) resetAttachmentDrop();
+  }, [resetAttachmentDrop]);
+  const shouldCaptureDrop = useCallback((event: DragEvent<HTMLElement>) => (
+    shouldCaptureAssistantAttachmentDrop({
+      activeTab,
+      fileCount: event.dataTransfer.files.length,
+      hasDropTarget: Boolean(attachmentDropTargetRef.current),
+      isOpen: open,
+      types: event.dataTransfer.types,
+    })
+  ), [activeTab, open]);
+  const captureDragEvent = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  useEffect(() => {
+    if (!open || activeTab !== 'assistant') resetAttachmentDrop();
+  }, [activeTab, open, resetAttachmentDrop]);
+
   return (
     <section
       className={`assistant-shell ${open ? 'assistant-shell-open' : ''}`}
       data-canvas-wheel-block="true"
+      data-assistant-drop-active={attachmentDropActive ? 'true' : 'false'}
       data-snapshot-exclude
       aria-hidden={!open}
       aria-label="Assistant and feedback"
+      onDragEnterCapture={(event) => {
+        if (!shouldCaptureDrop(event)) return;
+        captureDragEvent(event);
+        attachmentDropDepthRef.current += 1;
+        setAttachmentDropActive(true);
+      }}
+      onDragLeaveCapture={(event) => {
+        if (!shouldCaptureDrop(event) && attachmentDropDepthRef.current === 0) return;
+        captureDragEvent(event);
+        attachmentDropDepthRef.current = Math.max(0, attachmentDropDepthRef.current - 1);
+        if (attachmentDropDepthRef.current === 0) setAttachmentDropActive(false);
+      }}
+      onDragOverCapture={(event) => {
+        if (!shouldCaptureDrop(event)) return;
+        captureDragEvent(event);
+        setAttachmentDropActive(true);
+      }}
+      onDropCapture={(event) => {
+        if (!shouldCaptureDrop(event)) return;
+        captureDragEvent(event);
+        const files = Array.from(event.dataTransfer.files);
+        resetAttachmentDrop();
+        if (files.length > 0) attachmentDropTargetRef.current?.(files);
+      }}
       style={{
         '--assistant-shell-height': `${size.height}px`,
         '--assistant-shell-width': `${size.width}px`,
       } as CSSProperties}
     >
+      {attachmentDropActive ? (
+        <div className="assistant-shell-drop-overlay" role="status">
+          <span aria-hidden="true"><ImagePlus size={28} strokeWidth={1.8} /></span>
+          <strong>Отпустите изображение здесь</strong>
+          <small>Оно добавится к сообщению ассистенту</small>
+        </div>
+      ) : null}
       <button
         aria-label="Изменить высоту окна ассистента"
         className="assistant-shell-resize-handle assistant-shell-resize-handle-top"
@@ -125,6 +199,7 @@ export function AssistantShell({
         <ImageProductionChat
           context={chatContext}
           onPipelineChanged={onPipelineChanged}
+          registerAttachmentDropTarget={registerAttachmentDropTarget}
           workspaceId={workspaceId}
         />
       </div>

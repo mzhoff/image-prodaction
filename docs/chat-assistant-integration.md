@@ -1,10 +1,11 @@
 # Chat assistant integration
 
 Image Production использует опубликованную exact-version семью пакетов
-ChatModule `0.7.0`, не копируя их исходники. Универсальный пакет отвечает за
-диалог, SSE lifecycle, подтверждение действий и UI-представление. В продукте
-остаются только знания Image Production, проверка Better Auth/workspace,
-Drizzle persistence adapter и реализации продуктовых tools.
+ChatModule `0.9.0`, не копируя их исходники. Универсальный пакет отвечает за
+диалог, SSE lifecycle, подтверждение действий, managed image attachments и
+UI-представление. В продукте остаются только знания Image Production, проверка
+Better Auth/workspace, Drizzle persistence adapter и реализации продуктовых
+tools.
 
 Замечания к внешнему модулю ведутся в
 `docs/chatmodule-feedback-backlog.md`. Временные consumer-решения и условия их
@@ -72,6 +73,28 @@ allowlisted settings.
 и подключаются к потребителю. Стабильные правила, структура и тон остаются в
 `instruction`; подставлять туда будущий пользовательский ввод нельзя.
 
+## Изображения и референсы
+
+Пользователь может добавить до трёх JPEG, PNG или WebP изображений через выбор
+файла, drag-and-drop или вставку из буфера, а затем отправить их вместе с
+текстовым комментарием. Browser оптимизирует изображение до 2 048 px и 6 MB,
+но окончательные ограничения и проверка сигнатуры принадлежат серверу. Объект
+хранится в private S3/MinIO, а в сообщении сохраняется только управляемая ссылка
+`attachmentId`; временный signed URL не попадает в историю.
+
+В model context передаётся максимум шесть изображений. Ассистент анализирует
+только видимые признаки и структурирует ответ по продуктовой семантике:
+actors/subjects, actions/pose/state, composition, camera, background,
+style, light, color, metaphor/meaning и text/typography. Неуверенные или
+нечитаемые детали он обязан помечать, а не выдумывать.
+
+Если референс нужен на canvas, `pipeline_build` или `pipeline_update` указывает
+его порядковый `sourceAttachmentIndex` только для `importImage`. До
+подтверждения это остаётся декларативной ссылкой. При execute сервер повторно
+проверяет владельца, скачивает private attachment, создаёт обычный долговечный
+asset документа и назначает его Import-ноде. Повтор использует уже созданный
+asset и не дублирует файл.
+
 ## Почему действие безопасно
 
 - browser не получает OpenRouter key и не решает, к какому workspace относится
@@ -97,9 +120,18 @@ CHAT_TOOL_APPROVAL_SECRET=
 CHAT_ASSISTANT_MAX_OUTPUT_TOKENS=1200
 CHAT_ASSISTANT_MAX_COST_USD_PER_TURN=0.01
 CHAT_ASSISTANT_MAX_TOOL_CALLS_PER_TURN=6
-CHAT_ASSISTANT_PROVIDER_TIMEOUT_MS=120000
+CHAT_ASSISTANT_PROVIDER_TIMEOUT_MS=60000
 CHAT_ASSISTANT_PROVIDER_MAX_ATTEMPTS=3
 CHAT_ASSISTANT_PROVIDER_RETRY_BASE_MS=750
+CHAT_ASSISTANT_PROVIDER_RETRY_DEADLINE_MS=70000
+CHAT_ASSISTANT_SERVER_TURN_DEADLINE_MS=75000
+CHAT_ATTACHMENT_S3_ENDPOINT=http://minio.localhost:9000
+CHAT_ATTACHMENT_S3_KEY_PREFIX=chat-attachments
+CHAT_ATTACHMENT_MAX_BYTES=8388608
+CHAT_ATTACHMENT_MAX_COUNT=3
+CHAT_ATTACHMENT_MAX_CONTEXT_IMAGES=6
+CHAT_ATTACHMENT_UPLOAD_TTL_SECONDS=900
+CHAT_ATTACHMENT_READ_TTL_SECONDS=900
 ```
 
 Provider retry выполняется внутри исходного agent turn: по умолчанию transient
@@ -112,12 +144,13 @@ Permanent ошибки ключа, доступа или баланса не п�
 нельзя добавлять в git, `NEXT_PUBLIC_*`, браузерные настройки или сообщения.
 Локально они живут в `.env.local`, на сервере — в secret environment deployment.
 
-Provider deadline сейчас равен 120 секундам, browser SDK ждёт 135 секунд. Такой
-запас нужен, чтобы сервер успел зафиксировать terminal error и вернуть его до
-того, как browser отменит соединение. Во время хода UI показывает elapsed timer
-и только подтверждённые runtime/tool stages; скрытые рассуждения модели не
-выводятся. При transient error кнопка повтора доступна лишь пока после исходного
-сообщения не появился изменяющий tool call.
+Одна provider-попытка ограничена 60 секундами, вся серия provider retry — 70,
+server turn — 75, browser SDK — 90. Порядок `provider < server < SDK` оставляет
+серверу время записать terminal outcome до отмены browser. Во время хода пакет
+показывает сохранённый backend-driven progress и elapsed timer, но не раскрывает
+скрытое reasoning. Штатный retry доступен только для `not-started` и
+`read-only`; неоднозначное или уже изменившее данные действие автоматически не
+повторяется.
 
 ## Данные, миграции и rollback
 
@@ -130,6 +163,10 @@ Provider deadline сейчас равен 120 секундам, browser SDK жд
   `pipeline_build`.
 - `drizzle/0018_nice_vulcan.sql` добавляет привязку document/conversation и
   product-owned proposals для `pipeline_update`.
+- `drizzle/0019_damp_wiccan.sql` добавляет ChatModule 0.8 lifecycle events,
+  structured error state и retry lineage без перезаписи существующей истории.
+- `drizzle/0020_motionless_pretty_boy.sql` добавляет ChatModule 0.9 managed
+  attachments и связи вложений с сообщениями.
 
 Все миграции запускаются обычной командой продукта `npm run db:migrate`.
 ChatModule не применяет миграции автоматически. Для быстрого отключения следует

@@ -19,8 +19,11 @@ import {
   executePipelineUpdateProposal,
   preparePipelineUpdateProposal,
 } from './pipeline-update-service';
+import type { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
 
 export class ImageProductionToolGateway implements McpToolGateway {
+  constructor(private readonly attachmentAssetBridge?: ChatAttachmentAssetBridge) {}
+
   async prepareTool(request: Parameters<NonNullable<McpToolGateway['prepareTool']>>[0], context: ToolExecutionContext) {
     const accessFailure = await verifyToolContext(context);
     if (accessFailure) throw new Error(accessFailure.safeError.message);
@@ -29,8 +32,8 @@ export class ImageProductionToolGateway implements McpToolGateway {
     }
     try {
       return request.toolName === PIPELINE_BUILD_TOOL
-        ? await preparePipelineBuildProposal(request, context)
-        : await preparePipelineUpdateProposal(request, context);
+        ? await preparePipelineBuildProposal(request, context, this.attachmentAssetBridge)
+        : await preparePipelineUpdateProposal(request, context, this.attachmentAssetBridge);
     } catch (error) {
       console.error('[image-production-pipeline-prepare-error]', {
         errorMessage: error instanceof Error ? error.message.slice(0, 500) : 'Unknown preparation error',
@@ -60,10 +63,10 @@ export class ImageProductionToolGateway implements McpToolGateway {
       return { ok: true, output: await readAssistantDocumentGraph(context) };
     }
     if (request.toolName === PIPELINE_BUILD_TOOL) {
-      return executePipelineBuildProposal(request, context);
+      return executePipelineBuildProposal(request, context, this.attachmentAssetBridge);
     }
     if (request.toolName === PIPELINE_UPDATE_TOOL) {
-      return executePipelineUpdateProposal(request, context);
+      return executePipelineUpdateProposal(request, context, this.attachmentAssetBridge);
     }
     return {
       ok: false,

@@ -1,14 +1,12 @@
 import { z } from 'zod';
 import { DEFAULT_DOCUMENT_NAME } from '@/entities/document/model/document-lifecycle';
-import {
-  canConnectPorts,
-  getTextConcatInputPortIndex,
-} from '@/entities/production-graph/model/node-definitions';
+import { canConnectPorts } from '@/entities/production-graph/model/node-definitions';
 import { createDefaultNode } from '@/entities/production-graph/model/create-default-node';
 import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-registry';
 import type {
   GraphEdge,
   GraphProject,
+  AssetRecord,
   ProductionNode,
   ProductionNodeData,
   ProductionNodeType,
@@ -19,7 +17,15 @@ import {
   PIPELINE_NODE_CONFIGURABLE_FIELDS,
   type PipelineNodeSetting,
 } from '../contracts/image-production-tools';
+import type {
+  PipelineBuildSafePreview,
+  PreparedPipelineBuildPatch,
+} from './pipeline-build-types';
+import { expandDynamicInputPorts } from './pipeline-dynamic-inputs';
+import { normalizeUnambiguousEdgePorts } from './pipeline-edge-normalization';
 import { positionPipelineBuildNodes } from './pipeline-layout';
+
+export type { PipelineBuildSafePreview, PreparedPipelineBuildPatch } from './pipeline-build-types';
 
 const MAX_PIPELINE_BUILD_NODES = 12;
 const MAX_PIPELINE_BUILD_EDGES = 24;
@@ -76,6 +82,7 @@ export const pipelineBuildInputSchema = z.object({
   nodes: z.array(z.object({
     key: nodeKeySchema,
     settings: pipelineNodeSettingsSchema.optional(),
+    sourceAttachmentIndex: z.number().int().min(0).max(2).optional(),
     type: productionNodeTypeSchema,
   }).strict()).min(1).max(MAX_PIPELINE_BUILD_NODES),
   edges: z.array(z.object({
@@ -94,31 +101,6 @@ export const pipelineBuildInputSchema = z.object({
 }).strict();
 
 export type PipelineBuildInput = z.infer<typeof pipelineBuildInputSchema>;
-
-export interface PreparedPipelineBuildPatch {
-  documentName: string;
-  edges: GraphEdge[];
-  nodes: ProductionNode[];
-  summary: string;
-  version: 2;
-}
-
-export interface PipelineBuildSafePreview extends Record<string, unknown> {
-  action: 'build-pipeline';
-  addedEdgeCount: number;
-  addedNodeCount: number;
-  documentName: string;
-  layout: 'horizontal' | 'vertical';
-  nodes: Array<{
-    key: string;
-    position: { x: number; y: number };
-    settings: Record<string, string | number>;
-    title: string;
-    type: ProductionNodeType;
-  }>;
-  summary: string;
-  warnings: string[];
-}
 
 export function parsePipelineBuildInput(value: unknown): PipelineBuildInput {
   return pipelineBuildInputSchema.parse(value);
@@ -149,7 +131,7 @@ export function preparePipelineBuild(
   positionedNodes.forEach((node, index) => nodeByKey.set(input.nodes[index].key, node));
   const occupiedTargetPorts = new Set<string>();
   const edges = input.edges.map((edge) => {
-    const created = createValidatedEdge(edge, nodeByKey);
+    const created = createValidatedEdge(edge, nodeByKey, warnings);
     const targetKey = `${created.targetNodeId}:${created.targetPortId}`;
     if (occupiedTargetPorts.has(targetKey)) {
       throw new Error(`Target port ${edge.targetNodeKey}.${edge.targetPortId} already has an incoming connection.`);
@@ -158,6 +140,16 @@ export function preparePipelineBuild(
     return created;
   });
   const patch = {
+    attachmentImports: input.nodes.flatMap((spec, index) => {
+      if (spec.sourceAttachmentIndex === undefined) return [];
+      if (spec.type !== 'importImage') {
+        throw new Error(`sourceAttachmentIndex is supported only for importImage (${spec.key}).`);
+      }
+      return [{
+        attachmentIndex: spec.sourceAttachmentIndex,
+        nodeId: positionedNodes[index].id,
+      }];
+    }),
     documentName: input.documentName,
     edges,
     nodes: positionedNodes,
@@ -174,6 +166,7 @@ export function preparePipelineBuild(
       key: input.nodes[index].key,
       position: node.position,
       settings: safeSettingsByKey.get(input.nodes[index].key) ?? {},
+      sourceAttachmentIndex: input.nodes[index].sourceAttachmentIndex,
       title: node.data.title,
       type: node.type,
     })),
@@ -205,11 +198,17 @@ export function applyPipelineBuildPatch(
   }
   return {
     ...currentProject,
+    assets: appendUniqueAssets(currentProject.assets, patch.assets ?? []),
     edges: [...currentProject.edges, ...patch.edges],
     nodes: [...currentProject.nodes, ...patch.nodes],
     selectedNodeIds: patch.nodes.map((node) => node.id),
     selectedSectionIds: [],
   };
+}
+
+function appendUniqueAssets(current: AssetRecord[], added: AssetRecord[]) {
+  const currentIds = new Set(current.map((asset) => asset.id));
+  return [...current, ...added.filter((asset) => !currentIds.has(asset.id))];
 }
 
 export function sanitizePipelineNodeSettings(
@@ -253,12 +252,22 @@ function toSafePreviewSettings(settings: SanitizedPipelineNodeSettings): Record<
 function createValidatedEdge(
   spec: PipelineBuildInput['edges'][number],
   nodeByKey: Map<string, ProductionNode>,
+  warnings: string[],
 ): GraphEdge {
   const source = nodeByKey.get(spec.sourceNodeKey);
   const target = nodeByKey.get(spec.targetNodeKey);
   if (!source || !target) throw new Error('Pipeline edge references an unknown node key.');
-  expandTextConcatInputPorts(target, spec.targetPortId);
-  if (!canConnectPorts(source, spec.sourcePortId, target, spec.targetPortId)) {
+  expandDynamicInputPorts(target, spec.targetPortId);
+  const normalized = normalizeUnambiguousEdgePorts({
+    source,
+    sourceLabel: spec.sourceNodeKey,
+    sourcePortId: spec.sourcePortId,
+    target,
+    targetLabel: spec.targetNodeKey,
+    targetPortId: spec.targetPortId,
+    warnings,
+  });
+  if (!canConnectPorts(source, normalized.sourcePortId, target, normalized.targetPortId)) {
     throw new Error(
       `Ports ${spec.sourceNodeKey}.${spec.sourcePortId} and ${spec.targetNodeKey}.${spec.targetPortId} are incompatible.`,
     );
@@ -266,19 +275,10 @@ function createValidatedEdge(
   return {
     id: createId('edge'),
     sourceNodeId: source.id,
-    sourcePortId: spec.sourcePortId,
+    sourcePortId: normalized.sourcePortId,
     targetNodeId: target.id,
-    targetPortId: spec.targetPortId,
+    targetPortId: normalized.targetPortId,
   };
-}
-
-export function expandTextConcatInputPorts(node: ProductionNode, portId: string) {
-  if (node.type !== 'textConcat') return;
-  const portIndex = getTextConcatInputPortIndex(portId);
-  if (portIndex < 0 || portIndex >= 12) return;
-  const concatData = node.data as ProductionNodeData & { inputCount?: number };
-  const currentCount = Number(concatData.inputCount) || 2;
-  node.data = { ...node.data, inputCount: Math.max(2, currentCount, portIndex + 1) };
 }
 
 function assertUniqueNodeKeys(keys: string[]) {

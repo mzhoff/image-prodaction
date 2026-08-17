@@ -15,10 +15,19 @@ import {
   preparePipelineUpdate,
 } from '../core/pipeline-update';
 import { chatPipelineUpdateProposal } from './pipeline-update-schema';
+import type { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
+import {
+  materializePipelineAttachmentImports,
+  resolvePipelineAttachmentImports,
+} from './pipeline-attachment-import-service';
 
 const PROPOSAL_TTL_MS = 10 * 60 * 1_000;
 
-export async function preparePipelineUpdateProposal(request: ToolCallRequest, context: ToolExecutionContext) {
+export async function preparePipelineUpdateProposal(
+  request: ToolCallRequest,
+  context: ToolExecutionContext,
+  attachmentAssetBridge?: ChatAttachmentAssetBridge,
+) {
   const verified = readVerifiedDocument(context);
   const idempotencyKey = context.idempotencyKey ?? context.toolCallId;
   const existing = await findProposal(context, verified.id, idempotencyKey);
@@ -30,6 +39,11 @@ export async function preparePipelineUpdateProposal(request: ToolCallRequest, co
   if (current.revision !== verified.revision) throw new Error('The current document revision changed.');
   const graph = current.snapshot?.project ? structuredClone(current.snapshot.project) : structuredClone(initialProject);
   const prepared = preparePipelineUpdate(pipelineUpdateInputSchema.parse(request.input), graph);
+  prepared.patch.attachmentImports = await resolvePipelineAttachmentImports(
+    prepared.patch.attachmentImports,
+    context,
+    attachmentAssetBridge,
+  );
   await getDb().insert(chatPipelineUpdateProposal).values({
     id: createUuidV7(),
     documentId: current.id,
@@ -50,6 +64,7 @@ export async function preparePipelineUpdateProposal(request: ToolCallRequest, co
 export async function executePipelineUpdateProposal(
   request: ToolCallRequest,
   context: ToolExecutionContext,
+  attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ): Promise<ToolCallResult> {
   const verified = readVerifiedDocument(context);
   if (!request.executionRef || !isUuidV7(request.executionRef)) return invalidProposal();
@@ -88,7 +103,19 @@ export async function executePipelineUpdateProposal(
     }
     const snapshot = current.snapshot === null ? undefined : validateDocumentSnapshot(current.snapshot);
     const project = snapshot?.project ? structuredClone(snapshot.project) : structuredClone(initialProject);
-    const nextProject = applyPipelineUpdatePatch(project, proposal.patch);
+    const materialized = await materializePipelineAttachmentImports(
+      proposal.patch.attachmentImports,
+      proposal.patch.addedNodes,
+      context,
+      proposal.documentId,
+      attachmentAssetBridge,
+    );
+    const materializedPatch = {
+      ...proposal.patch,
+      addedNodes: materialized.nodes,
+      assets: materialized.assets,
+    };
+    const nextProject = applyPipelineUpdatePatch(project, materializedPatch);
     const nextSnapshot = createProjectExport(nextProject, snapshot?.uiState ?? createEmptyProjectUiState());
     validateDocumentSnapshot(nextSnapshot);
     const [saved] = await transaction.update(document).set({
@@ -107,6 +134,7 @@ export async function executePipelineUpdateProposal(
       action: 'update-pipeline',
       addedEdgeCount: proposal.patch.addedEdges.length,
       addedNodeCount: proposal.patch.addedNodes.length,
+      importedReferenceCount: proposal.patch.attachmentImports.length,
       documentId: proposal.documentId,
       movedNodeCount: proposal.patch.movedNodes?.length ?? 0,
       removedEdgeCount: proposal.patch.removeEdgeIds.length,

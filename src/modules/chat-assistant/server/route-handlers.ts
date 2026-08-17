@@ -1,4 +1,4 @@
-import type { NextRouteContext } from '@prodactionpro/chat-runtime-next/server';
+import type { NextAttachmentRouteContext, NextRouteContext } from '@prodactionpro/chat-runtime-next/server';
 import { createRouteErrorResponse } from '@prodactionpro/chat-runtime-next/server';
 import { resolveChatPrincipal } from './auth';
 import { getChatAssistantComposition } from './composition';
@@ -21,6 +21,10 @@ export const postChatTurn = (request: Request) => withComposition(
 
 export const postChatTurnStream = (request: Request) => withComposition(
   (composition) => composition.routes.turnStream(request),
+);
+
+export const postChatTurnRetryStream = (request: Request) => withComposition(
+  (composition) => composition.routes.turnRetryStream(request),
 );
 
 export const getChatConversations = (request: Request) => withComposition(
@@ -49,6 +53,26 @@ export const postToolConfirmation = (request: Request, context: NextRouteContext
 
 export const postToolRejection = (request: Request, context: NextRouteContext) => withComposition(
   (composition) => composition.routes.toolReject(request, context),
+);
+
+export const postAttachmentPrepare = (request: Request) => withComposition(
+  (composition) => composition.routes.attachmentPrepare(request),
+);
+
+export const postAttachmentComplete = (request: Request, context: NextAttachmentRouteContext) => withComposition(
+  (composition) => composition.routes.attachmentComplete(request, context),
+);
+
+export const getAttachmentMetadata = (request: Request, context: NextAttachmentRouteContext) => withComposition(
+  (composition) => composition.routes.attachmentMetadata(request, context),
+);
+
+export const getAttachmentContent = (request: Request, context: NextAttachmentRouteContext) => withComposition(
+  (composition) => composition.routes.attachmentContent(request, context),
+);
+
+export const deleteAttachment = (request: Request, context: NextAttachmentRouteContext) => withComposition(
+  (composition) => composition.routes.attachmentDelete(request, context),
 );
 
 async function withComposition(

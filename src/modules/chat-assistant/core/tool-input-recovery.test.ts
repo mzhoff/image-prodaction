@@ -4,28 +4,60 @@ import type { ToolCallingLanguageModelResult } from '@prodactionpro/chat-connect
 import { imageProductionTools } from '../contracts/image-production-tools.ts';
 import { addTokenUsage, createToolInputCorrectionMessages } from './tool-input-recovery.ts';
 
-test('turns invalid pipeline update arguments into bounded model correction context', () => {
+test('turns invalid pipeline arguments into bounded model correction context', () => {
   const result = createToolInputCorrectionMessages({
-    result: createResult({ summary: 'Update graph', nodes: 'wrong' }),
+    result: createResult('pipeline_build', { nodes: 'wrong', summary: 'Build graph' }),
     tools: imageProductionTools,
   });
 
   assert.equal(result?.[0]?.role, 'assistant');
   assert.equal(result?.[1]?.role, 'tool');
-  assert.match(result?.[1]?.content ?? '', /pipeline_update/u);
+  assert.match(result?.[1]?.content ?? '', /pipeline_build/u);
   assert.match(result?.[1]?.content ?? '', /nodes/u);
-  assert.match(result?.[1]?.content ?? '', /Do not ask the user/u);
+  assert.match(result?.[1]?.content ?? '', /exactly one corrected tool call/u);
 });
 
-test('accepts concise pipeline updates with omitted unchanged collections', () => {
+test('turns parallel read and write calls into one-call correction context', () => {
   const result = createToolInputCorrectionMessages({
-    result: createResult({
-      summary: 'Rename existing node',
-      updates: [{ nodeId: 'node-1', settings: { title: 'Новое имя' } }],
+    result: {
+      content: '',
+      model: 'test-model',
+      provider: 'openrouter',
+      toolCalls: [
+        { id: 'read', input: { query: 'composition' }, name: 'node_catalog' },
+        { id: 'write', input: {}, name: 'pipeline_build' },
+      ],
+    },
+    tools: imageProductionTools,
+  });
+
+  assert.equal(result?.length, 3);
+  assert.match(JSON.stringify(result?.[1]?.content ?? ''), /exactly one tool call per model step/u);
+  assert.match(JSON.stringify(result?.[2]?.content ?? ''), /exactly one tool call per model step/u);
+});
+
+test('repairs multiple text sources aimed at one input before product preparation', () => {
+  const result = createToolInputCorrectionMessages({
+    result: createResult('pipeline_build', {
+      documentName: 'Visual banner with QR',
+      summary: 'Build a layered visual pipeline',
+      nodes: [
+        { key: 'copy', type: 'textPrompt' },
+        { key: 'style', type: 'textPrompt' },
+        { key: 'prompt', type: 'textGeneration' },
+      ],
+      edges: [
+        { sourceNodeKey: 'copy', sourcePortId: 'text', targetNodeKey: 'prompt', targetPortId: 'text' },
+        { sourceNodeKey: 'style', sourcePortId: 'text', targetNodeKey: 'prompt', targetPortId: 'text' },
+      ],
     }),
     tools: imageProductionTools,
   });
-  assert.equal(result, undefined);
+
+  const correction = JSON.stringify(result?.[1]?.content ?? '');
+  assert.match(correction, /at most one incoming connection/u);
+  assert.match(correction, /textConcat/u);
+  assert.match(correction, /without asking the user another question/u);
 });
 
 test('keeps the real usage of all correction calls', () => {
@@ -35,11 +67,11 @@ test('keeps the real usage of all correction calls', () => {
   ), { completionTokens: 30, costUsd: 0.003, promptTokens: 300, totalTokens: 330 });
 });
 
-function createResult(input: Record<string, unknown>): ToolCallingLanguageModelResult {
+function createResult(name: string, input: Record<string, unknown>): ToolCallingLanguageModelResult {
   return {
     content: '',
     model: 'test-model',
     provider: 'openrouter',
-    toolCalls: [{ id: 'call-1', input, name: 'pipeline_update' }],
+    toolCalls: [{ id: 'call-1', input, name }],
   };
 }

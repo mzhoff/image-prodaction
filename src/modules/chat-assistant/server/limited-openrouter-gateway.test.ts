@@ -1,39 +1,57 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { OpenRouterRequestError, type ToolCallingLanguageModelGateway } from '@prodactionpro/chat-connectors';
+import type { ToolCallingLanguageModelGateway } from '@prodactionpro/chat-connectors';
 import { imageProductionTools } from '../contracts/image-production-tools.ts';
 import { LimitedOpenRouterGateway } from './limited-openrouter-gateway.ts';
 
-test('recovers transient provider connectivity without creating another user turn', async () => {
-  let calls = 0;
+test('keeps product output and temperature limits while ChatModule owns provider retries', async () => {
+  let receivedMaxTokens: number | undefined;
+  let receivedTemperature: number | undefined;
   const client: ToolCallingLanguageModelGateway = {
     async completeWithTools(input) {
-      calls += 1;
-      if (calls === 1) throw new OpenRouterRequestError('offline', 'OPENROUTER_NETWORK_ERROR', true);
+      receivedMaxTokens = input.maxTokens;
+      receivedTemperature = input.temperature;
       return { content: 'Готово', model: input.model, provider: 'openrouter', toolCalls: [] };
     },
   };
-  const gateway = createGateway(client);
+  const gateway = new LimitedOpenRouterGateway({
+    apiKey: 'test-key',
+    appTitle: 'test',
+    baseUrl: 'https://example.test',
+    client,
+    maxAttempts: 3,
+    maxOutputTokens: 1_200,
+    retryBaseDelayMs: 750,
+    retryDeadlineMs: 70_000,
+    timeoutMs: 60_000,
+  });
 
-  const result = await gateway.completeWithTools(createInput());
+  const result = await gateway.completeWithTools({
+    maxTokens: 4_000,
+    messages: [
+      { content: 'System', role: 'system' },
+      { content: 'Сделай', role: 'user' },
+    ],
+    model: 'test-model',
+    tools: imageProductionTools,
+  });
 
   assert.equal(result.content, 'Готово');
-  assert.equal(calls, 2);
+  assert.equal(receivedMaxTokens, 1_200);
+  assert.equal(receivedTemperature, 0.2);
 });
 
-test('asks the model to repair invalid write-tool arguments before ChatModule sees them', async () => {
-  const receivedMessageCounts: number[] = [];
+test('repairs invalid product tool input before ChatModule validates the call', async () => {
   let calls = 0;
   const client: ToolCallingLanguageModelGateway = {
     async completeWithTools(input) {
       calls += 1;
-      receivedMessageCounts.push(input.messages.length);
       if (calls === 1) {
         return {
           content: '',
           model: input.model,
           provider: 'openrouter',
-          toolCalls: [{ id: 'bad-call', input: { nodes: 'wrong', summary: 'Update graph' }, name: 'pipeline_update' }],
+          toolCalls: [{ id: 'bad', input: { nodes: 'wrong', summary: 'Build' }, name: 'pipeline_build' }],
           usage: { completionTokens: 10, costUsd: 0.001, promptTokens: 100, totalTokens: 110 },
         };
       }
@@ -43,52 +61,34 @@ test('asks the model to repair invalid write-tool arguments before ChatModule se
         model: input.model,
         provider: 'openrouter',
         toolCalls: [{
-          id: 'fixed-call',
+          id: 'fixed',
           input: {
-            summary: 'Update graph',
-            updates: [{ nodeId: 'node-1', settings: { title: 'Правила' } }],
+            documentName: 'Layered banner',
+            edges: [],
+            nodes: [{ key: 'reference', type: 'importImage' }],
+            summary: 'Prepare a reusable layered banner.',
           },
-          name: 'pipeline_update',
+          name: 'pipeline_build',
         }],
         usage: { completionTokens: 20, costUsd: 0.002, promptTokens: 200, totalTokens: 220 },
       };
     },
   };
-
-  const result = await createGateway(client).completeWithTools(createInput());
-
-  assert.equal(calls, 2);
-  assert.deepEqual(receivedMessageCounts, [2, 4]);
-  assert.equal(result.toolCalls[0]?.id, 'fixed-call');
-  assert.deepEqual(result.usage, {
-    completionTokens: 30,
-    costUsd: 0.003,
-    promptTokens: 300,
-    totalTokens: 330,
+  const gateway = new LimitedOpenRouterGateway({
+    apiKey: 'test-key', appTitle: 'test', baseUrl: 'https://example.test', client,
+    maxAttempts: 3, maxOutputTokens: 1_200, retryBaseDelayMs: 750,
+    retryDeadlineMs: 70_000, timeoutMs: 60_000,
   });
-});
 
-function createGateway(client: ToolCallingLanguageModelGateway) {
-  return new LimitedOpenRouterGateway({
-    apiKey: 'test-key',
-    appTitle: 'test',
-    baseUrl: 'https://example.test',
-    client,
-    maxAttempts: 3,
-    maxOutputTokens: 1_200,
-    retryBaseDelayMs: 1,
-    sleep: async () => undefined,
-    timeoutMs: 120_000,
-  });
-}
-
-function createInput() {
-  return {
-    messages: [
-      { content: 'System', role: 'system' as const },
-      { content: 'Сделай', role: 'user' as const },
-    ],
+  const result = await gateway.completeWithTools({
+    messages: [{ content: 'System', role: 'system' }, { content: 'Сделай', role: 'user' }],
     model: 'test-model',
     tools: imageProductionTools,
-  };
-}
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(result.toolCalls[0]?.id, 'fixed');
+  assert.deepEqual(result.usage, {
+    completionTokens: 30, costUsd: 0.003, promptTokens: 300, totalTokens: 330,
+  });
+});

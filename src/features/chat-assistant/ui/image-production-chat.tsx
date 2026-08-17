@@ -2,31 +2,36 @@
 
 import {
   type ChatContextSelectors,
+  type ChatAttachment,
   type ChatModelOption,
   type ToolLifecycleEvent,
 } from '@prodactionpro/chat-domain';
 import {
   ChatRuntimeProvider,
+  ManagedAttachmentPreview,
+  useChatAttachments,
+  useChatRuntime,
   useChatRuntimeActions,
   useChatRuntimeState,
   useCreateChatRuntime,
 } from '@prodactionpro/chat-runtime-react';
-import {
-  ChatModuleShell,
-} from '@prodactionpro/chat-ui';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ChatModuleShell } from '@prodactionpro/chat-ui';
+import { useEffect, useMemo } from 'react';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
 import { bindDocumentConversation } from '@/modules/chat-assistant/adapters/client/document-conversation-client';
 import {
   PIPELINE_BUILD_TOOL,
   PIPELINE_UPDATE_TOOL,
 } from '@/modules/chat-assistant/contracts/image-production-tools';
-import { describeToolActivity } from '../model/chat-activity';
 import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
-import { canSafelyRetryChatTurn, getLatestUserPrompt } from '../model/chat-turn-feedback';
+import { submitAndClearChatComposer } from '../model/submit-chat-composer';
 import { useDocumentConversation } from '../model/use-document-conversation';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
-import { ChatActivityLabel, ChatErrorRecovery } from './chat-turn-feedback';
+import {
+  AssistantNotice,
+  AttachmentUploadTray,
+  compactModelLabel,
+} from './chat-attachment-presentation';
 import {
   APPEARANCE,
   CHAT_STYLES,
@@ -45,10 +50,16 @@ import {
 interface ImageProductionChatProps {
   context: ChatContextSelectors;
   onPipelineChanged?: () => void;
+  registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId?: string;
 }
-
-export function ImageProductionChat({ context, onPipelineChanged, workspaceId }: ImageProductionChatProps) {
+export type AssistantAttachmentDropTarget = (files: File[]) => void;
+export function ImageProductionChat({
+  context,
+  onPipelineChanged,
+  registerAttachmentDropTarget,
+  workspaceId,
+}: ImageProductionChatProps) {
   const { reload, state } = useChatAssistantConfig(workspaceId);
   if (!workspaceId) return <AssistantNotice>Workspace ещё загружается…</AssistantNotice>;
   if (state.phase === 'idle' || state.phase === 'loading') {
@@ -71,6 +82,7 @@ export function ImageProductionChat({ context, onPipelineChanged, workspaceId }:
       documentId={context.document?.id}
       model={state.value.model}
       onPipelineChanged={onPipelineChanged}
+      registerAttachmentDropTarget={registerAttachmentDropTarget}
       workspaceId={workspaceId}
     />
   );
@@ -81,6 +93,7 @@ function ConfiguredChatSession(props: {
   documentId?: string;
   model: string;
   onPipelineChanged?: () => void;
+  registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
   const { reload, state } = useDocumentConversation(props.documentId, props.workspaceId);
@@ -91,15 +104,23 @@ function ConfiguredChatSession(props: {
   return <ConfiguredChat {...props} initialConversationId={state.conversationId} />;
 }
 
-function ConfiguredChat({ context, documentId, initialConversationId, model, onPipelineChanged, workspaceId }: {
+function ConfiguredChat({
+  context,
+  documentId,
+  initialConversationId,
+  model,
+  onPipelineChanged,
+  registerAttachmentDropTarget,
+  workspaceId,
+}: {
   context: ChatContextSelectors;
   documentId?: string;
   initialConversationId?: string;
   model: string;
   onPipelineChanged?: () => void;
+  registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
-  const [toolActivityLabel, setToolActivityLabel] = useState<string>();
   const transport = useMemo(() => createImageProductionChatClient(workspaceId), [workspaceId]);
   const stableContext = useMemo(() => context, [context]);
   const runtime = useCreateChatRuntime({
@@ -109,7 +130,6 @@ function ConfiguredChat({ context, documentId, initialConversationId, model, onP
       selectedModel: model,
     },
     onToolLifecycleEvent: (event: ToolLifecycleEvent) => {
-      setToolActivityLabel(describeToolActivity(event));
       if (event.status === 'succeeded'
         && (event.toolName === PIPELINE_BUILD_TOOL || event.toolName === PIPELINE_UPDATE_TOOL)) {
         onPipelineChanged?.();
@@ -134,23 +154,44 @@ function ConfiguredChat({ context, documentId, initialConversationId, model, onP
       <ChatContent
         model={model}
         documentId={documentId}
-        onTurnStarted={() => setToolActivityLabel(undefined)}
-        toolActivityLabel={toolActivityLabel}
+        registerAttachmentDropTarget={registerAttachmentDropTarget}
         workspaceId={workspaceId}
       />
     </ChatRuntimeProvider>
   );
 }
 
-function ChatContent({ documentId, model, onTurnStarted, toolActivityLabel, workspaceId }: {
+function ChatContent({ documentId, model, registerAttachmentDropTarget, workspaceId }: {
   documentId?: string;
   model: string;
-  onTurnStarted: () => void;
-  toolActivityLabel?: string;
+  registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
+  const runtime = useChatRuntime();
   const state = useChatRuntimeState();
   const actions = useChatRuntimeActions();
+  const transport = useMemo(() => createImageProductionChatClient(workspaceId), [workspaceId]);
+  const attachmentController = useChatAttachments({
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    imageOptimization: {
+      maxSide: 2_048,
+      outputMimeType: 'image/webp',
+      quality: 0.88,
+      targetFileBytes: 6 * 1024 * 1024,
+    },
+    maxFileBytes: 8 * 1024 * 1024,
+    maxFiles: 3,
+    transport,
+  });
+  const addAttachmentFiles = attachmentController.addFiles;
+  useEffect(() => {
+    if (!registerAttachmentDropTarget) return;
+    const dropTarget: AssistantAttachmentDropTarget = (files) => {
+      void addAttachmentFiles(files);
+    };
+    registerAttachmentDropTarget(dropTarget);
+    return () => registerAttachmentDropTarget(undefined);
+  }, [addAttachmentFiles, registerAttachmentDropTarget]);
   useEffect(() => {
     if (!documentId || !state.conversationId) return;
     const controller = new AbortController();
@@ -163,45 +204,61 @@ function ChatContent({ documentId, model, onTurnStarted, toolActivityLabel, work
     return () => controller.abort();
   }, [documentId, state.conversationId, workspaceId]);
   const isTyping = ['loading', 'submitting', 'streaming'].includes(state.phase);
-  const canRetry = canSafelyRetryChatTurn({
-    error: state.error,
-    messages: state.messages,
-    toolCalls: state.pendingToolCalls,
-  });
-  const retryPrompt = getLatestUserPrompt(state.messages);
   const presentedMessages = useMemo(
-    () => prepareChatMessagesForPresentation(
-      state.messages,
-      {
-        collapseConsecutiveDuplicateUserMessages: true,
-        hideRuntimeErrors: true,
-        hideToolStatusBlocks: true,
-      },
-    ),
+    () => prepareChatMessagesForPresentation(state.messages),
     [state.messages],
   );
   const modelOption: ChatModelOption = {
     id: model,
     label: compactModelLabel(model),
     provider: 'OpenRouter',
-    description: 'Фиксированная модель пилота; меняется владельцем на сервере.',
+    description: 'Фиксированная мультимодальная модель пилота; меняется владельцем на сервере.',
+    capabilities: {
+      inputModalities: ['text', 'image'],
+      supportsImageInputWithTools: true,
+      toolCalling: true,
+    },
   };
+
+  const submit = async () => {
+    if (isTyping || attachmentController.isUploading || attachmentController.hasFailures) return;
+    if (!state.inputValue.trim() && attachmentController.attachments.length === 0) return;
+    await submitAndClearChatComposer({
+      attachments: attachmentController.attachments,
+      clearAfterSend: attachmentController.clearAfterSend,
+      submit: (attachments) => runtime.submit(undefined, { attachments }),
+    });
+  };
+
+  const renderAttachment = (attachment: ChatAttachment) => (
+    'attachmentId' in attachment
+      ? (
+          <ManagedAttachmentPreview
+            attachment={attachment}
+            className="cm-message-attachment-image image-production-chat-message-attachment"
+            transport={transport}
+          />
+        )
+      : null
+  );
 
   return (
     <div className="image-production-chat-host">
       <ChatModuleShell
-        activityLabel={(
-          <ChatActivityLabel
-            active={isTyping}
-            statusLabel={state.statusLabel}
-            toolActivityLabel={toolActivityLabel}
-          />
-        )}
+        activity={state.activity}
         allModelOptions={[modelOption]}
         allowedModelIdsByMode={createAllowedModels(model)}
         appearance={APPEARANCE}
         chatStyleOptions={CHAT_STYLES}
         className="image-production-chat"
+        composerOverlay={attachmentController.items.length ? (
+          <AttachmentUploadTray
+            items={attachmentController.items}
+            onRemove={(itemId) => { void attachmentController.remove(itemId); }}
+            onRetry={(itemId) => { void attachmentController.retry(itemId); }}
+          />
+        ) : undefined}
+        errorDetails={state.errorDetails}
         fontOptions={FONT_OPTIONS}
         iconLibraryOptions={ICON_OPTIONS}
         inputValue={state.inputValue}
@@ -210,40 +267,25 @@ function ChatContent({ documentId, model, onTurnStarted, toolActivityLabel, work
         messagePresentation={MESSAGE_PRESENTATION}
         modeOptions={MODE_OPTIONS}
         modelOptions={[]}
+        onAddFiles={(files) => { void attachmentController.addFiles(files); }}
         onAppearanceChange={() => undefined}
-        onCancel={() => {
-          onTurnStarted();
-          actions.cancel();
-        }}
+        onCancel={actions.cancel}
         onConfirmToolCall={(id) => { void actions.confirmToolCall(id); }}
         onInputChange={actions.setInputValue}
         onModeChange={actions.setMode}
         onModelChange={actions.setModel}
         onRejectToolCall={(id) => { void actions.rejectToolCall(id); }}
-        onSubmit={() => {
-          onTurnStarted();
-          void actions.submit().catch(() => undefined);
-        }}
+        onRemoveAttachment={(itemId) => { void attachmentController.remove(itemId); }}
+        onSubmit={() => { void submit().catch(() => undefined); }}
+        onRetry={() => runtime.retryLastTurn()}
         onToggleModelForMode={() => undefined}
         radiusOptions={RADIUS_OPTIONS}
+        renderAttachment={renderAttachment}
         selectedMode={state.selectedMode}
         selectedModel={state.selectedModel}
         scrollPolicy={SCROLL_POLICY}
         showAppearanceSettings={false}
         showAssistantSettings={false}
-        slots={{
-          beforeComposer: state.error ? (
-            <ChatErrorRecovery
-              canRetry={canRetry && Boolean(retryPrompt)}
-              error={state.error}
-              onRetry={() => {
-                if (!retryPrompt) return;
-                onTurnStarted();
-                void actions.submit(retryPrompt).catch(() => undefined);
-              }}
-            />
-          ) : undefined,
-        }}
         subtitle="Image Production copilot"
         surface="side-panel"
         title="AI Assistant"
@@ -255,21 +297,4 @@ function ChatContent({ documentId, model, onTurnStarted, toolActivityLabel, work
       />
     </div>
   );
-}
-
-function AssistantNotice({ action, actionLabel, children }: {
-  action?: () => void;
-  actionLabel?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="assistant-chat-notice" role="status">
-      <p>{children}</p>
-      {action ? <button onClick={action} type="button">{actionLabel}</button> : null}
-    </div>
-  );
-}
-
-function compactModelLabel(model: string) {
-  return model.split('/').at(-1) ?? model;
 }

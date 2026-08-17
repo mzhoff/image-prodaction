@@ -203,6 +203,53 @@ test('expands text concat dynamic inputs when a recipe has more than two text pa
   assert.equal(concat!.position.y + concat!.size.height / 2, inputsCenter);
 });
 
+test('expands dynamic image layer and export inputs for layered visual recipes', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Layered campaign banner',
+    summary: 'Compose generated art, a QR image and an optional overlay.',
+    nodes: [
+      { key: 'art', type: 'generateImage' },
+      { key: 'qr', type: 'importImage' },
+      { key: 'overlay', type: 'importImage' },
+      { key: 'composition', type: 'composition' },
+      { key: 'export', type: 'exportImage' },
+    ],
+    edges: [
+      { sourceNodeKey: 'art', sourcePortId: 'image', targetNodeKey: 'composition', targetPortId: 'layer-0' },
+      { sourceNodeKey: 'qr', sourcePortId: 'image', targetNodeKey: 'composition', targetPortId: 'layer-1' },
+      { sourceNodeKey: 'overlay', sourcePortId: 'image', targetNodeKey: 'composition', targetPortId: 'layer-2' },
+      { sourceNodeKey: 'composition', sourcePortId: 'image', targetNodeKey: 'export', targetPortId: 'image-1' },
+    ],
+  }), structuredClone(initialProject));
+  const composition = prepared.patch.nodes.find((node) => node.type === 'composition')!;
+  const exportNode = prepared.patch.nodes.find((node) => node.type === 'exportImage')!;
+
+  assert.equal('layerInputCount' in composition.data ? composition.data.layerInputCount : undefined, 3);
+  assert.equal('imageInputCount' in exportNode.data ? exportNode.data.imageInputCount : undefined, 2);
+  assert.equal(prepared.patch.edges.length, 4);
+});
+
+test('normalizes an unambiguous reversed text-generation port from the model', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Layered banner prompt',
+    summary: 'Build a reusable prompt for image generation.',
+    nodes: [
+      { key: 'stylePrompt', type: 'textPrompt' },
+      { key: 'promptBuild', type: 'textGeneration' },
+    ],
+    edges: [{
+      sourceNodeKey: 'stylePrompt',
+      sourcePortId: 'text',
+      targetNodeKey: 'promptBuild',
+      targetPortId: 'result',
+    }],
+  }), structuredClone(initialProject));
+
+  assert.equal(prepared.patch.edges[0]?.sourcePortId, 'text');
+  assert.equal(prepared.patch.edges[0]?.targetPortId, 'text');
+  assert.match(prepared.safePreview.warnings.join(' '), /единственная совместимая пара/u);
+});
+
 test('creates a text prompt template with bounded typed variables', () => {
   const prepared = preparePipelineBuild(parsePipelineBuildInput({
     documentName: 'Prompt template',
@@ -242,4 +289,49 @@ test('creates a text prompt template with bounded typed variables', () => {
     ['variable-0', 'variable-1'],
   );
   assert.equal(prepared.safePreview.nodes.find((node) => node.key === 'template')?.settings.variables, 2);
+});
+
+test('keeps a managed chat reference declarative until the import node is confirmed', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Reference-based visual',
+    summary: 'Use the attached reference as the image input.',
+    nodes: [
+      { key: 'reference', type: 'importImage', sourceAttachmentIndex: 0 },
+      { key: 'extract', type: 'imageToText' },
+    ],
+    edges: [
+      { sourceNodeKey: 'reference', sourcePortId: 'image', targetNodeKey: 'extract', targetPortId: 'image' },
+    ],
+  }), structuredClone(initialProject));
+  const importNode = prepared.patch.nodes.find((node) => node.type === 'importImage')!;
+
+  assert.deepEqual(prepared.patch.attachmentImports, [{ attachmentIndex: 0, nodeId: importNode.id }]);
+  assert.equal('assetId' in importNode.data, false);
+  assert.equal(prepared.safePreview.nodes[0].sourceAttachmentIndex, 0);
+
+  const materialized = applyPipelineBuildPatch(structuredClone(initialProject), {
+    ...prepared.patch,
+    assets: [{
+      createdAt: '2026-08-13T00:00:00.000Z',
+      id: 'asset-reference',
+      kind: 'image',
+      mimeType: 'image/webp',
+      name: 'reference.webp',
+      storage: { assetId: 'asset-reference', type: 'remote' },
+    }],
+    nodes: prepared.patch.nodes.map((node) => (
+      node.id === importNode.id ? { ...node, data: { ...node.data, assetId: 'asset-reference' } } : node
+    )),
+  });
+  assert.equal(materialized.assets[0]?.id, 'asset-reference');
+  assert.equal('assetId' in materialized.nodes[0].data ? materialized.nodes[0].data.assetId : undefined, 'asset-reference');
+});
+
+test('rejects attachment indices on nodes that are not image imports', () => {
+  assert.throws(() => preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Invalid reference pipeline',
+    summary: 'Reject an attachment assigned to the wrong node type.',
+    nodes: [{ key: 'extract', type: 'imageToText', sourceAttachmentIndex: 0 }],
+    edges: [],
+  }), structuredClone(initialProject)), /only for importImage/u);
 });

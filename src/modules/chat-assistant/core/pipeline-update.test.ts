@@ -173,3 +173,15 @@ test('defaults omitted unchanged collections so the provider schema stays concis
   assert.deepEqual(parsed.removeEdgeIds, []);
   assert.deepEqual(parsed.edges, []);
 });
+
+test('prepares a new import node from the latest attached image during graph update', () => {
+  const current = createTelegramProject();
+  const prepared = preparePipelineUpdate(pipelineUpdateInputSchema.parse({
+    summary: 'Add the attached image as a reusable reference input.',
+    nodes: [{ key: 'reference', type: 'importImage', sourceAttachmentIndex: 1 }],
+  }), current);
+  const importNode = prepared.patch.addedNodes.find((node) => node.type === 'importImage')!;
+
+  assert.deepEqual(prepared.patch.attachmentImports, [{ attachmentIndex: 1, nodeId: importNode.id }]);
+  assert.equal('assetId' in importNode.data, false);
+});

@@ -39,7 +39,7 @@ Image Production, самостоятельно применять миграци
 ## Передача в следующий релиз ChatModule
 
 Этот handoff намеренно содержит только открытые универсальные задачи. Пункты,
-которые уже поставлены ChatModule 0.7.0 и повторно проверены в Image Production,
+которые уже поставлены ChatModule 0.9.0 и повторно проверены в Image Production,
 удалены из рабочего списка; их история остаётся в Git и в retirement ledger.
 Product-specific поведение Image Production сюда также не включается.
 
@@ -47,12 +47,11 @@ Product-specific поведение Image Production сюда также не в
 | --- | --- | --- | --- | --- |
 | CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
 | CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
-| CM-011 | P1 | application / SSE / product actions | `ready-for-upstream` | Ошибка prepare превращается в HTTP 500 и не даёт агенту исправить аргументы |
-| CM-012 | P0 | agent / SSE / runtime / UI | `workaround-active` | Нет честного backend-driven прогресса долгого agent turn |
-| CM-013 | P0 | SDK / runtime / UI / idempotency | `workaround-active` | Ошибка не содержит достаточного контракта для безопасного повтора запроса |
-| CM-014 | P2 | `chat-ui` / activity label | `workaround-active` | CSS анимированных точек ломает вложенный public `activityLabel` |
-| CM-015 | P1 | runtime / `chat-ui` / tool status | `workaround-active` | Сохранённый confirmation block дублирует tool card и остаётся после выполнения |
-| CM-016 | P0 | connector / agent / usage / retry policy | `workaround-active` | Transient provider failure требует ручного повтора всего user turn |
+| CM-017 | P1 | Attachments / drop zone / event boundary | `workaround-active` | Drop принимает только composer, нет состояния всей зоны и безопасной границы с host UI |
+| CM-018 | P2 | Attachments / composer presentation | `workaround-active` | Managed attachments показаны техническим списком вместо компактных превью |
+| CM-019 | P1 | Attachments / model delivery | `workaround-active` | Один read target используется и браузером, и внешним AI-провайдером |
+| CM-020 | P1 | Runtime / first-turn failure | `ready-for-upstream` | Conversation ID теряется, если самый первый turn завершился ошибкой |
+| CM-021 | P1 | Agent runtime / tool validation recovery | `workaround-active` | Invalid или parallel provider tool call до prepareTool завершает turn общей ошибкой |
 
 ### CM-007 — коробочный модуль Assistant Quality
 
@@ -229,166 +228,166 @@ createChatModules({
   regression tests и предоставлена инструкция обновления существующего
   ChatModule consumer.
 
-### CM-011 — recoverable ошибка подготовки product action
+### CM-017 — универсальная drop-zone вложений для всей области чата
 
-- **Обнаружено:** 2026-08-12, первый живой `pipeline_build` в Image Production.
-- **Evidence:** модель передала допустимое по общему JSON Schema, но чужое для
-  конкретной ноды поле. Product gateway безопасно отклонил input, однако
-  `proposeToolCall()` отбросил причину, а SSE route завершился HTTP 500. В UI
-  пользователь увидел только `network error`; failed tool-call audit не был
-  создан, потому что ошибка случилась до `createToolCall()`.
-- **Consumer mitigation:** схема `pipeline_build` стала discriminated per-node,
-  а безопасные misplaced settings пропускаются с заметным warning в preview.
-  Server-only журнал сохраняет ограниченные `errorName/errorMessage/toolCallId`.
-- **Ожидаемое исправление:** preparation failure не должен ломать весь stream.
-  ChatModule должен вызвать protected reporter, сохранить failed proposal audit
-  и вернуть модели структурированный safe tool result для одного исправляющего
-  шага либо показать пользователю понятную retryable ошибку. Raw exception и
-  input не выходят в browser.
-- **Regression tests:** invalid proposal input даёт завершённый SSE lifecycle,
-  один audit record и safe error; модель может исправить tool args в пределах
-  лимита; повтор не создаёт proposal; protected reporter получает cause, а UI
-  не получает stack/provider payload.
-- **Повторное подтверждение, 2026-08-12:** после успешного `node_catalog` второй
-  model call вернул невалидный `pipeline_build`; `chat_llm_calls` сохранил его
-  как успешный оплаченный вызов, но tool-call audit не появился, turn получил
-  `CHAT_AGENT_RUN_FAILED`, а Next stream завершился `failed to pipe response`.
-  Browser снова увидел только `network error`. Это подтверждает, что проблема
-  находится в универсальном lifecycle между provider result validation и SSE,
-  а не в OpenRouter, сети или product execute.
-- **Повторное подтверждение, 2026-08-13:** два `pipeline_update` прошли JSON
-  Schema и дошли до product prepare, но первый попытался занять
-  уже подключённый вход, а второй соединил несовместимые порты.
-  Оба LLM call записаны как `success`, оба turn как
-  `CHAT_AGENT_RUN_FAILED`, а failed `chat_tool_calls` нет, потому что
-  `prepareTool()` вызывается до `createToolCall()`. Это ожидаемая
-  валидационная ошибка, которая должна возвращаться агенту как
-  safe tool result для одной коррекции, а не обрывать SSE.
+- **Обнаружено:** 2026-08-13 при drag-and-drop изображения в плавающую панель
+  Image Production поверх canvas.
+- **Evidence:** пакетный `ChatComposer` обрабатывает drop только внутри формы
+  ввода и не публикует состояние file-drag для внешней оболочки. При drop над
+  другой частью панели событие достигает host canvas, который одновременно
+  создаёт собственную Import-ноду.
+- **Влияние:** одно действие пользователя может иметь два разных результата, а
+  отсутствие подсветки не показывает, какая поверхность примет файл.
+- **Временный workaround:** consumer перехватывает file drag на capture-фазе во
+  всей `AssistantShell`, показывает overlay и передаёт файлы публичному
+  `useChatAttachments().addFiles`. Код отмечен как временный и не копирует
+  storage/upload lifecycle пакета.
 
-### CM-012 — backend-driven прогресс долгого agent turn
+#### Ожидаемое пакетное решение CM-017
 
-- **Обнаружено:** 2026-08-12, финальный запрос на сборку пайплайна.
-- **Evidence:** после отправки UI 45 секунд показывал только локальное
-  `Assistant is thinking`, хотя внутри turn могли последовательно выполняться
-  model call, чтение знаний, чтение каталога, подготовка product action и анализ
-  результата. `ToolCallingChatAgent.streamTurn()` публикует `run.started`, затем
-  блокируется на `createTurn()`; runtime не получает промежуточные typed phases.
-- **Влияние:** пользователь не отличает нормальную долгую работу от зависания и
-  не понимает, безопасно ли ждать или отменять запрос.
-- **Ожидаемое исправление:** ChatModule публикует упорядоченные server-owned
-  lifecycle events как минимум для `accepted`, `resolving-context`,
-  `waiting-for-model`, `tool-proposed`, `tool-running`, `analyzing-result` и
-  `finalizing`. Event содержит `turnId`, `requestId`, sequence, `startedAt` и
-  `updatedAt`; текущее состояние сохраняется и восстанавливается после reload
-  или SSE reconnect. Для долгих пауз stream отправляет heartbeat, а terminal
-  success/cancel/timeout/error всегда закрывает activity.
-- **Приватность:** UI показывает только операционный этап, но никогда не
-  chain-of-thought, скрытые рассуждения, raw prompt или tool payload. Текст этапа
-  локализуется UI либо приходит как безопасный presentation label.
-- **UI contract:** package предоставляет стандартный activity renderer с
-  прошедшим временем и публичный slot/policy для consumer theme. Таймер считается
-  на клиенте от server `startedAt`, поэтому переключение вкладки не обнуляет его.
-- **Regression tests:** первый и существующий conversation, model/tool/model,
-  reconnect по `Last-Event-ID`, heartbeat через reverse proxy, cancel и timeout;
-  события монотонны, не дублируются и после terminal state индикатор исчезает.
+- Публичный headless hook или wrapper-компонент для произвольной drop-зоны:
+  `isFileDragActive`, типизированные handlers и вызов штатного attachment
+  controller. Host должен иметь возможность обернуть как `ChatModuleShell`, так
+  и собственный header/tabs без доступа к внутренним компонентам пакета.
+- Drop-zone принимает только поддерживаемые файлы, вызывает `preventDefault` и
+  изолирует принятое событие от соседней host-поверхности. Она не должна
+  блокировать обычные text/link drags или drop вне смонтированной зоны.
+- Настраиваемый overlay slot и локализуемые label/hint. Доступные picker и paste
+  продолжают работать независимо от drag UI.
+- **Regression tests:** drag над header/thread/composer даёт одно вложение;
+  соседняя host drop-zone не вызывается; drop вне чата остаётся host-приложению;
+  feedback/disabled tab не принимает файл; nested dragenter/dragleave не мигает.
 
-### CM-013 — структурированная ошибка и безопасный retry
+### CM-018 — компактные managed-attachment previews в composer
 
-- **Обнаружено:** 2026-08-12, тот же turn.
-- **Evidence:** SDK отменил запрос ровно через 45 секунд, одновременно с timeout
-  OpenRouter connector. Runtime сохранил только строку ошибки, а синтетический
-  error block всегда получил `retryable: true`; UI не знает `code`, реальный
-  `retryable`, `turnId/requestId`, `retryAfter` и могло ли действие начаться.
-- **Влияние:** безусловный «Повторить» может создать второй turn, proposal,
-  списание или, для менее защищённого consumer tool, повторить изменение.
-- **Ожидаемое исправление:** runtime сохраняет структурированный safe error:
-  `code`, `retryable`, `category`, `turnId`, `requestId`, `attempt`,
-  `retryAfterMs` и `executionState` (`not-started`, `read-only`, `ambiguous`,
-  `mutated`). Package показывает одну, а не две error-панели и стандартную
-  кнопку retry только для разрешённых состояний.
-- **Retry semantics:** повтор является отдельной typed операцией/attempt со
-  ссылкой на исходный turn и исходным message, сохраняет idempotency contract и
-  сначала reconciles состояние при `ambiguous`. Write action нельзя исполнять
-  повторно без нового preview/confirmation; completed turn возвращает прежний
-  результат, а running turn не запускается параллельно.
-- **Presentation/history semantics:** повтор использует тот же логический user
-  message и не добавляет второй одинаковый bubble в UI или второй одинаковый
-  prompt в model context. Отдельные attempts остаются доступными в audit, но не
-  маскируются под новые пользовательские сообщения.
-- **Timeout contract:** provider timeout, server turn deadline и SDK deadline
-  конфигурируются раздельно и идут с запасом в этом порядке. Server успевает
-  сохранить terminal outcome и отправить error до client cancellation.
-- **Regression tests:** provider timeout, offline/network, 408/429/5xx,
-  non-retryable 4xx, первый turn без conversation id, retry после read tool,
-  ambiguous write, двойной клик и reload/reconnect. Ни один сценарий не создаёт
-  двойного изменения или usage charge.
+- **Обнаружено:** 2026-08-13 после подключения managed attachments 0.9.0.
+- **Evidence:** `ChatAttachmentUploadList` выводит строку с маленьким preview,
+  именем файла, техническим статусом и отдельным текстовым действием. Для
+  нескольких визуальных референсов это занимает лишнюю высоту и не похоже на
+  вложения сообщения.
+- **Влияние:** пользователю сложнее сопоставить референсы, composer визуально
+  перегружен, удаление не связано с конкретным изображением.
+- **Временный workaround:** consumer рисует thumbnail tray из публичных
+  `ChatAttachmentUploadItem.previewUrl/status/progress` и вызывает штатные
+  `remove/retry`. Upload/delete/storage остаются пакетными.
 
-### CM-014 — CSS индикатора не должен ломать custom activity label
+#### Ожидаемое пакетное решение CM-018
 
-- **Обнаружено:** 2026-08-12, Image Production с public `activityLabel`.
-- **Evidence:** `.cm-typing span` задаёт каждому вложенному `span` ширину и
-  высоту `7px`, фон и pulse-анимацию. Поэтому `span` внутри переданного
-  `activityLabel` превращается в дополнительную точку, а текст статуса
-  сжимается и переносится, хотя места в панели достаточно.
-- **Влияние:** публичный ReactNode-slot нельзя безопасно использовать для
-  составной подписи этапа и таймера без знания внутренних CSS-селекторов пакета.
-- **Consumer workaround:** Image Production сбрасывает dot-геометрию только для
-  `.image-production-chat-activity` и принудительно сохраняет статус в одну
-  строку.
-- **Ожидаемое исправление:** стили точек должны применяться только к трём прямым
-  дочерним элементам (`.cm-typing > span`) либо к отдельному публичному классу
-  dot. Контейнер и `b` должны разрешать произвольный `activityLabel`, включая
-  вложенные элементы, без навязывания им размеров, фона и animation.
-- **Regression tests:** ReactNode из текста и `<time>` остаётся в одну строку;
-  его вложенные элементы не анимируются, три штатные точки продолжают
-  пульсировать, длинная локализованная подпись не ломает composer.
+- Готовый composer presentation для managed image attachments: компактные
+  квадратные thumbnails, стабильная высота, имя в accessible label/tooltip и
+  крестик удаления в правом верхнем углу по hover/focus (постоянно видимый на
+  touch-устройствах).
+- Состояния queued/uploading/failed/ready не меняют геометрию карточки:
+  загрузка показывает progress, ошибка — доступный retry, удаление отменяет
+  активную загрузку и очищает remote object по действующему контракту.
+- После принятия submit runtime должен сразу очистить текст и composer previews,
+  сохранив immutable snapshot attachment refs в optimistic user message. Очистка
+  не должна ждать ответа модели; failed turn продолжает показывать вложение в
+  уже отправленном пользовательском сообщении.
+- Компонент принимает appearance tokens/slots и работает с `previewUrl`
+  managed attachment, не требуя `dataUrl` или публичного storage URL.
+- Геометрия должна быть package default, а не consumer override: верхний и
+  левый край первого thumbnail совпадают с направляющими начала текста в
+  textarea. При текущем package layout это означает одинаковый итоговый inset
+  `18px` от внутреннего края composer (`12px` form padding + `6px` content
+  inset) по block-start и inline-start. Справа применяется тот же logical inset.
+- Реализовать это через единый theme token (например,
+  `--cm-composer-content-inset`) либо общий внутренний layout wrapper для
+  textarea, managed attachment tray и package attachment previews. Не следует
+  требовать от продукта знания внутренних `12px + 6px` или копирования CSS.
+- Thumbnail остаётся `72x72px`, квадратным, с package radius/border tokens.
+  Несколько вложений переносятся внутри тех же левой и правой направляющих;
+  добавление, удаление, upload/error state не сдвигают textarea по горизонтали.
+- **Regression tests:** клавиатурное удаление и retry, touch presentation,
+  максимум файлов, длинные имена, object URL cleanup, failed upload, повторная
+  загрузка и отсутствие layout shift в composer. Добавить geometry regression:
+  при наличии одного и нескольких thumbnails их `left` равен координате начала
+  текста textarea, `top` использует тот же inset, а layout сохраняется для
+  compact/regular surface, разных radius tokens и RTL.
 
-### CM-015 — confirmation status не должен дублироваться и устаревать
+#### Готовая инструкция агенту ChatModule для CM-018
 
-- **Обнаружено:** 2026-08-12, успешный подтверждённый `pipeline_build`.
-- **Evidence:** ChatModule сохраняет отдельное assistant message с блоком
-  `tool-status(status=needs-confirmation)` и одновременно показывает связанную
-  интерактивную `ChatToolCallPanel`. После подтверждения tool call в PostgreSQL
-  имеет `completed`, но неизменяемый message block продолжает показывать
-  «Требуется подтверждение» после reload.
-- **Влияние:** во время ожидания пользователь видит два одинаковых сообщения, а
-  после успешного действия одно из них сообщает заведомо неверное состояние.
-- **Consumer workaround:** Image Production скрывает `tool-status` blocks и
-  оставляет единственным источником состояния package tool panel/result card.
-- **Ожидаемое исправление:** ChatModule должен иметь один source of truth для
-  lifecycle tool call. Либо status block вычисляется по живой записи tool call,
-  либо не создаётся, когда UI уже рендерит связанную confirmation card. Terminal
-  `completed/rejected/expired/failed` обязан заменить или убрать pending status
-  при текущем turn, reload и reconnect.
-- **Regression tests:** pending write показывает одну карточку с действиями;
-  после confirm отображается только completed result, после reject — terminal
-  result; reload/reconnect не возвращают `needs-confirmation`.
+Задача: сделать композицию managed image attachments штатной частью
+`ChatComposer`, чтобы все продукты получали pixel-perfect layout без локального
+CSS. Сохрани публичный upload/controller contract и реализуй presentation в
+package UI/core: квадратные previews `72x72px`, package border/radius, remove по
+hover/focus и доступный touch-state. В дефолтной теме выровняй верхний и левый
+край thumbnail по тем же content guides, что и начало текста textarea; не
+кодируй знание об Image Production. Вынеси общий inset в theme token или общий
+layout wrapper, поддержи compact/regular, wrapping, RTL и переопределение темы.
+Добавь component/visual regression tests на равенство координат thumbnail и
+начала текста, отсутствие layout shift и все upload states. Опубликуй canary,
+проверь packed consumer, затем stable release с changelog/migration note. После
+consumer-проверки Image Production удалит локальный padding workaround.
 
-### CM-016 — bounded provider retry внутри одного agent turn
+### CM-019 — отдельная доставка приватного вложения AI-провайдеру
 
-- **Обнаружено:** 2026-08-12, доработка существующего Telegram pipeline.
-- **Evidence:** три последовательных turn завершились через 5 секунд с
-  `OPENROUTER_NETWORK_ERROR`, нулевыми токенами и без tool call. Пользователь
-  вручную повторял одну реплику, хотя ошибка возникла до product action.
-- **Влияние:** технический transient сбой превращается в пользовательскую
-  работу, засоряет историю отдельными turns и заставляет модель повторно читать
-  весь контекст. При этом безусловный retry всего turn небезопасен после write
-  proposal и может повторить действие или списание.
-- **Consumer workaround:** Image Production connector делает до трёх попыток
-  одного provider call с bounded exponential backoff. Это происходит внутри
-  исходного turn до передачи результата agent lifecycle. 401/402/403,
-  cancellation и другие permanent ошибки не повторяются; после исчерпания
-  лимита ошибка возвращается пользователю.
-- **Ожидаемое исправление:** ChatModule connector принимает typed retry policy:
-  max attempts, backoff/jitter, retryable codes, `Retry-After`, общий deadline и
-  protected attempt reporter. Runtime различает provider attempt и user turn,
-  не добавляет повторный user message и сохраняет реальное суммарное usage.
-  Retry после tool proposal/execution подчиняется execution state CM-013, а не
-  connector policy.
-- **Regression tests:** network/DNS, timeout, 429 с `Retry-After`, 502/503/504,
-  401/402/403, cancel во время backoff, исчерпание attempts и успешное
-  восстановление. Один user turn и одно сообщение сохраняются; usage всех
-  оплаченных попыток учитывается; product write не исполняется дважды.
+- **Обнаружено:** 2026-08-13 при анализе изображения из локального MinIO.
+- **Evidence:** `ChatAttachmentApplicationService.resolveForModel()` использует
+  тот же `AttachmentObjectStorage.createReadTarget()`, что и browser content
+  route. Подписанный URL `minio.localhost` открывается браузером пользователя,
+  но внешний AI-провайдер не может обратиться к локальной сети consumer.
+- **Влияние:** корректно загруженное и провалидированное вложение завершается
+  provider validation error до старта tool execution.
+- **Временный workaround:** Image Production в локальном окружении использует
+  отдельный model-facing application service с base64 data URL. Browser route
+  продолжает получать обычный signed URL. В production флаг выключен.
+
+#### Ожидаемое пакетное решение CM-019
+
+- Разделить browser preview target и model delivery resolver: публичный signed
+  URL, inline data URL либо provider-native upload/file ID выбирает серверный
+  adapter consumer, не меняя upload/store/link lifecycle.
+- Inline delivery должна иметь server-side лимит размера, MIME allowlist и не
+  попадать в логи, telemetry, persistence или публичные attachment metadata.
+- Provider error telemetry должна безопасно сохранять HTTP status, error code и
+  correlation ID без секретов и полного payload, чтобы отличать недоступный URL,
+  неподдерживаемый MIME и лимиты модели.
+- **Regression tests:** private/local S3, публичный S3, истёкший signed URL,
+  превышение inline-лимита, cancel и отсутствие base64 в логах.
+
+### CM-020 — сохранение conversation после ошибки первого turn
+
+- **Обнаружено:** 2026-08-13 при повторной проверке attachment provider error.
+- **Evidence:** сервер успевает создать conversation, user message и failed turn,
+  но `ChatRuntime.submit()` записывает `conversationId` только из успешного
+  `ChatTurnResponse`. Error payload не содержит conversation ID, поэтому host не
+  может привязать созданный диалог к документу; после reload виден welcome.
+- **Ожидаемое решение:** stream protocol сообщает conversation ID до первого
+  provider call либо включает его в типизированный error payload. Runtime сразу
+  сохраняет ID и подключает events независимо от terminal status turn.
+- **Regression tests:** ошибка provider на самом первом turn, reload/reconnect,
+  retry того же turn и отсутствие второй conversation/user message.
+
+### CM-021 — recovery первой ошибки provider tool input
+
+- **Обнаружено:** 2026-08-13 при сборке нового image pipeline после успешного
+  `node_catalog` и явного согласия пользователя.
+- **Evidence:** обе provider calls завершились `success`, read tool завершился,
+  но write tool не был сохранён: внутренний AJV отклонил аргументы либо модель
+  вернула несколько tool calls до `proposeToolCall`. Turn получил общий
+  `CHAT_AGENT_RUN_FAILED`, `executionState=ambiguous`, `retryable=false`.
+- **Разрыв:** текущая bounded correction работает только после
+  `CHAT_TOOL_PREPARATION_FAILED`, то есть уже после успешной package schema
+  validation и вызова product `prepareTool`.
+
+#### Ожидаемое пакетное решение CM-021
+
+- При первой schema-validation ошибке перед `proposeToolCall` вернуть модели
+  bounded список безопасных paths/codes без значений полей и дать одну или две
+  конфигурируемые попытки исправить аргументы.
+- Если provider вернул несколько tools, а host разрешает только один, ничего не
+  исполнять и попросить модель вернуть ровно следующий одиночный call. Read и
+  write tools должны выполняться последовательно.
+- Суммировать usage/cost всех correction calls и соблюдать общий deadline,
+  cancel, max steps, max tool calls и max cost turn. Не создавать второй user
+  message/turn и не дублировать idempotency key.
+- После исчерпания попыток вернуть типизированный безопасный outcome
+  `CHAT_TOOL_INPUT_INVALID` с `executionState=not-started` и возможностью retry,
+  а не общий ambiguous failure.
+- **Regression tests:** invalid required field, unknown/extra field, malformed
+  nested node/edge, parallel read+write, повторно невалидная коррекция, cancel,
+  usage aggregation и отсутствие любого tool execution до валидного call.
 
 ## Новые наблюдения
 

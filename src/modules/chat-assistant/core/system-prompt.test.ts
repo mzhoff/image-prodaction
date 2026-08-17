@@ -28,6 +28,9 @@ test('requires semantic document names and separates variable text from stable i
   assert.match(prompt, /не передавай originX\/originY/u);
   assert.match(prompt, /максимум один объединённый раунд/u);
   assert.match(prompt, /сразу используй pipeline_build.*pipeline_update/u);
+  assert.match(prompt, /не больше одного tool call/u);
+  assert.match(prompt, /generateImage\.image.*composition\.layer-N/u);
+  assert.match(prompt, /пустую importImage без sourceAttachmentIndex/u);
   assert.match(prompt, /не спрашивай подтверждение текстом повторно/u);
   assert.match(prompt, /Согласие на сборку.*не является согласием на запуск/u);
   assert.match(prompt, /отдельное прямое указание пользователя/u);

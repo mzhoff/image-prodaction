@@ -1,11 +1,19 @@
 import {
+  ChatAttachmentApplicationService,
   ChatConversationApplicationService,
   InMemoryConversationEventBus,
   ToolCallingChatAgent,
   type ChatApplicationOptions,
 } from '@prodactionpro/chat-application';
-import { DrizzleConversationStore } from '@prodactionpro/chat-persistence-drizzle';
+import { S3AttachmentObjectStorage } from '@prodactionpro/chat-attachments-s3';
+import { DrizzleAttachmentStore, DrizzleConversationStore } from '@prodactionpro/chat-persistence-drizzle';
 import {
+  createNextAttachmentCompleteUploadRoute,
+  createNextAttachmentContentRoute,
+  createNextAttachmentDeleteRoute,
+  createNextAttachmentMetadataRoute,
+  createNextAttachmentPrepareUploadRoute,
+  createNextChatRetryStreamRoute,
   createNextChatStreamRoute,
   createNextChatTurnRoute,
   createNextConversationCollectionRoute,
@@ -21,9 +29,11 @@ import { imageProductionTools } from '../contracts/image-production-tools';
 import { resolveChatPrincipal } from './auth';
 import { readChatAssistantConfig } from './config';
 import { ImageProductionToolGateway } from './knowledge-tool-gateway';
+import { InlineReadAttachmentObjectStorage } from './inline-read-attachment-storage';
 import { LimitedOpenRouterGateway } from './limited-openrouter-gateway';
 import { admitChatTurn } from './turn-admission';
 import { resolveVerifiedChatContext } from './verified-context';
+import { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
 
 export class ChatAssistantUnavailableError extends Error {
   readonly code = 'CHAT_ASSISTANT_UNAVAILABLE';
@@ -45,8 +55,43 @@ function createComposition() {
   }
 
   const store = new DrizzleConversationStore(getDb());
+  const attachmentStore = new DrizzleAttachmentStore(getDb());
+  const s3AttachmentStorage = new S3AttachmentObjectStorage({
+    accessKeyId: config.attachmentS3AccessKeyId,
+    bucket: config.attachmentBucket!,
+    endpoint: config.attachmentEndpoint,
+    forcePathStyle: config.attachmentForcePathStyle,
+    keyPrefix: config.attachmentKeyPrefix,
+    readTtlSeconds: config.attachmentReadTtlSeconds,
+    region: config.attachmentRegion,
+    secretAccessKey: config.attachmentS3SecretAccessKey,
+    uploadTtlSeconds: config.attachmentUploadTtlSeconds,
+  });
+  const modelAttachmentStorage = config.attachmentInlineReadTargets
+    ? new InlineReadAttachmentObjectStorage(s3AttachmentStorage, config.attachmentMaxBytes)
+    : s3AttachmentStorage;
+  const attachmentService = new ChatAttachmentApplicationService(
+    attachmentStore,
+    modelAttachmentStorage,
+    {
+      maxFileBytes: config.attachmentMaxBytes,
+      maxFilesPerMessage: config.attachmentMaxCount,
+    },
+  );
+  const browserAttachmentService = config.attachmentInlineReadTargets
+    ? new ChatAttachmentApplicationService(
+        attachmentStore,
+        s3AttachmentStorage,
+        {
+          maxFileBytes: config.attachmentMaxBytes,
+          maxFilesPerMessage: config.attachmentMaxCount,
+        },
+      )
+    : attachmentService;
   const eventBus = new InMemoryConversationEventBus();
-  const toolGateway = new ImageProductionToolGateway();
+  const toolGateway = new ImageProductionToolGateway(
+    new ChatAttachmentAssetBridge(store, browserAttachmentService),
+  );
   const options: ChatApplicationOptions = {
     agent: {
       maxCostUsdPerTurn: config.maxCostUsdPerTurn,
@@ -59,6 +104,11 @@ function createComposition() {
       'product-copilot': [config.model],
     },
     assistantProviderResolver: () => ({
+      capabilities: {
+        inputModalities: ['text', 'image'],
+        supportsImageInputWithTools: true,
+        toolCalling: true,
+      },
       connectionId: 'env:chat-openrouter',
       providerId: 'openrouter',
       toolCallingLanguageModelGateway: new LimitedOpenRouterGateway({
@@ -68,12 +118,14 @@ function createComposition() {
         httpReferer: config.openRouterSiteUrl,
         maxOutputTokens: config.maxOutputTokens,
         maxAttempts: config.providerMaxAttempts,
+        retryDeadlineMs: config.providerRetryDeadlineMs,
         retryBaseDelayMs: config.providerRetryBaseDelayMs,
         timeoutMs: config.providerRequestTimeoutMs,
       }),
     }),
+    attachmentService,
     capabilities: {
-      attachments: false,
+      attachments: true,
       imageGeneration: false,
       models: [config.model],
       modes: ['knowledge-base', 'product-copilot'],
@@ -84,11 +136,19 @@ function createComposition() {
     defaultModel: config.model,
     eventBus,
     limits: {
-      maxAttachmentBytes: 0,
-      maxAttachments: 0,
+      maxAttachmentBytes: config.attachmentMaxBytes,
+      maxAttachments: config.attachmentMaxCount,
+      maxContextImages: config.attachmentMaxContextImages,
       maxContextMessages: 20,
       maxMessageCharacters: 4_000,
-      maxTotalAttachmentBytes: 0,
+      maxTotalAttachmentBytes: config.attachmentMaxBytes * config.attachmentMaxCount,
+    },
+    modelCapabilitiesById: {
+      [config.model]: {
+        inputModalities: ['text', 'image'],
+        supportsImageInputWithTools: true,
+        toolCalling: true,
+      },
     },
     systemPromptBuilder: buildImageProductionSystemPrompt,
     toolCallingLanguageModelGateway: undefined,
@@ -111,12 +171,27 @@ function createComposition() {
   };
   const backend = new ToolCallingChatAgent(store, options);
   const service = new ChatConversationApplicationService(store, options, toolGateway, eventBus);
-  const routeOptions = { backend, eventBus, resolvePrincipal: resolveChatPrincipal, service };
+  const routeOptions = {
+    backend,
+    eventBus,
+    resolvePrincipal: resolveChatPrincipal,
+    serverTurnDeadlineMs: config.serverTurnDeadlineMs,
+    service,
+  };
   const messageRoutes = createNextConversationMessagesRoute(routeOptions);
+  const attachmentRouteOptions = {
+    attachmentService: browserAttachmentService,
+    resolvePrincipal: resolveChatPrincipal,
+  };
 
   return {
     config,
     routes: {
+      attachmentComplete: createNextAttachmentCompleteUploadRoute(attachmentRouteOptions),
+      attachmentContent: createNextAttachmentContentRoute(attachmentRouteOptions),
+      attachmentDelete: createNextAttachmentDeleteRoute(attachmentRouteOptions),
+      attachmentMetadata: createNextAttachmentMetadataRoute(attachmentRouteOptions),
+      attachmentPrepare: createNextAttachmentPrepareUploadRoute(attachmentRouteOptions),
       conversation: createNextConversationRoute(routeOptions),
       conversations: createNextConversationCollectionRoute(routeOptions),
       events: createNextConversationEventsRoute(routeOptions),
@@ -125,6 +200,7 @@ function createComposition() {
       toolConfirm: createNextToolConfirmRoute(routeOptions),
       toolReject: createNextToolRejectRoute(routeOptions),
       turn: createNextChatTurnRoute(routeOptions),
+      turnRetryStream: createNextChatRetryStreamRoute(routeOptions),
       turnStream: createNextChatStreamRoute(routeOptions),
     },
   };

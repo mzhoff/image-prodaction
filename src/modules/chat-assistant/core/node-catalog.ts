@@ -66,6 +66,18 @@ const NODE_ASSISTANT_METADATA: Partial<Record<keyof typeof NODE_DEFINITIONS, {
   description: string;
   portRules?: readonly string[];
 }>> = {
+  importImage: {
+    aliases: ['image input', 'upload image', 'reference image', 'импорт изображения', 'входное изображение', 'референс'],
+    description: [
+      'Хранит входное изображение в графе.',
+      'Для уже прикреплённого к сообщению файла передай sourceAttachmentIndex в спецификации pipeline_build/pipeline_update;',
+      'для пустой ноды, которую пользователь заполнит позже, sourceAttachmentIndex не передавай.',
+    ].join(' '),
+    portRules: [
+      'Выход image передаёт изображение в image/reference/any-вход следующей ноды.',
+      'sourceAttachmentIndex не является settings ноды и допустим только для importImage.',
+    ],
+  },
   textPrompt: {
     aliases: [
       'prompt template', 'text template', 'variables', 'template variables',
@@ -97,6 +109,45 @@ const NODE_ASSISTANT_METADATA: Partial<Record<keyof typeof NODE_DEFINITIONS, {
       'Входы динамические: text-0, text-1, text-2 и далее; каждый вход принимает одну text-связь.',
       'Выход result передаёт объединённый текст, например в textGeneration.text.',
       'Порядок входов определяет порядок частей; separator/prefix/suffix управляют склейкой.',
+    ],
+  },
+  textGeneration: {
+    aliases: ['generate text', 'prompt builder', 'генерация текста', 'сборка промпта'],
+    description: [
+      'Преобразует входной текст по стабильной instruction и возвращает текстовый результат.',
+      'Используй для сборки production-ready промпта перед generateImage или для текстовой обработки.',
+    ].join(' '),
+    portRules: [
+      'Вход text принимает ровно одну text-связь; несколько редактируемых источников сначала объедини через textConcat или шаблонную textPrompt.',
+      'Выход result подключается к generateImage.prompt либо другому text-входу.',
+      'instruction содержит постоянные правила, а изменяемый текст приходит через порт text.',
+    ],
+  },
+  generateImage: {
+    aliases: ['image generation', 'generator', 'генерация изображения', 'генератор изображения'],
+    description: 'Генерирует изображение по текстовому промпту и необязательным visual references.',
+    portRules: [
+      'Основной текстовый промпт подключай к входу prompt; выход image передаёт результат.',
+      'Вход reference принимает исходное image как общий референс и не заменяет вход prompt.',
+      'Порты actors/actions/composition/camera/background/style/light/color/metaphor/text принимают специализированные reference-источники, если они действительно есть в графе.',
+    ],
+  },
+  composition: {
+    aliases: ['layers', 'composite', 'layer composition', 'композиция', 'слои', 'сборка слоёв'],
+    description: 'Собирает два или больше входных слоёв в одно изображение без запуска генерации.',
+    portRules: [
+      'Входы динамические: layer-0, layer-1, layer-2 и далее, максимум 12; каждый принимает одну связь.',
+      'Порядок layer-N задаёт порядок слоёв; выход image передаёт собранное изображение.',
+      'Для основного арта и QR используй generateImage.image -> layer-0 и importImage.image -> layer-1.',
+    ],
+  },
+  exportImage: {
+    aliases: ['image output', 'export', 'экспорт изображения', 'выход изображения'],
+    description: 'Финальный выход изображения с настройками формата, качества, масштаба и фона.',
+    portRules: [
+      'Входы динамические: image-0, image-1 и далее, максимум 10.',
+      'Для одного финального результата подключай composition.image или generateImage.image к image-0.',
+      'Создание ноды не запускает экспорт; запуск требует отдельного действия пользователя.',
     ],
   },
 };

@@ -73,6 +73,12 @@ export function createPipelineNodeSchema(): Record<string, unknown> {
       },
       type: { type: 'string', enum: PRODUCTION_NODE_TYPES },
       settings: createPipelineSettingsSchema(),
+      sourceAttachmentIndex: {
+        type: 'integer',
+        minimum: 0,
+        maximum: 2,
+        description: 'For importImage only: zero-based image index from the latest user message that contains attachments. The product copies it to a durable document asset after confirmation.',
+      },
     },
   };
 }

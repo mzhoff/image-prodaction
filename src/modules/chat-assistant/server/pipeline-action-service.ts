@@ -19,12 +19,18 @@ import {
   resolvePipelineDocumentName,
 } from '../core/pipeline-build';
 import { chatPipelineActionProposal } from './pipeline-action-schema';
+import type { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
+import {
+  materializePipelineAttachmentImports,
+  resolvePipelineAttachmentImports,
+} from './pipeline-attachment-import-service';
 
 const PROPOSAL_TTL_MS = 10 * 60 * 1_000;
 
 export async function preparePipelineBuildProposal(
   request: ToolCallRequest,
   context: ToolExecutionContext,
+  attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ): Promise<ToolActionProposal> {
   const verified = readVerifiedDocument(context);
   const idempotencyKey = context.idempotencyKey ?? context.toolCallId;
@@ -44,6 +50,17 @@ export async function preparePipelineBuildProposal(
     ? structuredClone(current.snapshot.project)
     : structuredClone(initialProject);
   const prepared = preparePipelineBuild(parsed, graph);
+  prepared.patch.attachmentImports = await resolvePipelineAttachmentImports(
+    prepared.patch.attachmentImports,
+    context,
+    attachmentAssetBridge,
+  );
+  prepared.safePreview.nodes = prepared.safePreview.nodes.map((node, index) => ({
+    ...node,
+    sourceAttachmentName: prepared.patch.attachmentImports.find(
+      (item) => item.nodeId === prepared.patch.nodes[index]?.id,
+    )?.attachmentName,
+  }));
   const expiresAt = new Date(Date.now() + PROPOSAL_TTL_MS);
   const proposalId = createUuidV7();
 
@@ -68,6 +85,7 @@ export async function preparePipelineBuildProposal(
 export async function executePipelineBuildProposal(
   request: ToolCallRequest,
   context: ToolExecutionContext,
+  attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ): Promise<ToolCallResult> {
   const verified = readVerifiedDocument(context);
   if (!request.executionRef || !isUuidV7(request.executionRef)) return invalidProposal();
@@ -124,7 +142,19 @@ export async function executePipelineBuildProposal(
     const currentProject = currentSnapshot?.project
       ? structuredClone(currentSnapshot.project)
       : structuredClone(initialProject);
-    const nextProject = applyPipelineBuildPatch(currentProject, proposal.patch);
+    const materialized = await materializePipelineAttachmentImports(
+      proposal.patch.attachmentImports,
+      proposal.patch.nodes,
+      context,
+      proposal.documentId,
+      attachmentAssetBridge,
+    );
+    const materializedPatch = {
+      ...proposal.patch,
+      assets: materialized.assets,
+      nodes: materialized.nodes,
+    };
+    const nextProject = applyPipelineBuildPatch(currentProject, materializedPatch);
     const nextDocumentName = resolvePipelineDocumentName(current.name, {
       documentName: proposal.patch.documentName || proposal.patch.summary,
       summary: proposal.patch.summary,
@@ -154,6 +184,7 @@ export async function executePipelineBuildProposal(
       action: 'build-pipeline',
       addedEdgeCount: proposal.patch.edges.length,
       addedNodeCount: proposal.patch.nodes.length,
+      importedReferenceCount: proposal.patch.attachmentImports.length,
       documentName: nextDocumentName,
       documentId: proposal.documentId,
       revision: saved.revision,

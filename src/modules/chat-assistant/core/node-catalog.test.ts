@@ -26,6 +26,11 @@ test('assistant node catalog is derived from the live product registry', () => {
   assert.ok(concat[0]?.portRules.some((rule) => rule.includes('text-2')));
   assert.deepEqual(getAssistantNodeCatalog('шаблон с переменными').map((node) => node.type), ['textPrompt']);
   assert.deepEqual(getAssistantNodeCatalog('remove bg').map((node) => node.type), ['removeBackground']);
+  const composition = getAssistantNodeCatalog('сборка слоёв');
+  assert.deepEqual(composition.map((node) => node.type), ['composition']);
+  assert.match(composition[0]?.portRules.join(' ') ?? '', /layer-0.*layer-1.*layer-2/u);
+  const importNode = getAssistantNodeCatalog('входное изображение');
+  assert.match(importNode[0]?.description ?? '', /sourceAttachmentIndex.*не передавай/u);
   assert.equal(getAssistantNodeCatalog('node groups генерация prompt export preview').length, nodes.length);
   assert.equal(getAssistantNodeCatalog('совершенно неизвестная нода').length, nodes.length);
 });
