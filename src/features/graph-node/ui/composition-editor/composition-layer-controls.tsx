@@ -6,6 +6,7 @@ import { compositionFitOptions, type CompositionLayerView } from '../../model/us
 import type { CompositionAlignment } from '../../model/use-composition-node-model';
 import { FillControls } from './composition-fill-controls';
 import { LayoutControls, OpacityControls, PositionControls, TypographyControls } from './composition-inspector-sections';
+import { CompositionShapeEffectsControls } from './composition-shape-effects-controls';
 
 export function CompositionLayerControls({
   canvasHeight,
@@ -39,6 +40,11 @@ export function CompositionLayerControls({
           <span>Scale</span>
           <DarkSelect value={layer.style.fit} options={compositionFitOptions} onChange={(fit) => onChange({ fit: fit as CompositionLayerStyle['fit'] })} wide />
         </label>
+      ) : layer.kind === 'rectangle' ? (
+        <>
+          <FillControls layer={layer} onChange={onChange} />
+          <CompositionShapeEffectsControls layer={layer} onChange={onChange} />
+        </>
       ) : (
         <>
           <TypographyControls layer={layer} onChange={onChange} />

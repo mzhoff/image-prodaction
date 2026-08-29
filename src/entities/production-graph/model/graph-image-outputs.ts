@@ -13,6 +13,7 @@ import type {
   IteratorNodeData,
   PreviewNodeData,
   ProductionNode,
+  QrCodeNodeData,
   RefineImageNodeData,
   RemoveBackgroundNodeData,
   SketchNodeData,
@@ -34,6 +35,7 @@ export function getNodeImageAssetId(
     return data.activeKind === 'image' ? data.activeImageAssetId : undefined;
   }
   if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
+  if (node.type === 'qrCode') return (node.data as QrCodeNodeData).resultAssetId;
   if (node.type === 'composition') return (node.data as CompositionNodeData).resultAssetId;
   if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
   if (node.type === 'cropImage') return (node.data as CropImageNodeData).resultAssetId;
@@ -71,6 +73,10 @@ export function getNodeImageAssetIds(node?: ProductionNode) {
   }
   if (node.type === 'composition') {
     const assetId = (node.data as CompositionNodeData).resultAssetId;
+    return assetId ? [assetId] : [];
+  }
+  if (node.type === 'qrCode') {
+    const assetId = (node.data as QrCodeNodeData).resultAssetId;
     return assetId ? [assetId] : [];
   }
   if (node.type === 'subjectBuilder' || node.type === 'locationBuilder') {
@@ -123,6 +129,10 @@ export function getNodeImageOutputAssetIds(
   }
   if (node.type === 'composition') {
     const assetId = (node.data as CompositionNodeData).resultAssetId;
+    return assetId ? [assetId] : [];
+  }
+  if (node.type === 'qrCode') {
+    const assetId = (node.data as QrCodeNodeData).resultAssetId;
     return assetId ? [assetId] : [];
   }
   if (node.type === 'iterator') {

@@ -77,6 +77,21 @@ button {
   cursor: pointer;
 }
 
+.reverie-logo-accent {
+  transition: fill 300ms ease;
+}
+
+.reverie-logo-link:hover .reverie-logo-accent,
+.reverie-logo-link:focus-visible .reverie-logo-accent {
+  fill: #4a7aff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reverie-logo-accent {
+    transition: none;
+  }
+}
+
 .editor-page {
   height: 100vh;
   background: var(--app-bg);

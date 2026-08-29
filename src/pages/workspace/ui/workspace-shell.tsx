@@ -16,6 +16,7 @@ import {
 import { signOut, useSession } from '@/shared/auth/client';
 import { BrandSelect } from '@/shared/ui/brand-select';
 import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
+import { ReverieLogo } from '@/shared/ui/reverie-logo';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { useWorkspaceProjects } from '../model/use-workspace-projects';
 import { WorkspaceShellContext } from './workspace-shell-context';
@@ -79,9 +80,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         >
           <div className="workspace-sidebar-top">
             <div className="workspace-logo-row">
-              <Link className="workspace-logo" href="/" aria-label="Reverie home">
-                <img className="workspace-logo-default" src="/brand/reverie-logo-default.webp" alt="" />
-                <img className="workspace-logo-hover" src="/brand/reverie-logo-hover.webp" alt="" />
+              <Link className="workspace-logo reverie-logo-link" href="/" aria-label="Reverie home">
+                <ReverieLogo />
               </Link>
               <button
                 className="workspace-icon-button"

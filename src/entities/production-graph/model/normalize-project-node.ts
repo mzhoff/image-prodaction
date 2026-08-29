@@ -2,6 +2,7 @@ import { normalizeNodeSize } from './node-layout';
 import { normalizeContextNode } from './normalize-project-context-nodes';
 import { normalizeImageNode } from './normalize-project-image-nodes';
 import { normalizePublicationNode } from './normalize-project-publication-nodes';
+import { normalizePipelineNode } from './normalize-project-pipeline-nodes';
 import { normalizeTextNode } from './normalize-project-text-nodes';
 import type { ProductionNode } from './types';
 
@@ -16,6 +17,7 @@ export function normalizeNode(node: ProductionNode): ProductionNode {
     ?? normalizeTextNode(node)
     ?? normalizeContextNode(node)
     ?? normalizePublicationNode(node)
+    ?? normalizePipelineNode(node)
     ?? {
       ...node,
       size: normalizeNodeSize(node.type, node.size),

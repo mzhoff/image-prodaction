@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ReverieLogo } from '@/shared/ui/reverie-logo';
 
 interface AuthShellProps {
   ariaLabel: string;
@@ -47,11 +48,13 @@ export function AuthShell({ ariaLabel, children }: AuthShellProps) {
       <section className="auth-form-area" aria-label={ariaLabel}>
         <div className="auth-form-shell">
           <div className="auth-topline">
-            <Link className="auth-logo" href="/" aria-label="Reverie">
-              <img className="auth-logo-default" src="/brand/reverie-logo-default.webp" alt="" />
-              <img className="auth-logo-hover" src="/brand/reverie-logo-hover.webp" alt="" />
+            <Link className="auth-back-link" href="/">
+              <ArrowLeft size={16} aria-hidden="true" />
+              Вернуться на сайт
             </Link>
-            <Link className="auth-home-link" href="/">В продукт</Link>
+            <Link className="auth-shell-logo reverie-logo-link" href="/" aria-label="Reverie">
+              <ReverieLogo />
+            </Link>
           </div>
           {children}
         </div>

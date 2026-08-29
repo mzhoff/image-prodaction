@@ -5,26 +5,36 @@ import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient } from '@/shared/auth/client';
+import { formatAuthError } from '@/shared/auth/error-message';
 import { AuthShell } from './auth-shell';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
+    setError(null);
 
     try {
-      await authClient.requestPasswordReset({
+      const result = await authClient.requestPasswordReset({
         email: email.trim(),
         redirectTo: '/reset-password',
       });
-    } finally {
-      // The response is deliberately identical for known and unknown addresses.
-      setPending(false);
+
+      if (result.error) {
+        setError(formatAuthError(result.error));
+        return;
+      }
+
       setSubmitted(true);
+    } catch (caughtError) {
+      setError(formatAuthError(caughtError));
+    } finally {
+      setPending(false);
     }
   }
 
@@ -39,14 +49,21 @@ export function ForgotPasswordPage() {
           <h2>{submitted ? 'Проверьте почту' : 'Забыли пароль?'}</h2>
           <p>
             {submitted
-              ? 'Если аккаунт с таким email существует, мы отправили ссылку для смены пароля.'
+              ? 'Запрос обработан. Если указанный email привязан к аккаунту, письмо со ссылкой уже отправлено. Проверьте входящие и папку «Спам».'
               : 'Укажите email аккаунта. Мы отправим защищённую ссылку для установки нового пароля.'}
           </p>
         </div>
 
         {submitted ? (
-          <div className="auth-state-actions">
-            <button className="auth-secondary-button" type="button" onClick={() => setSubmitted(false)}>
+          <div className="auth-state-actions auth-recovery-actions">
+            <button
+              className="auth-secondary-button"
+              type="button"
+              onClick={() => {
+                setError(null);
+                setSubmitted(false);
+              }}
+            >
               Отправить повторно
             </button>
             <Link className="auth-text-link" href="/login">
@@ -69,6 +86,7 @@ export function ForgotPasswordPage() {
                 required
               />
             </label>
+            {error ? <p className="auth-form-error" role="alert">{error}</p> : null}
             <button className="auth-submit" type="submit" disabled={pending}>
               {pending ? 'Отправляем…' : 'Отправить ссылку'}
               <span><ArrowRight size={16} /></span>

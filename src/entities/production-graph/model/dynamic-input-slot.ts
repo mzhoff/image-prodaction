@@ -1,4 +1,5 @@
 import {
+  COMPOSITION_LAYER_MAX_INPUTS,
   getCompositionLayerPortId,
   getExportImageInputPortId,
   getTelegramMediaInputPortId,
@@ -48,7 +49,7 @@ const DYNAMIC_INPUT_SLOT_SPECS: ReadonlyArray<DynamicInputSlotSpec> = [
     portPrefix: 'layer-',
     getPortId: getCompositionLayerPortId,
     minCount: 2,
-    maxCount: 12,
+    maxCount: COMPOSITION_LAYER_MAX_INPUTS,
     countField: 'layerInputCount',
     preservePortIds: true,
   },

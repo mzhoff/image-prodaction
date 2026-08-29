@@ -57,3 +57,24 @@ test('compiler rejects missing dependencies and unsupported handler versions', (
     ),
   );
 });
+
+test('compiler validates defaults and required output contracts without breaking legacy plans', () => {
+  const invalidDefault = createTextPipelineFixture();
+  invalidDefault.inputs.topic.defaultValue = 42;
+  assert.throws(
+    () => compilePipelineDefinition(invalidDefault),
+    /defaultValue must be text/,
+  );
+
+  const missingRequiredOutput = createTextPipelineFixture();
+  missingRequiredOutput.outputContracts = {
+    text: { kind: 'text', required: true },
+    summary: { kind: 'text', required: true },
+  };
+  assert.throws(
+    () => compilePipelineDefinition(missingRequiredOutput),
+    /Required pipeline output "summary" has no binding/,
+  );
+
+  assert.doesNotThrow(() => compilePipelineDefinition(createTextPipelineFixture()));
+});

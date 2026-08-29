@@ -1,6 +1,12 @@
 'use client';
 
 import { AlignCenter, AlignCenterVertical, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Baseline, Blend, Circle, Droplet, Eye, FlipHorizontal, FlipVertical, Link2, MoveHorizontal, MoveVertical, RotateCw, Square } from 'lucide-react';
+import {
+  COMPOSITION_TEXT_FONT_SIZE_MAX,
+  COMPOSITION_TEXT_FONT_SIZE_MIN,
+  COMPOSITION_TEXT_LINE_HEIGHT_MAX,
+  COMPOSITION_TEXT_LINE_HEIGHT_MIN,
+} from '@/entities/production-graph/model/composition-text-constraints';
 import type { CompositionLayerStyle } from '@/entities/production-graph/model/types';
 import { DarkSelect } from '@/shared/ui/dark-select';
 import { compositionBlendModeOptions, compositionFontOptions, compositionWeightOptions, getDefaultTextLineHeight, type CompositionLayerView } from '../../model/use-composition-node-model';
@@ -207,8 +213,8 @@ export function TypographyControls({
         <UnitNumberControl
           ariaLabel="Font size"
           value={layer.style.fontSize}
-          min={8}
-          max={240}
+          min={COMPOSITION_TEXT_FONT_SIZE_MIN}
+          max={COMPOSITION_TEXT_FONT_SIZE_MAX}
           onChange={(fontSize) => onChange({
             fontSize,
             lineHeight: isAutoLineHeight ? getDefaultTextLineHeight(fontSize) : layer.style.lineHeight,
@@ -216,14 +222,14 @@ export function TypographyControls({
         />
       </div>
       <div className="composition-typography-grid">
-        <button
-          type="button"
-          className="composition-typography-button composition-typography-button-wide"
-          onClick={() => onChange({ lineHeight: getDefaultTextLineHeight(layer.style.fontSize) })}
-        >
-          <Baseline size={14} />
-          <span>{isAutoLineHeight ? 'Auto' : Math.round(layer.style.lineHeight)}</span>
-        </button>
+        <UnitNumberControl
+          ariaLabel="Line height"
+          icon={<Baseline size={14} />}
+          value={layer.style.lineHeight}
+          min={COMPOSITION_TEXT_LINE_HEIGHT_MIN}
+          max={COMPOSITION_TEXT_LINE_HEIGHT_MAX}
+          onChange={(lineHeight) => onChange({ lineHeight })}
+        />
         <UnitNumberControl
           ariaLabel="Letter spacing"
           icon={<LetterSpacingMark />}
@@ -234,6 +240,14 @@ export function TypographyControls({
           onChange={(letterSpacing) => onChange({ letterSpacing })}
         />
       </div>
+      <button
+        type="button"
+        className="composition-typography-button composition-typography-button-wide"
+        onClick={() => onChange({ lineHeight: getDefaultTextLineHeight(layer.style.fontSize) })}
+      >
+        <Baseline size={14} />
+        <span>{isAutoLineHeight ? 'Auto line height' : 'Reset line height to Auto'}</span>
+      </button>
       <div className="composition-typography-grid">
         <SegmentedIconControl
           value={layer.style.align}

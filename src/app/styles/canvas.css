@@ -48,6 +48,18 @@
   stroke: #16a34a;
 }
 
+.edge-path-json {
+  stroke: #8b5cf6;
+}
+
+.edge-path-number {
+  stroke: #d97706;
+}
+
+.edge-path-boolean {
+  stroke: #db2777;
+}
+
 .edge-path-subject {
   stroke: #7c3aed;
 }

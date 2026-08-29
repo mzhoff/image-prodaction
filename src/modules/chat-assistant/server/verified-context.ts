@@ -2,17 +2,30 @@ import type { VerifiedContextResolver } from '@prodactionpro/chat-application';
 import { ChatAccessError } from '@prodactionpro/chat-server-core';
 import { getDocument } from '@/entities/document/server/document-service';
 import { getAssistantNodeCatalog } from '../core/node-catalog';
+import { findBoundConversationContextSelectors } from './document-conversation-service';
 
-export const resolveVerifiedChatContext: VerifiedContextResolver = async ({ principal, selectors }) => {
+export const resolveVerifiedChatContext: VerifiedContextResolver = async ({
+  conversationId,
+  principal,
+  selectors,
+}) => {
   const workspaceId = principal.tenantId;
   if (!workspaceId) throw new ChatAccessError('A verified workspace is required.', 'forbidden');
 
+  const recoveredSelectors = selectors?.document
+    ? undefined
+    : await findBoundConversationContextSelectors({
+      productId: principal.productId,
+      tenantId: workspaceId,
+      userId: principal.userId,
+    }, conversationId);
+  const effectiveSelectors = selectors?.document ? selectors : recoveredSelectors ?? selectors;
   const baseContext = {
     availableNodeTypeCount: getAssistantNodeCatalog().length,
-    route: selectors?.route,
+    route: effectiveSelectors?.route,
     workspaceId,
   };
-  const documentSelector = selectors?.document;
+  const documentSelector = effectiveSelectors?.document;
   if (!documentSelector) return baseContext;
 
   const project = await getDocument(principal.userId, documentSelector.id);
@@ -20,7 +33,7 @@ export const resolveVerifiedChatContext: VerifiedContextResolver = async ({ prin
     throw new ChatAccessError('The document belongs to another workspace.', 'forbidden');
   }
   const graph = project.snapshot?.project;
-  const selectedIds = new Set(selectors?.selection?.ids ?? []);
+  const selectedIds = new Set(effectiveSelectors?.selection?.ids ?? []);
   const selectedNodes = graph?.nodes.filter((node) => selectedIds.has(node.id)) ?? [];
   const selectedSections = graph?.sections.filter((section) => selectedIds.has(section.id)) ?? [];
 
@@ -36,6 +49,7 @@ export const resolveVerifiedChatContext: VerifiedContextResolver = async ({ prin
       selectedNodeIds: selectedNodes.map((node) => node.id),
       selectedNodeTypes: selectedNodes.map((node) => node.type),
       selectedSectionIds: selectedSections.map((section) => section.id),
+      selectorHasUnsavedChanges: documentSelector.revision?.startsWith('unsaved:') ?? false,
       selectorRevisionMatches: documentSelector.revision === undefined
         ? undefined
         : documentSelector.revision === String(project.revision),

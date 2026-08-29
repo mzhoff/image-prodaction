@@ -62,6 +62,7 @@ test('getDynamicInputSlotSpec resolves text concat and telegram publication spec
   assert.ok(getDynamicInputSlotSpec('textConcat'));
   assert.ok(getDynamicInputSlotSpec('telegramPublication'));
   assert.ok(getDynamicInputSlotSpec('exportImage'));
+  assert.equal(getDynamicInputSlotSpec('composition')?.maxCount, 24);
   assert.equal(getDynamicInputSlotSpec('textPrompt'), undefined);
 });
 

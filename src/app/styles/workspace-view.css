@@ -54,21 +54,13 @@
   display: block;
   width: 116px;
   height: 40px;
+  color: #09090b;
 }
-.workspace-logo img {
-  position: absolute;
-  top: 0;
-  left: 0;
+
+.workspace-logo svg {
+  display: block;
   width: 116px;
   height: 40px;
-  transition: opacity 140ms ease;
-}
-.workspace-logo-hover,
-.workspace-logo:hover .workspace-logo-default {
-  opacity: 0;
-}
-.workspace-logo:hover .workspace-logo-hover {
-  opacity: 1;
 }
 .workspace-icon-button,
 .workspace-light-button,

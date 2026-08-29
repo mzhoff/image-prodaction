@@ -3,7 +3,6 @@ import type {
   PipelineExecutionContext,
   PipelineExecutionResult,
   PipelineInputBinding,
-  PipelineArtifactReference,
   PipelineInputs,
   PipelineNodeDefinition,
   PipelineNodeHandlerRegistry,
@@ -15,6 +14,16 @@ import {
   PipelineDomainError,
   PipelineNodeHandlerError,
 } from '../contracts/pipeline-errors';
+import { preparePipelineInputValues, validatePipelineOutputValues } from './pipeline-io-validation';
+
+export { isPipelineArtifactReference } from './pipeline-value-validation';
+export {
+  preparePipelineInputValues,
+  validatePipelineInputValues,
+  validatePipelineOutputValues,
+} from './pipeline-io-validation';
+
+const MISSING_OPTIONAL_INPUT = Symbol('missing-optional-pipeline-input');
 
 export interface ExecuteCompiledPipelineInput {
   context: PipelineExecutionContext;
@@ -43,7 +52,10 @@ export interface PipelineExecutionObserver {
 export async function executeCompiledPipeline(
   input: ExecuteCompiledPipelineInput,
 ): Promise<PipelineExecutionResult> {
-  validatePipelineInputValues(input.plan.definition.inputs, input.inputs);
+  const pipelineInputs = preparePipelineInputValues(
+    input.plan.definition.inputs,
+    input.inputs,
+  );
   throwIfAborted(input.signal);
 
   const nodesById = new Map(
@@ -63,7 +75,7 @@ export async function executeCompiledPipeline(
       }
       return [
         nodeId,
-        await executeNode(node, input, nodeOutputs),
+        await executeNode(node, input, pipelineInputs, nodeOutputs),
       ] as const;
     }));
 
@@ -82,6 +94,7 @@ export async function executeCompiledPipeline(
 async function executeNode(
   node: PipelineNodeDefinition,
   input: ExecuteCompiledPipelineInput,
+  pipelineInputs: PipelineInputs,
   nodeOutputs: Record<string, PipelineNodeOutputs>,
 ) {
   const handler = input.handlers.resolve(node.handlerType, node.handlerVersion);
@@ -93,12 +106,18 @@ async function executeNode(
     });
   }
 
-  const resolvedInputs = Object.fromEntries(
-    Object.entries(node.inputs).map(([inputName, binding]) => [
+  const resolvedInputs: PipelineInputs = {};
+  for (const [inputName, binding] of Object.entries(node.inputs)) {
+    const resolved = resolveBinding(
+      binding,
+      pipelineInputs,
+      input.plan.definition.inputs,
+      nodeOutputs,
+      node.id,
       inputName,
-      resolveBinding(binding, input.inputs, nodeOutputs, node.id, inputName),
-    ]),
-  );
+    );
+    if (resolved !== MISSING_OPTIONAL_INPUT) resolvedInputs[inputName] = resolved;
+  }
 
   try {
     await input.observer?.onNodeStarted?.({
@@ -147,14 +166,16 @@ async function executeNode(
 function resolveBinding(
   binding: PipelineInputBinding,
   pipelineInputs: PipelineInputs,
+  contracts: Record<string, PipelineValueContract>,
   nodeOutputs: Record<string, PipelineNodeOutputs>,
   targetNodeId: string,
   targetInputName: string,
-): PipelineValue {
+): PipelineValue | typeof MISSING_OPTIONAL_INPUT {
   if (binding.source === 'literal') return structuredClone(binding.value);
   if (binding.source === 'pipeline-input') {
     const value = pipelineInputs[binding.inputKey];
     if (value === undefined) {
+      if (contracts[binding.inputKey]?.required === false) return MISSING_OPTIONAL_INPUT;
       throw new PipelineDomainError({
         code: 'pipeline_input_invalid',
         message: `Node "${targetNodeId}" input "${targetInputName}" requires pipeline input "${binding.inputKey}".`,
@@ -177,95 +198,23 @@ function resolvePipelineOutputs(
   plan: CompiledPipelinePlan,
   nodeOutputs: Record<string, PipelineNodeOutputs>,
 ) {
-  return Object.fromEntries(
-    Object.entries(plan.definition.outputs).map(([outputName, binding]) => {
-      const value = nodeOutputs[binding.nodeId]?.[binding.outputKey];
-      if (value === undefined) {
-        throw new PipelineDomainError({
-          code: 'pipeline_node_output_missing',
-          message: `Pipeline output "${outputName}" is missing "${binding.nodeId}.${binding.outputKey}".`,
-        });
-      }
-      return [outputName, structuredClone(value)];
-    }),
-  );
-}
-
-export function validatePipelineInputValues(
-  contracts: Record<string, PipelineValueContract>,
-  values: PipelineInputs,
-) {
-  for (const inputKey of Object.keys(values)) {
-    if (!contracts[inputKey]) {
-      throw new PipelineDomainError({
-        code: 'pipeline_input_invalid',
-        message: `Unknown pipeline input "${inputKey}".`,
-      });
-    }
-  }
-
-  for (const [inputKey, contract] of Object.entries(contracts)) {
-    const value = values[inputKey];
+  const outputs: PipelineNodeOutputs = {};
+  for (const [outputName, binding] of Object.entries(plan.definition.outputs)) {
+    const value = nodeOutputs[binding.nodeId]?.[binding.outputKey];
+    const contract = plan.definition.outputContracts?.[outputName];
     if (value === undefined) {
-      if (contract.required) {
-        throw new PipelineDomainError({
-          code: 'pipeline_input_invalid',
-          message: `Required pipeline input "${inputKey}" is missing.`,
-        });
-      }
-      continue;
-    }
-    if (!matchesValueContract(value, contract)) {
+      if (contract?.required === false) continue;
       throw new PipelineDomainError({
-        code: 'pipeline_input_invalid',
-        message: `Pipeline input "${inputKey}" does not match kind "${contract.kind}".`,
+        code: contract ? 'pipeline_output_invalid' : 'pipeline_node_output_missing',
+        message: `Pipeline output "${outputName}" is missing "${binding.nodeId}.${binding.outputKey}".`,
       });
     }
+    outputs[outputName] = structuredClone(value);
   }
-}
-
-function matchesValueContract(value: PipelineValue, contract: PipelineValueContract) {
-  if (contract.kind === 'json') return true;
-  if (contract.kind === 'boolean') return typeof value === 'boolean';
-  if (contract.kind === 'number') return typeof value === 'number' && Number.isFinite(value);
-  if (contract.kind === 'text') return typeof value === 'string';
-  if (contract.kind === 'text_collection') {
-    return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+  if (plan.definition.outputContracts) {
+    validatePipelineOutputValues(plan.definition.outputContracts, outputs);
   }
-  if (contract.kind === 'image_collection') {
-    return Array.isArray(value) && value.every((entry) => isArtifactReference(entry, 'image'));
-  }
-  if (contract.kind === 'image') return isArtifactReference(value, 'image');
-  if (contract.kind === 'audio') return isArtifactReference(value, 'audio');
-  return isStructuredObject(value);
-}
-
-export function isPipelineArtifactReference(
-  value: PipelineValue,
-  kind?: PipelineArtifactReference['kind'],
-): value is PipelineArtifactReference & Record<string, PipelineValue> {
-  return isArtifactReference(value, kind);
-}
-
-function isArtifactReference(
-  value: PipelineValue,
-  kind?: PipelineArtifactReference['kind'],
-) {
-  if (!isStructuredObject(value)) return false;
-  if (value.kind !== 'image' && value.kind !== 'audio') return false;
-  if (kind && value.kind !== kind) return false;
-  if (typeof value.assetId !== 'string' || !value.assetId.trim()) return false;
-  if (value.mimeType !== undefined && typeof value.mimeType !== 'string') return false;
-  if (value.sizeBytes !== undefined && (
-    typeof value.sizeBytes !== 'number'
-    || !Number.isSafeInteger(value.sizeBytes)
-    || value.sizeBytes < 0
-  )) return false;
-  return true;
-}
-
-function isStructuredObject(value: PipelineValue): value is Record<string, PipelineValue> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  return outputs;
 }
 
 function throwIfAborted(signal: AbortSignal) {

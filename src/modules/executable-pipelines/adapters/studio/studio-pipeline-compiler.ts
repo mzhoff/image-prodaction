@@ -3,8 +3,6 @@ import { getNodePorts } from '@/entities/production-graph/model/node-definitions
 import type { GraphEdge, GraphProject, ProductionNode } from '@/entities/production-graph/model/types';
 import type {
   ExecutablePipelineDefinition,
-  PipelineInputBinding,
-  PipelineNodeDefinition,
   PipelineValueKind,
 } from '../../contracts/pipeline-contracts';
 import type {
@@ -16,13 +14,12 @@ import {
   createBoundary,
   createUniqueKey,
   getNodeTitle,
-  getRuntimeOutput,
   groupEdges,
   invalidPipeline,
   resolveLeafOutput,
-  resolveTransparentSource,
 } from './studio-graph-resolution';
-import { getRuntimeDescriptor } from './studio-runtime-descriptor';
+import { compileExplicitStudioSection } from './studio-explicit-pipeline-compiler';
+import { createRuntimeNodeDefinition } from './studio-runtime-node-definition';
 
 export interface CompiledStudioPipeline {
   compiledPlan: ReturnType<typeof compilePipelineDefinition>;
@@ -31,6 +28,7 @@ export interface CompiledStudioPipeline {
 
 const BOUNDARY_INPUT_TYPES = new Set<ProductionNode['type']>(['importImage', 'textPrompt']);
 const SINK_TYPES = new Set<ProductionNode['type']>(['preview']);
+const EXPLICIT_BOUNDARY_TYPES = new Set<ProductionNode['type']>(['pipelineInput', 'pipelineOutput']);
 
 export function compileStudioSection(
   project: GraphProject,
@@ -49,6 +47,17 @@ export function compileStudioSection(
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const incomingByNode = groupEdges(edges, 'targetNodeId');
   const outgoingByNode = groupEdges(edges, 'sourceNodeId');
+  const hasExplicitBoundary = nodes.some((node) => EXPLICIT_BOUNDARY_TYPES.has(node.type));
+  if (hasExplicitBoundary) {
+    return compileExplicitStudioSection({
+      edges,
+      incomingByNode,
+      nodeById,
+      nodes,
+      options,
+      section,
+    });
+  }
   const boundary = createInputBoundaries(nodes, incomingByNode);
   const runtimeNodes = nodes.filter((node) => (
     !boundary.inputNameByNodeId.has(node.id) && !SINK_TYPES.has(node.type) && node.type !== 'router'
@@ -129,46 +138,4 @@ function createOutputBoundaries(
     boundaries.push(createBoundary(leaf, resolved.portId, name, resolved.kind));
   }
   return { boundaries, outputs };
-}
-
-function createRuntimeNodeDefinition(input: {
-  edges: GraphEdge[];
-  inputNameByNodeId: ReadonlyMap<string, string>;
-  incomingByNode: ReadonlyMap<string, GraphEdge[]>;
-  node: ProductionNode;
-  nodeById: ReadonlyMap<string, ProductionNode>;
-  runtimeNodeIdSet: ReadonlySet<string>;
-}): PipelineNodeDefinition {
-  const descriptor = getRuntimeDescriptor(input.node, input);
-  const bindings: Record<string, PipelineInputBinding> = {};
-  const inputCounts = new Map<string, number>();
-  for (const edge of input.edges) {
-    const resolved = resolveTransparentSource(edge, input.incomingByNode, input.nodeById);
-    if (!resolved) continue;
-    const count = inputCounts.get(edge.targetPortId) ?? 0;
-    inputCounts.set(edge.targetPortId, count + 1);
-    const inputKey = count === 0 ? edge.targetPortId : `${edge.targetPortId}.${count + 1}`;
-    const pipelineInputName = input.inputNameByNodeId.get(resolved.source.id);
-    if (pipelineInputName) {
-      bindings[inputKey] = { source: 'pipeline-input', inputKey: pipelineInputName };
-      continue;
-    }
-    if (!input.runtimeNodeIdSet.has(resolved.source.id)) {
-      throw invalidPipeline(`Нода «${getNodeTitle(resolved.source)}» не поддерживается как источник серверной операции.`);
-    }
-    const sourceOutput = getRuntimeOutput(resolved.source, resolved.sourcePortId);
-    if (!sourceOutput) {
-      throw invalidPipeline(`Выход «${edge.sourcePortId}» ноды «${getNodeTitle(resolved.source)}» нельзя исполнить на сервере.`);
-    }
-    bindings[inputKey] = {
-      source: 'node-output', nodeId: resolved.source.id, outputKey: sourceOutput.outputKey,
-    };
-  }
-  return {
-    id: input.node.id,
-    handlerType: descriptor.handlerType,
-    handlerVersion: '1',
-    config: descriptor.config,
-    inputs: bindings,
-  };
 }

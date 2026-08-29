@@ -7,7 +7,7 @@ does not update one package from the family separately from the others.
 ## Version policy
 
 - Direct `@prodactionpro/chat-*` dependencies use one exact stable version, for
-  example `0.9.0`. Ranges such as `^0.9.0`, tags such as `latest`, Git branches
+  example `0.11.0`. Ranges such as `^0.11.0`, tags such as `latest`, Git branches
   and tarballs are not allowed.
 - Dependabot groups every ChatModule package update into one pull request.
 - ChatModule pull requests are never merged automatically. The normal Image

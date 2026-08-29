@@ -9,6 +9,7 @@ import {
 import {
   ChatRuntimeProvider,
   ManagedAttachmentPreview,
+  type ChatAttachmentDropTarget,
   useChatAttachments,
   useChatRuntime,
   useChatRuntimeActions,
@@ -19,19 +20,11 @@ import { ChatModuleShell } from '@prodactionpro/chat-ui';
 import { useEffect, useMemo } from 'react';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
 import { bindDocumentConversation } from '@/modules/chat-assistant/adapters/client/document-conversation-client';
-import {
-  PIPELINE_BUILD_TOOL,
-  PIPELINE_UPDATE_TOOL,
-} from '@/modules/chat-assistant/contracts/image-production-tools';
+import { PIPELINE_BUILD_TOOL, PIPELINE_UPDATE_TOOL } from '@/modules/chat-assistant/contracts/image-production-tools';
 import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
-import { submitAndClearChatComposer } from '../model/submit-chat-composer';
 import { useDocumentConversation } from '../model/use-document-conversation';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
-import {
-  AssistantNotice,
-  AttachmentUploadTray,
-  compactModelLabel,
-} from './chat-attachment-presentation';
+import { AssistantNotice, compactModelLabel } from './chat-attachment-presentation';
 import {
   APPEARANCE,
   CHAT_STYLES,
@@ -48,13 +41,15 @@ import {
 } from './image-production-chat-options';
 
 interface ImageProductionChatProps {
+  composerKeyboardActive?: boolean;
   context: ChatContextSelectors;
   onPipelineChanged?: () => void;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId?: string;
 }
-export type AssistantAttachmentDropTarget = (files: File[]) => void;
+export type AssistantAttachmentDropTarget = ChatAttachmentDropTarget;
 export function ImageProductionChat({
+  composerKeyboardActive = false,
   context,
   onPipelineChanged,
   registerAttachmentDropTarget,
@@ -78,6 +73,7 @@ export function ImageProductionChat({
   return (
     <ConfiguredChatSession
       key={`${workspaceId}:${state.value.model}:${context.document?.id ?? 'workspace'}`}
+      composerKeyboardActive={composerKeyboardActive}
       context={context}
       documentId={context.document?.id}
       model={state.value.model}
@@ -89,6 +85,7 @@ export function ImageProductionChat({
 }
 
 function ConfiguredChatSession(props: {
+  composerKeyboardActive: boolean;
   context: ChatContextSelectors;
   documentId?: string;
   model: string;
@@ -105,6 +102,7 @@ function ConfiguredChatSession(props: {
 }
 
 function ConfiguredChat({
+  composerKeyboardActive,
   context,
   documentId,
   initialConversationId,
@@ -113,6 +111,7 @@ function ConfiguredChat({
   registerAttachmentDropTarget,
   workspaceId,
 }: {
+  composerKeyboardActive: boolean;
   context: ChatContextSelectors;
   documentId?: string;
   initialConversationId?: string;
@@ -137,11 +136,11 @@ function ConfiguredChat({
     },
     transport,
     welcomeMessage: initialConversationId ? false : {
-      id: 'image-production-welcome:ru:v1',
+      id: 'image-production-welcome:ru:v2',
       locale: 'ru',
       blocks: [{
         type: 'markdown',
-        content: 'Расскажи, что хочешь создать. Я предложу план пайплайна, а после твоего согласия подготовлю ноды и связи на холсте.',
+        content: 'Расскажи, что хочешь создать. Я быстро подготовлю рабочий черновик пайплайна; перед изменением холста ты увидишь одно подтверждение.',
       }],
     },
   });
@@ -152,6 +151,7 @@ function ConfiguredChat({
   return (
     <ChatRuntimeProvider runtime={runtime}>
       <ChatContent
+        composerKeyboardActive={composerKeyboardActive}
         model={model}
         documentId={documentId}
         registerAttachmentDropTarget={registerAttachmentDropTarget}
@@ -161,7 +161,8 @@ function ConfiguredChat({
   );
 }
 
-function ChatContent({ documentId, model, registerAttachmentDropTarget, workspaceId }: {
+function ChatContent({ composerKeyboardActive, documentId, model, registerAttachmentDropTarget, workspaceId }: {
+  composerKeyboardActive: boolean;
   documentId?: string;
   model: string;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
@@ -183,15 +184,11 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
     maxFiles: 3,
     transport,
   });
-  const addAttachmentFiles = attachmentController.addFiles;
   useEffect(() => {
     if (!registerAttachmentDropTarget) return;
-    const dropTarget: AssistantAttachmentDropTarget = (files) => {
-      void addAttachmentFiles(files);
-    };
-    registerAttachmentDropTarget(dropTarget);
+    registerAttachmentDropTarget(attachmentController.dropTarget);
     return () => registerAttachmentDropTarget(undefined);
-  }, [addAttachmentFiles, registerAttachmentDropTarget]);
+  }, [attachmentController.dropTarget, registerAttachmentDropTarget]);
   useEffect(() => {
     if (!documentId || !state.conversationId) return;
     const controller = new AbortController();
@@ -223,11 +220,7 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
   const submit = async () => {
     if (isTyping || attachmentController.isUploading || attachmentController.hasFailures) return;
     if (!state.inputValue.trim() && attachmentController.attachments.length === 0) return;
-    await submitAndClearChatComposer({
-      attachments: attachmentController.attachments,
-      clearAfterSend: attachmentController.clearAfterSend,
-      submit: (attachments) => runtime.submit(undefined, { attachments }),
-    });
+    await runtime.submit(undefined, attachmentController.createSubmitOptions());
   };
 
   const renderAttachment = (attachment: ChatAttachment) => (
@@ -249,21 +242,29 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
         allModelOptions={[modelOption]}
         allowedModelIdsByMode={createAllowedModels(model)}
         appearance={APPEARANCE}
+        attachmentPresentation={{
+          composerPreview: 'thumbnails',
+          dragAndDrop: 'custom-zone',
+        }}
         chatStyleOptions={CHAT_STYLES}
         className="image-production-chat"
-        composerOverlay={attachmentController.items.length ? (
-          <AttachmentUploadTray
-            items={attachmentController.items}
-            onRemove={(itemId) => { void attachmentController.remove(itemId); }}
-            onRetry={(itemId) => { void attachmentController.retry(itemId); }}
-          />
-        ) : undefined}
         errorDetails={state.errorDetails}
         fontOptions={FONT_OPTIONS}
         iconLibraryOptions={ICON_OPTIONS}
         inputValue={state.inputValue}
+        isCommandMenuOpen={!composerKeyboardActive}
         isTyping={isTyping}
         messages={presentedMessages}
+        managedAttachments={{
+          acceptsFile: attachmentController.acceptsFile,
+          acceptsMimeType: attachmentController.acceptsMimeType,
+          canAdd: attachmentController.canAdd,
+          inputProps: attachmentController.inputProps,
+          items: attachmentController.items,
+          onCancel: attachmentController.cancel,
+          onRemove: attachmentController.remove,
+          onRetry: attachmentController.retry,
+        }}
         messagePresentation={MESSAGE_PRESENTATION}
         modeOptions={MODE_OPTIONS}
         modelOptions={[]}
@@ -275,7 +276,6 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
         onModeChange={actions.setMode}
         onModelChange={actions.setModel}
         onRejectToolCall={(id) => { void actions.rejectToolCall(id); }}
-        onRemoveAttachment={(itemId) => { void attachmentController.remove(itemId); }}
         onSubmit={() => { void submit().catch(() => undefined); }}
         onRetry={() => runtime.retryLastTurn()}
         onToggleModelForMode={() => undefined}

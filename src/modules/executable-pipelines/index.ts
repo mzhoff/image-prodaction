@@ -29,6 +29,9 @@ export type {
   PipelineValueKind,
 } from './contracts/pipeline-contracts';
 export type {
+  PipelineConsumerExecutionPolicy,
+} from './contracts/pipeline-consumer-contracts';
+export type {
   StudioPipelineBoundary,
   StudioPipelinePublication,
   StudioPipelineSourceMetadata,

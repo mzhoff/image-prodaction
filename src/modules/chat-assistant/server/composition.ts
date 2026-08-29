@@ -1,12 +1,17 @@
 import {
   ChatAttachmentApplicationService,
   ChatConversationApplicationService,
-  InMemoryConversationEventBus,
+  PersistentConversationEventBus,
   ToolCallingChatAgent,
   type ChatApplicationOptions,
 } from '@prodactionpro/chat-application';
 import { S3AttachmentObjectStorage } from '@prodactionpro/chat-attachments-s3';
-import { DrizzleAttachmentStore, DrizzleConversationStore } from '@prodactionpro/chat-persistence-drizzle';
+import {
+  DrizzleAttachmentStore,
+  DrizzleConversationEventStore,
+  DrizzleConversationStore,
+  PostgresConversationEventWakeup,
+} from '@prodactionpro/chat-persistence-drizzle';
 import {
   createNextAttachmentCompleteUploadRoute,
   createNextAttachmentContentRoute,
@@ -23,13 +28,13 @@ import {
   createNextToolConfirmRoute,
   createNextToolRejectRoute,
 } from '@prodactionpro/chat-runtime-next/server';
-import { getDb } from '@/shared/db/client';
+import { getDb, getPostgresPool } from '@/shared/db/client';
 import { buildImageProductionSystemPrompt } from '../core/system-prompt';
 import { imageProductionTools } from '../contracts/image-production-tools';
+import { designElementSelectionTool } from '../contracts/design-element-selection';
 import { resolveChatPrincipal } from './auth';
 import { readChatAssistantConfig } from './config';
 import { ImageProductionToolGateway } from './knowledge-tool-gateway';
-import { InlineReadAttachmentObjectStorage } from './inline-read-attachment-storage';
 import { LimitedOpenRouterGateway } from './limited-openrouter-gateway';
 import { admitChatTurn } from './turn-admission';
 import { resolveVerifiedChatContext } from './verified-context';
@@ -67,37 +72,44 @@ function createComposition() {
     secretAccessKey: config.attachmentS3SecretAccessKey,
     uploadTtlSeconds: config.attachmentUploadTtlSeconds,
   });
-  const modelAttachmentStorage = config.attachmentInlineReadTargets
-    ? new InlineReadAttachmentObjectStorage(s3AttachmentStorage, config.attachmentMaxBytes)
-    : s3AttachmentStorage;
   const attachmentService = new ChatAttachmentApplicationService(
     attachmentStore,
-    modelAttachmentStorage,
+    s3AttachmentStorage,
     {
       maxFileBytes: config.attachmentMaxBytes,
       maxFilesPerMessage: config.attachmentMaxCount,
     },
+    {
+      modelDelivery: {
+        defaultImageDelivery: config.attachmentModelDelivery,
+        maxInlineBytes: config.attachmentMaxBytes,
+      },
+    },
   );
-  const browserAttachmentService = config.attachmentInlineReadTargets
-    ? new ChatAttachmentApplicationService(
-        attachmentStore,
-        s3AttachmentStorage,
-        {
-          maxFileBytes: config.attachmentMaxBytes,
-          maxFilesPerMessage: config.attachmentMaxCount,
-        },
-      )
-    : attachmentService;
-  const eventBus = new InMemoryConversationEventBus();
+  const eventWakeup = new PostgresConversationEventWakeup(getPostgresPool(), {
+    onError: (error) => console.error('[chat-assistant-event-wakeup-error]', error),
+  });
+  const eventBus = new PersistentConversationEventBus(
+    new DrizzleConversationEventStore(getDb()),
+    {
+      onError: (error) => console.error('[chat-assistant-event-replay-error]', error),
+      wakeup: eventWakeup,
+    },
+  );
   const toolGateway = new ImageProductionToolGateway(
-    new ChatAttachmentAssetBridge(store, browserAttachmentService),
+    new ChatAttachmentAssetBridge(store, attachmentService),
   );
   const options: ChatApplicationOptions = {
     agent: {
       maxCostUsdPerTurn: config.maxCostUsdPerTurn,
+      maxDurationMs: config.serverTurnDeadlineMs,
       maxSteps: config.maxToolCallsPerTurn + 1,
       maxToolCallsPerTurn: config.maxToolCallsPerTurn,
-      tools: imageProductionTools,
+      toolCallRecovery: {
+        maxAttempts: 2,
+        multipleCalls: 'request-single',
+      },
+      tools: [...imageProductionTools, designElementSelectionTool],
     },
     allowedModelIdsByMode: {
       'knowledge-base': [config.model],
@@ -123,6 +135,7 @@ function createComposition() {
         timeoutMs: config.providerRequestTimeoutMs,
       }),
     }),
+    attachmentMessageCoordinator: store,
     attachmentService,
     capabilities: {
       attachments: true,
@@ -138,7 +151,7 @@ function createComposition() {
     limits: {
       maxAttachmentBytes: config.attachmentMaxBytes,
       maxAttachments: config.attachmentMaxCount,
-      maxContextImages: config.attachmentMaxContextImages,
+      maxContextAttachments: config.attachmentMaxContextImages,
       maxContextMessages: 20,
       maxMessageCharacters: 4_000,
       maxTotalAttachmentBytes: config.attachmentMaxBytes * config.attachmentMaxCount,
@@ -180,7 +193,7 @@ function createComposition() {
   };
   const messageRoutes = createNextConversationMessagesRoute(routeOptions);
   const attachmentRouteOptions = {
-    attachmentService: browserAttachmentService,
+    attachmentService,
     resolvePrincipal: resolveChatPrincipal,
   };
 

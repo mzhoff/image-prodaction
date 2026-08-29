@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   clampAssistantShellSize,
+  DEFAULT_ASSISTANT_SHELL_SIZE,
   resizeAssistantShell,
 } from './assistant-shell-size.ts';
+
+test('compact mode starts with the shared Ludimogut copilot proportions', () => {
+  assert.deepEqual(DEFAULT_ASSISTANT_SHELL_SIZE, { height: 760, width: 460 });
+});
 
 test('assistant shell size stays inside product and viewport bounds', () => {
   assert.deepEqual(

@@ -41,7 +41,11 @@
 
 .composition-layer-controls {
   gap: 0;
-  padding-top: 44px;
+  padding-top: 0;
+}
+
+.composition-canvas-size-section {
+  padding-top: 48px;
 }
 
 .composition-inspector-section + .composition-inspector-section {

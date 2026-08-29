@@ -7,6 +7,8 @@ import type {
 import { PipelineDomainError } from '../contracts/pipeline-errors';
 
 export interface CreatePipelineRunInput {
+  apiKeyId?: string | null;
+  consumerId?: string | null;
   id: string;
   idempotencyKey: string;
   input: PipelineInputs;
@@ -58,6 +60,8 @@ export async function requestPipelineRunCancel(
 
 function normalizeNewRun(input: CreatePipelineRunInput): NewPipelineRun {
   return {
+    apiKeyId: normalizeOptionalIdentifier(input.apiKeyId, 'API key id'),
+    consumerId: normalizeOptionalIdentifier(input.consumerId, 'Consumer id'),
     id: normalizeIdentifier(input.id, 'Run id'),
     workspaceId: normalizeIdentifier(input.workspaceId, 'Workspace id'),
     pipelineId: normalizeIdentifier(input.pipelineId, 'Pipeline id'),
@@ -78,9 +82,14 @@ function hasSameFingerprint(run: PipelineRunJob, input: NewPipelineRun) {
   return run.workspaceId === input.workspaceId
     && run.pipelineId === input.pipelineId
     && run.pipelineVersion === input.pipelineVersion
+    && run.consumerId === (input.consumerId ?? null)
     && run.sourceApplication === input.sourceApplication
     && run.requestFingerprint === input.requestFingerprint
     && run.maxAttempts === input.maxAttempts;
+}
+
+function normalizeOptionalIdentifier(value: string | null | undefined, label: string) {
+  return value == null ? null : normalizeIdentifier(value, label);
 }
 
 function normalizeInputs(input: PipelineInputs) {

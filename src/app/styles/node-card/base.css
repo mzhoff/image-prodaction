@@ -1,5 +1,6 @@
 .production-node {
   position: absolute;
+  z-index: 0;
   display: flex;
   min-height: 0;
   flex-direction: column;
@@ -14,6 +15,7 @@
 }
 
 .production-node-selected {
+  z-index: 1;
   border-color: #2563eb;
   outline: 1.5px solid #2563eb;
   outline-offset: 0;

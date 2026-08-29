@@ -1,12 +1,20 @@
 import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-registry';
+import { QR_CODE_LIMITS } from '@/shared/qr-code';
 
 const PIPELINE_SETTING_SCHEMAS = {
   aspectRatio: { type: 'string', minLength: 1, maxLength: 24 },
   background: { type: 'string', enum: ['transparent', 'white', 'black'] },
+  content: {
+    type: 'string',
+    maxLength: QR_CODE_LIMITS.maxContentBytes,
+    description: 'Local QR fallback value. Leave empty when a Pipeline Input is connected to qrCode.text.',
+  },
+  contentMode: { type: 'string', enum: ['url', 'text'] },
   customSeparator: { type: 'string', maxLength: 80 },
   delimiter: { type: 'string', maxLength: 40 },
   format: { type: 'string', enum: ['png', 'jpeg', 'webp'] },
   instruction: { type: 'string', maxLength: 4_000 },
+  model: { type: 'string', minLength: 1, maxLength: 160 },
   outputStyle: { type: 'string', enum: ['plain', 'markdown', 'numbered-list'] },
   presetId: { type: 'string', enum: ['universal', 'telegram-post', 'blog-article', 'markdown'] },
   prefix: { type: 'string', maxLength: 1_000 },
@@ -16,6 +24,7 @@ const PIPELINE_SETTING_SCHEMAS = {
   scale: { type: 'string', enum: ['1', '0.75', '0.5', '0.25'] },
   separator: { type: 'string', enum: ['newline', 'double-newline', 'space', 'custom'] },
   size: { type: 'string', minLength: 1, maxLength: 16 },
+  schemaName: { type: 'string', pattern: '^[A-Za-z_][A-Za-z0-9_]*$', minLength: 1, maxLength: 80 },
   suffix: { type: 'string', maxLength: 1_000 },
   temperature: { type: 'number', minimum: 0, maximum: 2 },
   text: { type: 'string', maxLength: 4_000 },
@@ -35,6 +44,7 @@ const PIPELINE_SETTING_SCHEMAS = {
       },
     },
   },
+  fields: createContractFieldsSchema(0),
 } as const;
 
 export type PipelineNodeSetting = keyof typeof PIPELINE_SETTING_SCHEMAS;
@@ -62,6 +72,7 @@ export function createPipelineNodeSchema(): Record<string, unknown> {
   return {
     type: 'object',
     additionalProperties: false,
+    description: 'Exact node object. Use only key, type, optional settings and optional sourceAttachmentIndex. Put title and all other configurable values inside settings; never add top-level id, name, label or position.',
     required: ['key', 'type'],
     properties: {
       key: {
@@ -80,5 +91,52 @@ export function createPipelineNodeSchema(): Record<string, unknown> {
         description: 'For importImage only: zero-based image index from the latest user message that contains attachments. The product copies it to a durable document asset after confirmation.',
       },
     },
+  };
+}
+
+function createContractFieldsSchema(depth: number): Record<string, unknown> {
+  const properties: Record<string, unknown> = {
+    id: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_-]*$', minLength: 1, maxLength: 80 },
+    key: { type: 'string', pattern: '^[A-Za-z_][A-Za-z0-9_]*$', minLength: 1, maxLength: 80 },
+    kind: { type: 'string', enum: ['text', 'number', 'boolean', 'image', 'json'] },
+    required: { type: 'boolean' },
+    description: { type: 'string', maxLength: 500 },
+    defaultValue: createContractDefaultValueSchema(0),
+  };
+  if (depth < 2) properties.fields = createContractFieldsSchema(depth + 1);
+  return {
+    type: 'array',
+    maxItems: 24,
+    items: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'key', 'kind', 'required'],
+      properties,
+    },
+  };
+}
+
+function createContractDefaultValueSchema(depth: number): Record<string, unknown> {
+  const scalarVariants: Array<Record<string, unknown>> = [
+    { type: 'string', maxLength: 4_000 },
+    { type: 'number', minimum: -1_000_000_000, maximum: 1_000_000_000 },
+    { type: 'boolean' },
+    { type: 'null' },
+  ];
+  if (depth >= 3) return { anyOf: scalarVariants };
+  return {
+    anyOf: [
+      ...scalarVariants,
+      {
+        type: 'array',
+        maxItems: 24,
+        items: createContractDefaultValueSchema(depth + 1),
+      },
+      {
+        type: 'object',
+        maxProperties: 24,
+        additionalProperties: createContractDefaultValueSchema(depth + 1),
+      },
+    ],
   };
 }

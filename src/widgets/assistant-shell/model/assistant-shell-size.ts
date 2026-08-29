@@ -11,8 +11,8 @@ interface AssistantShellViewport {
 }
 
 export const DEFAULT_ASSISTANT_SHELL_SIZE: AssistantShellSize = {
-  height: 650,
-  width: 420,
+  height: 760,
+  width: 460,
 };
 
 const MIN_ASSISTANT_SHELL_HEIGHT = 420;

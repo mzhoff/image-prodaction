@@ -1,11 +1,13 @@
 import { getTextPromptVariablePortId, NODE_PORTS } from '@/entities/production-graph/model/node-definitions';
+import { isPipelineContractFieldKind } from '@/entities/production-graph/model/pipeline-contract-fields';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
-import type { PortKind, ProductionNodeType } from '@/entities/production-graph/model/types';
+import type { PipelineContractFieldKind, PortKind, ProductionNodeType } from '@/entities/production-graph/model/types';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import type { ReactNode } from 'react';
 import { addNodeMenu } from './add-node-menu';
 
 const layerPortIds = productionLayers.map((layer) => layer.id);
+export const CONNECT_CREATE_PIPELINE_FIELD_PORT = '__pipeline-contract-field__';
 
 export interface ConnectCreateOption {
   type: ProductionNodeType;
@@ -13,19 +15,32 @@ export interface ConnectCreateOption {
   icon: ReactNode;
   sourcePortId?: string;
   targetPortId?: string;
+  pipelineFieldKind?: PipelineContractFieldKind;
 }
 
 export function getConnectCreateOptions(sourceKind: PortKind) {
   return addNodeMenu.flatMap((item) => {
     const targetPortId = getDefaultTargetPortId(item.type, sourceKind);
-    return targetPortId ? [{ ...item, targetPortId }] : [];
+    return targetPortId ? [{
+      ...item,
+      targetPortId,
+      ...(targetPortId === CONNECT_CREATE_PIPELINE_FIELD_PORT && isPipelineContractFieldKind(sourceKind)
+        ? { pipelineFieldKind: sourceKind }
+        : undefined),
+    }] : [];
   });
 }
 
 export function getConnectCreateSourceOptions(targetKind: PortKind, targetPortId?: string) {
   return addNodeMenu.flatMap((item) => {
     const sourcePortId = getDefaultSourcePortId(item.type, targetKind, targetPortId);
-    return sourcePortId ? [{ ...item, sourcePortId }] : [];
+    return sourcePortId ? [{
+      ...item,
+      sourcePortId,
+      ...(sourcePortId === CONNECT_CREATE_PIPELINE_FIELD_PORT && isPipelineContractFieldKind(targetKind)
+        ? { pipelineFieldKind: targetKind }
+        : undefined),
+    }] : [];
   });
 }
 
@@ -44,6 +59,8 @@ export function createConnectMenuActions(
 function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) {
   if (type === 'router') return 'input';
   if (type === 'textPrompt' && sourceKind === 'text') return getTextPromptVariablePortId(0);
+  if (type === 'pipelineOutput' && isPipelineContractFieldKind(sourceKind)) return CONNECT_CREATE_PIPELINE_FIELD_PORT;
+  if (type === 'structuredOutput') return 'source';
 
   const inputPorts = NODE_PORTS[type].filter((port) => port.side === 'input');
   const priority = sourceKind === 'subject'
@@ -53,8 +70,8 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
     : sourceKind === 'image'
     ? ['layer-0', 'media-0', 'media', 'image-0', 'image', 'imageCollection', 'reference', ...layerPortIds]
     : sourceKind === 'any'
-    ? ['input', 'body', 'text', 'image', 'reference']
-    : ['layer-0', 'body', 'text', 'textCollection', 'text-0', 'prompt', ...layerPortIds, 'image'];
+    ? ['input', 'source', 'body', 'text', 'image', 'reference']
+    : ['layer-0', 'source', 'body', 'text', 'textCollection', 'text-0', 'prompt', ...layerPortIds, 'image'];
 
   return priority.find((portId) => {
     const targetPort = inputPorts.find((port) => port.id === portId);
@@ -68,6 +85,7 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
 
 function getDefaultSourcePortId(type: ProductionNodeType, targetKind: PortKind, targetPortId?: string) {
   if (type === 'router') return 'output';
+  if (type === 'pipelineInput' && isPipelineContractFieldKind(targetKind)) return CONNECT_CREATE_PIPELINE_FIELD_PORT;
   const outputPorts = NODE_PORTS[type].filter((port) => port.side === 'output');
   const priority = targetKind === 'reference' && targetPortId === 'actors'
     ? ['subject', 'image', 'result', 'text', 'prompt']

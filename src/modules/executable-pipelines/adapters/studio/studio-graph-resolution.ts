@@ -1,5 +1,7 @@
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
+import type { StructuredOutputNodeData } from '@/entities/production-graph/model/types';
+import { getPipelineFieldIdFromPortId } from '@/entities/production-graph/model/pipeline-contract-fields';
 import type { PipelineValueKind } from '../../contracts/pipeline-contracts';
 import type { StudioPipelineBoundary } from '../../contracts/pipeline-publication-contracts';
 import { PipelineDomainError } from '../../contracts/pipeline-errors';
@@ -46,8 +48,19 @@ export function getRuntimeOutput(
   if (node.type === 'textFormatter' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textSplitter' && sourcePortId === 'items') return { kind: 'text_collection', outputKey: 'items' };
   if (node.type === 'textSplitter' && /^item-\d+$/.test(sourcePortId)) return { kind: 'text', outputKey: sourcePortId };
+  if (node.type === 'structuredOutput' && sourcePortId === 'json') {
+    return { kind: 'json', outputKey: 'json' };
+  }
+  if (node.type === 'structuredOutput') {
+    const fieldId = getPipelineFieldIdFromPortId(sourcePortId);
+    const field = fieldId
+      ? (node.data as StructuredOutputNodeData).fields.find((candidate) => candidate.id === fieldId)
+      : undefined;
+    if (field) return { kind: field.kind, outputKey: sourcePortId };
+  }
   if (node.type === 'imageToText' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'generateImage' && sourcePortId === 'image') return { kind: 'image', outputKey: 'image' };
+  if (node.type === 'qrCode' && sourcePortId === 'image') return { kind: 'image', outputKey: 'image' };
   return null;
 }
 

@@ -68,6 +68,52 @@ test('OpenRouter adapter uses only the explicitly supplied key and normalizes te
   });
 });
 
+test('OpenRouter adapter sends strict structured output schema and requires provider support', async () => {
+  let requestBody: Record<string, unknown> | null = null;
+  const adapter = createOpenRouterProviderAdapter({
+    fetch: async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return jsonResponse({
+        id: 'structured-1',
+        model: 'google/gemini-2.5-flash',
+        choices: [{ message: { content: '{"idea":"Ready"}' } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+    },
+  });
+
+  await adapter.execute({
+    expectedOutputModalities: ['text'],
+    messages: [{ role: 'user', parts: [{ modality: 'text', text: 'Extract.' }] }],
+    modelId: 'google/gemini-2.5-flash',
+    operation: 'generate_structured_data',
+    parameters: {
+      structuredOutput: {
+        name: 'content_idea',
+        schema: {
+          type: 'object', additionalProperties: false,
+          properties: { idea: { type: 'string' } }, required: ['idea'],
+        },
+      },
+    },
+  }, { credential: explicitApiKey });
+
+  const body = requestBody as Record<string, unknown> | null;
+  assert.ok(body);
+  assert.deepEqual(body.provider, { require_parameters: true });
+  assert.deepEqual(body.response_format, {
+    type: 'json_schema',
+    json_schema: {
+      name: 'content_idea',
+      strict: true,
+      schema: {
+        type: 'object', additionalProperties: false,
+        properties: { idea: { type: 'string' } }, required: ['idea'],
+      },
+    },
+  });
+});
+
 test('OpenRouter adapter normalizes credential summary, models and operation status', async () => {
   const adapter = createOpenRouterProviderAdapter({
     fetch: async (input) => {

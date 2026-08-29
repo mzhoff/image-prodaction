@@ -8,9 +8,12 @@ import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { normalizeNodeDisplayState } from '@/entities/production-graph/model/project-schema';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
+import { preparePipelineConnectCreate } from '../lib/prepare-pipeline-connect-create';
 import { useCanvasClipboard } from './use-canvas-clipboard';
 import { useCanvasImageImport } from './use-canvas-image-import';
 import { useCanvasImageViewer } from './use-canvas-image-viewer';
+import { useCanvasFavoriteNodes } from './use-canvas-favorite-nodes';
+import { useCanvasNodeFactory } from './use-canvas-node-factory';
 import { useCanvasProjectTransfer } from './use-canvas-project-transfer';
 import { useCanvasToast } from './use-canvas-toast';
 import { type ConnectionDropOnEmpty, useConnectionDraft } from './use-connection-draft';
@@ -44,7 +47,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
   const [pendingConnectionMenu, setPendingConnectionMenu] = useState<ConnectionDropOnEmpty | null>(null);
   const [sectionColorPreviews, setSectionColorPreviews] = useState<Record<string, string>>({});
   const lastPointerWorldRef = useRef({ x: 0, y: 0 });
-  const { downloadAssets, imageViewer, openImageViewer } = useCanvasImageViewer({
+  const { copyAssetToClipboard, downloadAssets, imageViewer, openImageViewer } = useCanvasImageViewer({
     assets: graph.assets,
     nodesById: graph.nodesById,
     showToast,
@@ -122,13 +125,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     screenToWorld: canvas.screenToWorld,
   });
 
-  const createNode = useCallback((type: ProductionNodeType, position: { x: number; y: number }) => {
-    const nodeId = graph.addNode(type, position);
-    if (type === 'generateImage') {
-      graph.setNodeUiState(nodeId, { state: 'Collapsed' });
-    }
-    return nodeId;
-  }, [graph]);
+  const createNode = useCanvasNodeFactory(graph);
 
   const openConnectionCreateMenu = useCallback((drop: ConnectionDropOnEmpty) => {
     const source = drop.sourceNodeId ? graph.nodesById.get(drop.sourceNodeId) : undefined;
@@ -155,12 +152,13 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
           }],
         });
       }
+      const { sourcePortId, targetPortId } = preparePipelineConnectCreate(nodeId, option);
       const result = drop.direction === 'from-output'
-        ? drop.sourceNodeId && drop.sourcePortId && option.targetPortId
-          ? graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, option.targetPortId)
+        ? drop.sourceNodeId && drop.sourcePortId && targetPortId
+          ? graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, targetPortId)
           : { ok: false as const, reason: 'Could not create a downstream connection.' }
-        : drop.targetNodeId && drop.targetPortId && option.sourcePortId
-          ? graph.connect(nodeId, option.sourcePortId, drop.targetNodeId, drop.targetPortId)
+        : drop.targetNodeId && drop.targetPortId && sourcePortId
+          ? graph.connect(nodeId, sourcePortId, drop.targetNodeId, drop.targetPortId)
           : { ok: false as const, reason: 'Could not create an upstream connection.' };
       if (!result.ok) showToast(result.reason);
       setPendingConnectionMenu(null);
@@ -188,18 +186,17 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
   }, [clearConnectionDraft, contextMenu, pendingConnectionMenu]);
 
   const createNodeFromPalette = useCallback((type: ProductionNodeType) => {
-    const container = canvas.containerRef.current;
-    const rect = container?.getBoundingClientRect();
-    const position = rect
-      ? canvas.screenToWorld({
-        clientX: rect.left + rect.width / 2,
-        clientY: rect.top + rect.height / 2,
-      }) ?? lastPointerWorldRef.current
-      : lastPointerWorldRef.current;
-    createNode(type, position);
+    createNode(type, getFallbackPastePosition());
     closeContextMenu();
-  }, [canvas, closeContextMenu, createNode]);
+  }, [closeContextMenu, createNode, getFallbackPastePosition]);
 
+  const favoriteNodes = useCanvasFavoriteNodes({
+    closeContextMenu,
+    getPalettePosition: getFallbackPastePosition,
+    graph,
+    showToast,
+    workspaceId: documentSync.workspaceId,
+  });
   const toggleCollapsedStateForSelectedNodes = useCallback(() => {
     const candidateNodeIds = Array.from(graph.selectedSet).flatMap((nodeId) => {
       const node = graph.nodesById.get(nodeId);
@@ -216,13 +213,15 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
 
   const { openCanvasMenu, openNodeMenu, openNodeOptionsMenu, openSectionMenu } =
     useProductionCanvasMenus({
-      canvas, closeContextMenu, contextMenu, createNode, downloadAssets,
+      canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
+      favoriteNodes,
       exportSectionPipelineTemplate, graph, importPipelineTemplateAt, openImageViewer,
       projectId, sectionColorPreviews, setSectionColorPreviews, showToast, studioPipelines,
     });
   const { cursor, handleCanvasDragOver, handleCanvasDrop, handleCanvasMouseDown,
     handleCanvasMouseMove } = useProductionCanvasInteractions({
-    boxSelection, canvas, canvasTool, closeContextMenu, createNode,
+    boxSelection, canvas, canvasTool, closeContextMenu,
+    createFavoriteNode: favoriteNodes.createFavoriteNode, createNode,
     getFallbackPastePosition, importImageFiles, lastPointerWorldRef,
     nodesById: graph.nodesById, sectionDrawing, setCanvasTool, showToast,
     toggleCollapsedStateForSelectedNodes,
@@ -241,6 +240,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     collapsedGenerateComposingNodeIds,
     connectionDraft,
     contextMenu,
+    createFavoriteNodeFromPalette: favoriteNodes.createFavoriteNodeFromPalette,
     createNodeFromPalette,
     cursor,
     edges: graph.edges,
@@ -250,6 +250,9 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     handleCanvasMouseMove,
     historyFutureLength: graph.historyFutureLength,
     historyPastLength: graph.historyPastLength,
+    favoriteNodesError: favoriteNodes.error,
+    favoriteNodes: favoriteNodes.favorites,
+    favoriteNodesLoading: favoriteNodes.loading,
     imageViewer,
     importProjectSnapshotFile,
     measuredPortPoints,

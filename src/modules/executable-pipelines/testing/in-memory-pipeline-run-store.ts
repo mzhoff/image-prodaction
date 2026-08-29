@@ -139,6 +139,8 @@ function createRun(input: NewPipelineRun, createdAt: Date): PipelineRunJob {
     workspaceId: input.workspaceId,
     pipelineId: input.pipelineId,
     pipelineVersion: input.pipelineVersion,
+    consumerId: input.consumerId ?? null,
+    apiKeyId: input.apiKeyId ?? null,
     sourceApplication: input.sourceApplication,
     idempotencyKey: input.idempotencyKey,
     requestFingerprint: input.requestFingerprint,

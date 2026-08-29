@@ -3,11 +3,13 @@
 import { Minus } from 'lucide-react';
 import type { DragEvent, ReactNode } from 'react';
 import { useState } from 'react';
+import type { FavoriteNodePreset } from '@/entities/production-graph/model/favorite-node-preset';
+import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
 import { useScrollableWheel } from '@/shared/ui/use-scrollable-wheel';
 import { addNodeMenuGroups } from '../lib/add-node-menu';
 import type { AddNodeMenuEntry } from '../lib/add-node-menu';
-import { NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
+import { FAVORITE_NODE_DRAG_MIME_TYPE, NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
 
 interface PaletteNode {
   disabled?: boolean;
@@ -18,7 +20,11 @@ interface PaletteNode {
 }
 
 interface DocumentNodePaletteProps {
+  favoriteNodes: FavoriteNodePreset[];
+  favoriteNodesError?: string;
+  favoriteNodesLoading: boolean;
   onClose: () => void;
+  onCreateFavoriteNode: (favoriteId: string) => void;
   onCreateNode: (type: ProductionNodeType) => void;
   open: boolean;
 }
@@ -31,7 +37,8 @@ const paletteTabs: Array<{ id: PaletteTab; label: string }> = [
   { id: 'favorite', label: 'Favorite' },
 ];
 
-export function DocumentNodePalette({ onClose, onCreateNode, open }: DocumentNodePaletteProps) {
+export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favoriteNodesLoading, onClose,
+  onCreateFavoriteNode, onCreateNode, open }: DocumentNodePaletteProps) {
   const [activeTab, setActiveTab] = useState<PaletteTab>('tools');
   const handleWheel = useScrollableWheel<HTMLDivElement>();
 
@@ -67,14 +74,65 @@ export function DocumentNodePalette({ onClose, onCreateNode, open }: DocumentNod
               </div>
             </section>
           ))
+        ) : activeTab === 'favorite' && favoriteNodes.length > 0 ? (
+          <div className="document-node-palette-favorite-grid">
+            {favoriteNodes.map((favorite) => (
+              <FavoritePaletteCard
+                favorite={favorite}
+                key={favorite.id}
+                onCreateFavoriteNode={onCreateFavoriteNode}
+              />
+            ))}
+          </div>
         ) : (
           <div className="document-node-palette-empty">
             <strong>{activeTab === 'templates' ? 'Templates' : 'Favorite'}</strong>
-            <span>This section is ready for custom node collections.</span>
+            <span>{activeTab === 'favorite'
+              ? favoriteNodesLoading
+                ? 'Loading your saved nodes…'
+                : favoriteNodesError
+                  ? favoriteNodesError
+                : 'Use a node menu to add your first reusable preset.'
+              : 'This section is ready for custom node collections.'}</span>
           </div>
         )}
       </div>
     </aside>
+  );
+}
+
+function FavoritePaletteCard({ favorite, onCreateFavoriteNode }: {
+  favorite: FavoriteNodePreset;
+  onCreateFavoriteNode: (favoriteId: string) => void;
+}) {
+  const definition = getNodeDefinition(favorite.snapshot.nodeType);
+  const menuItem = addNodeMenuGroups
+    .flatMap((group) => flattenPaletteNodes(group.items))
+    .find((item) => item.type === favorite.snapshot.nodeType);
+  const title = (favorite.snapshot.data as { title?: unknown }).title;
+  const presetTitle = typeof title === 'string' && title.trim() ? title.trim() : definition.title;
+
+  const handleDragStart = (event: DragEvent<HTMLButtonElement>) => {
+    event.dataTransfer.setData(FAVORITE_NODE_DRAG_MIME_TYPE, favorite.id);
+    event.dataTransfer.effectAllowed = 'copy';
+    attachDragPreview(event.currentTarget, event);
+  };
+
+  return (
+    <button
+      className="document-node-palette-favorite-card"
+      draggable
+      onClick={() => onCreateFavoriteNode(favorite.id)}
+      onDragStart={handleDragStart}
+      title={`Add ${presetTitle}`}
+      type="button"
+    >
+      <span className="document-node-palette-favorite-preview">
+        {menuItem?.icon}
+        <strong>{presetTitle}</strong>
+      </span>
+      <span className="document-node-palette-favorite-type">{definition.menuLabel}</span>
+    </button>
   );
 }
 

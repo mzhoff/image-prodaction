@@ -41,36 +41,16 @@ test('keeps product output and temperature limits while ChatModule owns provider
   assert.equal(receivedTemperature, 0.2);
 });
 
-test('repairs invalid product tool input before ChatModule validates the call', async () => {
+test('delegates invalid tool calls unchanged so ChatModule owns recovery', async () => {
   let calls = 0;
   const client: ToolCallingLanguageModelGateway = {
     async completeWithTools(input) {
       calls += 1;
-      if (calls === 1) {
-        return {
-          content: '',
-          model: input.model,
-          provider: 'openrouter',
-          toolCalls: [{ id: 'bad', input: { nodes: 'wrong', summary: 'Build' }, name: 'pipeline_build' }],
-          usage: { completionTokens: 10, costUsd: 0.001, promptTokens: 100, totalTokens: 110 },
-        };
-      }
-      assert.equal(input.messages.at(-1)?.role, 'tool');
       return {
         content: '',
         model: input.model,
         provider: 'openrouter',
-        toolCalls: [{
-          id: 'fixed',
-          input: {
-            documentName: 'Layered banner',
-            edges: [],
-            nodes: [{ key: 'reference', type: 'importImage' }],
-            summary: 'Prepare a reusable layered banner.',
-          },
-          name: 'pipeline_build',
-        }],
-        usage: { completionTokens: 20, costUsd: 0.002, promptTokens: 200, totalTokens: 220 },
+        toolCalls: [{ id: 'bad', input: { nodes: 'wrong' }, name: 'pipeline_build' }],
       };
     },
   };
@@ -86,9 +66,6 @@ test('repairs invalid product tool input before ChatModule validates the call', 
     tools: imageProductionTools,
   });
 
-  assert.equal(calls, 2);
-  assert.equal(result.toolCalls[0]?.id, 'fixed');
-  assert.deepEqual(result.usage, {
-    completionTokens: 30, costUsd: 0.003, promptTokens: 300, totalTokens: 330,
-  });
+  assert.equal(calls, 1);
+  assert.equal(result.toolCalls[0]?.id, 'bad');
 });

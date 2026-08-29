@@ -4,6 +4,7 @@
 @import "../src/app/styles/canvas.css";
 @import "../src/app/styles/assistant-floating-button.css";
 @import "../src/app/styles/assistant-shell.css";
+@import "../src/app/styles/design-element-selection.css";
 @import "../src/app/styles/document-view.css";
 @import "../src/app/styles/workspace-view.css";
 @import "../src/app/styles/pipeline-playground.css";

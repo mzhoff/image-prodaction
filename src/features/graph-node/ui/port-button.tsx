@@ -9,8 +9,8 @@ import type { PortKind, ProductionNode } from '@/entities/production-graph/model
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 
-type PortDataKind = 'audio' | 'empty' | 'image' | 'location' | 'publication' | 'subject' | 'text' | 'video';
-export type PortConnectionState = 'empty' | 'text' | 'image' | 'subject' | 'location' | 'publication' | 'mixed';
+type PortDataKind = 'audio' | 'boolean' | 'empty' | 'image' | 'json' | 'location' | 'number' | 'publication' | 'subject' | 'text' | 'video';
+export type PortConnectionState = 'empty' | 'text' | 'number' | 'boolean' | 'json' | 'image' | 'subject' | 'location' | 'publication' | 'mixed';
 
 interface PortButtonProps {
   style?: CSSProperties;
@@ -96,6 +96,9 @@ function getPortVisualState({
   if (connectionState === 'subject') return { connected: true, dataKind: 'subject' as const, hasData: true };
   if (connectionState === 'location') return { connected: true, dataKind: 'location' as const, hasData: true };
   if (connectionState === 'publication') return { connected: true, dataKind: 'publication' as const, hasData: true };
+  if (connectionState === 'json') return { connected: true, dataKind: 'json' as const, hasData: true };
+  if (connectionState === 'number') return { connected: true, dataKind: 'number' as const, hasData: true };
+  if (connectionState === 'boolean') return { connected: true, dataKind: 'boolean' as const, hasData: true };
   if (connectionState === 'text') return { connected: true, dataKind: 'text' as const, hasData: true };
   if (connectionState === 'empty') return { connected: false, dataKind: fallbackDataKind, hasData: false };
 
@@ -136,7 +139,10 @@ function getPortVisualState({
       : firstSourcePort?.kind === 'location' || (!firstSourcePort && fallbackDataKind === 'location') ? 'location'
         : firstSourcePort?.kind === 'publication' || (!firstSourcePort && fallbackDataKind === 'publication') ? 'publication'
           : firstSourcePort?.kind === 'image' || (!firstSourcePort && fallbackDataKind === 'image') ? 'image'
-            : 'text';
+            : firstSourcePort?.kind === 'json' || fallbackDataKind === 'json' ? 'json'
+              : firstSourcePort?.kind === 'number' || fallbackDataKind === 'number' ? 'number'
+                : firstSourcePort?.kind === 'boolean' || fallbackDataKind === 'boolean' ? 'boolean'
+                  : 'text';
   const hasData = connectedEdges.some((edge) => {
     const sourceNode = nodesById.get(edge.sourceNodeId);
     if (!sourceNode) return false;
@@ -145,6 +151,10 @@ function getPortVisualState({
     if (sourcePort?.kind === 'subject') return Boolean(getNodeSubjectResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'location') return Boolean(getNodeLocationResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'publication') return Boolean(getNodePublicationResult(sourceNode, { edges, nodes }));
+    if (sourcePort?.kind === 'json' || sourcePort?.kind === 'number' || sourcePort?.kind === 'boolean') {
+      return sourceNode.type === 'structuredOutput'
+        && Boolean((sourceNode.data as { result?: unknown }).result);
+    }
     if (sourceNode.type === 'router') {
       const nextKind = getRouterDataKind(sourceNode, { edges, nodes });
       if (nextKind === 'image') return Boolean(getNodeImageAssetId(sourceNode, { assets: [], edges, nodes }));
@@ -163,6 +173,9 @@ function getFallbackDataKind(kind: PortKind | string, portId?: string): PortData
   if (kind === 'any') return 'empty';
   if (kind === 'audio') return 'audio';
   if (kind === 'image') return 'image';
+  if (kind === 'json') return 'json';
+  if (kind === 'number') return 'number';
+  if (kind === 'boolean') return 'boolean';
   if (kind === 'subject') return 'subject';
   if (kind === 'location') return 'location';
   if (kind === 'publication') return 'publication';
@@ -180,6 +193,9 @@ function getSourcePortDataKind(
   if (sourceNode?.type === 'router') return getRouterDataKind(sourceNode, { edges, nodes });
   if (sourceKind === 'audio') return 'audio';
   if (sourceKind === 'image') return 'image';
+  if (sourceKind === 'json') return 'json';
+  if (sourceKind === 'number') return 'number';
+  if (sourceKind === 'boolean') return 'boolean';
   if (sourceKind === 'location') return 'location';
   if (sourceKind === 'publication') return 'publication';
   if (sourceKind === 'subject') return 'subject';

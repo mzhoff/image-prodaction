@@ -12,6 +12,7 @@ export function useProductionCanvasStore() {
   const selectedNodeIds = useProductionGraphStore((state) => state.selectedNodeIds);
   const selectedSectionIds = useProductionGraphStore((state) => state.selectedSectionIds);
   const addNode = useProductionGraphStore((state) => state.addNode);
+  const addNodeFromFavorite = useProductionGraphStore((state) => state.addNodeFromFavorite);
   const addSection = useProductionGraphStore((state) => state.addSection);
   const compactDynamicInputSlots = useProductionGraphStore((state) => state.compactDynamicInputSlots);
   const compactTextConcatInputs = useProductionGraphStore((state) => state.compactTextConcatInputs);
@@ -57,6 +58,7 @@ export function useProductionCanvasStore() {
 
   return useMemo(() => ({
     addNode,
+    addNodeFromFavorite,
     addSection,
     assets,
     bounds,
@@ -105,6 +107,7 @@ export function useProductionCanvasStore() {
     updateNodeDataSilent,
   }), [
     addNode,
+    addNodeFromFavorite,
     addSection,
     assets,
     bounds,

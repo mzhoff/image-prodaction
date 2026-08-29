@@ -3,9 +3,7 @@ import {
   type ToolCallingLanguageModelGateway,
   type ToolCallingLanguageModelInput,
 } from '@prodactionpro/chat-connectors';
-import { addTokenUsage, createToolInputCorrectionMessages } from '../core/tool-input-recovery';
-
-const MAX_TOOL_INPUT_CORRECTIONS = 2;
+import { collectSafeToolInputDiagnostics } from './tool-input-diagnostics';
 
 export class LimitedOpenRouterGateway implements ToolCallingLanguageModelGateway {
   private readonly client: ToolCallingLanguageModelGateway;
@@ -43,29 +41,14 @@ export class LimitedOpenRouterGateway implements ToolCallingLanguageModelGateway
   private readonly maxOutputTokens: number;
 
   async completeWithTools(input: ToolCallingLanguageModelInput) {
-    let messages = input.messages;
-    let usage: Awaited<ReturnType<ToolCallingLanguageModelGateway['completeWithTools']>>['usage'];
-
-    for (let correction = 0; correction <= MAX_TOOL_INPUT_CORRECTIONS; correction += 1) {
-      const result = await this.client.completeWithTools({
-        ...input,
-        messages,
-        maxTokens: Math.min(input.maxTokens ?? this.maxOutputTokens, this.maxOutputTokens),
-        temperature: input.temperature ?? 0.2,
-      });
-      usage = addTokenUsage(usage, result.usage);
-      const correctionMessages = createToolInputCorrectionMessages({ result, tools: input.tools });
-      if (!correctionMessages || correction === MAX_TOOL_INPUT_CORRECTIONS) {
-        return { ...result, usage };
-      }
-      console.warn('[chat-assistant-tool-input-correction]', {
-        correction: correction + 1,
-        toolCallCount: result.toolCalls.length,
-        toolNames: result.toolCalls.slice(0, 4).map((toolCall) => toolCall.name),
-      });
-      messages = [...messages, ...correctionMessages];
+    const result = await this.client.completeWithTools({
+      ...input,
+      maxTokens: Math.min(input.maxTokens ?? this.maxOutputTokens, this.maxOutputTokens),
+      temperature: input.temperature ?? 0.2,
+    });
+    for (const diagnostic of collectSafeToolInputDiagnostics(result)) {
+      console.warn('[chat-assistant-tool-input-invalid]', diagnostic);
     }
-
-    throw new Error('Assistant tool input recovery ended unexpectedly.');
+    return result;
   }
 }

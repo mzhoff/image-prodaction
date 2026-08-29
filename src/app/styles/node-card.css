@@ -1,5 +1,6 @@
 @import "./node-card/base.css";
 @import "./node-card/text-workflow-node.css";
+@import "./node-card/pipeline-contract-node.css";
 @import "./node-card/router-node.css";
 @import "./node-card/composition-node.css";
 @import "./node-card/composition-editor-shell.css";
@@ -10,6 +11,8 @@
 @import "./node-card/composition-inspector-layout.css";
 @import "./node-card/composition-inspector-controls.css";
 @import "./node-card/composition-fill-controls.css";
+@import "./node-card/composition-shape-effects.css";
 @import "./node-card/workflow-results.css";
+@import "./node-card/qr-code-node.css";
 @import "./node-card/shared-node-actions.css";
 @import "./node-card/banner-node.css";

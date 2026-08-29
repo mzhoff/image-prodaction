@@ -1,10 +1,9 @@
 import type { CompositionLayerKind, CompositionLayerStyle } from '@/entities/production-graph/model/types';
+import { normalizeCompositionCanvasDimension } from './composition-canvas-presets';
 import type { CompositionAlignment, CompositionLayerView } from './composition-model-types';
 
 export function normalizeCanvasDimension(value: unknown, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? Math.min(4096, Math.max(256, Math.round(value)))
-    : fallback;
+  return typeof value === 'number' ? normalizeCompositionCanvasDimension(value, fallback) : fallback;
 }
 
 export function normalizeLayerStyle(
@@ -26,8 +25,11 @@ export function normalizeLayerStyle(
     ...layer,
     align: layer?.align ?? 'left',
     blendMode: layer?.blendMode ?? 'pass-through',
+    blur: layer?.blur ?? 0,
     color: layer?.color ?? '#ffffff',
+    cornerRadius: layer?.cornerRadius ?? 0,
     fit: layer?.fit ?? 'fit',
+    fillOpacity: layer?.fillOpacity ?? 100,
     flipX: layer?.flipX ?? false,
     flipY: layer?.flipY ?? false,
     fontFamily: layer?.fontFamily ?? 'Inter, Arial, sans-serif',
@@ -38,7 +40,7 @@ export function normalizeLayerStyle(
     lineHeight: layer?.lineHeight ?? getDefaultTextLineHeight(fontSize),
     locked: layer?.locked ?? false,
     opacity: layer?.opacity ?? 100,
-    preserveAspectRatio: layer?.preserveAspectRatio ?? true,
+    preserveAspectRatio: layer?.preserveAspectRatio ?? false,
     rotation: layer?.rotation ?? 0,
     sizingMode: layer?.sizingMode ?? 'fixed',
     verticalAlign: layer?.verticalAlign ?? 'top',

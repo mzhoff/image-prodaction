@@ -5,6 +5,10 @@ import type {
   PipelineNodeDefinition,
 } from '../contracts/pipeline-contracts';
 import { PipelineDomainError } from '../contracts/pipeline-errors';
+import {
+  getPipelineValueContractDefinitionError,
+  isPublicContractKey,
+} from './pipeline-value-validation';
 
 export interface PipelineCompilerOptions {
   isHandlerSupported?: (handlerType: string, handlerVersion: string) => boolean;
@@ -43,9 +47,22 @@ function validateDefinitionShape(definition: ExecutablePipelineDefinition) {
   }
 
   for (const [inputKey, contract] of Object.entries(definition.inputs)) {
-    validateKey(inputKey, 'Pipeline input');
-    if (typeof contract.required !== 'boolean') {
-      throw invalidDefinition(`Pipeline input "${inputKey}" must declare required.`);
+    validatePublicKey(inputKey, 'Pipeline input');
+    validateContract(contract, `Pipeline input "${inputKey}"`);
+  }
+
+  if (definition.outputContracts !== undefined) {
+    for (const [outputKey, contract] of Object.entries(definition.outputContracts)) {
+      validatePublicKey(outputKey, 'Pipeline output contract');
+      validateContract(contract, `Pipeline output contract "${outputKey}"`);
+      if (contract.required && !definition.outputs[outputKey]) {
+        throw invalidDefinition(`Required pipeline output "${outputKey}" has no binding.`);
+      }
+    }
+    for (const outputKey of Object.keys(definition.outputs)) {
+      if (!definition.outputContracts[outputKey]) {
+        throw invalidDefinition(`Pipeline output "${outputKey}" has no output contract.`);
+      }
     }
   }
 }
@@ -129,13 +146,27 @@ function validateOutputs(
   nodesById: ReadonlyMap<string, PipelineNodeDefinition>,
 ) {
   for (const [outputName, binding] of Object.entries(definition.outputs)) {
-    validateKey(outputName, 'Pipeline output');
+    validatePublicKey(outputName, 'Pipeline output');
     validateKey(binding.outputKey, `Output key for pipeline output "${outputName}"`);
     if (!nodesById.has(binding.nodeId)) {
       throw invalidDefinition(
         `Pipeline output "${outputName}" references unknown node "${binding.nodeId}".`,
       );
     }
+  }
+}
+
+function validateContract(
+  contract: ExecutablePipelineDefinition['inputs'][string],
+  label: string,
+) {
+  const issue = getPipelineValueContractDefinitionError(contract);
+  if (issue) throw invalidDefinition(`${label} ${issue}.`);
+}
+
+function validatePublicKey(value: string, label: string) {
+  if (!isPublicContractKey(value)) {
+    throw invalidDefinition(`${label} has an invalid format.`);
   }
 }
 

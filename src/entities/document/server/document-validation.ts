@@ -1,5 +1,7 @@
 import { PROJECT_SCHEMA_VERSION } from '@/entities/production-graph/model/project-schema';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
+import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-registry';
+import { validatePipelineContractFields } from '@/entities/production-graph/model/pipeline-contract-fields';
 
 export const MAX_DOCUMENT_SNAPSHOT_BYTES = 5 * 1024 * 1024;
 
@@ -40,7 +42,29 @@ export function validateDocumentSnapshot(value: unknown): ProjectExport {
     throw new DocumentValidationError('snapshot_limits_exceeded', 'Document snapshot contains too many records.');
   }
 
+  validateGraphNodes(value.project.nodes);
+
   return value as unknown as ProjectExport;
+}
+
+function validateGraphNodes(nodes: unknown[]) {
+  const supportedTypes = new Set<string>(PRODUCTION_NODE_TYPES);
+  for (const [index, node] of nodes.entries()) {
+    if (!isRecord(node)
+      || typeof node.id !== 'string'
+      || !supportedTypes.has(String(node.type))
+      || !isRecord(node.data)) {
+      throw new DocumentValidationError('invalid_snapshot', `Document node ${index} has an unsupported structure.`);
+    }
+    if (node.type !== 'pipelineInput' && node.type !== 'pipelineOutput' && node.type !== 'structuredOutput') continue;
+    const fieldErrors = validatePipelineContractFields(node.data.fields);
+    if (fieldErrors.length > 0) {
+      throw new DocumentValidationError(
+        'invalid_pipeline_contract',
+        `Document node ${index} has an invalid pipeline contract: ${fieldErrors[0]}`,
+      );
+    }
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

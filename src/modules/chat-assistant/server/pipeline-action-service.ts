@@ -24,6 +24,7 @@ import {
   materializePipelineAttachmentImports,
   resolvePipelineAttachmentImports,
 } from './pipeline-attachment-import-service';
+import { readVerifiedDocumentContext } from './verified-document-context';
 
 const PROPOSAL_TTL_MS = 10 * 60 * 1_000;
 
@@ -32,7 +33,7 @@ export async function preparePipelineBuildProposal(
   context: ToolExecutionContext,
   attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ): Promise<ToolActionProposal> {
-  const verified = readVerifiedDocument(context);
+  const verified = readVerifiedDocumentContext(context);
   const idempotencyKey = context.idempotencyKey ?? context.toolCallId;
   const existing = await findExistingProposal(context, verified.id, idempotencyKey);
   if (existing) return toToolActionProposal(existing);
@@ -41,10 +42,6 @@ export async function preparePipelineBuildProposal(
   if (current.workspaceId !== context.tenantId || current.status !== 'active') {
     throw new Error('The current document cannot be changed.');
   }
-  if (current.revision !== verified.revision) {
-    throw new Error('The current document revision changed during preparation.');
-  }
-
   const parsed = parsePipelineBuildInput(request.input);
   const graph = current.snapshot?.project
     ? structuredClone(current.snapshot.project)
@@ -87,7 +84,7 @@ export async function executePipelineBuildProposal(
   context: ToolExecutionContext,
   attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ): Promise<ToolCallResult> {
-  const verified = readVerifiedDocument(context);
+  const verified = readVerifiedDocumentContext(context);
   if (!request.executionRef || !isUuidV7(request.executionRef)) return invalidProposal();
 
   return getDb().transaction(async (transaction) => {
@@ -217,18 +214,6 @@ async function findExistingProposal(
   return proposal;
 }
 
-function readVerifiedDocument(context: ToolExecutionContext) {
-  const value = context.verifiedContext?.document;
-  if (!isRecord(value)
-    || typeof value.id !== 'string'
-    || typeof value.revision !== 'number'
-    || !Number.isInteger(value.revision)
-    || value.selectorRevisionMatches === false) {
-    throw new Error('A verified document context is required for this action.');
-  }
-  return { id: value.id, revision: value.revision };
-}
-
 function toToolActionProposal(proposal: typeof chatPipelineActionProposal.$inferSelect): ToolActionProposal {
   if (proposal.status !== 'prepared' || proposal.expiresAt.getTime() <= Date.now()) {
     throw new Error('The existing product action proposal is no longer active.');
@@ -285,8 +270,4 @@ async function markProposalConflict(
 ) {
   await transaction.update(chatPipelineActionProposal).set({ status: 'conflict' })
     .where(eq(chatPipelineActionProposal.id, proposalId));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

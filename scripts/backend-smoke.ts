@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { config } from 'dotenv';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   pipelineApiKey,
   pipelineEndpoint,
@@ -9,6 +9,7 @@ import {
   pipelineVersion,
 } from '../src/modules/executable-pipelines/adapters/postgres/pipeline-schema.ts';
 import { createPipelineApiKey } from '../src/modules/executable-pipelines/server/pipeline-api-key-service.ts';
+import { ensurePipelineConsumerForEndpoint } from '../src/modules/executable-pipelines/server/pipeline-consumer-service.ts';
 import { CURRENT_TERMS_VERSION } from '../src/shared/auth/terms-contract.ts';
 import { getDb, getPostgresPool } from '../src/shared/db/client.ts';
 import { waitForEmailLink } from './mailpit-client.ts';
@@ -482,14 +483,29 @@ async function exercisePipelineRuntime(cookie: string, documentId: string) {
     .limit(1);
   assert.ok(endpoint, 'Published pipeline endpoint was not persisted.');
 
-  const apiKey = await createPipelineApiKey({
-    createdByUserId: endpoint.createdByUserId,
+  const consumer = await ensurePipelineConsumerForEndpoint({
     endpointId: endpoint.endpointId,
-    label: 'Backend smoke pipeline runtime',
+    name: 'Backend smoke pipeline runtime',
     sourceApplication: 'backend-smoke',
+  });
+  const apiKey = await createPipelineApiKey({
+    consumerId: consumer.id,
+    createdByUserId: endpoint.createdByUserId,
+    label: 'Backend smoke pipeline runtime',
+  });
+  const otherConsumer = await ensurePipelineConsumerForEndpoint({
+    endpointId: endpoint.endpointId,
+    name: 'Backend smoke isolated consumer',
+    sourceApplication: 'backend-smoke-isolated',
+  });
+  const otherApiKey = await createPipelineApiKey({
+    consumerId: otherConsumer.id,
+    createdByUserId: endpoint.createdByUserId,
+    label: 'Backend smoke isolated consumer',
   });
   const idempotencyKey = `backend-smoke-pipeline-${runId}`;
   const authorization = { Authorization: `Bearer ${apiKey.token}` };
+  const otherAuthorization = { Authorization: `Bearer ${otherApiKey.token}` };
 
   try {
     await requestJson(`/v1/pipelines/${endpointPublicId}/runs`, {
@@ -511,6 +527,16 @@ async function exercisePipelineRuntime(cookie: string, documentId: string) {
     const pipelineRunId = submitted.id as string;
     assert.ok(pipelineRunId, 'Pipeline runtime did not return a run id.');
     assert.equal(submitted.status, 'queued');
+
+    await requestJson(`/v1/runs/${pipelineRunId}`, {
+      expectedStatus: 404,
+      headers: otherAuthorization,
+    });
+    await requestJson(`/v1/runs/${pipelineRunId}/cancel`, {
+      expectedStatus: 404,
+      method: 'POST',
+      headers: otherAuthorization,
+    });
 
     let completed: Record<string, any> | null = null;
     for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -558,9 +584,13 @@ async function exercisePipelineRuntime(cookie: string, documentId: string) {
 
     const [storedRun] = await getDb().select({
       actualCostUsd: pipelineRun.actualCostUsd,
+      apiKeyId: pipelineRun.apiKeyId,
+      consumerId: pipelineRun.consumerId,
       status: pipelineRun.status,
       totalTokens: pipelineRun.totalTokens,
     }).from(pipelineRun).where(eq(pipelineRun.id, pipelineRunId)).limit(1);
+    assert.equal(storedRun?.apiKeyId, apiKey.id);
+    assert.equal(storedRun?.consumerId, consumer.id);
     assert.equal(storedRun?.status, 'succeeded');
     assert.equal(storedRun?.totalTokens, '15');
     assert.equal(Number(storedRun?.actualCostUsd), 0.001);
@@ -577,7 +607,9 @@ async function exercisePipelineRuntime(cookie: string, documentId: string) {
       { nodeId: 'result-node', status: 'succeeded' },
     ]);
   } finally {
-    await getDb().delete(pipelineApiKey).where(eq(pipelineApiKey.id, apiKey.id));
+    await getDb().delete(pipelineApiKey).where(
+      inArray(pipelineApiKey.id, [apiKey.id, otherApiKey.id]),
+    );
   }
 }
 
@@ -600,11 +632,15 @@ async function exerciseImagePipelineRuntime(cookie: string, documentId: string) 
     .where(eq(pipelineEndpoint.publicId, endpointPublicId))
     .limit(1);
   assert.ok(endpoint, 'Published image pipeline endpoint was not persisted.');
-  const apiKey = await createPipelineApiKey({
-    createdByUserId: endpoint.createdByUserId,
+  const consumer = await ensurePipelineConsumerForEndpoint({
     endpointId: endpoint.endpointId,
-    label: 'Backend smoke image pipeline',
+    name: 'Backend smoke image pipeline',
     sourceApplication: 'backend-smoke-image',
+  });
+  const apiKey = await createPipelineApiKey({
+    consumerId: consumer.id,
+    createdByUserId: endpoint.createdByUserId,
+    label: 'Backend smoke image pipeline',
   });
   const authorization = { Authorization: `Bearer ${apiKey.token}` };
 

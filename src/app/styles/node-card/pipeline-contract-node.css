@@ -1,0 +1,302 @@
+.production-node-pipeline-contract {
+  overflow: visible;
+}
+
+.pipeline-contract-node-summary {
+  min-height: 38px;
+  border-bottom: 1px solid #ecece8;
+  color: #7d858c;
+  padding: 10px 18px;
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 16px;
+}
+
+.pipeline-contract-fields {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px 12px;
+}
+
+.pipeline-contract-field-level {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pipeline-contract-field-branch {
+  min-width: 0;
+}
+
+.pipeline-contract-field-row {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #e6e7e4;
+  border-radius: 10px;
+  background: #f6f6f4;
+  padding: 5px 6px 5px calc(6px + var(--pipeline-contract-field-depth, 0) * 12px);
+}
+
+.pipeline-contract-field-branch[data-depth="1"] > .pipeline-contract-field-row,
+.pipeline-contract-field-branch[data-depth="2"] > .pipeline-contract-field-row {
+  background: #fff;
+}
+
+.pipeline-contract-field-disclosure,
+.pipeline-contract-field-action,
+.pipeline-contract-required-toggle {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #858b91;
+  padding: 0;
+}
+
+.pipeline-contract-field-disclosure:disabled {
+  cursor: default;
+  opacity: 0.28;
+}
+
+.pipeline-contract-field-disclosure span {
+  width: 13px;
+  height: 13px;
+}
+
+.pipeline-contract-field-action:hover:not(:disabled),
+.pipeline-contract-field-action.is-active,
+.pipeline-contract-required-toggle:hover,
+.pipeline-contract-field-disclosure:hover:not(:disabled) {
+  background: #e9eae7;
+  color: #111;
+}
+
+.pipeline-contract-field-action:disabled,
+.pipeline-contract-field-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.pipeline-contract-field-remove:hover:not(:disabled) {
+  background: #fee9e7;
+  color: #b42318;
+}
+
+.pipeline-contract-required-toggle.is-active {
+  background: #e6f2eb;
+  color: #16794d;
+}
+
+.pipeline-contract-field-key {
+  min-width: 76px;
+  flex: 1 1 auto;
+  border: 0;
+  background: transparent;
+  color: #171717;
+  padding: 5px 4px;
+  outline: none;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+}
+
+.pipeline-contract-field-key:focus {
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #b8c8ff;
+}
+
+.pipeline-contract-field-key[aria-invalid="true"] {
+  color: #b42318;
+}
+
+.pipeline-contract-type-select {
+  width: 74px;
+  min-height: 26px;
+  flex: 0 0 74px;
+  justify-content: space-between;
+  border: 1px solid #e1e2df;
+  background: #fff;
+  padding: 4px 7px;
+  color: #545a61;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pipeline-contract-field-key-error,
+.pipeline-contract-default-error {
+  display: block;
+  color: #b42318;
+  padding: 4px 8px 0 calc(38px + var(--pipeline-contract-field-depth, 0) * 12px);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.pipeline-contract-field-children {
+  margin: 7px 0 0 15px;
+  border-left: 1px solid #dcded9;
+  padding-left: 8px;
+}
+
+.pipeline-contract-empty-json {
+  display: inline-flex;
+  min-height: 29px;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #7d858c;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.pipeline-contract-empty-json:hover:not(:disabled) {
+  background: #eceeeb;
+  color: #111;
+}
+
+.pipeline-contract-field-details {
+  display: grid;
+  gap: 7px;
+  margin: 6px 0 0 20px;
+  border: 1px solid #e4e6e2;
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px;
+}
+
+.pipeline-contract-field-details label {
+  display: grid;
+  gap: 4px;
+  color: #7d858c;
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 13px;
+}
+
+.pipeline-contract-field-details input,
+.pipeline-contract-field-details select,
+.pipeline-contract-field-details textarea {
+  width: 100%;
+  border: 1px solid #dedfdb;
+  border-radius: 8px;
+  background: #f8f8f6;
+  color: #222;
+  padding: 7px 8px;
+  outline: none;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 15px;
+}
+
+.pipeline-contract-field-details textarea {
+  min-height: 76px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.pipeline-contract-field-details input:focus,
+.pipeline-contract-field-details select:focus,
+.pipeline-contract-field-details textarea:focus {
+  border-color: #8ca8ff;
+  box-shadow: 0 0 0 2px rgba(5, 44, 217, 0.08);
+}
+
+.pipeline-contract-field-details p {
+  margin: 0;
+  color: #8b8f94;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.pipeline-contract-add-field {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 1px dashed #d7d9d4;
+  border-radius: 10px;
+  background: transparent;
+  color: #6f767c;
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 680;
+}
+
+.pipeline-contract-add-field:hover:not(:disabled) {
+  border-color: #aeb6aa;
+  background: #f5f6f3;
+  color: #111;
+}
+
+.pipeline-contract-add-field:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pipeline-contract-field-limit {
+  margin-left: auto;
+  color: #9aa09f;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.pipeline-contract-node-message {
+  margin: 0 16px 12px;
+  border: 1px solid #f3b5ae;
+  border-radius: 9px;
+  background: #fff1ef;
+  color: #a62b1f;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 620;
+  line-height: 14px;
+}
+
+.pipeline-contract-schema-name {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #ecece8;
+  padding: 7px 18px;
+}
+
+.pipeline-contract-schema-name span {
+  color: #899096;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pipeline-contract-schema-name input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  border-radius: 7px;
+  background: #f5f5f3;
+  color: #333;
+  padding: 6px 8px;
+  outline: none;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.pipeline-contract-schema-name input:focus {
+  box-shadow: inset 0 0 0 1px #a9bcff;
+}

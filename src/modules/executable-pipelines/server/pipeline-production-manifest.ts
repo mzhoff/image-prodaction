@@ -34,6 +34,14 @@ export const PRODUCTION_PIPELINE_NODE_MANIFEST = [
     timeoutMs: 180_000,
   }),
   operation({
+    handlerType: 'ai.structured.generate',
+    inputs: { source: 'any?' },
+    outputs: { json: 'json', 'field-*': 'any' },
+    paid: true,
+    sideEffect: 'provider-call',
+    timeoutMs: 180_000,
+  }),
+  operation({
     handlerType: 'ai.image.analyze',
     inputs: { image: 'image' },
     outputs: { text: 'text' },
@@ -43,11 +51,19 @@ export const PRODUCTION_PIPELINE_NODE_MANIFEST = [
   }),
   operation({
     handlerType: 'ai.image.generate',
-    inputs: { '*': 'json?' },
+    inputs: { '*': 'any?' },
     outputs: { image: 'image' },
     paid: true,
     sideEffect: 'storage-write',
     timeoutMs: 600_000,
+  }),
+  operation({
+    handlerType: 'image.qr.generate',
+    inputs: { text: 'text?' },
+    outputs: { image: 'image' },
+    deterministic: true,
+    sideEffect: 'storage-write',
+    timeoutMs: 30_000,
   }),
   operation({
     handlerType: 'image.export',

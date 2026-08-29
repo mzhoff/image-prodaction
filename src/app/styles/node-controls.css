@@ -765,6 +765,18 @@
   --port-color: #16a34a;
 }
 
+.node-port-data-json {
+  --port-color: #8b5cf6;
+}
+
+.node-port-data-number {
+  --port-color: #d97706;
+}
+
+.node-port-data-boolean {
+  --port-color: #db2777;
+}
+
 .node-port-data-subject {
   --port-color: #7c3aed;
 }

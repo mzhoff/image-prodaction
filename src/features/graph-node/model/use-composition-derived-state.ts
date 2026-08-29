@@ -28,8 +28,8 @@ export function useCompositionDerivedState({
   node: ProductionNode;
   nodes: ProductionNode[];
 }) {
-    const layers = useMemo(() => (
-      Array.from({ length: layerCount }, (_, index) => {
+    const layers = useMemo(() => {
+      const inputLayers = Array.from({ length: layerCount }, (_, index) => {
         const portId = getCompositionLayerPortId(index);
         const image = getIncomingImageInputs(node.id, portId, { assets, edges, nodes })[0];
         const text = getIncomingTextInputs(node.id, portId, { edges, nodes })[0];
@@ -51,8 +51,21 @@ export function useCompositionDerivedState({
           style: normalizeLayerStyle(saved, { canvasHeight, canvasWidth, index, kind }),
           text: text?.text ?? saved?.text,
         } satisfies CompositionLayerView;
-      })
-    ), [assets, canvasHeight, canvasWidth, data.layers, edges, layerCount, node.id, nodes]);
+      });
+      const inputLayerIds = new Set(inputLayers.map((layer) => layer.id));
+      const rectangles = (data.layers ?? []).flatMap((saved, shapeIndex): CompositionLayerView[] => {
+        if (saved.kind !== 'rectangle' || inputLayerIds.has(saved.id)) return [];
+        return [{
+          id: saved.id,
+          index: layerCount + shapeIndex,
+          kind: 'rectangle',
+          name: saved.name || `Rectangle ${shapeIndex + 1}`,
+          portId: saved.id,
+          style: normalizeLayerStyle(saved, { canvasHeight, canvasWidth, index: layerCount + shapeIndex, kind: 'rectangle' }),
+        }];
+      });
+      return [...inputLayers, ...rectangles];
+    }, [assets, canvasHeight, canvasWidth, data.layers, edges, layerCount, node.id, nodes]);
 
     const groups = useMemo(() => normalizeCompositionGroups(data.groups, layers), [data.groups, layers]);
     const groupStateByLayerId = useMemo(() => {
@@ -63,7 +76,7 @@ export function useCompositionDerivedState({
       return next;
     }, [groups]);
 
-    const connectedLayers = layers.filter((layer) => layer.assetId || layer.text?.trim());
+    const connectedLayers = layers.filter((layer) => layer.kind === 'rectangle' || layer.assetId || layer.text?.trim());
     const connectedLayerIds = connectedLayers.map((layer) => layer.id);
     const layerTreeItems = useMemo(() => getCompositionLayerTreeItems(data.layerOrder, groups, connectedLayers), [connectedLayers, data.layerOrder, groups]);
     const treeOrderedConnectedLayers = useMemo(() => flattenLayerTreeItems(layerTreeItems), [layerTreeItems]);

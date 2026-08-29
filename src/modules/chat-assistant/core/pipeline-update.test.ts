@@ -185,3 +185,56 @@ test('prepares a new import node from the latest attached image during graph upd
   assert.deepEqual(prepared.patch.attachmentImports, [{ attachmentIndex: 1, nodeId: importNode.id }]);
   assert.equal('assetId' in importNode.data, false);
 });
+
+test('adds a targetUrl contract and deterministic QR layer to an existing composition', () => {
+  const composition = createDefaultNode('composition', { x: 1_400, y: 500 });
+  const current = {
+    ...structuredClone(initialProject),
+    nodes: [composition],
+  };
+  const prepared = preparePipelineUpdate(pipelineUpdateInputSchema.parse({
+    summary: 'Add an automated targetUrl QR layer to the current composition.',
+    nodes: [
+      {
+        key: 'publicInput',
+        type: 'pipelineInput',
+        settings: {
+          fields: [{ id: 'target-url', key: 'targetUrl', kind: 'text', required: true }],
+        },
+      },
+      {
+        key: 'qr',
+        type: 'qrCode',
+        settings: { contentMode: 'url' },
+      },
+    ],
+    edges: [
+      { sourceNodeRef: 'publicInput', sourcePortId: 'field:target-url', targetNodeRef: 'qr', targetPortId: 'text' },
+      { sourceNodeRef: 'qr', sourcePortId: 'image', targetNodeRef: composition.id, targetPortId: 'layer-1' },
+    ],
+  }), current);
+  const updated = applyPipelineUpdatePatch(current, prepared.patch);
+  const qr = updated.nodes.find((node) => node.type === 'qrCode')!;
+  const publicInput = updated.nodes.find((node) => node.type === 'pipelineInput')!;
+
+  assert.equal('fields' in publicInput.data ? publicInput.data.fields[0]?.key : undefined, 'targetUrl');
+  assert.equal('content' in qr.data ? qr.data.content : undefined, '');
+  assert.equal('outputFormat' in qr.data ? qr.data.outputFormat : undefined, 'png');
+  assert.equal(updated.edges.some((edge) => (
+    edge.sourceNodeId === publicInput.id
+    && edge.sourcePortId === 'field:target-url'
+    && edge.targetNodeId === qr.id
+    && edge.targetPortId === 'text'
+  )), true);
+  assert.equal(updated.edges.some((edge) => (
+    edge.sourceNodeId === qr.id
+    && edge.sourcePortId === 'image'
+    && edge.targetNodeId === composition.id
+    && edge.targetPortId === 'layer-1'
+  )), true);
+  assert.deepEqual(prepared.safePreview.nodes.find((node) => node.key === 'qr')?.settings, {
+    title: 'QR Code',
+    content: '',
+    contentMode: 'url',
+  });
+});

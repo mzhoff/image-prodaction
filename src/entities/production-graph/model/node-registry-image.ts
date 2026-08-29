@@ -4,6 +4,7 @@ import type { ProductionNodeDefinitionMap } from './node-registry-types';
 import { productionLayers } from './production-layers';
 import type { GraphPort } from './types';
 import { createDefaultCurves } from '@/shared/lib/image-renderer/curves';
+import { QR_CODE_DEFAULTS } from '@/shared/qr-code';
 
 const layerPresetInputPorts = productionLayers.map((layer) => ({
   id: layer.id,
@@ -43,6 +44,21 @@ export const imageNodeDefinitions = {
       preset: 'default',
       presets: ['default'],
       prompt: defaultExtractPrompt,
+    }),
+  },
+  qrCode: {
+    type: 'qrCode',
+    title: 'QR Code',
+    menuLabel: 'QR code',
+    defaultHeight: 510,
+    ports: [
+      { id: 'text', label: 'URL / text', kind: 'text', side: 'input' },
+      { id: 'image', label: 'QR image', kind: 'image', side: 'output' },
+    ],
+    createData: () => ({
+      title: 'QR Code',
+      content: '',
+      ...QR_CODE_DEFAULTS,
     }),
   },
   referenceComposer: {
@@ -247,6 +263,7 @@ export const imageNodeDefinitions = {
 } satisfies ProductionNodeDefinitionMap<
   | 'importImage'
   | 'imageToText'
+  | 'qrCode'
   | 'referenceComposer'
   | 'composition'
   | 'generateImage'

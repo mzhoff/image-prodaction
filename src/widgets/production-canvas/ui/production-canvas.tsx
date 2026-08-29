@@ -79,8 +79,12 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           title={projectTitle}
         />
         <DocumentNodePalette
+          favoriteNodesError={model.favoriteNodesError}
+          favoriteNodes={model.favoriteNodes}
+          favoriteNodesLoading={model.favoriteNodesLoading}
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
+          onCreateFavoriteNode={model.createFavoriteNodeFromPalette}
           onCreateNode={model.createNodeFromPalette}
         />
         <CanvasGrid pan={model.canvas.pan} zoom={model.canvas.zoom} />

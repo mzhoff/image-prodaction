@@ -7,6 +7,10 @@ import {
 import { getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import type { AssetRecord, GenerationResultMetadata, ProductionNode } from '@/entities/production-graph/model/types';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
+import {
+  copyImageBlobToClipboard,
+  getImageClipboardErrorMessage,
+} from '@/shared/lib/copy-image-to-clipboard';
 
 interface UseCanvasImageViewerOptions {
   assets: AssetRecord[];
@@ -42,6 +46,18 @@ export function useCanvasImageViewer({ assets, nodesById, showToast }: UseCanvas
     showToast('Image saved to Library.');
   }, [imageViewerAsset, showToast]);
 
+  const copyAssetToClipboard = useCallback((assetId: string) => {
+    const asset = assets.find((candidate) => candidate.id === assetId);
+    if (!asset || asset.kind !== 'image') {
+      showToast('No current image to copy.');
+      return;
+    }
+
+    void copyImageBlobToClipboard(() => loadAssetBlob(asset))
+      .then(() => showToast('Image copied to clipboard.'))
+      .catch((error) => showToast(getImageClipboardErrorMessage(error)));
+  }, [assets, showToast]);
+
   const downloadAssets = useCallback(async (assetIds: string[]) => {
     const selectedAssets = uniqueStrings(assetIds)
       .map((assetId) => assets.find((asset) => asset.id === assetId))
@@ -65,6 +81,7 @@ export function useCanvasImageViewer({ assets, nodesById, showToast }: UseCanvas
   }, [assets, showToast]);
 
   return {
+    copyAssetToClipboard,
     downloadAssets,
     imageViewer: imageViewerNode && imageViewerAsset && imageViewerAssetId && imageViewerUrl ? {
       asset: imageViewerAsset,

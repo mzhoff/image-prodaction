@@ -1,4 +1,4 @@
-export type PortKind = 'any' | 'image' | 'text' | 'preset' | 'reference' | 'subject' | 'location' | 'publication' | 'video' | 'audio';
+export type PortKind = 'any' | 'image' | 'text' | 'number' | 'boolean' | 'json' | 'preset' | 'reference' | 'subject' | 'location' | 'publication' | 'video' | 'audio';
 export type CollectionItemKind = 'image' | 'text' | 'subject' | 'location' | 'publication';
 export type CollectionKind = `${CollectionItemKind}[]`;
 export type GraphValueKind = CollectionItemKind | CollectionKind;
@@ -13,12 +13,16 @@ export type ProductionNodeType =
   | 'textToSpeech'
   | 'textFormatter'
   | 'textSplitter'
+  | 'pipelineInput'
+  | 'pipelineOutput'
+  | 'structuredOutput'
   | 'iterator'
   | 'router'
   | 'subjectBuilder'
   | 'locationBuilder'
   | 'telegramPublication'
   | 'imageToText'
+  | 'qrCode'
   | 'referenceComposer'
   | 'composition'
   | 'generateImage'

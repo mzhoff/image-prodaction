@@ -39,7 +39,7 @@ Image Production, самостоятельно применять миграци
 ## Передача в следующий релиз ChatModule
 
 Этот handoff намеренно содержит только открытые универсальные задачи. Пункты,
-которые уже поставлены ChatModule 0.9.0 и повторно проверены в Image Production,
+которые уже поставлены ChatModule 0.11.0 и повторно проверены в Image Production,
 удалены из рабочего списка; их история остаётся в Git и в retirement ledger.
 Product-specific поведение Image Production сюда также не включается.
 
@@ -47,11 +47,14 @@ Product-specific поведение Image Production сюда также не в
 | --- | --- | --- | --- | --- |
 | CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
 | CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
-| CM-017 | P1 | Attachments / drop zone / event boundary | `workaround-active` | Drop принимает только composer, нет состояния всей зоны и безопасной границы с host UI |
-| CM-018 | P2 | Attachments / composer presentation | `workaround-active` | Managed attachments показаны техническим списком вместо компактных превью |
-| CM-019 | P1 | Attachments / model delivery | `workaround-active` | Один read target используется и браузером, и внешним AI-провайдером |
-| CM-020 | P1 | Runtime / first-turn failure | `ready-for-upstream` | Conversation ID теряется, если самый первый turn завершился ошибкой |
-| CM-021 | P1 | Agent runtime / tool validation recovery | `workaround-active` | Invalid или parallel provider tool call до prepareTool завершает turn общей ошибкой |
+| CM-021 | P2 | Agent runtime / product-validation recovery | `ready-for-upstream` | Базовый recovery поставлен; нет публичного контракта для безопасной причины product preflight |
+| CM-022 | P1 | Composer / keyboard policy | `ready-for-upstream` | Global keydown перехватывает ввод вне сфокусированного composer, включая Shadow DOM |
+| CM-023 | P1 | Agent runtime / retry context | `ready-for-upstream` | Retry теряет server-verified context selectors исходного turn |
+| CM-024 | P1 | Agent runtime / schema diagnostics | `ready-for-upstream` | После исчерпания recovery нет bounded diagnostics и понятной причины invalid tool input |
+| CM-025 | P2 | Agent runtime / repeated read tools | `ready-for-upstream` | Повторные одинаковые read-tools расходуют step budget и раздувают контекст одного turn |
+| CM-026 | P1 | Agent runtime / verified-context conflict recovery | `ready-for-upstream` | Revision drift внутри turn сворачивается в общий `CHAT_TOOL_PREPARATION_FAILED` вместо автоматической revalidation |
+| CM-027 | P1 | Interactive responses / persisted selection | `ready-for-upstream` | Нет универсальной интерактивной карточки множественного выбора с продолжением того же turn |
+| CM-028 | P1 | Runtime / live tool-call delivery | `workaround-active` | Turn завершается текстом, но completed read-tool может быть пропущен при переподключении persistent event stream |
 
 ### CM-007 — коробочный модуль Assistant Quality
 
@@ -228,166 +231,238 @@ createChatModules({
   regression tests и предоставлена инструкция обновления существующего
   ChatModule consumer.
 
-### CM-017 — универсальная drop-zone вложений для всей области чата
+### CM-021 — безопасная причина product-validation для recovery
 
-- **Обнаружено:** 2026-08-13 при drag-and-drop изображения в плавающую панель
-  Image Production поверх canvas.
-- **Evidence:** пакетный `ChatComposer` обрабатывает drop только внутри формы
-  ввода и не публикует состояние file-drag для внешней оболочки. При drop над
-  другой частью панели событие достигает host canvas, который одновременно
-  создаёт собственную Import-ноду.
-- **Влияние:** одно действие пользователя может иметь два разных результата, а
-  отсутствие подсветки не показывает, какая поверхность примет файл.
-- **Временный workaround:** consumer перехватывает file drag на capture-фазе во
-  всей `AssistantShell`, показывает overlay и передаёт файлы публичному
-  `useChatAttachments().addFiles`. Код отмечен как временный и не копирует
-  storage/upload lifecycle пакета.
-
-#### Ожидаемое пакетное решение CM-017
-
-- Публичный headless hook или wrapper-компонент для произвольной drop-зоны:
-  `isFileDragActive`, типизированные handlers и вызов штатного attachment
-  controller. Host должен иметь возможность обернуть как `ChatModuleShell`, так
-  и собственный header/tabs без доступа к внутренним компонентам пакета.
-- Drop-zone принимает только поддерживаемые файлы, вызывает `preventDefault` и
-  изолирует принятое событие от соседней host-поверхности. Она не должна
-  блокировать обычные text/link drags или drop вне смонтированной зоны.
-- Настраиваемый overlay slot и локализуемые label/hint. Доступные picker и paste
-  продолжают работать независимо от drag UI.
-- **Regression tests:** drag над header/thread/composer даёт одно вложение;
-  соседняя host drop-zone не вызывается; drop вне чата остаётся host-приложению;
-  feedback/disabled tab не принимает файл; nested dragenter/dragleave не мигает.
-
-### CM-018 — компактные managed-attachment previews в composer
-
-- **Обнаружено:** 2026-08-13 после подключения managed attachments 0.9.0.
-- **Evidence:** `ChatAttachmentUploadList` выводит строку с маленьким preview,
-  именем файла, техническим статусом и отдельным текстовым действием. Для
-  нескольких визуальных референсов это занимает лишнюю высоту и не похоже на
-  вложения сообщения.
-- **Влияние:** пользователю сложнее сопоставить референсы, composer визуально
-  перегружен, удаление не связано с конкретным изображением.
-- **Временный workaround:** consumer рисует thumbnail tray из публичных
-  `ChatAttachmentUploadItem.previewUrl/status/progress` и вызывает штатные
-  `remove/retry`. Upload/delete/storage остаются пакетными.
-
-#### Ожидаемое пакетное решение CM-018
-
-- Готовый composer presentation для managed image attachments: компактные
-  квадратные thumbnails, стабильная высота, имя в accessible label/tooltip и
-  крестик удаления в правом верхнем углу по hover/focus (постоянно видимый на
-  touch-устройствах).
-- Состояния queued/uploading/failed/ready не меняют геометрию карточки:
-  загрузка показывает progress, ошибка — доступный retry, удаление отменяет
-  активную загрузку и очищает remote object по действующему контракту.
-- После принятия submit runtime должен сразу очистить текст и composer previews,
-  сохранив immutable snapshot attachment refs в optimistic user message. Очистка
-  не должна ждать ответа модели; failed turn продолжает показывать вложение в
-  уже отправленном пользовательском сообщении.
-- Компонент принимает appearance tokens/slots и работает с `previewUrl`
-  managed attachment, не требуя `dataUrl` или публичного storage URL.
-- Геометрия должна быть package default, а не consumer override: верхний и
-  левый край первого thumbnail совпадают с направляющими начала текста в
-  textarea. При текущем package layout это означает одинаковый итоговый inset
-  `18px` от внутреннего края composer (`12px` form padding + `6px` content
-  inset) по block-start и inline-start. Справа применяется тот же logical inset.
-- Реализовать это через единый theme token (например,
-  `--cm-composer-content-inset`) либо общий внутренний layout wrapper для
-  textarea, managed attachment tray и package attachment previews. Не следует
-  требовать от продукта знания внутренних `12px + 6px` или копирования CSS.
-- Thumbnail остаётся `72x72px`, квадратным, с package radius/border tokens.
-  Несколько вложений переносятся внутри тех же левой и правой направляющих;
-  добавление, удаление, upload/error state не сдвигают textarea по горизонтали.
-- **Regression tests:** клавиатурное удаление и retry, touch presentation,
-  максимум файлов, длинные имена, object URL cleanup, failed upload, повторная
-  загрузка и отсутствие layout shift в composer. Добавить geometry regression:
-  при наличии одного и нескольких thumbnails их `left` равен координате начала
-  текста textarea, `top` использует тот же inset, а layout сохраняется для
-  compact/regular surface, разных radius tokens и RTL.
-
-#### Готовая инструкция агенту ChatModule для CM-018
-
-Задача: сделать композицию managed image attachments штатной частью
-`ChatComposer`, чтобы все продукты получали pixel-perfect layout без локального
-CSS. Сохрани публичный upload/controller contract и реализуй presentation в
-package UI/core: квадратные previews `72x72px`, package border/radius, remove по
-hover/focus и доступный touch-state. В дефолтной теме выровняй верхний и левый
-край thumbnail по тем же content guides, что и начало текста textarea; не
-кодируй знание об Image Production. Вынеси общий inset в theme token или общий
-layout wrapper, поддержи compact/regular, wrapping, RTL и переопределение темы.
-Добавь component/visual regression tests на равенство координат thumbnail и
-начала текста, отсутствие layout shift и все upload states. Опубликуй canary,
-проверь packed consumer, затем stable release с changelog/migration note. После
-consumer-проверки Image Production удалит локальный padding workaround.
-
-### CM-019 — отдельная доставка приватного вложения AI-провайдеру
-
-- **Обнаружено:** 2026-08-13 при анализе изображения из локального MinIO.
-- **Evidence:** `ChatAttachmentApplicationService.resolveForModel()` использует
-  тот же `AttachmentObjectStorage.createReadTarget()`, что и browser content
-  route. Подписанный URL `minio.localhost` открывается браузером пользователя,
-  но внешний AI-провайдер не может обратиться к локальной сети consumer.
-- **Влияние:** корректно загруженное и провалидированное вложение завершается
-  provider validation error до старта tool execution.
-- **Временный workaround:** Image Production в локальном окружении использует
-  отдельный model-facing application service с base64 data URL. Browser route
-  продолжает получать обычный signed URL. В production флаг выключен.
-
-#### Ожидаемое пакетное решение CM-019
-
-- Разделить browser preview target и model delivery resolver: публичный signed
-  URL, inline data URL либо provider-native upload/file ID выбирает серверный
-  adapter consumer, не меняя upload/store/link lifecycle.
-- Inline delivery должна иметь server-side лимит размера, MIME allowlist и не
-  попадать в логи, telemetry, persistence или публичные attachment metadata.
-- Provider error telemetry должна безопасно сохранять HTTP status, error code и
-  correlation ID без секретов и полного payload, чтобы отличать недоступный URL,
-  неподдерживаемый MIME и лимиты модели.
-- **Regression tests:** private/local S3, публичный S3, истёкший signed URL,
-  превышение inline-лимита, cancel и отсутствие base64 в логах.
-
-### CM-020 — сохранение conversation после ошибки первого turn
-
-- **Обнаружено:** 2026-08-13 при повторной проверке attachment provider error.
-- **Evidence:** сервер успевает создать conversation, user message и failed turn,
-  но `ChatRuntime.submit()` записывает `conversationId` только из успешного
-  `ChatTurnResponse`. Error payload не содержит conversation ID, поэтому host не
-  может привязать созданный диалог к документу; после reload виден welcome.
-- **Ожидаемое решение:** stream protocol сообщает conversation ID до первого
-  provider call либо включает его в типизированный error payload. Runtime сразу
-  сохраняет ID и подключает events независимо от terminal status turn.
-- **Regression tests:** ошибка provider на самом первом turn, reload/reconnect,
-  retry того же turn и отсутствие второй conversation/user message.
-
-### CM-021 — recovery первой ошибки provider tool input
-
-- **Обнаружено:** 2026-08-13 при сборке нового image pipeline после успешного
-  `node_catalog` и явного согласия пользователя.
-- **Evidence:** обе provider calls завершились `success`, read tool завершился,
-  но write tool не был сохранён: внутренний AJV отклонил аргументы либо модель
-  вернула несколько tool calls до `proposeToolCall`. Turn получил общий
-  `CHAT_AGENT_RUN_FAILED`, `executionState=ambiguous`, `retryable=false`.
-- **Разрыв:** текущая bounded correction работает только после
-  `CHAT_TOOL_PREPARATION_FAILED`, то есть уже после успешной package schema
-  validation и вызова product `prepareTool`.
+- **Что закрыто в 0.11.0:** пакет ограниченно исправляет malformed JSON,
+  schema-invalid input и несколько provider tool calls, суммирует usage и
+  соблюдает общий deadline. После `CHAT_TOOL_PREPARATION_FAILED` он также может
+  повторить model call. Локальный provider-boundary recovery удалён.
+- **Оставшийся разрыв:** `McpToolGateway.prepareTool` может вернуть proposal либо
+  бросить ошибку, но не имеет публичного типизированного контракта для
+  ограниченной безопасной причины product preflight. Поэтому модель узнаёт лишь
+  общий `CHAT_TOOL_PREPARATION_FAILED`, а не, например, что конкретный вход уже
+  занят или типы портов несовместимы.
+- **Влияние:** безопасность не нарушается — product compiler по-прежнему
+  отклоняет неверный граф до записи. Но correction менее точен и может исчерпать
+  две попытки на ошибке, которую можно было бы исправить с первого раза.
 
 #### Ожидаемое пакетное решение CM-021
 
-- При первой schema-validation ошибке перед `proposeToolCall` вернуть модели
-  bounded список безопасных paths/codes без значений полей и дать одну или две
-  конфигурируемые попытки исправить аргументы.
-- Если provider вернул несколько tools, а host разрешает только один, ничего не
-  исполнять и попросить модель вернуть ровно следующий одиночный call. Read и
-  write tools должны выполняться последовательно.
-- Суммировать usage/cost всех correction calls и соблюдать общий deadline,
-  cancel, max steps, max tool calls и max cost turn. Не создавать второй user
-  message/turn и не дублировать idempotency key.
-- После исчерпания попыток вернуть типизированный безопасный outcome
-  `CHAT_TOOL_INPUT_INVALID` с `executionState=not-started` и возможностью retry,
-  а не общий ambiguous failure.
-- **Regression tests:** invalid required field, unknown/extra field, malformed
-  nested node/edge, parallel read+write, повторно невалидная коррекция, cancel,
-  usage aggregation и отсутствие любого tool execution до валидного call.
+- Добавить framework-neutral результат подготовки или отдельную ошибку с
+  allowlisted `code` и bounded `issues: { code, path }[]`; raw значения,
+  названия приватных ресурсов и stack trace передавать модели нельзя.
+- ChatModule самостоятельно превращает этот безопасный результат в correction
+  message, учитывает его в общем `toolCallRecovery` budget и после исчерпания
+  возвращает `not-started` outcome.
+- Consumer только классифицирует собственные детерминированные ошибки; он не
+  управляет model loop, usage, retries или provider messages.
+- **Regression tests:** несовместимый port type, занятый single-input, stale
+  product revision, повторно невалидная correction, redaction и отсутствие
+  выполнения до успешной подготовки.
+
+### CM-022 — focus-only keyboard policy composer
+
+- **Обнаружено:** 2026-08-21 при работе Visual Intent поверх Image Production.
+- **Проблема:** `ChatComposer` 0.11.0 регистрирует `window.keydown` и направляет
+  печать, Enter, Backspace и `select all` в свою textarea, даже когда фокус
+  находится вне чата. В Shadow DOM внешний textarea ретаргетируется в host, из-за
+  чего проверка обычного `event.target` не распознаёт editable control.
+- **Влияние:** открытый чат мешает canvas shortcuts и вводу комментария Visual
+  Intent; пользователь может незаметно изменить или отправить текст чата.
+- **Ожидаемое решение:** публичная policy `focused` по умолчанию, при которой
+  composer обрабатывает клавиатуру только если его textarea/command surface
+  активны. Опциональный global typing mode допустим только как явный opt-in.
+  Проверка внешних editable controls должна использовать `composedPath()` и
+  корректно работать с Shadow DOM.
+- **Публичные extension points:** host должен иметь возможность выбрать policy и
+  получить focus state callback без доступа к package internals.
+- **Regression tests:** textarea чата отправляет Enter; canvas получает свои
+  shortcuts при открытом чате; обычный input и textarea в Shadow DOM не меняют
+  inputValue чата; закрытый/compact/expanded shell не оставляет window listeners.
+- **Временный consumer workaround:** CW-011, без форка ChatModule.
+
+### CM-023 — retry обязан сохранять проверенный контекст исходного turn
+
+- **Обнаружено:** 2026-08-25 в реальном диалоге Image Production при повторе
+  неуспешной сборки графа.
+- **Evidence:** исходный turn успешно выполнял `document_graph` в выбранном
+  документе. Штатный Retry восстановил текст и attachments, но следующий
+  `document_graph` завершился причиной `A verified document context is required`.
+  В опубликованном runtime 0.11.0 `retryTurn` не переносит сохранённые
+  `contextSelectors` из metadata исходного user message в новый retry request.
+- **Влияние:** безопасный read-only повтор теряет document/route/selection
+  context, хотя пользователь остаётся в том же диалоге и документе. Ассистент
+  не может восстановить graph revision и предлагает пользователю повторять
+  согласование или формулировку.
+- **Ожидаемое пакетное решение:** Retry загружает сохранённые selectors
+  исходного user message, повторно прогоняет их через host-owned
+  `verifiedContextResolver` и передаёт только заново проверенный context.
+  Browser selectors не должны становиться доверенными данными.
+- **Regression tests:** retry document-scoped turn сохраняет document selector;
+  смена membership или revision проверяется заново; другой tenant блокируется;
+  повтор не создаёт дубликат user message; attachments и context восстанавливаются
+  атомарно.
+- **Временный consumer workaround:** CW-015 восстанавливает полный сохранённый
+  strict-набор context selectors только после точной server-side сверки
+  document binding; `unsaved:*` revision сохраняется и продолжает блокировать
+  запись. Это не заменяет пакетное исправление.
+- **Consumer boundary:** Image Production не копирует `ToolCallingChatAgent` и
+  не подменяет retry-route локальным fork.
+
+### CM-024 — безопасная диагностика invalid tool input
+
+- **Обнаружено:** 2026-08-25 после двух штатных попыток `toolCallRecovery`.
+- **Evidence:** turn завершился `CHAT_TOOL_INPUT_INVALID`, однако невалидные
+  provider arguments и нормализованные JSON Schema issues не были сохранены.
+  По аудиту можно доказать только факт malformed/schema-invalid input, но нельзя
+  определить конкретное поле без повторного воспроизведения.
+- **Влияние:** пользователь видит общий текст «Review the request and try
+  again», product-команда не понимает, сломалось ли имя edge-поля, setting или
+  размер payload, а feedback loop требует ручного расследования БД и логов.
+- **Ожидаемое пакетное решение:** сохранять и показывать bounded redacted
+  diagnostics: `toolName`, issue code, JSON path, recovery attempt и конечную
+  человекочитаемую категорию. Raw values, message text, provider payload,
+  credentials и stack trace не сохранять и не показывать.
+- **Пользовательское представление:** после внутренних попыток — одно сообщение
+  вроде «Не удалось подготовить ноду QR Code: поле settings.defaultValue не
+  поддерживается. Проект не изменён», плюс Retry. Если причина безопасно не
+  классифицирована, честно сообщить «модель вернула параметры неверного формата».
+- **Regression tests:** malformed JSON, unknown property, missing required
+  field, redaction, два recovery attempts и один terminal error без повторного
+  user confirmation.
+
+### CM-025 — защита step budget от повторных read-tools
+
+- **Обнаружено:** 2026-08-25 в том же диалоге: до первого write proposal модель
+  вызвала `node_catalog` 14 раз, `document_graph` 5 раз и `knowledge_search` 2
+  раза; один turn завершился `CHAT_AGENT_STEP_LIMIT_EXCEEDED`.
+- **Влияние:** одинаковые server-owned ответы повторно попадают в model context,
+  увеличивают tokens/latency и не оставляют шага для целевого write proposal.
+- **Ожидаемое пакетное решение:** публичная bounded policy для дедупликации или
+  cycle detection read-only tool calls внутри одного turn. Fingerprint должен
+  учитывать tool name, canonical input и проверенную context revision. Повтор
+  возвращает компактную ссылку на уже полученный результат либо correction
+  «используй предыдущий результат», не выполняя внешний read заново.
+- **Regression tests:** одинаковый read одного revision выполняется один раз;
+  другой query или новая revision не дедуплицируются; write tools никогда не
+  кэшируются; tenant/context входят в fingerprint.
+
+### CM-026 — typed recovery при изменении verified context внутри turn
+
+- **Обнаружено:** 2026-08-25 в реальном диалоге Image Production при сборке
+  графа через `pipeline_build`.
+- **Evidence:** turn начался с server-verified revision `42`. Пока модель
+  готовила параметры действия, документ штатно сохранился и перешёл на revision
+  `45`. OpenRouter успешно вернул валидный tool call, но product `prepareTool`
+  отклонил устаревший context. ChatModule заменил конкретную причину общим
+  `CHAT_TOOL_PREPARATION_FAILED` и текстом «The requested action could not be
+  prepared safely». Provider moderation/refusal не происходил, proposal и
+  изменение проекта не создавались.
+- **Проблема:** нормальный revision drift во время длинного agent turn выглядит
+  как неизвестная небезопасная ошибка. Модель не получает классифицированной
+  причины и не может безопасно обновить context без повторного вопроса. Это не
+  CM-023: context здесь не потерян отдельным Retry, а устарел внутри текущего
+  turn.
+- **Влияние:** document-scoped write tools нестабильны при autosave; повторные
+  model calls расходуют latency, tokens и recovery budget, хотя intent и доступ
+  пользователя не менялись.
+
+#### Ожидаемое пакетное решение CM-026
+
+- Публичный preparation contract поддерживает typed safe outcome, например
+  allowlisted `CHAT_TOOL_CONTEXT_STALE` с category `context-conflict`,
+  `retryable: true` и recovery hint `refresh-verified-context`. Raw selectors,
+  document contents, tenant resource names, revision values, provider payload и
+  stack trace наружу не передаются.
+- ChatModule один раз в пределах общего recovery/deadline budget повторно
+  вызывает host-owned verified-context resolver и `prepareTool` с тем же intent
+  и idempotency scope. Browser revision не становится доверенной.
+- Если host сообщает, что изменения существуют только в browser (`unsaved`),
+  пакет ждёт штатного сохранения либо возвращает один понятный `not-started`
+  outcome; он не готовит proposal по заведомо старой серверной копии.
+- После успешного refresh пользователь получает один актуальный preview и одно
+  подтверждение без нового текстового вопроса. Повторный drift завершает turn
+  одним `not-started` error без бесконечного цикла.
+- Product validation после refresh маршрутизируется через CM-021, invalid model
+  schema — через CM-024. Membership/tenant rejection всегда остаётся fail
+  closed.
+- **Граница:** ChatModule владеет orchestration recovery, idempotency, redaction
+  и terminal presentation. Image Production владеет identity/workspace checks,
+  актуальной document revision, компиляцией graph proposal, concurrency token и
+  финальным выполнением.
+- **Regression tests:** revision меняется между model call и prepare; refresh
+  выполняется один раз; пользователь видит один preview; membership revoke
+  блокирует write; повторный conflict не зацикливается; user message, approval,
+  usage и execution не дублируются; до подтверждения mutation отсутствует.
+- **Временный consumer workaround:** CW-012. Удалить после exact-version
+  обновления ChatModule и consumer-проверки реального autosave/revision drift.
+
+### CM-027 — универсальный lifecycle интерактивного ответа
+
+- **Обнаружено:** 2026-08-26 при разборе рекламного референса в Image
+  Production. Модель уже может перечислить найденные объекты, но пользователю
+  приходится вручную перепечатывать, какие из них должны редактироваться
+  отдельно.
+- **Влияние:** диалог становится длиннее, допускает неоднозначный свободный
+  текст и провоцирует лишние подтверждения до настоящего action preview.
+- **Временный consumer workaround:** Image Production поставляет product-owned
+  read-tool `design_element_selection`, предметную модель объектов макета и
+  собственный renderer карточки множественного выбора. Это нужно для проверки
+  UX и дизайнерской семантики, а не как постоянный форк ChatModule.
+
+#### Ожидаемое пакетное решение CM-027
+
+- Универсальный framework-neutral interaction contract для `single-choice`,
+  `multi-choice` и опционального custom input: стабильный `interactionId`,
+  version, labels/descriptions, defaults, recommended options, min/max selection
+  и локализованный action label. Option может нести bounded host-owned
+  structured value/metadata, которое ChatModule сохраняет и возвращает без
+  интерпретации; предметная схема этого значения принадлежит продукту.
+- Коробочный доступный React renderer с keyboard/focus states, loading,
+  validation, submitted/expired/retry states и product theme slots. Карточка
+  после отправки сохраняет выбранный результат и не превращается обратно в
+  пустой вопрос после reload.
+- Результат продолжается в том же conversation/turn lineage как типизированный
+  `selectedAction.payload` и как канонический человекочитаемый текст для
+  провайдеров без native structured interaction. Повторная отправка одного
+  `interactionId` идемпотентна.
+- Интерактивный ответ не считается разрешением на mutation. Если следующий шаг
+  — write tool, пользователь подтверждает только штатный action preview.
+- Host владеет предметными options и маппингом payload в продуктовые контракты;
+  ChatModule владеет lifecycle, persistence, accessibility, replay и transport.
+- **Regression tests:** multi-select + custom value, reload/resume, duplicate
+  submit, expired interaction, Retry, localization, keyboard navigation,
+  неизменность graph до отдельного write approval и tenant isolation.
+- **Условие удаления workaround:** опубликована exact-version семья пакетов,
+  Image Production заменил локальную карточку package renderer и повторно
+  проверил выбор -> pipeline preview -> единственное подтверждение.
+
+### CM-028 — гарантированная доставка tool-call вместе с ответом turn
+
+- **Обнаружено:** 2026-08-26 в реальном сценарии выбора редактируемых объектов
+  рекламного макета. `design_element_selection` успешно завершился и сохранил
+  12 вариантов, финальный текст ассистента появился, но карточка не попала в
+  live runtime до reload.
+- **Причина:** terminal turn stream и persistent conversation events являются
+  разными каналами. После turn runtime переподключает persistent stream; при
+  отсутствии cursor новая tail-only подписка может начать с latest и пропустить
+  уже сохранённый `tool_call_completed`.
+- **Влияние:** ассистент обещает выбор, которого пользователь не видит, хотя
+  модель, provider, product tool и persistence отработали успешно.
+- **Временный consumer workaround:** CW-014 повторно читает conversation после
+  успешного turn, фильтрует tool-calls по текущему `turnId` и идемпотентно
+  передаёт их runtime через публичный `onEvent`.
+- **Ожидаемое пакетное решение:** `streamTurn`/`retryTurn` должны до terminal
+  completion вернуть полный tool-call snapshot текущего turn либо runtime сам
+  обязан сверить snapshot до resolve. Переподключение conversation stream не
+  должно терять события при пустом `Last-Event-ID`; duplicate delivery должно
+  оставаться безопасным по stable tool-call ID.
+- **Regression tests:** completed read-tool виден в том же ответе без reload;
+  delayed persistent event не теряется при reconnect; duplicate replay не
+  дублирует карточку; retry ведёт себя так же; ошибка reconciliation не заменяет
+  успешный ответ ошибкой.
+- **Условие удаления workaround:** exact-version обновление ChatModule прошло
+  consumer-тест `message + interactive tool card` и CW-014 удалён.
 
 ## Новые наблюдения
 

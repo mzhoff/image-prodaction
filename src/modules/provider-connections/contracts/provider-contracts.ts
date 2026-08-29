@@ -43,10 +43,17 @@ export interface ProviderImageParameters {
   size?: string;
 }
 
+export interface ProviderStructuredOutputParameters {
+  name: string;
+  schema: Record<string, unknown>;
+  strict?: boolean;
+}
+
 export interface ProviderRequestParameters {
   image?: ProviderImageParameters;
   maxOutputTokens?: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
+  structuredOutput?: ProviderStructuredOutputParameters;
   temperature?: number;
 }
 

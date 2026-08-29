@@ -17,6 +17,7 @@ import type {
   PipelineRunCompletion,
 } from '../../contracts/pipeline-contracts';
 import type { StudioPipelineSourceMetadata } from '../../contracts/pipeline-publication-contracts';
+import type { PipelineConsumerExecutionPolicy } from '../../contracts/pipeline-consumer-contracts';
 import { user } from '@/shared/db/schema/auth';
 import { document } from '@/shared/db/schema/document';
 import { workspace } from '@/shared/db/schema/workspace';
@@ -86,6 +87,8 @@ export const pipelineVersion = pgTable('pipeline_version', {
   compiledPlan: jsonb('compiled_plan').$type<CompiledPipelinePlan>().notNull(),
   sourceMetadata: jsonb('source_metadata').$type<StudioPipelineSourceMetadata | null>(),
   checksum: text('checksum').notNull(),
+  inputSchemaChecksum: text('input_schema_checksum'),
+  outputSchemaChecksum: text('output_schema_checksum'),
   publishedByUserId: text('published_by_user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'restrict' }),
@@ -123,11 +126,43 @@ export const pipelineEndpoint = pgTable('pipeline_endpoint', {
   uniqueIndex('pipeline_endpoint_public_id_unique').on(table.publicId),
 ]);
 
+export const pipelineConsumer = pgTable('pipeline_consumer', {
+  id: uuid('id').primaryKey(),
+  pipelineId: uuid('pipeline_id')
+    .notNull()
+    .references(() => executablePipeline.id, { onDelete: 'cascade' }),
+  pinnedVersionId: uuid('pinned_version_id')
+    .notNull()
+    .references(() => pipelineVersion.id, { onDelete: 'restrict' }),
+  name: text('name').notNull(),
+  sourceApplication: text('source_application').notNull(),
+  enabled: boolean('enabled').default(true).notNull(),
+  executionPolicy: jsonb('execution_policy')
+    .$type<PipelineConsumerExecutionPolicy>()
+    .notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  uniqueIndex('pipeline_consumer_pipeline_source_unique').on(
+    table.pipelineId,
+    table.sourceApplication,
+  ),
+  index('pipeline_consumer_pipeline_enabled_idx').on(
+    table.pipelineId,
+    table.enabled,
+  ),
+]);
+
 export const pipelineApiKey = pgTable('pipeline_api_key', {
   id: uuid('id').primaryKey(),
   endpointId: uuid('endpoint_id')
     .notNull()
     .references(() => pipelineEndpoint.id, { onDelete: 'cascade' }),
+  consumerId: uuid('consumer_id')
+    .references(() => pipelineConsumer.id, { onDelete: 'cascade' }),
   label: text('label').notNull(),
   sourceApplication: text('source_application').notNull(),
   tokenPrefix: text('token_prefix').notNull(),
@@ -144,6 +179,10 @@ export const pipelineApiKey = pgTable('pipeline_api_key', {
     table.endpointId,
     table.revokedAt,
   ),
+  index('pipeline_api_key_consumer_active_idx').on(
+    table.consumerId,
+    table.revokedAt,
+  ),
 ]);
 
 export const pipelineRun = pgTable('pipeline_run', {
@@ -158,6 +197,10 @@ export const pipelineRun = pgTable('pipeline_run', {
     .notNull()
     .references(() => pipelineVersion.id, { onDelete: 'restrict' }),
   pipelineVersion: integer('pipeline_version').notNull(),
+  consumerId: uuid('consumer_id')
+    .references(() => pipelineConsumer.id, { onDelete: 'restrict' }),
+  apiKeyId: uuid('api_key_id')
+    .references(() => pipelineApiKey.id, { onDelete: 'set null' }),
   sourceApplication: text('source_application').notNull(),
   initiatorType: text('initiator_type').default('service').notNull(),
   initiatorId: text('initiator_id'),
@@ -209,6 +252,10 @@ export const pipelineRun = pgTable('pipeline_run', {
   ),
   index('pipeline_run_source_created_idx').on(
     table.sourceApplication,
+    table.createdAt,
+  ),
+  index('pipeline_run_consumer_created_idx').on(
+    table.consumerId,
     table.createdAt,
   ),
 ]);

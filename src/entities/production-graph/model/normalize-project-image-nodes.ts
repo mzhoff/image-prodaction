@@ -8,6 +8,8 @@ import {
   normalizeCompositionLayers,
   normalizePositiveInteger,
 } from './normalize-composition-node-data';
+import { normalizeQrCodeNode } from './normalize-project-qr-code-node';
+import { COMPOSITION_LAYER_MAX_INPUTS } from './node-definitions';
 import { productionLayers } from './production-layers';
 import type { ExtractPresetId, ProductionNode, ProductionNodeData } from './types';
 import { normalizeCurves } from '@/shared/lib/image-renderer/curves';
@@ -53,6 +55,10 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
     } as ProductionNode;
   }
 
+  if (node.type === 'qrCode') {
+    return normalizeQrCodeNode(node);
+  }
+
   if (node.type === 'referenceComposer') {
     const data = node.data as ProductionNodeData & { slots?: unknown };
     const slots = Array.isArray(data.slots)
@@ -72,7 +78,6 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
       },
     } as ProductionNode;
   }
-
   if (node.type === 'composition') {
     const data = node.data as ProductionNodeData & {
       canvasHeight?: unknown;
@@ -86,7 +91,9 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
     };
     const canvasWidth = normalizePositiveInteger(data.canvasWidth, 1080, 256, 4096);
     const rawHeight = normalizePositiveInteger(data.canvasHeight, 1080, 256, 4096);
-    const layerInputCount = normalizePositiveInteger(data.layerInputCount, 2, 2, 12);
+    const layerInputCount = normalizePositiveInteger(data.layerInputCount, 2, 2, COMPOSITION_LAYER_MAX_INPUTS);
+    const layers = normalizeCompositionLayers(data.layers);
+    const localLayerIds = layers.filter((layer) => layer.kind === 'rectangle').map((layer) => layer.id);
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
@@ -95,10 +102,10 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
         ...node.data,
         canvasWidth,
         canvasHeight: rawHeight,
-        groups: normalizeCompositionGroups(data.groups, layerInputCount),
+        groups: normalizeCompositionGroups(data.groups, layerInputCount, localLayerIds),
         layerInputCount,
-        layerOrder: normalizeCompositionLayerOrder(data.layerOrder, layerInputCount),
-        layers: normalizeCompositionLayers(data.layers),
+        layerOrder: normalizeCompositionLayerOrder(data.layerOrder, layerInputCount, localLayerIds),
+        layers,
         resultSignature: typeof data.resultSignature === 'string' ? data.resultSignature : undefined,
         size: typeof data.size === 'string' && data.size.trim() ? data.size : '1K',
         title: typeof node.data.title === 'string' && node.data.title.trim() ? node.data.title : 'Composition',

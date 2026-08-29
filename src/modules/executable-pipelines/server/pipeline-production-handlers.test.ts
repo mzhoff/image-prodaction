@@ -90,6 +90,47 @@ test('production AI text handler uses the injected durable text generator', asyn
   assert.deepEqual(result, { text: 'Generated' });
 });
 
+test('production structured handler returns the full object and stable field outputs', async () => {
+  const registry = createProductionPipelineHandlerRegistry(
+    { actorUserId: 'user-1' },
+    {
+      generateStructured: async ({ schema, source }) => {
+        assert.equal(schema.type, 'object');
+        assert.equal(source, 'Raw idea');
+        return { idea: 'Content idea', score: 0.9 };
+      },
+    },
+  );
+  const handler = registry.resolve('ai.structured.generate', '1');
+  assert.ok(handler);
+
+  const result = await handler.execute({
+    config: {
+      fields: [{ id: 'idea-field', key: 'idea' }, { id: 'score-field', key: 'score' }],
+      instruction: 'Extract fields.',
+      model: 'google/gemini-2.5-flash',
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { idea: { type: 'string' }, score: { type: 'number' } },
+        required: ['idea', 'score'],
+      },
+      schemaName: 'content_idea',
+      temperature: 0,
+    },
+    context,
+    inputs: { source: 'Raw idea' },
+    nodeId: 'structured',
+    signal: new AbortController().signal,
+  });
+
+  assert.deepEqual(result, {
+    json: { idea: 'Content idea', score: 0.9 },
+    'field:idea-field': 'Content idea',
+    'field:score-field': 0.9,
+  });
+});
+
 test('production registry implements every operation declared in its manifest', () => {
   const registry = createProductionPipelineHandlerRegistry(
     { actorUserId: 'user-1' },

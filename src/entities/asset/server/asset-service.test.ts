@@ -23,6 +23,7 @@ import type {
   AssetVariantInput,
   AssetVariantRecord,
   LibraryAssetRecord,
+  PendingAssetClaim,
   PendingAssetInput,
 } from './asset-repository';
 
@@ -210,6 +211,148 @@ test('retries a failed generated asset with the same database row and storage ke
     'reset-pending',
     'ready',
   ]);
+});
+
+test('reuses a server-requested asset id for retry-safe deterministic transforms', async () => {
+  const repository = new MemoryAssetRepository();
+  let allocatedIds = 0;
+  let putCalls = 0;
+  const dependencies: AssetUploadDependencies = {
+    repository,
+    bucket: 'private-assets',
+    createId: () => {
+      allocatedIds += 1;
+      return assetId;
+    },
+    assertAccess: async () => undefined,
+    objectStore: createObjectStore({
+      put: async () => {
+        putCalls += 1;
+      },
+    }),
+  };
+  const input = {
+    bytes: onePixelPng,
+    claimedContentType: 'image/png',
+    documentId,
+    libraryVisible: false,
+    maxBytes: 1024,
+    metadata: { requestHash: 'a'.repeat(64) },
+    operation: 'pipeline_qr_generate',
+    origin: 'unknown' as const,
+    originalName: 'qr-code.png',
+    requestedAssetId: assetId,
+    userId: 'user-1',
+    workspaceId,
+  };
+
+  const first = await uploadImageAsset(input, dependencies);
+  const replay = await uploadImageAsset(input, dependencies);
+
+  assert.equal(first.id, assetId);
+  assert.equal(replay.id, assetId);
+  assert.equal(allocatedIds, 0);
+  assert.equal(putCalls, 1);
+  assert.deepEqual(repository.transitions, ['pending', 'ready']);
+});
+
+test('concurrent deterministic uploads atomically claim one row and both resolve the same ready asset', async () => {
+  const repository = new MemoryAssetRepository();
+  let putCalls = 0;
+  let releasePuts!: () => void;
+  const putsReleased = new Promise<void>((resolve) => {
+    releasePuts = resolve;
+  });
+  const dependencies: AssetUploadDependencies = {
+    repository,
+    bucket: 'private-assets',
+    createId: () => {
+      throw new Error('deterministic upload must not allocate an id');
+    },
+    assertAccess: async () => undefined,
+    objectStore: createObjectStore({
+      put: async () => {
+        putCalls += 1;
+        if (putCalls === 2) releasePuts();
+        await putsReleased;
+      },
+    }),
+  };
+  const input = {
+    bytes: onePixelPng,
+    claimedContentType: 'image/png',
+    documentId,
+    libraryVisible: false,
+    maxBytes: 1024,
+    metadata: { requestHash: 'c'.repeat(64) },
+    operation: 'pipeline_qr_generate',
+    origin: 'unknown' as const,
+    originalName: 'qr-code.png',
+    requestedAssetId: assetId,
+    userId: 'user-1',
+    workspaceId,
+  };
+
+  const [first, second] = await Promise.all([
+    uploadImageAsset(input, dependencies),
+    uploadImageAsset(input, dependencies),
+  ]);
+
+  assert.equal(first.id, assetId);
+  assert.equal(second.id, assetId);
+  assert.equal(first.status, 'ready');
+  assert.equal(second.status, 'ready');
+  assert.equal(putCalls, 2);
+  assert.equal(repository.transitions.filter((item) => item === 'pending').length, 1);
+});
+
+test('concurrent deterministic claim rejects a different payload for the same requested id', async () => {
+  const repository = new MemoryAssetRepository();
+  let signalFirstPut!: () => void;
+  let releaseFirstPut!: () => void;
+  const firstPutStarted = new Promise<void>((resolve) => {
+    signalFirstPut = resolve;
+  });
+  const firstPutReleased = new Promise<void>((resolve) => {
+    releaseFirstPut = resolve;
+  });
+  const dependencies: AssetUploadDependencies = {
+    repository,
+    bucket: 'private-assets',
+    createId: () => {
+      throw new Error('deterministic upload must not allocate an id');
+    },
+    assertAccess: async () => undefined,
+    objectStore: createObjectStore({
+      put: async () => {
+        signalFirstPut();
+        await firstPutReleased;
+      },
+    }),
+  };
+  const baseInput = {
+    bytes: onePixelPng,
+    claimedContentType: 'image/png',
+    documentId,
+    libraryVisible: false,
+    maxBytes: 1024,
+    operation: 'pipeline_qr_generate',
+    origin: 'unknown' as const,
+    originalName: 'qr-code.png',
+    requestedAssetId: assetId,
+    userId: 'user-1',
+    workspaceId,
+  };
+  const first = uploadImageAsset(baseInput, dependencies);
+  await firstPutStarted;
+  const differentBytes = Buffer.from(onePixelPng);
+  differentBytes[differentBytes.length - 1] = differentBytes[differentBytes.length - 1]! ^ 0xff;
+  await assert.rejects(
+    uploadImageAsset({ ...baseInput, bytes: differentBytes }, dependencies),
+    AssetProvenanceError,
+  );
+  releaseFirstPut();
+  assert.equal((await first).status, 'ready');
 });
 
 test('durable origins are explicit while technical operation outputs stay hidden by default', async () => {
@@ -670,6 +813,11 @@ class MemoryAssetRepository implements AssetRepository {
     return this.record;
   }
 
+  async createPendingOrFind(input: PendingAssetInput): Promise<PendingAssetClaim> {
+    if (this.record?.id === input.id) return { created: false, record: this.record };
+    return { created: true, record: await this.createPending(input) };
+  }
+
   async findAccessible(assetIdToFind: string) {
     return this.record?.id === assetIdToFind ? this.record : undefined;
   }
@@ -743,6 +891,7 @@ class MemoryAssetRepository implements AssetRepository {
   async markReady(assetIdToReady: string) {
     this.transitions.push('ready');
     if (!this.record || this.record.id !== assetIdToReady) throw new Error('missing test asset');
+    if (this.record.status === 'ready') return this.record;
     this.record = { ...this.record, status: 'ready', updatedAt: new Date() };
     return this.record;
   }
@@ -750,6 +899,7 @@ class MemoryAssetRepository implements AssetRepository {
   async resetPending(assetIdToReset: string) {
     this.transitions.push('reset-pending');
     if (!this.record || this.record.id !== assetIdToReset) throw new Error('missing test asset');
+    if (this.record.status === 'ready') return this.record;
     this.record = {
       ...this.record,
       status: 'pending',

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { clampNumber } from './composition-canvas-geometry';
 import { CompositionCanvas } from './composition-canvas';
+import { CanvasSizeControls } from './composition-canvas-size-controls';
 import { CompositionEditorToolbar } from './composition-editor-toolbar';
 import { CompositionLayerControls } from './composition-layer-controls';
 import { CompositionLayerTree } from './composition-layer-tree';
@@ -54,6 +55,12 @@ export function CompositionEditorOverlay({
       if (event.key.toLowerCase() === 'h') {
         event.preventDefault();
         setActiveTool('hand');
+        return;
+      }
+      if (event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        setShapeTool('rectangle');
+        setActiveTool('shape');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -115,6 +122,7 @@ export function CompositionEditorOverlay({
           className={[
             'composition-editor-stage-wrap',
             activeTool === 'hand' ? 'composition-editor-stage-hand' : '',
+            activeTool === 'shape' ? 'composition-editor-stage-shape' : '',
             isStagePanning ? 'composition-editor-stage-panning' : '',
           ].filter(Boolean).join(' ')}
           onPointerDown={(event) => {
@@ -150,6 +158,8 @@ export function CompositionEditorOverlay({
               layers={model.visibleConnectedLayers}
               selectedLayerIds={model.selectedLayerIds}
               onCommitLayerSnapshots={model.commitLayerSnapshots}
+              onCreateRectangle={model.handleCreateRectangle}
+              onFinishShape={() => setActiveTool('select')}
               onCommitCanvasSize={model.commitCanvasSize}
               onIsLayerLocked={model.isLayerLocked}
               onSelectLayer={model.selectLayer}
@@ -180,6 +190,12 @@ export function CompositionEditorOverlay({
           <button type="button" className="composition-editor-close" aria-label="Close editor" onClick={onClose}>
             <X size={18} />
           </button>
+          <CanvasSizeControls
+            height={model.canvasHeight}
+            onPresetChange={model.handleCanvasPresetChange}
+            onSizeChange={model.handleCanvasSizeChange}
+            width={model.canvasWidth}
+          />
           {selected ? (
             <>
               <CompositionLayerControls

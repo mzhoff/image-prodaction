@@ -39,6 +39,220 @@ test('prepares a deterministic connected image pipeline with safe settings and c
   assert.equal(prepared.safePreview.documentName, 'Editorial portrait generator');
 });
 
+test('prepares the canonical six-node Stories canvas recipe without executable inputs or QR', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Stories 9:16',
+    summary: 'Create a vertical Stories image with an editable prompt and headline.',
+    nodes: [
+      {
+        key: 'backgroundPrompt',
+        type: 'textPrompt',
+        settings: { text: 'Describe a scene for Stories 9:16', title: 'Background prompt' },
+      },
+      {
+        key: 'promptBuilder',
+        type: 'textGeneration',
+        settings: {
+          instruction: 'Build a production-ready 9:16 image prompt without embedded text.',
+          title: 'Prompt builder',
+        },
+      },
+      { key: 'background', type: 'generateImage', settings: { aspectRatio: '9:16', title: 'Stories art' } },
+      { key: 'headline', type: 'textPrompt', settings: { text: 'Headline', title: 'Headline' } },
+      { key: 'composition', type: 'composition', settings: { aspectRatio: '9:16', title: 'Stories composition' } },
+      { key: 'export', type: 'exportImage', settings: { format: 'png', title: 'Stories export' } },
+    ],
+    edges: [
+      { sourceNodeKey: 'backgroundPrompt', sourcePortId: 'text', targetNodeKey: 'promptBuilder', targetPortId: 'text' },
+      { sourceNodeKey: 'promptBuilder', sourcePortId: 'result', targetNodeKey: 'background', targetPortId: 'prompt' },
+      { sourceNodeKey: 'composition', sourcePortId: 'image', targetNodeKey: 'export', targetPortId: 'image-0' },
+    ],
+    compositionBlueprints: [{
+      version: 1,
+      compositionNodeRef: 'composition',
+      mode: 'replace',
+      canvas: { width: 1_080, height: 1_920 },
+      layers: [
+        {
+          key: 'background',
+          name: 'Background',
+          role: 'background',
+          kind: 'image',
+          source: { nodeRef: 'background', portId: 'image' },
+          frame: { x: 0, y: 0, width: 1, height: 1 },
+          zIndex: 0,
+          image: { fit: 'fill', preserveAspectRatio: false },
+        },
+        {
+          key: 'headline',
+          name: 'Headline',
+          role: 'headline',
+          kind: 'text',
+          source: { nodeRef: 'headline', portId: 'text' },
+          frame: { x: 0.08, y: 0.1, width: 0.84, height: 0.16 },
+          zIndex: 1,
+        },
+      ],
+    }],
+  }), structuredClone(initialProject));
+
+  assert.equal(prepared.patch.nodes.length, 6);
+  assert.equal(prepared.patch.edges.length, 5);
+  assert.equal(prepared.patch.nodes.some((node) => node.type === 'pipelineInput'), false);
+  assert.equal(prepared.patch.nodes.some((node) => node.type === 'pipelineOutput'), false);
+  assert.equal(prepared.patch.nodes.some((node) => node.type === 'qrCode'), false);
+  assert.equal(prepared.safePreview.compositionBlueprints[0]?.layerCount, 2);
+  assert.deepEqual(prepared.safePreview.warnings, []);
+});
+
+test('accepts exactly 24 proposal nodes and rejects the twenty-fifth', () => {
+  const nodes = Array.from({ length: 24 }, (_, index) => ({
+    key: `node-${index}`,
+    type: 'textPrompt' as const,
+  }));
+  const base = {
+    documentName: 'Maximum bounded proposal',
+    summary: 'Verify the shared proposal node limit.',
+    edges: [],
+  };
+
+  const accepted = parsePipelineBuildInput({ ...base, nodes });
+  assert.equal(accepted.nodes.length, 24);
+  assert.throws(
+    () => parsePipelineBuildInput({
+      ...base,
+      nodes: [...nodes, { key: 'node-24', type: 'textPrompt' }],
+    }),
+    /Too big|maximum|24/iu,
+  );
+});
+
+test('builds explicit typed endpoint boundaries and a structured JSON result', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Structured topic analysis',
+    summary: 'Analyze a topic and return a typed JSON object.',
+    nodes: [
+      {
+        key: 'publicInput',
+        type: 'pipelineInput',
+        settings: {
+          fields: [{ id: 'topic', key: 'topic', kind: 'text', required: true }],
+        },
+      },
+      { key: 'analysis', type: 'textGeneration', settings: { instruction: 'Analyze the topic.' } },
+      {
+        key: 'structured',
+        type: 'structuredOutput',
+        settings: {
+          schemaName: 'topic_analysis',
+          fields: [{ id: 'title', key: 'title', kind: 'text', required: true }],
+        },
+      },
+      {
+        key: 'publicOutput',
+        type: 'pipelineOutput',
+        settings: {
+          fields: [{ id: 'result', key: 'result', kind: 'json', required: true, fields: [] }],
+        },
+      },
+    ],
+    edges: [
+      { sourceNodeKey: 'publicInput', sourcePortId: 'field:topic', targetNodeKey: 'analysis', targetPortId: 'text' },
+      { sourceNodeKey: 'analysis', sourcePortId: 'result', targetNodeKey: 'structured', targetPortId: 'source' },
+      { sourceNodeKey: 'structured', sourcePortId: 'json', targetNodeKey: 'publicOutput', targetPortId: 'field:result' },
+    ],
+  }), structuredClone(initialProject));
+
+  assert.equal(prepared.patch.nodes.length, 4);
+  assert.equal(prepared.patch.edges.length, 3);
+  assert.deepEqual(prepared.patch.edges.map((edge) => edge.sourcePortId), ['field:topic', 'result', 'json']);
+  const input = prepared.patch.nodes.find((node) => node.type === 'pipelineInput');
+  assert.equal(input && 'fields' in input.data ? input.data.fields[0]?.key : undefined, 'topic');
+});
+
+test('builds an explicit targetUrl input through a deterministic QR node into composition', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'QR composition from URL',
+    summary: 'Create a reusable QR layer from the targetUrl endpoint parameter.',
+    nodes: [
+      {
+        key: 'publicInput',
+        type: 'pipelineInput',
+        settings: {
+          fields: [{ id: 'target-url', key: 'targetUrl', kind: 'text', required: true }],
+        },
+      },
+      {
+        key: 'qr',
+        type: 'qrCode',
+        settings: { contentMode: 'url' },
+      },
+      { key: 'composition', type: 'composition' },
+      {
+        key: 'publicOutput',
+        type: 'pipelineOutput',
+        settings: {
+          fields: [{ id: 'composed-image', key: 'image', kind: 'image', required: true }],
+        },
+      },
+    ],
+    edges: [
+      { sourceNodeKey: 'publicInput', sourcePortId: 'field:target-url', targetNodeKey: 'qr', targetPortId: 'text' },
+      { sourceNodeKey: 'qr', sourcePortId: 'image', targetNodeKey: 'composition', targetPortId: 'layer-0' },
+      { sourceNodeKey: 'composition', sourcePortId: 'image', targetNodeKey: 'publicOutput', targetPortId: 'field:composed-image' },
+    ],
+  }), structuredClone(initialProject));
+  const qr = prepared.patch.nodes.find((node) => node.type === 'qrCode')!;
+  const publicInput = prepared.patch.nodes.find((node) => node.type === 'pipelineInput')!;
+
+  assert.equal('fields' in publicInput.data ? publicInput.data.fields[0]?.key : undefined, 'targetUrl');
+  assert.equal('content' in qr.data ? qr.data.content : undefined, '');
+  assert.equal('contentMode' in qr.data ? qr.data.contentMode : undefined, 'url');
+  assert.equal('pixelSize' in qr.data ? qr.data.pixelSize : undefined, 1024);
+  assert.equal('outputFormat' in qr.data ? qr.data.outputFormat : undefined, 'png');
+  assert.deepEqual(prepared.patch.edges.map((edge) => [edge.sourcePortId, edge.targetPortId]), [
+    ['field:target-url', 'text'],
+    ['image', 'layer-0'],
+    ['image', 'field:composed-image'],
+  ]);
+  assert.deepEqual(prepared.safePreview.nodes.find((node) => node.key === 'qr')?.settings, {
+    contentMode: 'url',
+  });
+});
+
+test('omits assistant-owned advanced QR settings and content above the shared byte limit', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Bounded QR settings',
+    summary: 'Keep QR rendering defaults outside the assistant contract.',
+    nodes: [{
+      key: 'qr',
+      type: 'qrCode',
+      settings: {
+        content: 'я'.repeat(1_025),
+        errorCorrectionLevel: 'H',
+        foregroundColor: '#112233',
+        backgroundColor: '#F7F7F7',
+        margin: 8,
+        pixelSize: 2048,
+        outputFormat: 'png',
+      },
+    }],
+    edges: [],
+  }), structuredClone(initialProject));
+  const qr = prepared.patch.nodes[0];
+
+  assert.equal('content' in qr.data ? qr.data.content : undefined, '');
+  assert.equal('foregroundColor' in qr.data ? qr.data.foregroundColor : undefined, '#000000');
+  assert.equal('margin' in qr.data ? qr.data.margin : undefined, 4);
+  assert.equal('pixelSize' in qr.data ? qr.data.pixelSize : undefined, 1024);
+  assert.equal('outputFormat' in qr.data ? qr.data.outputFormat : undefined, 'png');
+  assert.deepEqual(prepared.safePreview.nodes[0]?.settings, {});
+  assert.match(
+    prepared.safePreview.warnings.join('\n'),
+    /content.*errorCorrectionLevel.*foregroundColor.*backgroundColor.*margin.*pixelSize.*outputFormat/us,
+  );
+});
+
 test('rejects cycles and incompatible ports while safely omitting misplaced settings', () => {
   assert.throws(() => preparePipelineBuild(parsePipelineBuildInput({
     documentName: 'Rejected cyclic graph',
@@ -209,7 +423,7 @@ test('expands dynamic image layer and export inputs for layered visual recipes',
     summary: 'Compose generated art, a QR image and an optional overlay.',
     nodes: [
       { key: 'art', type: 'generateImage' },
-      { key: 'qr', type: 'importImage' },
+      { key: 'qr', type: 'qrCode' },
       { key: 'overlay', type: 'importImage' },
       { key: 'composition', type: 'composition' },
       { key: 'export', type: 'exportImage' },
@@ -227,6 +441,40 @@ test('expands dynamic image layer and export inputs for layered visual recipes',
   assert.equal('layerInputCount' in composition.data ? composition.data.layerInputCount : undefined, 3);
   assert.equal('imageInputCount' in exportNode.data ? exportNode.data.imageInputCount : undefined, 2);
   assert.equal(prepared.patch.edges.length, 4);
+});
+
+test('prepares an ordinary editable poster with native text and QR layers without executable boundaries', () => {
+  const prepared = preparePipelineBuild(parsePipelineBuildInput({
+    documentName: 'Редактируемая афиша мероприятия',
+    summary: 'Собрать первый рабочий макет с отдельными текстами и QR-кодом.',
+    nodes: [
+      { key: 'background', type: 'generateImage', settings: { title: 'Фон афиши' } },
+      { key: 'title', type: 'textPrompt', settings: { title: 'Название мероприятия', text: '' } },
+      { key: 'date', type: 'textPrompt', settings: { title: 'Дата и время', text: '' } },
+      { key: 'cta', type: 'textPrompt', settings: { title: 'Призыв к действию', text: '' } },
+      { key: 'qr', type: 'qrCode', settings: { title: 'Ссылка QR', contentMode: 'url' } },
+      { key: 'composition', type: 'composition', settings: { title: 'Редактируемый макет' } },
+      { key: 'export', type: 'exportImage', settings: { title: 'Готовый макет', format: 'png' } },
+    ],
+    edges: [
+      { sourceNodeKey: 'background', sourcePortId: 'image', targetNodeKey: 'composition', targetPortId: 'layer-0' },
+      { sourceNodeKey: 'title', sourcePortId: 'text', targetNodeKey: 'composition', targetPortId: 'layer-1' },
+      { sourceNodeKey: 'date', sourcePortId: 'text', targetNodeKey: 'composition', targetPortId: 'layer-2' },
+      { sourceNodeKey: 'cta', sourcePortId: 'text', targetNodeKey: 'composition', targetPortId: 'layer-3' },
+      { sourceNodeKey: 'qr', sourcePortId: 'image', targetNodeKey: 'composition', targetPortId: 'layer-4' },
+      { sourceNodeKey: 'composition', sourcePortId: 'image', targetNodeKey: 'export', targetPortId: 'image-0' },
+    ],
+  }), structuredClone(initialProject));
+
+  const composition = prepared.patch.nodes.find((node) => node.type === 'composition')!;
+  const qr = prepared.patch.nodes.find((node) => node.type === 'qrCode')!;
+
+  assert.equal('layerInputCount' in composition.data ? composition.data.layerInputCount : undefined, 5);
+  assert.equal('content' in qr.data ? qr.data.content : undefined, '');
+  assert.equal(prepared.patch.nodes.filter((node) => node.type === 'textPrompt').length, 3);
+  assert.equal(prepared.patch.nodes.some((node) => node.type === 'pipelineInput'), false);
+  assert.equal(prepared.patch.nodes.some((node) => node.type === 'pipelineOutput'), false);
+  assert.equal(prepared.patch.edges.length, 6);
 });
 
 test('normalizes an unambiguous reversed text-generation port from the model', () => {

@@ -9,6 +9,7 @@ import { createUuidV7 } from '@/shared/lib/id';
 import {
   executablePipeline,
   pipelineApiKey,
+  pipelineConsumer,
   pipelineEndpoint,
   pipelineVersion,
 } from '../adapters/postgres/pipeline-schema';
@@ -24,20 +25,35 @@ export class PipelineApiKeyAuthenticationError extends Error {
 }
 
 export async function createPipelineApiKey(input: {
+  consumerId: string;
   createdByUserId: string;
-  endpointId: string;
   label: string;
-  sourceApplication: string;
 }) {
   const token = generatePipelineApiToken();
   const parsed = parsePipelineApiToken(token);
   if (!parsed) throw new Error('Pipeline API token generation failed.');
 
+  const [consumer] = await getDb().select({
+    endpointId: pipelineEndpoint.id,
+    sourceApplication: pipelineConsumer.sourceApplication,
+  }).from(pipelineConsumer)
+    .innerJoin(executablePipeline, eq(executablePipeline.id, pipelineConsumer.pipelineId))
+    .innerJoin(pipelineEndpoint, eq(pipelineEndpoint.pipelineId, pipelineConsumer.pipelineId))
+    .where(and(
+      eq(pipelineConsumer.id, input.consumerId),
+      eq(pipelineConsumer.enabled, true),
+      eq(pipelineEndpoint.enabled, true),
+      eq(executablePipeline.status, 'active'),
+    ))
+    .limit(1);
+  if (!consumer) throw new Error('Active pipeline consumer was not found.');
+
   const [created] = await getDb().insert(pipelineApiKey).values({
     id: createUuidV7(),
-    endpointId: input.endpointId,
+    endpointId: consumer.endpointId,
+    consumerId: input.consumerId,
     label: normalizeLabel(input.label),
-    sourceApplication: normalizeSourceApplication(input.sourceApplication),
+    sourceApplication: consumer.sourceApplication,
     tokenPrefix: parsed.lookupPrefix,
     tokenHash: hashPipelineApiToken(token),
     createdByUserId: input.createdByUserId,
@@ -64,25 +80,34 @@ export async function authenticatePipelineApiRequest(
 
   const [record] = await getDb().select({
     apiKeyId: pipelineApiKey.id,
-    sourceApplication: pipelineApiKey.sourceApplication,
+    consumerId: pipelineConsumer.id,
+    sourceApplication: pipelineConsumer.sourceApplication,
     tokenHash: pipelineApiKey.tokenHash,
     endpointId: pipelineEndpoint.id,
     endpointPublicId: pipelineEndpoint.publicId,
-    executionPolicy: pipelineEndpoint.executionPolicy,
+    executionPolicy: pipelineConsumer.executionPolicy,
     pipelineId: executablePipeline.id,
     workspaceId: executablePipeline.workspaceId,
     originDocumentId: executablePipeline.originDocumentId,
-    activeVersionId: pipelineVersion.id,
+    pinnedVersionId: pipelineVersion.id,
     pipelineVersion: pipelineVersion.version,
     compiledPlan: pipelineVersion.compiledPlan,
     publishedByUserId: pipelineVersion.publishedByUserId,
   }).from(pipelineApiKey)
-    .innerJoin(pipelineEndpoint, eq(pipelineEndpoint.id, pipelineApiKey.endpointId))
-    .innerJoin(executablePipeline, eq(executablePipeline.id, pipelineEndpoint.pipelineId))
-    .innerJoin(pipelineVersion, eq(pipelineVersion.id, pipelineEndpoint.activeVersionId))
+    .innerJoin(pipelineConsumer, eq(pipelineConsumer.id, pipelineApiKey.consumerId))
+    .innerJoin(executablePipeline, eq(executablePipeline.id, pipelineConsumer.pipelineId))
+    .innerJoin(pipelineEndpoint, and(
+      eq(pipelineEndpoint.id, pipelineApiKey.endpointId),
+      eq(pipelineEndpoint.pipelineId, pipelineConsumer.pipelineId),
+    ))
+    .innerJoin(pipelineVersion, and(
+      eq(pipelineVersion.id, pipelineConsumer.pinnedVersionId),
+      eq(pipelineVersion.pipelineId, pipelineConsumer.pipelineId),
+    ))
     .where(and(
       eq(pipelineApiKey.tokenPrefix, parsed.lookupPrefix),
       isNull(pipelineApiKey.revokedAt),
+      eq(pipelineConsumer.enabled, true),
       eq(pipelineEndpoint.enabled, true),
       eq(executablePipeline.status, 'active'),
       expectedPublicId ? eq(pipelineEndpoint.publicId, expectedPublicId) : undefined,
@@ -136,13 +161,5 @@ function safeHashesEqual(first: string, second: string) {
 function normalizeLabel(value: string) {
   const normalized = value.trim();
   if (!normalized || normalized.length > 120) throw new Error('API key label is invalid.');
-  return normalized;
-}
-
-function normalizeSourceApplication(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (!/^[a-z0-9][a-z0-9._-]{0,119}$/.test(normalized)) {
-    throw new Error('Source application is invalid.');
-  }
   return normalized;
 }

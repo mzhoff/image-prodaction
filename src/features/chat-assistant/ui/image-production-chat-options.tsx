@@ -1,4 +1,4 @@
-import type { AssistantMode } from '@prodactionpro/chat-domain';
+import type { AssistantMode, ToolCallRecord } from '@prodactionpro/chat-domain';
 import {
   createChatToolRendererRegistry,
   type ChatAppearanceSettings,
@@ -7,6 +7,8 @@ import {
   PIPELINE_BUILD_PRESENTATION,
   PIPELINE_UPDATE_PRESENTATION,
 } from '@/modules/chat-assistant/contracts/image-production-tools';
+import { DESIGN_ELEMENT_SELECTION_TOOL } from '@/modules/chat-assistant/contracts/design-element-selection';
+import { DesignElementSelectionToolCard } from './design-element-selection-tool-card';
 import { PipelineBuildConfirmation, PipelineBuildResult } from './pipeline-build-tool-card';
 
 export function createAllowedModels(model: string): Record<AssistantMode, string[]> {
@@ -65,8 +67,19 @@ export const TOOL_CALL_PRESENTATION = {
   failed: 'details' as const,
   pending: 'details' as const,
   rawDetails: 'hidden' as const,
+  resolve: (toolCall: ToolCallRecord) => {
+    if (toolCall.toolName === DESIGN_ELEMENT_SELECTION_TOOL && toolCall.status === 'completed') return 'details' as const;
+    if (['failed', 'rejected', 'cancelled', 'expired'].includes(toolCall.status)) return 'details' as const;
+    if (toolCall.status !== 'completed') return 'details' as const;
+    return toolCall.riskLevel === 'read' ? 'hidden' as const : 'summary' as const;
+  },
 };
 export const TOOL_RENDERER_REGISTRY = createChatToolRendererRegistry({
+  byToolName: {
+    [DESIGN_ELEMENT_SELECTION_TOOL]: {
+      renderResult: (context) => <DesignElementSelectionToolCard {...context} />,
+    },
+  },
   byPresentationType: {
     [PIPELINE_BUILD_PRESENTATION]: {
       renderConfirmation: (context) => <PipelineBuildConfirmation {...context} />,

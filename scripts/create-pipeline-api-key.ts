@@ -6,6 +6,7 @@ import {
   pipelineVersion,
 } from '@/modules/executable-pipelines/adapters/postgres/pipeline-schema';
 import { createPipelineApiKey } from '@/modules/executable-pipelines/server/pipeline-api-key-service';
+import { ensurePipelineConsumerForEndpoint } from '@/modules/executable-pipelines/server/pipeline-consumer-service';
 import { getDb, getPostgresPool } from '@/shared/db/client';
 
 config({ path: '.env.local' });
@@ -31,14 +32,20 @@ if (!publicId) {
       .limit(1);
     if (!endpoint) throw new Error('Active pipeline endpoint was not found.');
 
-    const created = await createPipelineApiKey({
-      createdByUserId: endpoint.createdByUserId,
+    const label = labelParts.join(' ').trim() || sourceApplication;
+    const consumer = await ensurePipelineConsumerForEndpoint({
       endpointId: endpoint.endpointId,
-      label: labelParts.join(' ').trim() || sourceApplication,
+      name: label,
       sourceApplication,
+    });
+    const created = await createPipelineApiKey({
+      consumerId: consumer.id,
+      createdByUserId: endpoint.createdByUserId,
+      label,
     });
     console.log(JSON.stringify({
       apiKeyId: created.id,
+      consumerId: consumer.id,
       endpointPublicId: publicId,
       token: created.token,
     }));

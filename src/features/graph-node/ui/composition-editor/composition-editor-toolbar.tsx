@@ -69,9 +69,9 @@ export function CompositionEditorToolbar({
         {shapeMenuOpen ? (
           <div className="composition-shape-menu">
             <ShapeMenuItem icon={<Square size={14} />} label="Rectangle" shortcut="R" onClick={() => onSelectShape('rectangle')} />
-            <ShapeMenuItem icon={<Circle size={14} />} label="Ellipse" shortcut="O" onClick={() => onSelectShape('ellipse')} />
-            <ShapeMenuItem icon={<Triangle size={14} />} label="Triangle" onClick={() => onSelectShape('triangle')} />
-            <ShapeMenuItem icon={<Star size={14} />} label="Star" onClick={() => onSelectShape('star')} />
+            <ShapeMenuItem disabled icon={<Circle size={14} />} label="Ellipse" shortcut="O" onClick={() => onSelectShape('ellipse')} />
+            <ShapeMenuItem disabled icon={<Triangle size={14} />} label="Triangle" onClick={() => onSelectShape('triangle')} />
+            <ShapeMenuItem disabled icon={<Star size={14} />} label="Star" onClick={() => onSelectShape('star')} />
           </div>
         ) : null}
       </div>
@@ -106,18 +106,20 @@ export function CompositionEditorToolbar({
 }
 
 function ShapeMenuItem({
+  disabled,
   icon,
   label,
   onClick,
   shortcut,
 }: {
+  disabled?: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
   shortcut?: string;
 }) {
   return (
-    <button type="button" onClick={onClick}>
+    <button type="button" disabled={disabled} title={disabled ? 'Coming soon' : undefined} onClick={onClick}>
       <span>{icon}</span>
       <span>{label}</span>
       {shortcut ? <kbd>{shortcut}</kbd> : null}

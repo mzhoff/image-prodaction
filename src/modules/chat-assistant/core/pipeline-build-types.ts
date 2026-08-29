@@ -24,6 +24,12 @@ export interface PipelineBuildSafePreview extends Record<string, unknown> {
   action: 'build-pipeline';
   addedEdgeCount: number;
   addedNodeCount: number;
+  compositionBlueprints: Array<{
+    compositionNodeRef: string;
+    layerCount: number;
+    layers: Array<{ key: string; kind: 'text' | 'image'; name: string; role: string }>;
+    mode: 'replace' | 'merge';
+  }>;
   documentName: string;
   layout: 'horizontal' | 'vertical';
   nodes: Array<{
