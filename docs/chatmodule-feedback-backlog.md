@@ -20,7 +20,8 @@ ChatModule в Image Production. Мы не выпускаем новую верс
   установленном consumer, а не после одного теста внутри ChatModule.
 
 Рабочие статусы: `observed`, `workaround-active`, `ready-for-upstream`,
-`upstream-fixed`.
+`upstream-fixed`. Закрытые после проверки установленного consumer получают
+архивный статус `consumer-verified`.
 
 ## Архитектурное решение: quality и knowledge принадлежат ChatModule
 
@@ -39,22 +40,32 @@ Image Production, самостоятельно применять миграци
 ## Передача в следующий релиз ChatModule
 
 Этот handoff намеренно содержит только открытые универсальные задачи. Пункты,
-которые уже поставлены ChatModule 0.11.0 и повторно проверены в Image Production,
-удалены из рабочего списка; их история остаётся в Git и в retirement ledger.
-Product-specific поведение Image Production сюда также не включается.
+которые уже поставлены ChatModule 0.11.0 или 0.12.0 и повторно проверены в
+Image Production, удалены из рабочего списка; краткий результат 0.12.0 и
+подробная история исходных проблем сохранены ниже. Product-specific поведение
+Image Production сюда также не включается.
 
 | ID | Приоритет | Область | Статус | Кратко |
 | --- | --- | --- | --- | --- |
 | CM-007 | P1 | Assistant Quality / evaluation / UI / SDK | `ready-for-upstream` | Нет коробочной панели анализа и улучшения ответов |
 | CM-008 | P1 | Knowledge Base / UI / retrieval / persistence | `ready-for-upstream` | Нет управляемой и версионируемой базы знаний как модуля |
 | CM-021 | P2 | Agent runtime / product-validation recovery | `ready-for-upstream` | Базовый recovery поставлен; нет публичного контракта для безопасной причины product preflight |
-| CM-022 | P1 | Composer / keyboard policy | `ready-for-upstream` | Global keydown перехватывает ввод вне сфокусированного composer, включая Shadow DOM |
-| CM-023 | P1 | Agent runtime / retry context | `ready-for-upstream` | Retry теряет server-verified context selectors исходного turn |
 | CM-024 | P1 | Agent runtime / schema diagnostics | `ready-for-upstream` | После исчерпания recovery нет bounded diagnostics и понятной причины invalid tool input |
 | CM-025 | P2 | Agent runtime / repeated read tools | `ready-for-upstream` | Повторные одинаковые read-tools расходуют step budget и раздувают контекст одного turn |
 | CM-026 | P1 | Agent runtime / verified-context conflict recovery | `ready-for-upstream` | Revision drift внутри turn сворачивается в общий `CHAT_TOOL_PREPARATION_FAILED` вместо автоматической revalidation |
 | CM-027 | P1 | Interactive responses / persisted selection | `ready-for-upstream` | Нет универсальной интерактивной карточки множественного выбора с продолжением того же turn |
-| CM-028 | P1 | Runtime / live tool-call delivery | `workaround-active` | Turn завершается текстом, но completed read-tool может быть пропущен при переподключении persistent event stream |
+
+## Поставлено и проверено в ChatModule 0.12.0
+
+| ID | Область | Статус | Consumer-результат |
+| --- | --- | --- | --- |
+| CM-022 | Composer / keyboard policy | `consumer-verified` | Image Production использует `composerKeyboardPolicy="focused"`; локальный focus/global-keydown boundary CW-011 удалён. |
+| CM-023 | Agent runtime / Retry context | `consumer-verified` | Retry переносит сохранённые selectors в host-owned resolver; локальный поиск selectors по conversation CW-015 удалён. |
+| CM-028 | Runtime / live tool-call delivery | `consumer-verified` | Completed tool event приходит в основном turn SSE до terminal event; REST reconciliation CW-014 удалён. |
+
+Подробные записи ниже сохраняют исходное воспроизведение, влияние и критерии
+приёмки этих пунктов. Они являются архивом и не входят в следующий upstream
+handoff.
 
 ### CM-007 — коробочный модуль Assistant Quality
 
@@ -262,6 +273,7 @@ createChatModules({
 
 ### CM-022 — focus-only keyboard policy composer
 
+- **Статус:** `consumer-verified` в exact-version семье ChatModule 0.12.0.
 - **Обнаружено:** 2026-08-21 при работе Visual Intent поверх Image Production.
 - **Проблема:** `ChatComposer` 0.11.0 регистрирует `window.keydown` и направляет
   печать, Enter, Backspace и `select all` в свою textarea, даже когда фокус
@@ -269,20 +281,22 @@ createChatModules({
   чего проверка обычного `event.target` не распознаёт editable control.
 - **Влияние:** открытый чат мешает canvas shortcuts и вводу комментария Visual
   Intent; пользователь может незаметно изменить или отправить текст чата.
-- **Ожидаемое решение:** публичная policy `focused` по умолчанию, при которой
+- **Поставлено в 0.12.0:** публичная policy `focused` по умолчанию, при которой
   composer обрабатывает клавиатуру только если его textarea/command surface
   активны. Опциональный global typing mode допустим только как явный opt-in.
   Проверка внешних editable controls должна использовать `composedPath()` и
   корректно работать с Shadow DOM.
 - **Публичные extension points:** host должен иметь возможность выбрать policy и
   получить focus state callback без доступа к package internals.
-- **Regression tests:** textarea чата отправляет Enter; canvas получает свои
+- **Consumer-проверка:** textarea чата отправляет Enter; canvas получает свои
   shortcuts при открытом чате; обычный input и textarea в Shadow DOM не меняют
   inputValue чата; закрытый/compact/expanded shell не оставляет window listeners.
-- **Временный consumer workaround:** CW-011, без форка ChatModule.
+  Host явно передаёт `composerKeyboardPolicy="focused"`, а локальные focus state,
+  document-level keydown listener и CW-011 удалены без форка ChatModule.
 
 ### CM-023 — retry обязан сохранять проверенный контекст исходного turn
 
+- **Статус:** `consumer-verified` в exact-version семье ChatModule 0.12.0.
 - **Обнаружено:** 2026-08-25 в реальном диалоге Image Production при повторе
   неуспешной сборки графа.
 - **Evidence:** исходный turn успешно выполнял `document_graph` в выбранном
@@ -294,20 +308,21 @@ createChatModules({
   context, хотя пользователь остаётся в том же диалоге и документе. Ассистент
   не может восстановить graph revision и предлагает пользователю повторять
   согласование или формулировку.
-- **Ожидаемое пакетное решение:** Retry загружает сохранённые selectors
+- **Поставлено в 0.12.0:** Retry загружает сохранённые selectors
   исходного user message, повторно прогоняет их через host-owned
   `verifiedContextResolver` и передаёт только заново проверенный context.
   Browser selectors не должны становиться доверенными данными.
-- **Regression tests:** retry document-scoped turn сохраняет document selector;
+- **Consumer-проверка:** retry document-scoped turn сохраняет document selector;
   смена membership или revision проверяется заново; другой tenant блокируется;
   повтор не создаёт дубликат user message; attachments и context восстанавливаются
   атомарно.
-- **Временный consumer workaround:** CW-015 восстанавливает полный сохранённый
-  strict-набор context selectors только после точной server-side сверки
-  document binding; `unsaved:*` revision сохраняется и продолжает блокировать
-  запись. Это не заменяет пакетное исправление.
+- **Удалённый consumer workaround:** CW-015 больше не читает metadata и binding
+  текущей conversation. Resolver принимает пакетные selectors, заново проверяет
+  workspace/document/revision и сохраняет fail-closed поведение для `unsaved:*`.
 - **Consumer boundary:** Image Production не копирует `ToolCallingChatAgent` и
   не подменяет retry-route локальным fork.
+- **Отдельная задача:** CM-026 остаётся открытой. Она относится не к отдельному
+  Retry, а к revision drift внутри уже выполняющегося model turn.
 
 ### CM-024 — безопасная диагностика invalid tool input
 
@@ -439,6 +454,7 @@ createChatModules({
 
 ### CM-028 — гарантированная доставка tool-call вместе с ответом turn
 
+- **Статус:** `consumer-verified` в exact-version семье ChatModule 0.12.0.
 - **Обнаружено:** 2026-08-26 в реальном сценарии выбора редактируемых объектов
   рекламного макета. `design_element_selection` успешно завершился и сохранил
   12 вариантов, финальный текст ассистента появился, но карточка не попала в
@@ -449,20 +465,16 @@ createChatModules({
   уже сохранённый `tool_call_completed`.
 - **Влияние:** ассистент обещает выбор, которого пользователь не видит, хотя
   модель, provider, product tool и persistence отработали успешно.
-- **Временный consumer workaround:** CW-014 повторно читает conversation после
-  успешного turn, фильтрует tool-calls по текущему `turnId` и идемпотентно
-  передаёт их runtime через публичный `onEvent`.
-- **Ожидаемое пакетное решение:** `streamTurn`/`retryTurn` должны до terminal
-  completion вернуть полный tool-call snapshot текущего turn либо runtime сам
-  обязан сверить snapshot до resolve. Переподключение conversation stream не
-  должно терять события при пустом `Last-Event-ID`; duplicate delivery должно
-  оставаться безопасным по stable tool-call ID.
-- **Regression tests:** completed read-tool виден в том же ответе без reload;
+- **Поставлено в 0.12.0:** `streamTurn`/`retryTurn` co-stream события tool
+  lifecycle в основном SSE до terminal completion. SDK передаёт их штатному
+  `onEvent`, поэтому получение карточки не зависит от tail-only reconnect.
+- **Consumer-проверка:** completed read-tool виден в том же ответе без reload;
   delayed persistent event не теряется при reconnect; duplicate replay не
   дублирует карточку; retry ведёт себя так же; ошибка reconciliation не заменяет
   успешный ответ ошибкой.
-- **Условие удаления workaround:** exact-version обновление ChatModule прошло
-  consumer-тест `message + interactive tool card` и CW-014 удалён.
+- **Удалённый consumer workaround:** Image Production снова использует обычный
+  `RestSseChatClient`; тест подтверждает ровно одно `tool_call_completed` из turn
+  stream и отсутствие дополнительного GET conversation. CW-014 удалён.
 
 ## Новые наблюдения
 

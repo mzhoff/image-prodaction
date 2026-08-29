@@ -1,8 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { chatContextSelectorsSchema, type ChatContextSelectors } from '@prodactionpro/chat-domain';
 import {
   chatConversations,
-  chatMessages,
   chatToolCalls,
 } from '@prodactionpro/chat-persistence-drizzle/schema';
 import { getDocument } from '@/entities/document/server/document-service';
@@ -15,58 +13,6 @@ interface DocumentConversationPrincipal {
   productId: string;
   tenantId?: string;
   userId: string;
-}
-
-export function resolveBoundConversationContextSelectors(input: {
-  bindingDocumentIds: readonly string[];
-  latestUserMessageMetadata: unknown;
-}): ChatContextSelectors | undefined {
-  if (input.bindingDocumentIds.length !== 1) return undefined;
-  if (!isRecord(input.latestUserMessageMetadata)) return undefined;
-
-  const parsed = chatContextSelectorsSchema.safeParse(
-    input.latestUserMessageMetadata.contextSelectors,
-  );
-  if (!parsed.success || !parsed.data.document) return undefined;
-  if (parsed.data.document.id !== input.bindingDocumentIds[0]) return undefined;
-  return parsed.data;
-}
-
-export async function findBoundConversationContextSelectors(
-  principal: DocumentConversationPrincipal,
-  conversationId: string,
-): Promise<ChatContextSelectors | undefined> {
-  const workspaceId = principal.tenantId;
-  if (principal.productId !== CHAT_ASSISTANT_PRODUCT_ID || !workspaceId) return undefined;
-
-  const bindings = await getDb().select({ documentId: chatDocumentConversation.documentId })
-    .from(chatDocumentConversation)
-    .innerJoin(chatConversations, eq(chatConversations.id, chatDocumentConversation.conversationId))
-    .where(and(
-      eq(chatDocumentConversation.conversationId, conversationId),
-      eq(chatDocumentConversation.workspaceId, workspaceId),
-      eq(chatDocumentConversation.userId, principal.userId),
-      eq(chatConversations.id, conversationId),
-      eq(chatConversations.productId, CHAT_ASSISTANT_PRODUCT_ID),
-      eq(chatConversations.tenantId, workspaceId),
-      eq(chatConversations.userId, principal.userId),
-    ))
-    .limit(2);
-  if (bindings.length !== 1) return undefined;
-
-  const [latestUserMessage] = await getDb().select({ metadata: chatMessages.metadata })
-    .from(chatMessages)
-    .where(and(
-      eq(chatMessages.conversationId, conversationId),
-      eq(chatMessages.role, 'user'),
-    ))
-    .orderBy(desc(chatMessages.createdAt))
-    .limit(1);
-
-  return resolveBoundConversationContextSelectors({
-    bindingDocumentIds: bindings.map((binding) => binding.documentId),
-    latestUserMessageMetadata: latestUserMessage?.metadata,
-  });
 }
 
 export async function findDocumentConversation(
@@ -146,8 +92,4 @@ export class DocumentConversationAccessError extends Error {
     super('Document conversation was not found.');
     this.name = 'DocumentConversationAccessError';
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

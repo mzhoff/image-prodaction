@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { config } from 'dotenv';
-import { asc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import {
   createDocument,
   getDocument,
@@ -20,25 +20,30 @@ import {
   executePipelineUpdateProposal,
   preparePipelineUpdateProposal,
 } from '@/modules/chat-assistant/server/pipeline-update-service';
+import { CURRENT_TERMS_VERSION } from '@/shared/auth/terms-contract';
 import { getDb, getPostgresPool } from '@/shared/db/client';
-import { membership } from '@/shared/db/schema/workspace';
+import { user } from '@/shared/db/schema/auth';
+import { membership, workspace } from '@/shared/db/schema/workspace';
+import { createUuidV7 } from '@/shared/lib/id';
 
 config({ path: '.env.local' });
 config({ path: '.env' });
 
-const [actor] = await getDb().select({
-  userId: membership.userId,
-  workspaceId: membership.workspaceId,
-}).from(membership).orderBy(asc(membership.userId)).limit(1);
-
-if (!actor) throw new Error('A local workspace membership is required for the chat pipeline smoke test.');
-
-const created = await createDocument({
-  userId: actor.userId,
-  workspaceId: actor.workspaceId,
-});
+const runId = createUuidV7();
+const userId = `chat-pipeline-smoke-${runId}`;
+const workspaceId = createUuidV7();
+const conversationId = createUuidV7();
+const actor = { userId, workspaceId };
+let createdDocument: Awaited<ReturnType<typeof createDocument>> | undefined;
 
 try {
+  await seedActor();
+  const created = await createDocument({
+    userId: actor.userId,
+    workspaceId: actor.workspaceId,
+  });
+  createdDocument = created;
+
   const request = {
     input: {
       documentName: 'Chat pipeline smoke',
@@ -59,7 +64,7 @@ try {
   const context = createContext({
     documentId: created.id,
     revision: created.revision,
-    toolCallId: 'tool-smoke-success',
+    toolCallId: createToolCallId('success'),
     userId: actor.userId,
     workspaceId: actor.workspaceId,
   });
@@ -116,7 +121,7 @@ try {
   const updateContext = createContext({
     documentId: created.id,
     revision: afterExecution.revision,
-    toolCallId: 'tool-smoke-update',
+    toolCallId: createToolCallId('update'),
     userId: actor.userId,
     workspaceId: actor.workspaceId,
   });
@@ -177,7 +182,7 @@ try {
   const templateContext = createContext({
     documentId: created.id,
     revision: afterUpdate.revision,
-    toolCallId: 'tool-smoke-template-update',
+    toolCallId: createToolCallId('template-update'),
     userId: actor.userId,
     workspaceId: actor.workspaceId,
   });
@@ -211,7 +216,7 @@ try {
     revision: staleSelectorRevision,
     selectorHasUnsavedChanges: true,
     selectorRevisionMatches: false,
-    toolCallId: 'tool-smoke-unsaved',
+    toolCallId: createToolCallId('unsaved'),
     userId: actor.userId,
     workspaceId: actor.workspaceId,
   });
@@ -239,7 +244,7 @@ try {
     documentId: created.id,
     revision: afterAutosave.revision,
     selectorRevisionMatches: false,
-    toolCallId: 'tool-smoke-conflict',
+    toolCallId: createToolCallId('conflict'),
     userId: actor.userId,
     workspaceId: actor.workspaceId,
   });
@@ -283,13 +288,44 @@ try {
 
   console.info('chat pipeline action smoke passed: build/update/template replacement + stale selector rebase + confirm + once-only execution + revision conflict');
 } finally {
-  await updateDocumentMetadata({
-    documentId: created.id,
-    status: 'trash',
-    userId: actor.userId,
-  });
-  await permanentlyDeleteDocument(actor.userId, created.id);
+  if (createdDocument) {
+    await updateDocumentMetadata({
+      documentId: createdDocument.id,
+      status: 'trash',
+      userId: actor.userId,
+    }).catch(() => undefined);
+    await permanentlyDeleteDocument(actor.userId, createdDocument.id).catch(() => undefined);
+  }
+  await getDb().delete(workspace).where(eq(workspace.id, workspaceId)).catch(() => undefined);
+  await getDb().delete(user).where(eq(user.id, userId)).catch(() => undefined);
   await getPostgresPool().end();
+}
+
+async function seedActor() {
+  const now = new Date();
+  await getDb().insert(user).values({
+    id: userId,
+    name: 'Chat Pipeline Smoke User',
+    email: `${userId}@example.test`,
+    emailVerified: true,
+    termsAcceptedAt: now,
+    termsVersion: CURRENT_TERMS_VERSION,
+  });
+  await getDb().insert(workspace).values({
+    id: workspaceId,
+    name: 'Chat pipeline smoke workspace',
+    kind: 'personal',
+    createdByUserId: userId,
+  });
+  await getDb().insert(membership).values({
+    workspaceId,
+    userId,
+    role: 'owner',
+  });
+}
+
+function createToolCallId(suffix: string) {
+  return `tool-${runId}-${suffix}`;
 }
 
 function createContext(input: {
@@ -302,7 +338,7 @@ function createContext(input: {
   workspaceId: string;
 }) {
   return {
-    conversationId: 'conversation-smoke',
+    conversationId,
     idempotencyKey: input.toolCallId,
     productId: 'image-production',
     tenantId: input.workspaceId,

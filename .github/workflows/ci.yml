@@ -59,6 +59,15 @@ jobs:
       SMOKE_REQUIRE_EMAIL_VERIFICATION: "true"
       SMOKE_FAKE_AI_PROVIDER: "true"
       E2E_BASE_URL: http://localhost:3004
+      E2E_CHAT_STUB: "true"
+      CHAT_ASSISTANT_ENABLED: "true"
+      CHAT_OPENROUTER_API_KEY: ci-chat-stub-key
+      CHAT_OPENROUTER_BASE_URL: http://127.0.0.1:4010
+      CHAT_TOOL_APPROVAL_SECRET: ci-only-chat-tool-approval-secret-2026
+      OPENROUTER_STUB_HOST: 127.0.0.1
+      OPENROUTER_STUB_PORT: "4010"
+      OPENROUTER_STUB_RESPONSE: CHATMODULE_CI_OK
+      OPENROUTER_STUB_TOKEN: ci-chat-stub-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -140,6 +149,13 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Executable pipeline persistence smoke
         run: npm run test:pipeline-persistence-smoke
+      - name: Chat pipeline action smoke
+        run: npm run test:chat-pipeline-action-smoke
+      - name: Start local OpenRouter chat stub
+        run: |
+          node scripts/openrouter-chat-stub.mjs > /tmp/reverie-openrouter-stub.log 2>&1 &
+          echo "$!" > /tmp/reverie-openrouter-stub.pid
+          node scripts/wait-for-url.mjs http://127.0.0.1:4010/health 30000
       - name: Start production web and worker
         run: |
           mkdir -p .next/standalone/public .next/standalone/.next/static
@@ -174,6 +190,7 @@ jobs:
           cp /tmp/reverie-app.log ./reverie-app.log 2>/dev/null || true
           cp /tmp/reverie-worker.log ./reverie-worker.log 2>/dev/null || true
           cp /tmp/reverie-pipeline-worker.log ./reverie-pipeline-worker.log 2>/dev/null || true
+          cp /tmp/reverie-openrouter-stub.log ./reverie-openrouter-stub.log 2>/dev/null || true
           docker logs reverie-minio > minio.log 2>&1 || true
           docker logs reverie-mailpit > mailpit.log 2>&1 || true
       - name: Upload Playwright and service artifacts
@@ -187,6 +204,7 @@ jobs:
             reverie-app.log
             reverie-worker.log
             reverie-pipeline-worker.log
+            reverie-openrouter-stub.log
             minio.log
             mailpit.log
           if-no-files-found: ignore
@@ -202,6 +220,9 @@ jobs:
           fi
           if [ -f /tmp/reverie-pipeline-worker.pid ]; then
             kill "$(cat /tmp/reverie-pipeline-worker.pid)" 2>/dev/null || true
+          fi
+          if [ -f /tmp/reverie-openrouter-stub.pid ]; then
+            kill "$(cat /tmp/reverie-openrouter-stub.pid)" 2>/dev/null || true
           fi
           docker rm --force reverie-minio reverie-mailpit 2>/dev/null || true
 

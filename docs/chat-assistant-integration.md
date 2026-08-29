@@ -1,7 +1,7 @@
 # Chat assistant integration
 
 Image Production использует опубликованную exact-version семью пакетов
-ChatModule `0.11.0`, не копируя их исходники. Универсальный пакет отвечает за
+ChatModule `0.12.0`, не копируя их исходники. Универсальный пакет отвечает за
 диалог, SSE lifecycle, подтверждение действий, managed image attachments и
 UI-представление. В продукте остаются только знания Image Production, проверка
 Better Auth/workspace, Drizzle persistence adapter и реализации продуктовых
@@ -10,6 +10,25 @@ tools.
 Замечания к внешнему модулю ведутся в
 `docs/chatmodule-feedback-backlog.md`. Временные consumer-решения и условия их
 удаления перечислены в `docs/chatmodule-consumer-workarounds.md`.
+
+## Гарантии интеграции 0.12.0
+
+- Composer работает с явной `composerKeyboardPolicy="focused"`: печать и
+  shortcuts обрабатываются только внутри активной поверхности composer. Режим
+  global typing не включается скрытым host-кодом.
+- Штатный Retry восстанавливает текст, attachments и сохранённые
+  `contextSelectors` исходного user message. Каждый повтор снова вызывает
+  host-owned `verifiedContextResolver`; membership, workspace, document и
+  revision остаются server-authoritative, а browser selectors не становятся
+  разрешением на действие.
+- События tool lifecycle передаются через основной turn SSE до terminal event.
+  Consumer использует обычный `RestSseChatClient` и не перечитывает conversation
+  по REST для восстановления завершённой карточки.
+
+CM-026 остаётся отдельным открытым контрактом: он описывает revision drift
+внутри уже выполняющегося model turn, а не восстановление контекста отдельным
+Retry. Поэтому product-owned подготовка preview по актуальной server revision и
+защита подтверждения concurrency token сохраняются как CW-012.
 
 ## Режимы ассистента
 
@@ -196,6 +215,10 @@ server turn — 75, browser SDK — 90. Порядок `provider < server < SDK`
 - `drizzle/0021_sloppy_crusher_hogan.sql` добавляет ChatModule 0.10/0.11 support
   persistence и durable conversation events для восстановления SSE между
   несколькими web-процессами и после reconnect.
+
+ChatModule 0.12.0 не требует новой consumer-миграции: обновление использует уже
+применённую схему `0021`, а изменённые keyboard, Retry и turn-stream контракты
+проверяются на уровне установленной exact-version семьи и runtime.
 
 Все миграции запускаются обычной командой продукта `npm run db:migrate`.
 ChatModule не применяет миграции автоматически. Для быстрого отключения следует
