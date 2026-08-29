@@ -41,7 +41,6 @@ import {
 } from './image-production-chat-options';
 
 interface ImageProductionChatProps {
-  composerKeyboardActive?: boolean;
   context: ChatContextSelectors;
   onPipelineChanged?: () => void;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
@@ -49,7 +48,6 @@ interface ImageProductionChatProps {
 }
 export type AssistantAttachmentDropTarget = ChatAttachmentDropTarget;
 export function ImageProductionChat({
-  composerKeyboardActive = false,
   context,
   onPipelineChanged,
   registerAttachmentDropTarget,
@@ -73,7 +71,6 @@ export function ImageProductionChat({
   return (
     <ConfiguredChatSession
       key={`${workspaceId}:${state.value.model}:${context.document?.id ?? 'workspace'}`}
-      composerKeyboardActive={composerKeyboardActive}
       context={context}
       documentId={context.document?.id}
       model={state.value.model}
@@ -85,7 +82,6 @@ export function ImageProductionChat({
 }
 
 function ConfiguredChatSession(props: {
-  composerKeyboardActive: boolean;
   context: ChatContextSelectors;
   documentId?: string;
   model: string;
@@ -102,7 +98,6 @@ function ConfiguredChatSession(props: {
 }
 
 function ConfiguredChat({
-  composerKeyboardActive,
   context,
   documentId,
   initialConversationId,
@@ -111,7 +106,6 @@ function ConfiguredChat({
   registerAttachmentDropTarget,
   workspaceId,
 }: {
-  composerKeyboardActive: boolean;
   context: ChatContextSelectors;
   documentId?: string;
   initialConversationId?: string;
@@ -151,7 +145,6 @@ function ConfiguredChat({
   return (
     <ChatRuntimeProvider runtime={runtime}>
       <ChatContent
-        composerKeyboardActive={composerKeyboardActive}
         model={model}
         documentId={documentId}
         registerAttachmentDropTarget={registerAttachmentDropTarget}
@@ -161,8 +154,7 @@ function ConfiguredChat({
   );
 }
 
-function ChatContent({ composerKeyboardActive, documentId, model, registerAttachmentDropTarget, workspaceId }: {
-  composerKeyboardActive: boolean;
+function ChatContent({ documentId, model, registerAttachmentDropTarget, workspaceId }: {
   documentId?: string;
   model: string;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
@@ -248,11 +240,11 @@ function ChatContent({ composerKeyboardActive, documentId, model, registerAttach
         }}
         chatStyleOptions={CHAT_STYLES}
         className="image-production-chat"
+        composerKeyboardPolicy="focused"
         errorDetails={state.errorDetails}
         fontOptions={FONT_OPTIONS}
         iconLibraryOptions={ICON_OPTIONS}
         inputValue={state.inputValue}
-        isCommandMenuOpen={!composerKeyboardActive}
         isTyping={isTyping}
         messages={presentedMessages}
         managedAttachments={{

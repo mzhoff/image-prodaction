@@ -7,7 +7,8 @@ does not update one package from the family separately from the others.
 ## Version policy
 
 - Direct `@prodactionpro/chat-*` dependencies use one exact stable version, for
-  example `0.11.0`. Ranges such as `^0.11.0`, tags such as `latest`, Git branches
+  the current consumer baseline `0.12.0`. Ranges such as `^0.12.0`, tags such as
+  `latest`, Git branches
   and tarballs are not allowed.
 - Dependabot groups every ChatModule package update into one pull request.
 - ChatModule pull requests are never merged automatically. The normal Image
@@ -16,7 +17,9 @@ does not update one package from the family separately from the others.
   review of the ChatModule migration notes.
 
 `npm run check:chatmodule-versions` enforces the exact-version and single-family
-rules in both `package.json` and `package-lock.json`.
+rules in both `package.json` and `package-lock.json`. For the 0.12 consumer all
+direct and resolved `@prodactionpro/chat-*` packages must therefore be exactly
+`0.12.0`; a nested older family is a failed update, even if typecheck passes.
 
 ## GitHub secret
 
@@ -59,8 +62,16 @@ and opens one pull request for the package family. The pull request must pass:
 2. ChatModule version-family policy;
 3. database migration check;
 4. typecheck, lint, architecture checks and tests;
-5. production build and container build;
-6. critical-path smoke and browser E2E.
+5. chat pipeline action smoke against a migrated clean database;
+6. production build and container build;
+7. critical-path smoke and browser E2E.
+
+Для 0.12.0 consumer-проверка дополнительно подтверждает три опубликованные
+гарантии: `composerKeyboardPolicy="focused"` не перехватывает ввод вне composer;
+Retry переносит сохранённые selectors только через повторную host-owned
+server verification; tool lifecycle co-streamed до terminal event и не требует
+consumer REST reconciliation. CM-026 про revision drift внутри текущего turn
+проверяется и ведётся отдельно от Retry-контракта CM-023.
 
 До merge также открыть `docs/chatmodule-consumer-workarounds.md`, сопоставить
 исправленные upstream CM IDs с активными CW IDs и либо заменить workaround в

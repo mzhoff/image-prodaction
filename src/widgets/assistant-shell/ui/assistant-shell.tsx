@@ -17,17 +17,11 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type FocusEvent as ReactFocusEvent,
 } from 'react';
 import {
   ImageProductionChat,
   type AssistantAttachmentDropTarget,
 } from '@/features/chat-assistant/ui/image-production-chat';
-import {
-  isChatComposerKeyboardPath,
-  isExternalEditableKeyboardPath,
-  isSelectAllShortcut,
-} from '../model/assistant-keyboard-boundary';
 import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
 
@@ -65,7 +59,6 @@ export function AssistantShell({
 }: AssistantShellProps) {
   const [activeView, setActiveView] = useState<AssistantShellView>('assistant');
   const [attachmentDropTarget, setAttachmentDropTarget] = useState<AssistantAttachmentDropTarget>();
-  const [composerKeyboardActive, setComposerKeyboardActive] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
@@ -88,17 +81,6 @@ export function AssistantShell({
   });
 
   useEffect(() => {
-    const protectExternalKeyboardSurface = (event: KeyboardEvent) => {
-      if (isExternalEditableKeyboardPath(event.composedPath())
-        || (!composerKeyboardActive && isSelectAllShortcut(event))) {
-        event.stopPropagation();
-      }
-    };
-    document.addEventListener('keydown', protectExternalKeyboardSurface);
-    return () => document.removeEventListener('keydown', protectExternalKeyboardSurface);
-  }, [composerKeyboardActive]);
-
-  useEffect(() => {
     if (!settingsOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (settingsRef.current?.contains(event.target as Node)) return;
@@ -115,17 +97,12 @@ export function AssistantShell({
     };
   }, [settingsOpen]);
 
-  const handleFocusCapture = (event: ReactFocusEvent<HTMLElement>) => {
-    setComposerKeyboardActive(isChatComposerKeyboardPath(event.nativeEvent.composedPath()));
-  };
   const selectView = (view: AssistantShellView) => {
     setActiveView(view);
-    setComposerKeyboardActive(false);
     setSettingsOpen(false);
   };
   const closeAssistant = () => {
     setActiveView('assistant');
-    setComposerKeyboardActive(false);
     setExpanded(false);
     setSettingsOpen(false);
     onClose();
@@ -145,8 +122,6 @@ export function AssistantShell({
       data-snapshot-exclude
       aria-hidden={!open}
       aria-label="Assistant and feedback"
-      onBlurCapture={() => setComposerKeyboardActive(false)}
-      onFocusCapture={handleFocusCapture}
       style={{
         '--assistant-shell-height': `${size.height}px`,
         '--assistant-shell-width': `${size.width}px`,
@@ -248,7 +223,6 @@ export function AssistantShell({
         id="assistant-shell-assistant-panel"
       >
         <ImageProductionChat
-          composerKeyboardActive={composerKeyboardActive}
           context={chatContext}
           onPipelineChanged={onPipelineChanged}
           registerAttachmentDropTarget={setAttachmentDropTarget}

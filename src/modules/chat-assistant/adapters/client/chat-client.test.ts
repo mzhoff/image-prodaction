@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { Conversation, ToolCallRecord } from '@prodactionpro/chat-domain';
+import type { ToolCallRecord } from '@prodactionpro/chat-domain';
 import { CHAT_EVENT_TYPES, createChatEvent } from '@prodactionpro/chat-protocol';
 import type { ChatStreamEvent } from '@prodactionpro/chat-sdk';
 import { createImageProductionChatClient } from './chat-client.ts';
@@ -43,7 +43,7 @@ test('chat client uses the ChatModule SSE endpoint for runtime turns', async () 
         status: 200,
       });
     }
-    return Response.json(createConversation());
+    throw new Error('Unexpected conversation reconciliation request.');
   }) as typeof fetch;
 
   try {
@@ -60,28 +60,26 @@ test('chat client uses the ChatModule SSE endpoint for runtime turns', async () 
   }
 });
 
-test('chat client replays a completed tool call from the persisted turn snapshot', async () => {
+test('chat client consumes a co-streamed tool call without a reconciliation request', async () => {
   const originalFetch = globalThis.fetch;
   const observedEvents: ChatStreamEvent[] = [];
+  let conversationRequests = 0;
   const completedToolCall = createToolCall({
     id: 'tool-current',
     status: 'completed',
     turnId: 'turn-1',
   });
-  const historicalToolCall = createToolCall({
-    id: 'tool-historical',
-    status: 'completed',
-    turnId: 'turn-previous',
-  });
 
-  globalThis.fetch = (async (_input, init) => (
-    init?.method === 'POST'
-      ? new Response(createCompletedTurnEvent(), {
-          headers: { 'Content-Type': 'text/event-stream' },
-          status: 200,
-        })
-      : Response.json(createConversation([completedToolCall, completedToolCall, historicalToolCall]))
-  )) as typeof fetch;
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method === 'POST') {
+      return new Response(createCompletedToolTurnStream(completedToolCall), {
+        headers: { 'Content-Type': 'text/event-stream' },
+        status: 200,
+      });
+    }
+    conversationRequests += 1;
+    return Response.json({});
+  }) as typeof fetch;
 
   try {
     const client = createImageProductionChatClient('workspace-1');
@@ -93,85 +91,31 @@ test('chat client replays a completed tool call from the persisted turn snapshot
       onEvent: (event) => observedEvents.push(event),
     });
 
-    const recovered = observedEvents.filter((event) => (
+    const delivered = observedEvents.filter((event) => (
       event.event === 'tool_call_completed' && event.data.id === 'tool-current'
     ));
-    assert.equal(recovered.length, 1);
-    assert.equal(observedEvents.some((event) => (
-      event.event === 'tool_call_completed' && event.data.id === 'tool-historical'
-    )), false);
+    assert.equal(delivered.length, 1);
+    assert.equal(conversationRequests, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test('tool snapshot reconciliation cannot fail an otherwise completed turn', async () => {
-  const originalFetch = globalThis.fetch;
-  const originalWarn = console.warn;
-  let warning = '';
-
-  console.warn = (message?: unknown) => { warning = String(message); };
-  globalThis.fetch = (async (_input, init) => (
-    init?.method === 'POST'
-      ? new Response(createCompletedTurnEvent(), {
-          headers: { 'Content-Type': 'text/event-stream' },
-          status: 200,
-        })
-      : new Response('unavailable', { status: 503 })
-  )) as typeof fetch;
-
-  try {
-    const result = await createImageProductionChatClient('workspace-1').streamTurn({
-      message: 'Проверка',
-      mode: 'product-copilot',
-      model: 'openai/gpt-5.4-nano',
-    });
-
-    assert.equal(result.turnId, 'turn-1');
-    assert.equal(warning, '[chat-assistant-tool-reconciliation-skipped]');
-  } finally {
-    console.warn = originalWarn;
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test('retry turn also restores the persisted interactive tool call', async () => {
-  const originalFetch = globalThis.fetch;
-  const observedEvents: ChatStreamEvent[] = [];
-  const completedToolCall = createToolCall({
-    id: 'tool-retry',
-    status: 'completed',
+function createCompletedToolTurnStream(toolCall: ToolCallRecord) {
+  const envelope = createChatEvent({
+    conversationId: 'conversation-1',
+    data: toolCall,
+    emittedAt: '2026-08-12T00:00:01.000Z',
+    eventId: 'event-tool-completed',
+    requestId: 'request-1',
+    sequence: 1,
     turnId: 'turn-1',
+    type: CHAT_EVENT_TYPES.toolCompleted,
   });
+  return `event: tool_call_completed\ndata: ${JSON.stringify(envelope)}\n\n${createCompletedTurnEvent(2)}`;
+}
 
-  globalThis.fetch = (async (_input, init) => (
-    init?.method === 'POST'
-      ? new Response(createCompletedTurnEvent(), {
-          headers: { 'Content-Type': 'text/event-stream' },
-          status: 200,
-        })
-      : Response.json(createConversation([completedToolCall]))
-  )) as typeof fetch;
-
-  try {
-    const client = createImageProductionChatClient('workspace-1');
-    await client.retryTurn({
-      idempotencyKey: 'retry-key-1',
-      originalTurnId: 'turn-original',
-      retryOfTurnId: 'turn-failed',
-    }, {
-      onEvent: (event) => observedEvents.push(event),
-    });
-
-    assert.equal(observedEvents.some((event) => (
-      event.event === 'tool_call_completed' && event.data.id === 'tool-retry'
-    )), true);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-function createCompletedTurnEvent() {
+function createCompletedTurnEvent(sequence = 1) {
   const response = {
     assistantMessage: {
       blocks: [{ content: 'Готово', type: 'text' as const }],
@@ -197,29 +141,11 @@ function createCompletedTurnEvent() {
     emittedAt: '2026-08-12T00:00:02.000Z',
     eventId: 'event-done',
     requestId: 'request-1',
-    sequence: 1,
+    sequence,
     turnId: 'turn-1',
     type: CHAT_EVENT_TYPES.runCompleted,
   });
   return `event: done\ndata: ${JSON.stringify(envelope)}\n\n`;
-}
-
-function createConversation(toolCalls: ToolCallRecord[] = []): Conversation {
-  return {
-    agentTurns: [],
-    createdAt: '2026-08-12T00:00:00.000Z',
-    id: 'conversation-1',
-    messageCount: 2,
-    messages: [],
-    mode: 'product-copilot',
-    status: 'active',
-    toolCalls,
-    totalCompletionTokens: 0,
-    totalCostUsd: 0,
-    totalPromptTokens: 0,
-    totalTokens: 0,
-    updatedAt: '2026-08-12T00:00:02.000Z',
-  };
 }
 
 function createToolCall(input: {
