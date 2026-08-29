@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Eye, EyeOff, TrendingUp } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient, signIn, signUp } from '@/shared/auth/client';
@@ -33,7 +33,8 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
     : 'Создайте доступ к рабочему пространству и сразу переходите в продукт.';
   const submitLabel = mode === 'login' ? 'Войти' : 'Зарегистрироваться';
   const switchHref = mode === 'login' ? '/register' : '/login';
-  const switchLabel = mode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти';
+  const switchPrompt = mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?';
+  const switchAction = mode === 'login' ? 'Зарегистрироваться' : 'Войти';
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -98,12 +99,8 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
   return (
     <AuthShell ariaLabel={title}>
       <div className="auth-card">
-        <div className="auth-card-head">
-          <span className="auth-card-badge">
-            <TrendingUp size={14} />
-            Защищённый доступ
-          </span>
-          <h2>{title}</h2>
+        <div className="auth-card-head auth-card-head-no-badge">
+          <h2>{mode === 'login' ? 'Войти' : title}</h2>
           <p>{subtitle}</p>
         </div>
 
@@ -188,13 +185,10 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
           </button>
         </form>
 
-        <p className="auth-disclaimer">
-          Вход сохраняется в защищённой серверной сессии. Пароль не попадает в браузерное хранилище.
-        </p>
-
         {mode === 'register' || allowRegistration ? (
           <div className="auth-switch">
-            <Link href={switchHref}>{switchLabel}</Link>
+            <span>{switchPrompt}</span>
+            <Link href={switchHref}>{switchAction}</Link>
           </div>
         ) : null}
       </div>
