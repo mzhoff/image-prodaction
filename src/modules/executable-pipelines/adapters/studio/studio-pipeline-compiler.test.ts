@@ -227,6 +227,186 @@ test('rejects publication when a compiled handler is absent in production', () =
   );
 });
 
+test('explicit boundaries compile typed contracts and stay out of the runtime plan', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('pipeline-input', 'pipelineInput', 100, {
+      title: 'Pipeline Input',
+      fields: [{
+        id: 'topic-field',
+        key: 'topic',
+        kind: 'text',
+        required: true,
+        description: 'Source topic',
+      }],
+    }),
+    node('generation-node', 'textGeneration', 500, {
+      title: 'Text Gen',
+      model: 'google/gemini-2.5-flash',
+      instruction: 'Rewrite',
+      outputStyle: 'plain',
+    }),
+    node('pipeline-output', 'pipelineOutput', 900, {
+      title: 'Pipeline Output',
+      fields: [{ id: 'result-field', key: 'result', kind: 'text', required: true }],
+    }),
+  ];
+  project.edges = [
+    edge('pipeline-input', 'field:topic-field', 'generation-node', 'text'),
+    edge('generation-node', 'result', 'pipeline-output', 'field:result-field'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+
+  assert.deepEqual(compiled.compiledPlan.definition.inputs, {
+    topic: {
+      description: 'Source topic',
+      kind: 'text',
+      required: true,
+    },
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    result: { nodeId: 'generation-node', outputKey: 'text' },
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.outputContracts, {
+    result: { kind: 'text', required: true },
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.nodes.map((item) => item.id), ['generation-node']);
+  assert.deepEqual(compiled.compiledPlan.definition.nodes[0]?.inputs.text, {
+    inputKey: 'topic',
+    source: 'pipeline-input',
+  });
+});
+
+test('explicit structured output compiles a strict recursive JSON schema', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('pipeline-input', 'pipelineInput', 100, {
+      title: 'Pipeline Input',
+      fields: [{ id: 'source-field', key: 'source', kind: 'text', required: true }],
+    }),
+    node('structured-node', 'structuredOutput', 500, {
+      title: 'Structured Output',
+      fields: [{
+        id: 'idea-field',
+        key: 'idea',
+        kind: 'text',
+        required: true,
+      }, {
+        id: 'meta-field',
+        key: 'metadata',
+        kind: 'json',
+        required: false,
+        fields: [{ id: 'score-field', key: 'score', kind: 'number', required: true }],
+      }],
+      instruction: 'Extract a content idea.',
+      model: 'google/gemini-2.5-flash',
+      schemaName: 'content_idea',
+      temperature: 0,
+    }),
+    node('pipeline-output', 'pipelineOutput', 900, {
+      title: 'Pipeline Output',
+      fields: [{
+        id: 'json-field',
+        key: 'result',
+        kind: 'json',
+        required: true,
+        fields: [{ id: 'idea-output-field', key: 'idea', kind: 'text', required: true }],
+      }],
+    }),
+  ];
+  project.edges = [
+    edge('pipeline-input', 'field:source-field', 'structured-node', 'source'),
+    edge('structured-node', 'json', 'pipeline-output', 'field:json-field'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  const structured = compiled.compiledPlan.definition.nodes[0];
+  assert.equal(structured?.handlerType, 'ai.structured.generate');
+  assert.deepEqual(structured?.config.schema, {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      idea: { type: 'string' },
+      metadata: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { score: { type: 'number' } },
+        required: ['score'],
+      },
+    },
+    required: ['idea'],
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    result: { nodeId: 'structured-node', outputKey: 'json' },
+  });
+});
+
+test('explicit URL input compiles QR Code into a server image output', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('pipeline-input', 'pipelineInput', 100, {
+      title: 'Pipeline Input',
+      fields: [{ id: 'url-field', key: 'targetUrl', kind: 'text', required: true }],
+    }),
+    node('qr-code', 'qrCode', 500, {
+      title: 'QR Code',
+      backgroundColor: '#FFFFFF',
+      content: '',
+      contentMode: 'url',
+      errorCorrectionLevel: 'M',
+      foregroundColor: '#000000',
+      margin: 4,
+      outputFormat: 'png',
+      pixelSize: 1024,
+    }),
+    node('pipeline-output', 'pipelineOutput', 900, {
+      title: 'Pipeline Output',
+      fields: [{ id: 'image-field', key: 'qrImage', kind: 'image', required: true }],
+    }),
+  ];
+  project.edges = [
+    edge('pipeline-input', 'field:url-field', 'qr-code', 'text'),
+    edge('qr-code', 'image', 'pipeline-output', 'field:image-field'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+  assert.deepEqual(compiled.compiledPlan.definition.inputs, {
+    targetUrl: { kind: 'text', required: true },
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.nodes, [{
+    id: 'qr-code',
+    handlerType: 'image.qr.generate',
+    handlerVersion: '1',
+    config: {
+      backgroundColor: '#FFFFFF',
+      contentMode: 'url',
+      errorCorrectionLevel: 'M',
+      fallbackText: '',
+      foregroundColor: '#000000',
+      margin: 4,
+      outputFormat: 'png',
+      pixelSize: 1024,
+    },
+    inputs: { text: { source: 'pipeline-input', inputKey: 'targetUrl' } },
+  }]);
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    qrImage: { nodeId: 'qr-code', outputKey: 'image' },
+  });
+});
+
+test('explicit mode requires exactly one input and one output boundary', () => {
+  const project = createTextProject();
+  project.nodes.push(node('pipeline-input', 'pipelineInput', 100, {
+    fields: [{ id: 'source-field', key: 'source', kind: 'text', required: true }],
+  }));
+
+  assert.throws(
+    () => compileStudioSection(project, 'section-main'),
+    /ровно одну ноду Pipeline Input и одну ноду Pipeline Output/,
+  );
+});
+
 function createTextProject(): GraphProject {
   return {
     version: 1,

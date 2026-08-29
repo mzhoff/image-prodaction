@@ -10,6 +10,10 @@ import type {
 } from './types';
 
 const PORT_CONTAINER_HALF_HEIGHT = 12;
+// 16 px card padding + 26 px title + 10 px gap + 16 px heading + 10 px gap.
+// The port container is positioned by its top edge, so subtract half its height
+// to align the port center with the textarea's upper border.
+const QR_CODE_CONTENT_FIELD_TOP = 78;
 
 export function getPortTop(node: ProductionNode, side: 'input' | 'output', index: number) {
   if (node.type === 'router') return Math.max(0, node.size.height / 2 - PORT_CONTAINER_HALF_HEIGHT);
@@ -21,6 +25,8 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'sketch' && side === 'output') return getSketchOutputPortTop(node);
   if (node.type === 'imageToText' && side === 'input') return 74;
   if (node.type === 'imageToText' && side === 'output') return 402;
+  if (node.type === 'qrCode' && side === 'input') return QR_CODE_CONTENT_FIELD_TOP - PORT_CONTAINER_HALF_HEIGHT;
+  if (node.type === 'qrCode' && side === 'output') return 312;
   if (node.type === 'cropImage' && (side === 'input' || side === 'output')) return getCropImagePortTop(node);
   if (node.type === 'adjustment' && (side === 'input' || side === 'output')) return getAdjustmentPortTop(node);
   if (node.type === 'curves' && (side === 'input' || side === 'output')) return getCurvesPortTop(node);

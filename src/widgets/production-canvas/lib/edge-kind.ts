@@ -30,6 +30,9 @@ export function getEdgeDataKind(edge: GraphEdge, nodesById: Map<string, Producti
   if (sourcePort?.kind === 'publication') return 'publication';
   if (sourcePort?.kind === 'video') return 'video';
   if (sourcePort?.kind === 'audio') return 'audio';
+  if (sourcePort?.kind === 'json') return 'json';
+  if (sourcePort?.kind === 'number') return 'number';
+  if (sourcePort?.kind === 'boolean') return 'boolean';
   return sourcePort?.kind === 'image' ? 'image' : 'text';
 }
 
@@ -50,5 +53,9 @@ export function getEdgeHasData(edge: GraphEdge, nodesById: Map<string, Productio
   if (sourcePort?.kind === 'subject') return Boolean(getNodeSubjectResult(source, context));
   if (sourcePort?.kind === 'location') return Boolean(getNodeLocationResult(source, context));
   if (sourcePort?.kind === 'publication') return Boolean(getNodePublicationResult(source, context));
+  if (sourcePort?.kind === 'json' || sourcePort?.kind === 'number' || sourcePort?.kind === 'boolean') {
+    return source.type === 'structuredOutput'
+      && Boolean((source.data as { result?: unknown }).result);
+  }
   return Boolean(getNodeTextResult(source, edge.sourcePortId, context));
 }

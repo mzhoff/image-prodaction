@@ -28,6 +28,8 @@ export async function listStudioPipelinePublications(input: {
     sectionTitle: executablePipeline.name,
     compiledPlan: pipelineVersion.compiledPlan,
     sourceMetadata: pipelineVersion.sourceMetadata,
+    inputSchemaChecksum: pipelineVersion.inputSchemaChecksum,
+    outputSchemaChecksum: pipelineVersion.outputSchemaChecksum,
     version: pipelineVersion.version,
     publishedAt: pipelineVersion.publishedAt,
     endpointPublicId: pipelineEndpoint.publicId,
@@ -55,6 +57,10 @@ export async function publishStudioPipeline(input: {
     isHandlerSupported: isProductionPipelineHandlerSupported,
   });
   const checksum = checksumPublication(compilation);
+  const inputSchemaChecksum = checksumSchema(compilation.compiledPlan.definition.inputs);
+  const outputSchemaChecksum = compilation.compiledPlan.definition.outputContracts
+    ? checksumSchema(compilation.compiledPlan.definition.outputContracts)
+    : null;
   const publishedAt = new Date();
 
   return getDb().transaction(async (tx) => {
@@ -90,6 +96,8 @@ export async function publishStudioPipeline(input: {
       checksum: pipelineVersion.checksum,
       compiledPlan: pipelineVersion.compiledPlan,
       sourceMetadata: pipelineVersion.sourceMetadata,
+      inputSchemaChecksum: pipelineVersion.inputSchemaChecksum,
+      outputSchemaChecksum: pipelineVersion.outputSchemaChecksum,
       publishedAt: pipelineVersion.publishedAt,
     }).from(pipelineVersion)
       .where(eq(pipelineVersion.pipelineId, pipelineId))
@@ -105,6 +113,8 @@ export async function publishStudioPipeline(input: {
         checksum,
         compiledPlan: compilation.compiledPlan,
         sourceMetadata: compilation.sourceMetadata,
+        inputSchemaChecksum,
+        outputSchemaChecksum,
         publishedAt,
       };
       await tx.insert(pipelineVersion).values({
@@ -114,6 +124,8 @@ export async function publishStudioPipeline(input: {
         compiledPlan: compilation.compiledPlan,
         sourceMetadata: compilation.sourceMetadata,
         checksum,
+        inputSchemaChecksum,
+        outputSchemaChecksum,
         publishedByUserId: input.userId,
         publishedAt,
       });
@@ -151,6 +163,8 @@ export async function publishStudioPipeline(input: {
       sectionTitle: sourceMetadata.sectionTitle,
       compiledPlan: activeVersion.compiledPlan,
       sourceMetadata,
+      inputSchemaChecksum: activeVersion.inputSchemaChecksum,
+      outputSchemaChecksum: activeVersion.outputSchemaChecksum,
       version: activeVersion.version,
       publishedAt: activeVersion.publishedAt,
     });
@@ -165,11 +179,14 @@ function toPublicationDto(input: {
   sectionId: string;
   sectionTitle: string;
   sourceMetadata: StudioPipelineSourceMetadata;
+  inputSchemaChecksum: string | null;
+  outputSchemaChecksum: string | null;
   version: number;
 }): StudioPipelinePublication {
   return {
     pipelineId: input.pipelineId,
     endpointPublicId: input.endpointPublicId,
+    inputSchemaChecksum: input.inputSchemaChecksum,
     sectionId: input.sectionId,
     sectionTitle: input.sectionTitle,
     version: input.version,
@@ -177,6 +194,7 @@ function toPublicationDto(input: {
     compiledPlan: input.compiledPlan,
     inputs: input.sourceMetadata.inputs,
     outputs: input.sourceMetadata.outputs,
+    outputSchemaChecksum: input.outputSchemaChecksum,
   };
 }
 
@@ -185,6 +203,10 @@ function checksumPublication(publication: {
   sourceMetadata: StudioPipelineSourceMetadata;
 }) {
   return createHash('sha256').update(stableStringify(publication)).digest('hex');
+}
+
+function checksumSchema(schema: unknown) {
+  return createHash('sha256').update(stableStringify(schema)).digest('hex');
 }
 
 function stableStringify(value: unknown): string {

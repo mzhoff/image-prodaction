@@ -2,6 +2,7 @@ import type { McpToolGateway, ToolExecutionContext } from '@prodactionpro/chat-c
 import { requireWorkspaceMembership, WorkspaceAccessError } from '@/entities/workspace/server/workspace-service';
 import { getAssistantNodeCatalog } from '../core/node-catalog';
 import { CHAT_ASSISTANT_PRODUCT_ID } from '../contracts/assistant-config';
+import { DESIGN_ELEMENT_SELECTION_TOOL } from '../contracts/design-element-selection';
 import {
   DOCUMENT_GRAPH_TOOL,
   KNOWLEDGE_SEARCH_TOOL,
@@ -20,6 +21,7 @@ import {
   preparePipelineUpdateProposal,
 } from './pipeline-update-service';
 import type { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
+import { createDesignElementSelection } from './design-element-selection-service';
 
 export class ImageProductionToolGateway implements McpToolGateway {
   constructor(private readonly attachmentAssetBridge?: ChatAttachmentAssetBridge) {}
@@ -61,6 +63,25 @@ export class ImageProductionToolGateway implements McpToolGateway {
     }
     if (request.toolName === DOCUMENT_GRAPH_TOOL) {
       return { ok: true, output: await readAssistantDocumentGraph(context) };
+    }
+    if (request.toolName === DESIGN_ELEMENT_SELECTION_TOOL) {
+      try {
+        return {
+          ok: true,
+          output: createDesignElementSelection(request.input, context.toolCallId),
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          safeError: {
+            code: 'DESIGN_SELECTION_INVALID',
+            message: error instanceof Error
+              ? error.message
+              : 'Не удалось подготовить выбор элементов макета.',
+            retryable: true,
+          },
+        };
+      }
     }
     if (request.toolName === PIPELINE_BUILD_TOOL) {
       return executePipelineBuildProposal(request, context, this.attachmentAssetBridge);

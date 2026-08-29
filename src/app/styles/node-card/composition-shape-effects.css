@@ -1,0 +1,41 @@
+.composition-shape-effects-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.composition-shadow-controls {
+  display: grid;
+  gap: 8px;
+  border-radius: 8px;
+  background: #f7f7f7;
+  padding: 8px;
+}
+
+.composition-shadow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #555;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.composition-add-effect-button {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed #c9c9c9;
+  border-radius: 7px;
+  background: transparent;
+  color: #555;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.composition-add-effect-button:hover {
+  border-color: #8e8e8e;
+  color: #111;
+}

@@ -11,7 +11,8 @@ import type { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection
 import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import type { useSectionDrawing } from './use-section-drawing';
 import type { CanvasTool } from './production-canvas-values';
-import { getDraggedNodeType, hasDraggedNodeType } from './production-canvas-values';
+import { getDraggedFavoriteNodeId, getDraggedNodeType,
+  hasDraggedFavoriteNode, hasDraggedNodeType } from './production-canvas-values';
 
 type CanvasNavigation = ReturnType<typeof useCanvasNavigation>;
 type BoxSelection = ReturnType<typeof useCanvasBoxSelection>;
@@ -23,6 +24,7 @@ interface CanvasInteractionOptions {
   canvasTool: CanvasTool;
   closeContextMenu: () => void;
   createNode: (type: ProductionNodeType, position: GraphPoint) => string;
+  createFavoriteNode: (favoriteId: string, position: GraphPoint) => string | null;
   getFallbackPastePosition: () => GraphPoint;
   importImageFiles: (
     files: readonly File[],
@@ -38,7 +40,7 @@ interface CanvasInteractionOptions {
 }
 
 export function useProductionCanvasInteractions(options: CanvasInteractionOptions) {
-  const { boxSelection, canvas, canvasTool, closeContextMenu, createNode,
+  const { boxSelection, canvas, canvasTool, closeContextMenu, createFavoriteNode, createNode,
     getFallbackPastePosition, importImageFiles, lastPointerWorldRef, nodesById,
     sectionDrawing, setCanvasTool, showToast,
     toggleCollapsedStateForSelectedNodes } = options;
@@ -82,10 +84,20 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
   };
   const handleCanvasDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
     if (!hasDraggedNodeType(event.dataTransfer)
+      && !hasDraggedFavoriteNode(event.dataTransfer)
       && !hasImageFileInDataTransfer(event.dataTransfer)) return;
     event.preventDefault(); event.dataTransfer.dropEffect = 'copy';
   };
   const handleCanvasDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    const favoriteId = getDraggedFavoriteNodeId(event.dataTransfer);
+    if (favoriteId) {
+      event.preventDefault(); event.stopPropagation(); closeContextMenu();
+      createFavoriteNode(
+        favoriteId,
+        canvas.screenToWorld(event.nativeEvent) ?? getFallbackPastePosition(),
+      );
+      return;
+    }
     const draggedNodeType = getDraggedNodeType(event.dataTransfer);
     if (draggedNodeType) {
       event.preventDefault(); event.stopPropagation(); closeContextMenu();

@@ -29,6 +29,7 @@ export type {
   AssetVariantPurpose,
   AssetVariantRecord,
   LibraryAssetRecord,
+  PendingAssetClaim,
   PendingAssetInput,
 } from './asset-repository-contracts';
 
@@ -41,6 +42,16 @@ export function createDbAssetRepository(): AssetRepository {
       }).returning();
       if (!created) throw new Error('Pending asset could not be created.');
       return created;
+    },
+    async createPendingOrFind(input) {
+      const [created] = await getDb().insert(asset)
+        .values({ ...input, status: 'pending' })
+        .onConflictDoNothing({ target: asset.id }).returning();
+      if (created) return { created: true, record: created };
+      const [record] = await getDb().select().from(asset)
+        .where(eq(asset.id, input.id)).limit(1);
+      if (!record) throw new Error('Pending asset claim could not be resolved.');
+      return { created: false, record };
     },
 
     async findAccessible(assetId, userId) {
@@ -231,9 +242,15 @@ export function createDbAssetRepository(): AssetRepository {
         status: 'ready',
         errorCode: null,
         updatedAt: new Date(),
-      }).where(and(eq(asset.id, assetId), eq(asset.status, 'pending'))).returning();
-      if (!updated) throw new Error('Pending asset could not be marked ready.');
-      return updated;
+      }).where(and(
+        eq(asset.id, assetId),
+        inArray(asset.status, ['pending', 'failed']),
+      )).returning();
+      if (updated) return updated;
+      const [ready] = await getDb().select().from(asset)
+        .where(and(eq(asset.id, assetId), eq(asset.status, 'ready'))).limit(1);
+      if (!ready) throw new Error('Pending asset could not be marked ready.');
+      return ready;
     },
 
     async resetPending(assetId) {
@@ -247,8 +264,11 @@ export function createDbAssetRepository(): AssetRepository {
         eq(asset.id, assetId),
         inArray(asset.status, ['pending', 'failed']),
       )).returning();
-      if (!updated) throw new Error('Asset could not be reset for upload retry.');
-      return updated;
+      if (updated) return updated;
+      const [ready] = await getDb().select().from(asset)
+        .where(and(eq(asset.id, assetId), eq(asset.status, 'ready'))).limit(1);
+      if (!ready) throw new Error('Asset could not be reset for upload retry.');
+      return ready;
     },
 
     async upsertVariant(input) {

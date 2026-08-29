@@ -4,32 +4,36 @@
 продуктовые границы, которые важно не перепутать с универсальным ChatModule.
 История уже удалённых обходов остаётся в Git.
 
-## Состояние после перехода на ChatModule 0.9.0
+## Состояние после перехода на ChatModule 0.11.0
 
 | ID | Связь | Статус | Текущее решение |
 | --- | --- | --- | --- |
 | CW-006 | canvas integration | `keep-product-specific` | Host блокирует передачу wheel/pan события из панели чата в React Flow canvas. |
 | CW-007 | CM-008 | `active` | Knowledge Base пока читается из product-owned Markdown. |
-| CW-008 | CM-017 / CM-018 | `active` | Host временно перехватывает file drop всей панелью и рисует thumbnail tray поверх публичного attachment controller. |
-| CW-009 | CM-019 | `active` | Локальные приватные изображения передаются модели inline, потому что внешний provider не видит MinIO consumer. |
-| CW-010 | CM-021 | `active` | Product gateway ограниченно исправляет invalid/parallel tool calls и ошибки product preflight до package execution, чтобы согласованный turn не падал общей ошибкой. |
+| CW-011 | CM-022 | `active` | Host включает глобальные shortcuts composer только при фокусе его textarea и изолирует внешние editable shadow-DOM поверхности. |
+| CW-012 | CM-026 | `active` | Host готовит preview по актуальной server revision, если browser selector устарел во время model turn; подтверждение остаётся защищено concurrency token. |
+| CW-013 | CM-027 | `active` | Host временно рендерит и сохраняет предметный multi-select объектов макета до появления универсального package interaction lifecycle. |
+| CW-014 | CM-028 | `active` | Host после turn сверяет tool-calls текущего turn с REST snapshot и повторно отдаёт пропущенные записи runtime. |
+| CW-015 | CM-023 | `active` | Host восстанавливает потерянные Retry context selectors только из сохранённого user message после точной server-side сверки document binding. |
 
-ChatModule 0.9.0 сохраняет package-owned решения версии 0.8.0 и дополнительно
-поставляет managed attachments: picker, paste, drop, upload lifecycle, private
-preview и server-owned S3 contract. Прежние package-owned решения включают:
+ChatModule 0.11.0 штатно поставляет всё, для чего раньше существовали
+CW-008–CW-010:
 
-- product-action prepare recovery и одной ограниченной коррекции модели;
-- backend-driven progress, heartbeat и server elapsed time;
-- структурированных ошибок и идемпотентного безопасного retry;
-- CSS activity indicator;
-- единственной актуальной confirmation/tool-call карточки;
-- bounded OpenRouter retry с общим deadline, cancel и `Retry-After`.
+- headless drop-zone и overlay для всей host-области чата;
+- компактные managed thumbnails, upload lifecycle и немедленную очистку
+  composer после submit;
+- независимый model-delivery resolver, включая ограниченную inline-передачу
+  приватного изображения внешнему AI-провайдеру;
+- bounded recovery malformed/invalid/parallel tool calls и повтор после
+  безопасной ошибки подготовки действия;
+- раннюю привязку conversation ID, persistent conversation events и
+  восстановление первого неуспешного turn.
 
-Локальные реализации этих функций удалены. Consumer использует штатные
-`activity`, `errorDetails`, `retryLastTurn`, retry-stream route и
-`OpenRouterClient.retryPolicy` из версии `0.9.0`. Связывание chat attachment с
-долговечным asset и Import-нодой остаётся продуктовой интеграцией Image
-Production, а не обходом универсального пакета.
+Локальные реализации этих функций удалены. Image Production использует
+публичные `useChatAttachmentDropZone`, `ChatAttachmentDropOverlay`,
+`managedAttachments`, `createSubmitOptions`, `modelDelivery`,
+`toolCallRecovery` и persistent event bus версии 0.11.0. Продукт по-прежнему
+владеет строгой проверкой графа и выполнением product tools.
 
 ## CW-006 — canvas wheel boundary остаётся продуктовым
 
@@ -54,61 +58,104 @@ Image Production не передаёт wheel/pan событие canvas, если
 
 Исходные документы нельзя удалять до подтверждённого переключения.
 
-## CW-008 — временное представление и drop boundary вложений
+## CW-011 — focus boundary для клавиатуры composer временный
 
-`AssistantShell` на capture-фазе принимает file drag во всей открытой вкладке
-Assistant, показывает overlay и вызывает публичный
-`useChatAttachments().addFiles`. Это не даёт событию одновременно попасть в
-canvas drop handler. `ImageProductionChat` временно визуализирует публичные
-upload items компактными previews с hover/focus-кнопкой удаления и retry.
-Tray также добавляет локальный `6px` content inset сверху и по бокам, чтобы
-thumbnail совпадал с направляющими textarea. Этот pixel-perfect padding нужно
-удалить вместе с остальным CW-008 после package presentation CM-018.
+`ChatComposer` 0.11.0 слушает `window.keydown` и по умолчанию направляет печать,
+Enter, Backspace и `select all` в composer даже тогда, когда его textarea не в
+фокусе. Для Image Production это конфликтует с canvas shortcuts и с полями
+Visual Intent внутри Shadow DOM, где `event.target` на уровне window становится
+host-элементом.
 
-Удалить CW-008 можно только после публикации CM-017 и CM-018, когда package:
+Локальная оболочка не копирует и не меняет `ChatComposer`. Она отслеживает фокус
+публичной `.cm-composer-textarea`, через публичный `isCommandMenuOpen` временно
+приостанавливает package-owned global capture вне composer и по `composedPath()`
+изолирует внешние editable-поверхности до того, как событие достигнет window.
 
-1. Поставляет headless drop-zone API для произвольной host-оболочки и активный
-   overlay state.
-2. Поставляет managed thumbnail presentation для composer с remove/progress/
-   failure/retry и доступностью с клавиатуры и touch.
-3. Проверен в Image Production: один drop над чатом создаёт ровно одно
-   attachment, над canvas — ровно одну Import-ноду, а превью не теряет upload
-   lifecycle и private storage contract.
+Удалить CW-011 нужно после появления и consumer-проверки явной пакетной политики
+вроде `composerKeyboardPolicy="focused"`. После удаления canvas shortcuts должны
+работать при открытом чате, ввод Visual Intent не должен попадать в composer, а
+Enter в сфокусированной textarea должен по-прежнему отправлять сообщение.
 
-До этого запрещено редактировать `node_modules`: workaround использует только
-публичные API пакета и удаляется целиком после consumer-проверки новой версии.
+## CW-012 — server-authoritative revision для подготовки preview
 
-## CW-009 — inline read target для локального приватного storage
+ChatModule 0.11.0 сворачивает любую ошибку product `prepareTool` в общий
+`CHAT_TOOL_PREPARATION_FAILED`. В реальном turn документ успел сохраниться между
+server verification и `pipeline_build`, поэтому безопасный revision drift
+выглядел для пользователя как неизвестная «небезопасная» ошибка.
 
-При `CHAT_ATTACHMENT_INLINE_READ_TARGETS=true` consumer создаёт отдельный
-model-facing application service поверх обёрнутого штатного S3 adapter. Upload,
-browser preview, validation, ownership, persistence и delete остаются на обычном
-signed URL service; только модель получает ограниченный по размеру base64 data
-URL. Флаг включён лишь в локальном Docker, где `minio.localhost` недоступен
-внешнему OpenRouter.
+До появления CM-026 `pipeline_build` и `pipeline_update` используют
+server-verified document identity, заново загружают документ и строят proposal
+по его текущей server revision. Устаревшая revision из browser selector не
+является разрешением или concurrency token и не блокирует preview. Явный
+`unsaved:*` остаётся fail closed: пока последние изменения существуют только в
+браузере, proposal не готовится против более старой серверной копии.
 
-Удалить CW-009 нужно после поставки CM-019: отдельного model delivery resolver,
-который не связывает browser preview URL со способом передачи изображения
-провайдеру. До этого запрещено включать workaround по умолчанию в production.
+Обход не ослабляет выполнение: membership/workspace проверяются сервером, а
+подтверждение требует token конкретной proposal revision и повторно сравнивает
+revision под блокировкой/атомарным update. Если граф изменился после preview,
+proposal получает conflict и ничего не записывает.
 
-## CW-010 — bounded correction до package tool validation
+Удалить CW-012 нужно после публикации и consumer-проверки CM-026: ChatModule
+должен получить typed context-stale outcome, один раз обновить verified context
+в общем recovery budget и вернуть пользователю один актуальный preview без
+повторного вопроса. Локальный agent loop и код пакета в Image Production не
+копируются.
 
-ChatModule 0.9.0 умеет один раз исправлять ошибку product-owned `prepareTool`,
-но первая ошибка provider tool input, отклонённая внутренним AJV до
-`prepareTool`, завершает весь turn общим `CHAT_AGENT_RUN_FAILED`. То же
-происходит, если модель вернула read и write tools параллельно. Image Production
-временно проверяет собственные `pipeline_build`/`pipeline_update` схемы на
-provider boundary. Для `pipeline_build` там же без записи запускается чистый
-product compiler preflight: он ловит нормализованные несовместимые порты,
-несколько связей в один input и другие детерминированные ошибки графа. Модели
-даётся не более двух попыток вернуть ровно один исправленный tool call. Никакое
-действие до успешной проверки не исполняется; usage всех попыток суммируется, а
-в лог попадают только имена и количество tools.
+## CW-013 — временная интерактивная карточка выбора объектов
 
-Удалить CW-010 нужно после CM-021, когда пакет сам выполняет bounded correction
-для первой schema-validation/parallel-call ошибки, позволяет consumer передать
-безопасную product-validation причину для correction и возвращает
-типизированный безопасный результат вместо общей ошибки.
+Для проверки сценария «референс -> редактируемый макет» Image Production
+временно владеет read-tool `design_element_selection`, словарём дизайнерских
+объектов и renderer карточки выбора. Карточка отправляет канонический
+типизированный payload, сохраняет выбранное состояние и продолжает диалог; она
+не изменяет canvas и не заменяет подтверждение последующего pipeline preview.
+Payload включает выбранные product-owned объекты целиком, в том числе
+опциональную примерную область на референсе, чтобы host мог детерминированно
+перенести её в собственный placement-контракт.
+
+Product-specific распознавание заголовка, героя, фона, QR и маппинг выбора в
+ноды остаются в Image Production. В ChatModule должен переехать только
+универсальный lifecycle single/multi-choice, persistence/replay, accessible UI
+и transport результата. После consumer-проверки CM-027 локальный renderer и
+общая mechanics выбора удаляются, а продукт оставляет лишь options и mapping.
+
+## CW-014 — восстановление tool-call после live turn
+
+ChatModule 0.11.0 передаёт финальный ответ turn и persistent tool events двумя
+потоками. Runtime после завершения turn переподключает conversation stream, а
+подписка без cursor стартует с последнего события. Если завершённый read-tool
+ещё не дошёл до browser, переподключение может перескочить через него: текст
+ассистента виден, а интерактивной карточки нет до reload.
+
+Product transport после успешных `streamTurn` и `retryTurn` читает сохранённый
+conversation snapshot, выбирает tool-calls только текущего `turnId` и повторно
+отдаёт их штатному `onEvent`. Runtime upsert по ID делает повтор безопасным.
+Ошибка этой вторичной сверки не отменяет уже успешный ответ и не раскрывает
+payload в логах.
+
+Удалить CW-014 нужно после CM-028: terminal response или основной turn stream
+должен гарантированно нести tool-call snapshot текущего turn, либо runtime
+должен выполнить собственную reconciliation до завершения `submit`/`retry`.
+
+## CW-015 — восстановление context selectors после Retry
+
+ChatModule 0.11.0 при штатном Retry переносит текст и attachments исходного
+user message, но не передаёт его сохранённые `contextSelectors` в новый turn.
+Из-за этого product write-tools получают корректный ответ модели, однако host
+обязан отклонить подготовку действия без заново проверенного документа.
+
+До поставки CM-023 Image Production восстанавливает полный strict-проверенный
+набор context selectors (`document`, `route`, `selection`) из metadata последнего
+user message текущего conversation. Обход применяется, только если актуальный
+browser/request document selector отсутствует и ровно одна запись
+`chat_document_conversation` совпала одновременно по conversation, product,
+workspace и user. ID сохранённого selector обязан совпасть с binding; malformed,
+missing, mismatched и ambiguous context остаётся без document context. Затем
+документ, workspace, revision и `unsaved:*` проходят обычную server revalidation;
+сам binding не становится разрешением на изменение графа.
+
+Удалить CW-015 нужно после публикации и consumer-проверки CM-023. Пакетный Retry
+должен сам переносить selectors исходного user message и прогонять их через
+host-owned `verifiedContextResolver`; локальный fallback после этого не нужен.
 
 ## Что не является workaround
 
@@ -124,8 +171,8 @@ product compiler preflight: он ловит нормализованные не�
 - строгая product validation, компиляция graph patch, совместимость портов,
   разрешённые settings и расчёт координат нод;
 - привязка conversation к document/user контексту продукта;
-- плавающий resizable host shell, Feedback tab и конкретная политика React Flow
-  canvas; универсальный drop-zone API остаётся запросом CM-017;
+- плавающий resizable host shell, Feedback view в product settings и конкретная политика React Flow
+  canvas;
 - consumer theme, presentation policy и продуктовый system prompt.
 
 ## Процесс при каждом обновлении ChatModule

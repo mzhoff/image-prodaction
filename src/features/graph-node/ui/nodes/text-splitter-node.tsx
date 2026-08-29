@@ -2,6 +2,10 @@
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
+import {
+  COLLAPSED_NODE_PORT_TOP,
+  getCollapsedTextSplitterOutputPorts,
+} from '../../lib/collapsed-node-layout';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { useTextSplitterNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
@@ -15,6 +19,7 @@ interface TextSplitterNodeProps {
 export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodeProps) {
   const model = useTextSplitterNodeModel(node);
   const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
+  const collapsedOutputPorts = getCollapsedTextSplitterOutputPorts(model.items.length);
 
   return (
     <>
@@ -26,34 +31,36 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
         kind="text"
         label="Text"
         className="text-node-header-input-port"
-        style={{ top: collapsed ? 20 : undefined }}
-        onStartConnection={onStartConnection}
-      />
-      <PortButton
-        nodeId={node.id}
-        portId="items"
-        side="output"
-        kind="text"
-        label="Items"
-        className="text-node-header-output-port"
-        style={{ top: collapsed ? 20 : undefined }}
+        style={{ top: collapsed ? COLLAPSED_NODE_PORT_TOP : undefined }}
         onStartConnection={onStartConnection}
       />
       {collapsed ? (
-        model.items.map((item, index) => (
+        collapsedOutputPorts.map((port) => (
           <PortButton
-            key={`item-collapsed-${index}:${item.slice(0, 20)}`}
+            key={`collapsed:${port.id}`}
             nodeId={node.id}
-            portId={`item-${index}`}
+            portId={port.id}
             side="output"
             kind="text"
-            label={`Item ${index + 1}`}
-            className="node-port-row"
-            style={{ top: 20 }}
+            label={port.label}
+            className={port.visuallyHidden
+              ? 'text-node-header-output-port text-splitter-collapsed-item-port'
+              : 'text-node-header-output-port text-splitter-collapsed-output-port'}
+            style={{ top: COLLAPSED_NODE_PORT_TOP }}
             onStartConnection={onStartConnection}
           />
         ))
-      ) : null}
+      ) : (
+        <PortButton
+          nodeId={node.id}
+          portId="items"
+          side="output"
+          kind="text"
+          label="Items"
+          className="text-node-header-output-port"
+          onStartConnection={onStartConnection}
+        />
+      )}
       {!collapsed ? (
         <>
           <div className="text-split-rule-row">

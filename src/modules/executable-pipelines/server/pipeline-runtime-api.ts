@@ -21,6 +21,7 @@ import {
   submitPipelineRuntimeRun,
   toPipelineRuntimeRun,
 } from './pipeline-runtime-run-service';
+import { canPipelineConsumerAccessRun } from './pipeline-runtime-access';
 
 const createRunBodySchema = z.object({
   input: z.record(z.string(), z.unknown()),
@@ -37,6 +38,8 @@ export async function postPipelineRuntimeRun(request: Request, publicId: string)
     const pipelineInput = parsed.data.input;
 
     const run = await submitPipelineRuntimeRun({
+      apiKeyId: identity.apiKeyId,
+      consumerId: identity.consumerId,
       target: identity,
       sourceApplication: identity.sourceApplication,
       idempotencyKey,
@@ -63,7 +66,7 @@ export async function getPipelineRuntimeRun(request: Request, runId: string) {
     const identity = await authenticatePipelineApiRequest(request);
     const store = createPostgresPipelineRunStore();
     const run = await store.findById(runId);
-    if (!run || run.pipelineId !== identity.pipelineId) {
+    if (!run || !canPipelineConsumerAccessRun(identity, run)) {
       return apiError('pipeline_run_not_found', 'Pipeline run was not found.', 404);
     }
     const result = run.status === 'succeeded' ? await store.getResult(run.id) : null;
@@ -84,7 +87,7 @@ export async function cancelPipelineRuntimeRun(request: Request, runId: string) 
     const identity = await authenticatePipelineApiRequest(request);
     const store = createPostgresPipelineRunStore();
     const current = await store.findById(runId);
-    if (!current || current.pipelineId !== identity.pipelineId) {
+    if (!current || !canPipelineConsumerAccessRun(identity, current)) {
       return apiError('pipeline_run_not_found', 'Pipeline run was not found.', 404);
     }
     const run = await requestPipelineRunCancel(runId, new Date(), store);
@@ -112,7 +115,7 @@ export async function getPipelineRuntimeArtifact(
     const identity = await authenticatePipelineApiRequest(request);
     const store = createPostgresPipelineRunStore();
     const run = await store.findById(runId);
-    if (!run || run.pipelineId !== identity.pipelineId || run.status !== 'succeeded') {
+    if (!run || !canPipelineConsumerAccessRun(identity, run) || run.status !== 'succeeded') {
       return apiError('pipeline_run_not_found', 'Pipeline artifact was not found.', 404);
     }
     const result = await store.getResult(run.id);

@@ -1,60 +1,23 @@
-import { z } from 'zod';
 import { canConnectPorts } from '@/entities/production-graph/model/node-definitions';
 import { createDefaultNode } from '@/entities/production-graph/model/create-default-node';
-import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-registry';
 import type {
   GraphEdge,
   GraphProject,
   AssetRecord,
   ProductionNode,
   ProductionNodeData,
-  ProductionNodeType,
 } from '@/entities/production-graph/model/types';
 import { createId } from '@/shared/lib/id';
 import { PIPELINE_NODE_CONFIGURABLE_FIELDS } from '../contracts/image-production-tools';
-import {
-  sanitizePipelineNodeSettings,
-  type SanitizedPipelineNodeSettings,
-} from './pipeline-build';
+import { sanitizePipelineNodeSettings } from './pipeline-build';
+import { compileCompositionBlueprints } from './composition-blueprint';
 import { expandDynamicInputPorts } from './pipeline-dynamic-inputs';
 import { normalizeUnambiguousEdgePorts } from './pipeline-edge-normalization';
 import { reflowPipelineUpdate, type PipelineNodeMove } from './pipeline-update-layout';
 import { normalizeTextPromptTargetPort } from './pipeline-update-port-normalization';
+import { pipelineUpdateInputSchema, type PipelineUpdateInput } from './pipeline-update-schema';
 
-const nodeKeySchema = z.string().trim().min(1).max(48).regex(/^[a-zA-Z][a-zA-Z0-9_-]*$/);
-const idSchema = z.string().trim().min(1).max(120);
-const settingsSchema = z.record(z.string(), z.unknown())
-  .refine((value) => Object.keys(value).length <= 24, 'Node settings are limited to 24 fields.');
-const nodeTypeSchema = z.enum(PRODUCTION_NODE_TYPES as [ProductionNodeType, ...ProductionNodeType[]]);
-
-export const pipelineUpdateInputSchema = z.object({
-  summary: z.string().trim().min(4).max(280),
-  nodes: z.array(z.object({
-    key: nodeKeySchema,
-    settings: settingsSchema.optional(),
-    sourceAttachmentIndex: z.number().int().min(0).max(2).optional(),
-    type: nodeTypeSchema,
-  }).strict()).max(12).default([]),
-  updates: z.array(z.object({ nodeId: idSchema, settings: settingsSchema }).strict()).max(12).default([]),
-  removeEdgeIds: z.array(idSchema).max(24).default([]),
-  edges: z.array(z.object({
-    sourceNodeRef: idSchema,
-    sourcePortId: idSchema.max(80),
-    targetNodeRef: idSchema,
-    targetPortId: idSchema.max(80),
-  }).strict()).max(24).default([]),
-  layout: z.object({
-    columnGap: z.number().int().min(80).max(400).optional(),
-    direction: z.enum(['horizontal', 'vertical']).optional(),
-    originX: z.number().int().min(80).max(3_400).optional(),
-    originY: z.number().int().min(80).max(3_400).optional(),
-    rowGap: z.number().int().min(80).max(400).optional(),
-  }).strict().optional(),
-}).strict().refine((input) => (
-  input.nodes.length + input.updates.length + input.removeEdgeIds.length + input.edges.length > 0
-), 'A pipeline update must contain at least one change.');
-
-export type PipelineUpdateInput = z.infer<typeof pipelineUpdateInputSchema>;
+export { pipelineUpdateInputSchema };
 
 export interface PreparedPipelineUpdatePatch {
   assets?: AssetRecord[];
@@ -69,7 +32,7 @@ export interface PreparedPipelineUpdatePatch {
   movedNodes: PipelineNodeMove[];
   removeEdgeIds: string[];
   summary: string;
-  updatedNodes: Array<{ nodeId: string; settings: SanitizedPipelineNodeSettings }>;
+  updatedNodes: Array<{ nodeId: string; settings: Record<string, unknown> }>;
   version: 2;
 }
 
@@ -79,7 +42,7 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
   assertUnique(input.removeEdgeIds, 'Removed edge ids');
   const warnings: string[] = [];
   const currentById = new Map(currentProject.nodes.map((node) => [node.id, cloneNode(node)]));
-  const settingsByNodeId = new Map<string, SanitizedPipelineNodeSettings>();
+  const settingsByNodeId = new Map<string, Record<string, unknown>>();
 
   for (const update of input.updates) {
     const node = currentById.get(update.nodeId);
@@ -97,15 +60,30 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
   });
   const explicitRemoveEdgeIds = new Set(input.removeEdgeIds);
   const remainingEdges = removeExistingEdges(currentProject.edges, input.removeEdgeIds);
-  const existingEdgeByTarget = new Map(remainingEdges.map((edge) => [
+  const compiledBlueprints = compileCompositionBlueprints({
+    blueprints: input.compositionBlueprints,
+    existingEdges: remainingEdges,
+    existingNodeIds: new Set(currentById.keys()),
+    nodeByRef: allByRef,
+  });
+  compiledBlueprints.removeEdgeIds.forEach((edgeId) => explicitRemoveEdgeIds.add(edgeId));
+  compiledBlueprints.updatedExistingNodeData.forEach((data, nodeId) => {
+    settingsByNodeId.set(nodeId, { ...(settingsByNodeId.get(nodeId) ?? {}), ...data });
+  });
+  const remainingAfterBlueprints = remainingEdges.filter((edge) => !explicitRemoveEdgeIds.has(edge.id));
+  const existingEdgeByTarget = new Map(remainingAfterBlueprints.map((edge) => [
     `${edge.targetNodeId}:${edge.targetPortId}`,
     edge,
   ]));
   const newlyOccupiedTargets = new Set<string>();
-  const addedEdges = input.edges.map((edge) => {
+  const edgeSpecs: PipelineUpdateEdgeSpec[] = [
+    ...input.edges,
+    ...compiledBlueprints.edgeSpecs,
+  ];
+  const addedEdges = edgeSpecs.map((edge) => {
     const source = allByRef.get(edge.sourceNodeRef);
     const target = allByRef.get(edge.targetNodeRef);
-    if (!source || !target) throw new Error('Pipeline update edge references an unknown node.');
+    if (!source || !target) throwUpdateEdgeError(edge, 'Pipeline update edge references an unknown node.');
     expandDynamicInputPorts(target, edge.targetPortId);
     captureSystemNodeSettings(target, currentById, settingsByNodeId);
     const targetPortId = normalizeTextPromptTargetPort({
@@ -125,11 +103,17 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
       warnings,
     });
     if (!canConnectPorts(source, normalized.sourcePortId, target, normalized.targetPortId)) {
-      throw new Error(`Ports ${edge.sourceNodeRef}.${edge.sourcePortId} and ${edge.targetNodeRef}.${targetPortId} are incompatible.`);
+      throwUpdateEdgeError(
+        edge,
+        `Ports ${edge.sourceNodeRef}.${edge.sourcePortId} and ${edge.targetNodeRef}.${targetPortId} are incompatible.`,
+      );
     }
     const targetKey = `${target.id}:${normalized.targetPortId}`;
     if (newlyOccupiedTargets.has(targetKey)) {
-      throw new Error(`Target port ${edge.targetNodeRef}.${targetPortId} is used more than once in this update.`);
+      throwUpdateEdgeError(
+        edge,
+        `Target port ${edge.targetNodeRef}.${targetPortId} is used more than once in this update.`,
+      );
     }
     const replacedEdge = existingEdgeByTarget.get(targetKey);
     if (replacedEdge) {
@@ -226,7 +210,7 @@ function removeExistingEdges(edges: GraphEdge[], removeEdgeIds: string[]) {
 function captureSystemNodeSettings(
   node: ProductionNode,
   currentById: Map<string, ProductionNode>,
-  settingsByNodeId: Map<string, SanitizedPipelineNodeSettings>,
+  settingsByNodeId: Map<string, Record<string, unknown>>,
 ) {
   if (!currentById.has(node.id) || node.type !== 'textConcat') return;
   const concatData = node.data as ProductionNodeData & { inputCount?: number };
@@ -241,6 +225,12 @@ function createSafePreview(input: PipelineUpdateInput, patch: PreparedPipelineUp
     action: 'update-pipeline',
     addedEdgeCount: patch.addedEdges.length,
     addedNodeCount: patch.addedNodes.length,
+    compositionBlueprints: input.compositionBlueprints.map((blueprint) => ({
+      compositionNodeRef: blueprint.compositionNodeRef,
+      layerCount: blueprint.layers.length,
+      layers: blueprint.layers.map(({ key, kind, name, role }) => ({ key, kind, name, role })),
+      mode: blueprint.mode,
+    })),
     nodes: patch.addedNodes.map((node, index) => ({
       key: input.nodes[index].key,
       position: node.position,
@@ -254,6 +244,12 @@ function createSafePreview(input: PipelineUpdateInput, patch: PreparedPipelineUp
     updatedNodeCount: patch.updatedNodes.length,
     warnings,
   };
+}
+
+type PipelineUpdateEdgeSpec = PipelineUpdateInput['edges'][number] & { path?: string };
+
+function throwUpdateEdgeError(spec: PipelineUpdateEdgeSpec, message: string): never {
+  throw new Error(spec.path ? `${spec.path}: ${message}` : message);
 }
 
 function readSafeNodeSettings(node: ProductionNode): Record<string, string | number> {

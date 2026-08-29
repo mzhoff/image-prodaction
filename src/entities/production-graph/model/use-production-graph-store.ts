@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createGraphConnectionActions } from './graph-connection-actions';
+import { createGraphFavoriteNodeActions } from './graph-favorite-node-actions';
 import { createGraphHistoryActions } from './graph-history-actions';
 import { createGraphLocationActions } from './graph-location-actions';
 import { createGraphNodeActions } from './graph-node-actions';
@@ -28,6 +29,7 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       historyFuture: [],
       uiState: createEmptyProjectUiState(),
       ...createGraphNodeActions(set),
+      ...createGraphFavoriteNodeActions(set),
       ...createGraphSectionActions(set, get),
       ...createGraphSubjectActions(set, get),
       ...createGraphLocationActions(set, get),

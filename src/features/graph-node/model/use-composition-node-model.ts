@@ -1,6 +1,6 @@
 'use client';
 
-import { getCompositionLayerInputCount } from '@/entities/production-graph/model/node-definitions';
+import { COMPOSITION_LAYER_MAX_INPUTS, getCompositionLayerInputCount } from '@/entities/production-graph/model/node-definitions';
 import type { CompositionLayerStyle, CompositionNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { composeCompositionResult } from './composition-compose-action';
@@ -8,8 +8,10 @@ import { createCompositionGroupActions } from './composition-group-actions';
 import { getAlignedLayerPatch, normalizeCanvasDimension, upsertLayerStyle, upsertLayerStyles } from './composition-layer-style';
 import { isLayerLocked, isLayerVisible } from './composition-layer-tree-model';
 import type { CompositionAlignment, CompositionLayerView } from './composition-model-types';
-import { getCompositionCanvasSize, compositionSizeOptions } from './composition-options';
+import { getCompositionCanvasPreset } from './composition-canvas-presets';
+import { getCompositionCanvasSize, getCompositionSizeSelection } from './composition-options';
 import { createCompositionSelectionActions } from './composition-selection-actions';
+import { createCompositionRectanglePatch, type CompositionRectangleBounds } from './composition-shape-actions';
 import { useCompositionDerivedState } from './use-composition-derived-state';
 export { compositionAspectRatioOptions, compositionBlendModeOptions, compositionFitOptions, compositionFontOptions, compositionSizeOptions, compositionWeightOptions } from './composition-options';
 export { getDefaultTextLineHeight } from './composition-layer-style';
@@ -29,8 +31,7 @@ export function useCompositionNodeModel(node: ProductionNode) {
   const layerCount = getCompositionLayerInputCount(node);
   const canvasWidth = normalizeCanvasDimension(data.canvasWidth, 1080);
   const canvasHeight = normalizeCanvasDimension(data.canvasHeight, 1080);
-  const selectedSize = compositionSizeOptions.some((option) => option.value === data.size) ? data.size ?? '1K' : '1K';
-
+  const { selectedSize, sizeOptions } = getCompositionSizeSelection(data.size, canvasWidth, canvasHeight);
   const {
     connectedLayerIds,
     connectedLayers,
@@ -56,8 +57,7 @@ export function useCompositionNodeModel(node: ProductionNode) {
     node,
     nodes,
   });
-
-  const setCanvasSize = (width: number, height: number, aspectRatio = data.aspectRatio, size = selectedSize) => {
+  const setCanvasSize = (width: number, height: number, aspectRatio = data.aspectRatio, size = data.size ?? selectedSize) => {
     updateNodeData(node.id, {
       aspectRatio,
       canvasWidth: normalizeCanvasDimension(width, canvasWidth),
@@ -65,7 +65,6 @@ export function useCompositionNodeModel(node: ProductionNode) {
       size,
     });
   };
-
   const handleAspectRatioChange = (aspectRatio: string) => {
     if (aspectRatio === 'custom') {
       updateNodeData(node.id, { aspectRatio });
@@ -74,12 +73,15 @@ export function useCompositionNodeModel(node: ProductionNode) {
     const nextSize = getCompositionCanvasSize(aspectRatio, selectedSize, canvasWidth / Math.max(1, canvasHeight));
     setCanvasSize(nextSize.width, nextSize.height, aspectRatio);
   };
-
   const handleSizeChange = (size: string) => {
+    if (size === 'custom') return;
     const nextSize = getCompositionCanvasSize(data.aspectRatio, size, canvasWidth / Math.max(1, canvasHeight));
     setCanvasSize(nextSize.width, nextSize.height, data.aspectRatio, size);
   };
-
+  const handleCanvasPresetChange = (presetId: string) => {
+    const preset = getCompositionCanvasPreset(presetId);
+    setCanvasSize(preset?.width ?? canvasWidth, preset?.height ?? canvasHeight, preset?.aspectRatio ?? 'custom', 'custom');
+  };
   const updateCanvasSizeSilent = (width: number, height: number, aspectRatio = data.aspectRatio) => {
     updateNodeDataSilent(node.id, {
       aspectRatio,
@@ -88,16 +90,14 @@ export function useCompositionNodeModel(node: ProductionNode) {
       size: 'custom',
     });
   };
-
   const commitCanvasSize = () => {
     updateNodeData(node.id, {
       aspectRatio: data.aspectRatio,
       canvasWidth,
       canvasHeight,
-      size: selectedSize,
+      size: data.size ?? selectedSize,
     });
   };
-
   const updateLayer = (layerId: string, patch: Partial<CompositionLayerStyle>) => {
     updateNodeData(node.id, {
       layers: upsertLayerStyle(data.layers, layerId, patch),
@@ -106,7 +106,6 @@ export function useCompositionNodeModel(node: ProductionNode) {
       selectedGroupId: undefined,
     });
   };
-
   const updateLayerSilent = (layerId: string, patch: Partial<CompositionLayerStyle>) => {
     updateNodeDataSilent(node.id, {
       layers: upsertLayerStyle(data.layers, layerId, patch),
@@ -115,7 +114,6 @@ export function useCompositionNodeModel(node: ProductionNode) {
       selectedGroupId: undefined,
     });
   };
-
   const updateLayersSilent = (patches: Array<{ layerId: string; patch: Partial<CompositionLayerStyle> }>) => {
     if (patches.length === 0) return;
     updateNodeDataSilent(node.id, {
@@ -155,7 +153,11 @@ export function useCompositionNodeModel(node: ProductionNode) {
   };
 
   const handleAddLayer = () => {
-    updateNodeData(node.id, { layerInputCount: Math.min(12, layerCount + 1) });
+    updateNodeData(node.id, { layerInputCount: Math.min(COMPOSITION_LAYER_MAX_INPUTS, layerCount + 1) });
+  };
+  const handleCreateRectangle = (bounds: CompositionRectangleBounds) => {
+    const patch = createCompositionRectanglePatch({ bounds, data, layerInputCount: layerCount });
+    if (patch) updateNodeData(node.id, patch);
   };
 
   const { clearSelection, selectGroup, selectLayer, selectLayerRange } = createCompositionSelectionActions({
@@ -251,8 +253,9 @@ export function useCompositionNodeModel(node: ProductionNode) {
     groups,
     handleAddLayer,
     handleAspectRatioChange,
-    handleCanvasHeightChange: (height: number) => setCanvasSize(canvasWidth, height, 'custom'),
-    handleCanvasWidthChange: (width: number) => setCanvasSize(width, canvasHeight, 'custom'),
+    handleCanvasPresetChange,
+    handleCanvasSizeChange: (width: number, height: number) => setCanvasSize(width, height, 'custom', 'custom'),
+    handleCreateRectangle,
     commitCanvasSize,
     handleSizeChange,
     handleCompose,
@@ -268,7 +271,7 @@ export function useCompositionNodeModel(node: ProductionNode) {
     selectedLayerId,
     selectedLayerIds,
     selectedLayers,
-    sizeOptions: compositionSizeOptions,
+    sizeOptions,
     alignLayerToCanvas,
     alignLayerToNeighbor,
     commitLayerSnapshot,

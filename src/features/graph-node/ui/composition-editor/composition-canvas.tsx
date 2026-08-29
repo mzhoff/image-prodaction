@@ -5,7 +5,8 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useMemo, useRef, useState } from 'react';
 import type { CompositionLayerStyle } from '@/entities/production-graph/model/types';
 import type { CompositionLayerView } from '../../model/use-composition-node-model';
-import type { CompositionEditorTool, ResizeHandle } from './composition-types';
+import type { CompositionEditorTool, LayerBounds, ResizeHandle } from './composition-types';
+import { useCompositionShapeGesture } from './use-composition-shape-gesture';
 import { CompositionLayerFrame, CompositionLayerOutlineFrame, CompositionResizeHandles, CompositionSelectionFrame } from './composition-canvas-frames';
 import { clampLayerValue, getCompositionLayerBounds, getResizePatch, scaleLayerWithinBounds } from './composition-canvas-geometry';
 import { useCompositionLayerDrafts } from './use-composition-layer-drafts';
@@ -21,6 +22,8 @@ export function CompositionCanvas({
   layers,
   onCommitCanvasSize,
   onCommitLayerSnapshots,
+  onCreateRectangle,
+  onFinishShape,
   onIsLayerLocked,
   onSelectLayer,
   onUpdateCanvasSizeSilent,
@@ -38,6 +41,8 @@ export function CompositionCanvas({
   layers: CompositionLayerView[];
   onCommitCanvasSize?: () => void;
   onCommitLayerSnapshots?: (layerIds: string[]) => void;
+  onCreateRectangle?: (bounds: LayerBounds) => void;
+  onFinishShape?: () => void;
   onIsLayerLocked?: (layer: CompositionLayerView) => boolean;
   onSelectLayer: (layerId: string, additive?: boolean) => void;
   onUpdateCanvasSizeSilent?: (width: number, height: number, aspectRatio?: string) => void;
@@ -64,7 +69,13 @@ export function CompositionCanvas({
     ? displayLayers.find((layer) => layer.id === activeHoverLayerId)
     : undefined;
   const multiSelectionBounds = selectedLayers.length > 1 ? getCompositionLayerBounds(selectedLayers) : undefined;
-
+  const { draft: shapeDraft, startShapeGesture } = useCompositionShapeGesture({
+    canvasHeight,
+    canvasWidth,
+    enabled: interactive === true && editorTool === 'shape',
+    onCreate: onCreateRectangle,
+    onFinish: onFinishShape,
+  });
   const getGestureMetrics = () => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return undefined;
@@ -74,7 +85,6 @@ export function CompositionCanvas({
       scaleY: canvasHeight / rect.height,
     };
   };
-
   const startLayerGesture = (
     event: ReactPointerEvent<HTMLElement>,
     layer: CompositionLayerView,
@@ -103,7 +113,6 @@ export function CompositionCanvas({
     }));
     const start = { clientX: event.clientX, clientY: event.clientY };
     onCommitLayerSnapshots?.(startLayers.map((item) => item.id));
-
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const dx = (moveEvent.clientX - start.clientX) * metrics.scaleX;
       const dy = (moveEvent.clientY - start.clientY) * metrics.scaleY;
@@ -117,14 +126,12 @@ export function CompositionCanvas({
           : getResizePatch(item, dx, dy, handle ?? 'se', moveEvent.shiftKey || item.preserveAspectRatio),
       })));
     };
-
     const handlePointerUp = () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
       commitLayerDrafts();
     };
-
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp, { once: true });
     window.addEventListener('pointercancel', handlePointerUp, { once: true });
@@ -224,6 +231,7 @@ export function CompositionCanvas({
       ].filter(Boolean).join(' ')}
       style={canvasStyle}
       onPointerDown={(event) => {
+        if (startShapeGesture(event)) return;
         if (!interactive || editorTool !== 'select') return;
         if (event.target !== event.currentTarget) return;
         setCanvasSelected(true);
@@ -231,6 +239,12 @@ export function CompositionCanvas({
     >
       {interactive && editorTool === 'select' && canvasSelected ? (
         <CompositionResizeHandles onResizePointerDown={startCanvasResize} />
+      ) : null}
+      {shapeDraft ? (
+        <div className="composition-shape-draft" style={{
+          height: `${shapeDraft.height / canvasHeight * 100}%`, left: `${shapeDraft.x / canvasWidth * 100}%`,
+          top: `${shapeDraft.y / canvasHeight * 100}%`, width: `${shapeDraft.width / canvasWidth * 100}%`,
+        }} />
       ) : null}
       {displayLayers.length === 0 ? (
         <div className="composition-preview-empty">

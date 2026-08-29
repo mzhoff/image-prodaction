@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import '@prodactionpro/chat-theme/tokens.css';
 import '@prodactionpro/chat-ui/styles.css';
 import './globals.css';
+import { onest } from './fonts';
 
 export const metadata: Metadata = {
   title: 'Reverie Image Production',
@@ -17,7 +18,7 @@ export default function RootLayout({
   settings: ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" className={onest.variable}>
       <body>
         <div id="app-root">{children}</div>
         {settings}

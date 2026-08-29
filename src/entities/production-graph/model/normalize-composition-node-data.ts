@@ -7,6 +7,14 @@ import type {
   CompositionTextAlign,
   CompositionTextVerticalAlign,
 } from './types';
+import { normalizeCompositionGradient } from './composition-gradient';
+import { normalizeCompositionShadow } from './composition-shape';
+import {
+  COMPOSITION_TEXT_FONT_SIZE_MAX,
+  COMPOSITION_TEXT_FONT_SIZE_MIN,
+  COMPOSITION_TEXT_LINE_HEIGHT_MAX,
+  COMPOSITION_TEXT_LINE_HEIGHT_MIN,
+} from './composition-text-constraints';
 
 export function normalizePositiveInteger(value: unknown, fallback: number, min: number, max: number) {
   return typeof value === 'number' && Number.isFinite(value)
@@ -25,24 +33,37 @@ export function normalizeCompositionLayers(value: unknown): CompositionLayerStyl
       align: normalizeTextAlign(raw.align),
       assetId: getOptionalString(raw.assetId),
       blendMode: normalizeBlendMode(raw.blendMode),
+      blur: normalizeOptionalNumber(raw.blur, 0, 500),
       color: typeof raw.color === 'string' ? raw.color : undefined,
+      cornerRadius: normalizeOptionalNumber(raw.cornerRadius, 0, 2048),
       fit: normalizeLayerFit(raw.fit),
+      fillOpacity: normalizeOptionalNumber(raw.fillOpacity, 0, 100),
       flipX: typeof raw.flipX === 'boolean' ? raw.flipX : undefined,
       flipY: typeof raw.flipY === 'boolean' ? raw.flipY : undefined,
       fontFamily: typeof raw.fontFamily === 'string' ? raw.fontFamily : undefined,
-      fontSize: normalizeOptionalNumber(raw.fontSize, 8, 240),
+      fontSize: normalizeOptionalNumber(
+        raw.fontSize,
+        COMPOSITION_TEXT_FONT_SIZE_MIN,
+        COMPOSITION_TEXT_FONT_SIZE_MAX,
+      ),
       fontWeight: normalizeFontWeight(raw.fontWeight),
+      gradient: normalizeCompositionGradient(raw.gradient),
       groupId: getOptionalString(raw.groupId),
       height: normalizeOptionalNumber(raw.height, 1, 4096),
       id,
-      kind: raw.kind === 'image' || raw.kind === 'text' ? raw.kind : undefined,
+      kind: raw.kind === 'image' || raw.kind === 'rectangle' || raw.kind === 'text' ? raw.kind : undefined,
       letterSpacing: normalizeOptionalNumber(raw.letterSpacing, -100, 500),
-      lineHeight: normalizeOptionalNumber(raw.lineHeight, 1, 600),
+      lineHeight: normalizeOptionalNumber(
+        raw.lineHeight,
+        COMPOSITION_TEXT_LINE_HEIGHT_MIN,
+        COMPOSITION_TEXT_LINE_HEIGHT_MAX,
+      ),
       locked: typeof raw.locked === 'boolean' ? raw.locked : undefined,
       name: typeof raw.name === 'string' ? raw.name : undefined,
       opacity: normalizeOptionalNumber(raw.opacity, 0, 100),
       preserveAspectRatio: typeof raw.preserveAspectRatio === 'boolean' ? raw.preserveAspectRatio : undefined,
       rotation: normalizeOptionalNumber(raw.rotation, -360, 360),
+      shadow: normalizeCompositionShadow(raw.shadow),
       sizingMode: normalizeLayerSizingMode(raw.sizingMode),
       text: typeof raw.text === 'string' ? raw.text : undefined,
       verticalAlign: normalizeTextVerticalAlign(raw.verticalAlign),
@@ -54,9 +75,9 @@ export function normalizeCompositionLayers(value: unknown): CompositionLayerStyl
   });
 }
 
-export function normalizeCompositionGroups(value: unknown, layerInputCount: number): CompositionLayerGroup[] {
+export function normalizeCompositionGroups(value: unknown, layerInputCount: number, localLayerIds: string[] = []): CompositionLayerGroup[] {
   if (!Array.isArray(value)) return [];
-  const validLayerIds = new Set(Array.from({ length: layerInputCount }, (_, index) => `layer-${index}`));
+  const validLayerIds = getValidCompositionLayerIds(layerInputCount, localLayerIds);
   const usedLayerIds = new Set<string>();
   const groups = value.flatMap((item): CompositionLayerGroup[] => {
     if (!item || typeof item !== 'object') return [];
@@ -87,9 +108,9 @@ export function normalizeCompositionGroups(value: unknown, layerInputCount: numb
   return normalizeGroupReferences(groups);
 }
 
-export function normalizeCompositionLayerOrder(value: unknown, layerInputCount: number): string[] {
+export function normalizeCompositionLayerOrder(value: unknown, layerInputCount: number, localLayerIds: string[] = []): string[] {
   if (!Array.isArray(value)) return [];
-  const validLayerIds = new Set(Array.from({ length: layerInputCount }, (_, index) => `layer-${index}`));
+  const validLayerIds = getValidCompositionLayerIds(layerInputCount, localLayerIds);
   const usedIds = new Set<string>();
   return value.flatMap((item): string[] => {
     if (typeof item !== 'string') return [];
@@ -98,6 +119,13 @@ export function normalizeCompositionLayerOrder(value: unknown, layerInputCount: 
     usedIds.add(id);
     return [id];
   });
+}
+
+function getValidCompositionLayerIds(layerInputCount: number, localLayerIds: string[]) {
+  return new Set([
+    ...Array.from({ length: layerInputCount }, (_, index) => `layer-${index}`),
+    ...localLayerIds,
+  ]);
 }
 
 function normalizeGroupReferences(groups: CompositionLayerGroup[]) {

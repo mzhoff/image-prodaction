@@ -231,6 +231,39 @@ Pipeline templates и executable pipelines должны жить в отдель
 - batch generation task;
 - API endpoint.
 
+### 4.4 Deterministic QR Code and layered composition
+
+Текущий ограниченный срез QR Code:
+
+- принимает URL или текст через локальное поле либо вход `text`;
+- для автоматизации получает `targetUrl` из `Pipeline Input` и отдаёт `image`;
+- создаёт настоящий `outputFormat=png` 1024x1024, а не AI-имитацию QR;
+- использует error correction `M`, margin 4, чёрные модули `#000000` и белый
+  фон `#FFFFFF` как штатные параметры;
+- подключается отдельным image-слоем в Composition, где пользователь управляет
+  координатами и масштабом.
+
+Отложенный backlog QR Code, который **не входит в текущую реализацию**:
+
+- JPEG и SVG output наряду с PNG;
+- настраиваемые dimensions результата;
+- отдельный center-logo input для PNG/SVG;
+- формы модулей, pixel-art, patterns и расширенные цветовые варианты;
+- обязательная scanability validation независимым decoder после любых logo,
+  shapes, patterns, recolor и resampling, включая проверку quiet zone и
+  контраста.
+
+Универсальный server Composition contract — отдельный будущий epic. Он должен
+описать типизированные слои, порядок, координаты, размеры, transforms, blending,
+шрифты и версию renderer так, чтобы browser preview и backend execution имели
+проверяемый parity. Текущий QR-срез не расширяется до полной серверной
+Composition.
+
+Послойный редактор Content Hub — ещё один отдельный будущий продуктовый epic и
+не является частью текущей QR-ноды. Content Hub должен потреблять опубликованный
+семантический capability и закреплённую версию pipeline, а не зависеть от canvas
+node IDs или изменяемого draft-графа Image Production.
+
 ## 8. Completed prerequisite: backend execution foundation
 
 По состоянию на 2026-07-17 backend foundation закрыт: реализованы Auth, Workspace,

@@ -21,6 +21,15 @@ import {
   readTemperature,
   requireString,
 } from './pipeline-handler-values';
+import {
+  createAiStructuredHandler,
+  type PipelineStructuredGenerator,
+} from './pipeline-structured-ai-handler';
+
+export {
+  createOpenRouterStructuredGenerator,
+  type PipelineStructuredGenerator,
+} from './pipeline-structured-ai-handler';
 
 export interface PipelineHandlerScope {
   actorUserId: string;
@@ -40,10 +49,12 @@ export function createAiPipelineHandlers(input: {
   analyzeImage: PipelineImageAnalyzer;
   exportImage: PipelineImageExporter;
   generateImage: PipelineImageGenerator;
+  generateStructured: PipelineStructuredGenerator;
   generateText: PipelineTextGenerator;
 }): PipelineNodeHandler[] {
   return [
     createAiTextHandler(input.generateText),
+    createAiStructuredHandler(input.generateStructured),
     createAiImageAnalysisHandler(input.analyzeImage),
     createAiImageGenerationHandler(input.generateImage),
     createImageExportHandler(input.exportImage),

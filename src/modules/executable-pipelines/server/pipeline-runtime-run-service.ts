@@ -15,13 +15,15 @@ import { createUuidV7 } from '@/shared/lib/id';
 export interface PipelineRuntimeExecutionTarget {
   compiledPlan: CompiledPipelinePlan;
   endpointPublicId: string;
-  executionPolicy: Record<string, unknown>;
+  executionPolicy: { maxAttempts?: unknown };
   pipelineId: string;
   pipelineVersion: number;
   workspaceId: string;
 }
 
 export async function submitPipelineRuntimeRun(input: {
+  apiKeyId?: string | null;
+  consumerId?: string | null;
   idempotencyKey: string;
   pipelineInput: PipelineInputs;
   sourceApplication: string;
@@ -33,6 +35,8 @@ export async function submitPipelineRuntimeRun(input: {
   );
 
   return createPipelineRun({
+    apiKeyId: input.apiKeyId,
+    consumerId: input.consumerId,
     id: createUuidV7(),
     workspaceId: input.target.workspaceId,
     pipelineId: input.target.pipelineId,
@@ -82,7 +86,7 @@ export function fingerprintPipelineRunRequest(value: unknown) {
   return createHash('sha256').update(stableStringify(value)).digest('hex');
 }
 
-export function readPipelineMaxAttempts(policy: Record<string, unknown>) {
+export function readPipelineMaxAttempts(policy: { maxAttempts?: unknown }) {
   const value = policy.maxAttempts;
   return Number.isSafeInteger(value) && Number(value) >= 1 && Number(value) <= 10
     ? Number(value)

@@ -2,6 +2,7 @@ import {
   createPipelineNodeSchema,
   createPipelineSettingsSchema,
 } from './pipeline-node-tool-schema';
+import { compositionBlueprintsJsonSchema } from './composition-blueprint-tool-schema';
 
 export const pipelineUpdateInputJsonSchema: Record<string, unknown> = {
   type: 'object',
@@ -16,7 +17,7 @@ export const pipelineUpdateInputJsonSchema: Record<string, unknown> = {
     },
     nodes: {
       type: 'array',
-      maxItems: 12,
+      maxItems: 24,
       description: 'New nodes. Their local keys may be referenced from edges. Omit when no nodes are added.',
       items: createPipelineNodeSchema(),
     },
@@ -48,15 +49,36 @@ export const pipelineUpdateInputJsonSchema: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['sourceNodeRef', 'sourcePortId', 'targetNodeRef', 'targetPortId'],
+        required: ['sourcePortId', 'targetPortId'],
+        anyOf: [
+          { required: ['sourceNodeRef', 'targetNodeRef'] },
+          { required: ['sourceNodeKey', 'targetNodeKey'] },
+          { required: ['sourceNodeRef', 'targetNodeKey'] },
+          { required: ['sourceNodeKey', 'targetNodeRef'] },
+        ],
         properties: {
-          sourceNodeRef: { type: 'string', minLength: 1, maxLength: 120 },
+          sourceNodeRef: {
+            type: 'string', minLength: 1, maxLength: 120,
+            description: 'Preferred source reference: a new local key or existing node id.',
+          },
+          sourceNodeKey: {
+            type: 'string', minLength: 1, maxLength: 120,
+            description: 'Accepted pipeline_build-compatible alias for sourceNodeRef.',
+          },
           sourcePortId: { type: 'string', minLength: 1, maxLength: 80 },
-          targetNodeRef: { type: 'string', minLength: 1, maxLength: 120 },
+          targetNodeRef: {
+            type: 'string', minLength: 1, maxLength: 120,
+            description: 'Preferred target reference: a new local key or existing node id.',
+          },
+          targetNodeKey: {
+            type: 'string', minLength: 1, maxLength: 120,
+            description: 'Accepted pipeline_build-compatible alias for targetNodeRef.',
+          },
           targetPortId: { type: 'string', minLength: 1, maxLength: 80 },
         },
       },
     },
+    compositionBlueprints: compositionBlueprintsJsonSchema,
     layout: {
       type: 'object',
       additionalProperties: false,

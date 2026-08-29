@@ -114,6 +114,16 @@ function getNodePortLayoutSignature(node: ProductionNode) {
     data.mediaInputCount,
     Array.isArray(data.variables) ? data.variables.length : '',
     Array.isArray(data.items) ? data.items.length : '',
+    Array.isArray(data.fields) ? getPipelineFieldLayoutSignature(data.fields) : '',
     data.resultAssetId,
   ].join(':');
+}
+
+function getPipelineFieldLayoutSignature(value: unknown[]): string {
+  return value.map((candidate) => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return '';
+    const field = candidate as Record<string, unknown>;
+    const children = Array.isArray(field.fields) ? getPipelineFieldLayoutSignature(field.fields) : '';
+    return `${String(field.id ?? '')}:${String(field.kind ?? '')}:${children}`;
+  }).join('|');
 }

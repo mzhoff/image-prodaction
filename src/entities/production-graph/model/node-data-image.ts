@@ -15,6 +15,20 @@ export interface ImageToTextNodeData extends BaseNodeData {
   result?: string;
 }
 
+export interface QrCodeNodeData extends BaseNodeData {
+  backgroundColor: string;
+  content: string;
+  contentMode: 'url' | 'text';
+  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H';
+  foregroundColor: string;
+  margin: number;
+  message?: string;
+  outputFormat: 'png';
+  pixelSize: number;
+  resultAssetId?: string;
+  resultSignature?: string;
+}
+
 export interface ReferenceComposerNodeData extends BaseNodeData {
   model?: string;
   site?: string;
@@ -26,7 +40,7 @@ export interface ReferenceComposerNodeData extends BaseNodeData {
 
 export interface GenerationResultMetadata { aspectRatio?: string; model?: string; size?: string }
 export type CompositionLayerFit = 'fit' | 'fill' | 'stretch';
-export type CompositionLayerKind = 'image' | 'text';
+export type CompositionLayerKind = 'image' | 'rectangle' | 'text';
 export type CompositionLayerBlendMode =
   | 'pass-through' | 'normal' | 'darken' | 'multiply' | 'plus-darker'
   | 'color-burn' | 'lighten' | 'screen' | 'plus-lighter' | 'color-dodge'
@@ -35,18 +49,36 @@ export type CompositionLayerBlendMode =
 export type CompositionLayerSizingMode = 'auto-width' | 'auto-height' | 'fixed';
 export type CompositionTextAlign = 'left' | 'center' | 'right';
 export type CompositionTextVerticalAlign = 'top' | 'center' | 'bottom';
+export interface CompositionGradientStop { color: string; offset: number; opacity?: number }
+export interface CompositionLayerGradient {
+  angle: number;
+  stops: CompositionGradientStop[];
+  type: 'linear';
+}
+
+export interface CompositionLayerShadow {
+  blur: number;
+  color: string;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+}
 
 export interface CompositionLayerStyle {
   align?: CompositionTextAlign;
   assetId?: string;
   blendMode?: CompositionLayerBlendMode;
+  blur?: number;
   color?: string;
+  cornerRadius?: number;
   fit?: CompositionLayerFit;
+  fillOpacity?: number;
   flipX?: boolean;
   flipY?: boolean;
   fontFamily?: string;
   fontSize?: number;
   fontWeight?: '400' | '500' | '600' | '700' | '800';
+  gradient?: CompositionLayerGradient;
   groupId?: string;
   height?: number;
   id: string;
@@ -58,6 +90,7 @@ export interface CompositionLayerStyle {
   opacity?: number;
   preserveAspectRatio?: boolean;
   rotation?: number;
+  shadow?: CompositionLayerShadow;
   sizingMode?: CompositionLayerSizingMode;
   text?: string;
   verticalAlign?: CompositionTextVerticalAlign;

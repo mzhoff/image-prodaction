@@ -12,7 +12,7 @@ export interface CompositionLayerView {
   sourceEdge?: GraphEdge;
   sourceLabel?: string;
   sourceNodeId?: string;
-  style: Omit<CompositionLayerStyle, 'id'> & Required<Pick<CompositionLayerStyle, 'align' | 'blendMode' | 'color' | 'fit' | 'flipX' | 'flipY' | 'fontFamily' | 'fontSize' | 'fontWeight' | 'height' | 'letterSpacing' | 'lineHeight' | 'locked' | 'opacity' | 'preserveAspectRatio' | 'rotation' | 'sizingMode' | 'verticalAlign' | 'visible' | 'width' | 'x' | 'y'>>;
+  style: Omit<CompositionLayerStyle, 'id'> & Required<Pick<CompositionLayerStyle, 'align' | 'blendMode' | 'blur' | 'color' | 'cornerRadius' | 'fillOpacity' | 'fit' | 'flipX' | 'flipY' | 'fontFamily' | 'fontSize' | 'fontWeight' | 'height' | 'letterSpacing' | 'lineHeight' | 'locked' | 'opacity' | 'preserveAspectRatio' | 'rotation' | 'sizingMode' | 'verticalAlign' | 'visible' | 'width' | 'x' | 'y'>>;
   text?: string;
 }
 

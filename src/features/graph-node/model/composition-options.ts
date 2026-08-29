@@ -15,6 +15,21 @@ export const compositionSizeOptions: DarkSelectOption[] = [
   { value: '4K', label: '4K' },
 ];
 
+export function getCompositionSizeSelection(size: string | undefined, width: number, height: number) {
+  const namedSize = compositionSizeOptions.find((option) => option.value === size);
+  if (namedSize) return { selectedSize: namedSize.value, sizeOptions: compositionSizeOptions };
+  if (size === 'custom') {
+    return {
+      selectedSize: 'custom',
+      sizeOptions: [
+        ...compositionSizeOptions,
+        { value: 'custom', label: `Custom · ${width} × ${height}` },
+      ],
+    };
+  }
+  return { selectedSize: '1K', sizeOptions: compositionSizeOptions };
+}
+
 const compositionSizeLongSide: Record<string, number> = {
   '1K': 1080,
   '2K': 2048,
@@ -34,6 +49,7 @@ export const compositionAlignOptions: DarkSelectOption[] = [
 ];
 
 export const compositionFontOptions: DarkSelectOption[] = [
+  { value: 'Onest', label: 'Onest' },
   { value: 'Inter, Arial, sans-serif', label: 'Inter' },
   { value: 'Arial, sans-serif', label: 'Arial' },
   { value: 'Georgia, serif', label: 'Georgia' },
@@ -43,6 +59,7 @@ export const compositionFontOptions: DarkSelectOption[] = [
 
 export const compositionWeightOptions: DarkSelectOption[] = [
   { value: '400', label: 'Regular' },
+  { value: '500', label: 'Medium' },
   { value: '600', label: 'Semi' },
   { value: '700', label: 'Bold' },
   { value: '800', label: 'Black' },

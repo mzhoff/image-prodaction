@@ -294,7 +294,7 @@ test('normalizeProject keeps composition settings and title after reload', () =>
         aspectRatio: '9:16',
         canvasWidth: 1080,
         canvasHeight: 1920,
-        layerInputCount: 3,
+        layerInputCount: 30,
         size: '2K',
         groups: [{
           collapsed: true,
@@ -307,10 +307,11 @@ test('normalizeProject keeps composition settings and title after reload', () =>
           visible: false,
         }, {
           id: 'group-2',
-          layerIds: ['layer-2'],
+          itemIds: ['layer-2', 'shape-rectangle'],
+          layerIds: ['layer-2', 'shape-rectangle'],
           name: 'Nested group',
         }],
-        layerOrder: ['group-1', 'missing-layer', 'layer-0'],
+        layerOrder: ['shape-rectangle', 'group-1', 'missing-layer', 'layer-0'],
         resultSignature: 'canvas-signature-v1',
         layers: [{
           id: 'layer-1',
@@ -323,12 +324,33 @@ test('normalizeProject keeps composition settings and title after reload', () =>
           opacity: 86,
           fontSize: 72,
           color: '#ffffff',
+          gradient: {
+            angle: 135,
+            stops: [
+              { color: '#ff0000', offset: 0 },
+              { color: '#0000ff', offset: 1 },
+            ],
+            type: 'linear',
+          },
           text: 'Detached text',
           visible: false,
         }, {
           id: 'layer-2',
           assetId: 'detached-asset',
           kind: 'image',
+        }, {
+          id: 'shape-rectangle',
+          kind: 'rectangle',
+          name: 'Overlay',
+          x: 40,
+          y: 100,
+          width: 1000,
+          height: 520,
+          color: '#112233',
+          fillOpacity: 72,
+          cornerRadius: 48,
+          blur: 12,
+          shadow: { blur: 30, color: '#000000', offsetX: -4, offsetY: 18, opacity: 35 },
         }],
       },
     } as never],
@@ -350,7 +372,7 @@ test('normalizeProject keeps composition settings and title after reload', () =>
     groups?: Array<{ collapsed?: boolean; groupIds?: string[]; id?: string; itemIds?: string[]; layerIds?: string[]; locked?: boolean; name?: string; visible?: boolean }>;
     layerInputCount?: number;
     layerOrder?: string[];
-    layers?: Array<{ assetId?: string; id?: string; locked?: boolean; opacity?: number; text?: string; visible?: boolean }>;
+    layers?: Array<{ assetId?: string; blur?: number; cornerRadius?: number; fillOpacity?: number; gradient?: unknown; id?: string; kind?: string; locked?: boolean; opacity?: number; shadow?: unknown; text?: string; visible?: boolean }>;
     resultSignature?: string;
     size?: string;
     title?: string;
@@ -360,10 +382,10 @@ test('normalizeProject keeps composition settings and title after reload', () =>
   assert.equal(data?.title, 'Story layout');
   assert.equal(data?.canvasWidth, 1080);
   assert.equal(data?.canvasHeight, 1920);
-  assert.equal(data?.layerInputCount, 3);
+  assert.equal(data?.layerInputCount, 24);
   assert.equal(data?.size, '2K');
   assert.equal(data?.resultSignature, 'canvas-signature-v1');
-  assert.deepEqual(data?.layerOrder, ['group-1', 'layer-0']);
+  assert.deepEqual(data?.layerOrder, ['shape-rectangle', 'group-1', 'layer-0']);
   assert.equal(data?.groups?.[0]?.collapsed, true);
   assert.equal(data?.groups?.[0]?.id, 'group-1');
   assert.deepEqual(data?.groups?.[0]?.groupIds, ['group-2']);
@@ -371,13 +393,26 @@ test('normalizeProject keeps composition settings and title after reload', () =>
   assert.deepEqual(data?.groups?.[0]?.layerIds, ['layer-1']);
   assert.equal(data?.groups?.[0]?.locked, true);
   assert.equal(data?.groups?.[0]?.visible, false);
-  assert.deepEqual(data?.groups?.[1]?.layerIds, ['layer-2']);
+  assert.deepEqual(data?.groups?.[1]?.layerIds, ['layer-2', 'shape-rectangle']);
   assert.equal(data?.layers?.[0]?.id, 'layer-1');
   assert.equal(data?.layers?.[0]?.locked, true);
   assert.equal(data?.layers?.[0]?.opacity, 86);
+  assert.deepEqual(data?.layers?.[0]?.gradient, {
+    angle: 135,
+    stops: [
+      { color: '#ff0000', offset: 0, opacity: 100 },
+      { color: '#0000ff', offset: 1, opacity: 100 },
+    ],
+    type: 'linear',
+  });
   assert.equal(data?.layers?.[0]?.text, 'Detached text');
   assert.equal(data?.layers?.[0]?.visible, false);
   assert.equal(data?.layers?.[1]?.assetId, 'detached-asset');
+  assert.equal(data?.layers?.[2]?.kind, 'rectangle');
+  assert.equal(data?.layers?.[2]?.fillOpacity, 72);
+  assert.equal(data?.layers?.[2]?.cornerRadius, 48);
+  assert.equal(data?.layers?.[2]?.blur, 12);
+  assert.deepEqual(data?.layers?.[2]?.shadow, { blur: 30, color: '#000000', offsetX: -4, offsetY: 18, opacity: 35 });
 });
 
 test('normalizeProject keeps markdown formatter preset and clamps formatter width', () => {

@@ -61,6 +61,11 @@ export interface PendingAssetInput {
   workspaceId: string;
 }
 
+export interface PendingAssetClaim {
+  created: boolean;
+  record: AssetRecord;
+}
+
 export interface AssetVariantInput {
   assetId: string;
   bucket: string;
@@ -76,6 +81,7 @@ export interface AssetVariantInput {
 
 export interface AssetRepository {
   createPending(input: PendingAssetInput): Promise<AssetRecord>;
+  createPendingOrFind(input: PendingAssetInput): Promise<PendingAssetClaim>;
   findAccessible(assetId: string, userId: string): Promise<AssetRecord | undefined>;
   findCleanupCandidates(before: Date, limit: number): Promise<AssetRecord[]>;
   findGeneratedByJobId(generationJobId: string): Promise<AssetRecord | undefined>;

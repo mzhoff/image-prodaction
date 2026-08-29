@@ -19,8 +19,10 @@ export interface StudioPipelineSourceMetadata {
 export interface StudioPipelinePublication {
   compiledPlan: CompiledPipelinePlan;
   endpointPublicId: string;
+  inputSchemaChecksum: string | null;
   inputs: StudioPipelineBoundary[];
   outputs: StudioPipelineBoundary[];
+  outputSchemaChecksum: string | null;
   pipelineId: string;
   publishedAt: string;
   sectionId: string;

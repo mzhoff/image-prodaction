@@ -7,6 +7,7 @@ export type PipelineErrorCode =
   | 'pipeline_idempotency_conflict'
   | 'pipeline_input_invalid'
   | 'pipeline_node_output_missing'
+  | 'pipeline_output_invalid'
   | 'pipeline_run_not_found'
   | 'pipeline_run_transition_invalid';
 

@@ -10,11 +10,11 @@ export interface ChatAssistantServerConfig extends PublicChatAssistantConfig {
   attachmentBucket?: string;
   attachmentEndpoint?: string;
   attachmentForcePathStyle: boolean;
-  attachmentInlineReadTargets: boolean;
   attachmentKeyPrefix: string;
   attachmentMaxBytes: number;
   attachmentMaxCount: number;
   attachmentMaxContextImages: number;
+  attachmentModelDelivery: 'inline-bytes' | 'remote-url';
   attachmentReadTtlSeconds: number;
   attachmentRegion: string;
   attachmentS3AccessKeyId?: string;
@@ -52,11 +52,11 @@ export function readChatAssistantConfig(): ChatAssistantServerConfig {
       'CHAT_ATTACHMENT_S3_FORCE_PATH_STYLE',
       readBoolean('S3_FORCE_PATH_STYLE', Boolean(readOptionalString('S3_ENDPOINT'))),
     ),
-    attachmentInlineReadTargets: readBoolean('CHAT_ATTACHMENT_INLINE_READ_TARGETS', false),
     attachmentKeyPrefix: readOptionalString('CHAT_ATTACHMENT_S3_KEY_PREFIX') ?? 'chat-attachments',
     attachmentMaxBytes: readPositiveInteger('CHAT_ATTACHMENT_MAX_BYTES', 8 * 1024 * 1024, 15 * 1024 * 1024),
     attachmentMaxCount: readPositiveInteger('CHAT_ATTACHMENT_MAX_COUNT', 3, 6),
     attachmentMaxContextImages: readPositiveInteger('CHAT_ATTACHMENT_MAX_CONTEXT_IMAGES', 6, 12),
+    attachmentModelDelivery: readAttachmentModelDelivery(),
     attachmentReadTtlSeconds: readPositiveInteger('CHAT_ATTACHMENT_READ_TTL_SECONDS', 900, 3_600),
     attachmentRegion: readOptionalString('S3_REGION') ?? readOptionalString('AWS_REGION') ?? 'us-east-1',
     attachmentS3AccessKeyId: readOptionalString('S3_ACCESS_KEY_ID') ?? readOptionalString('AWS_ACCESS_KEY_ID'),
@@ -64,7 +64,7 @@ export function readChatAssistantConfig(): ChatAssistantServerConfig {
     attachmentUploadTtlSeconds: readPositiveInteger('CHAT_ATTACHMENT_UPLOAD_TTL_SECONDS', 900, 3_600),
     enabled: requestedEnabled && missingSettings.length === 0,
     maxCostUsdPerTurn: readPositiveNumber('CHAT_ASSISTANT_MAX_COST_USD_PER_TURN', 0.01, 1),
-    maxOutputTokens: readPositiveInteger('CHAT_ASSISTANT_MAX_OUTPUT_TOKENS', 1_200, 4_000),
+    maxOutputTokens: readPositiveInteger('CHAT_ASSISTANT_MAX_OUTPUT_TOKENS', 3_600, 4_000),
     maxToolCallsPerTurn: readPositiveInteger('CHAT_ASSISTANT_MAX_TOOL_CALLS_PER_TURN', 6, 8),
     missingSettings: requestedEnabled ? missingSettings : ['CHAT_ASSISTANT_ENABLED'],
     mode: CHAT_ASSISTANT_MODE,
@@ -106,4 +106,10 @@ function readPositiveNumber(name: string, fallback: number, max: number) {
 function readBoolean(name: string, fallback: boolean) {
   const value = readOptionalString(name)?.toLowerCase();
   return value ? ['1', 'true', 'yes', 'on'].includes(value) : fallback;
+}
+
+function readAttachmentModelDelivery(): 'inline-bytes' | 'remote-url' {
+  return readOptionalString('CHAT_ATTACHMENT_MODEL_DELIVERY') === 'inline-bytes'
+    ? 'inline-bytes'
+    : 'remote-url';
 }

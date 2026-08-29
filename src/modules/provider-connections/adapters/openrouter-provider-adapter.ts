@@ -99,6 +99,7 @@ export function createOpenRouterProviderAdapter(
 }
 
 function createExecutePayload(request: ProviderExecuteRequest) {
+  const structuredOutput = request.parameters?.structuredOutput;
   return removeUndefined({
     model: request.modelId,
     messages: request.messages.map((message) => ({
@@ -116,6 +117,17 @@ function createExecutePayload(request: ProviderExecuteRequest) {
     reasoning: request.parameters?.reasoningEffort
       ? { effort: request.parameters.reasoningEffort }
       : undefined,
+    response_format: structuredOutput
+      ? {
+        type: 'json_schema',
+        json_schema: {
+          name: structuredOutput.name,
+          schema: structuredOutput.schema,
+          strict: structuredOutput.strict ?? true,
+        },
+      }
+      : undefined,
+    provider: structuredOutput ? { require_parameters: true } : undefined,
     stream: false,
     temperature: request.parameters?.temperature,
     usage: { include: true },
@@ -202,6 +214,15 @@ function validateExecuteRequest(request: ProviderExecuteRequest) {
   }
   if (uniqueModalities(request.expectedOutputModalities).length === 0) {
     throw permanentError('invalid_request', 'Provider request requires at least one expected output modality.');
+  }
+  const structuredOutput = request.parameters?.structuredOutput;
+  if (structuredOutput && (
+    !/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(structuredOutput.name)
+    || !structuredOutput.schema
+    || typeof structuredOutput.schema !== 'object'
+    || Array.isArray(structuredOutput.schema)
+  )) {
+    throw permanentError('invalid_request', 'Structured output name and JSON schema are invalid.');
   }
 }
 

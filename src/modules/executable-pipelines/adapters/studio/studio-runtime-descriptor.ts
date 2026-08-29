@@ -6,13 +6,16 @@ import type {
   GraphEdge,
   ImageToTextNodeData,
   ProductionNode,
+  PipelineContractField,
+  QrCodeNodeData,
+  StructuredOutputNodeData,
   TextConcatNodeData,
   TextFormatterNodeData,
   TextGenerationNodeData,
   TextPromptNodeData,
   TextSplitterNodeData,
 } from '@/entities/production-graph/model/types';
-import type { PipelineValue } from '../../contracts/pipeline-contracts';
+import type { PipelineJsonSchema, PipelineValue } from '../../contracts/pipeline-contracts';
 import {
   getNodeTitle,
   invalidPipeline,
@@ -60,6 +63,19 @@ export function getRuntimeDescriptor(
         fallbackText: data.result || data.plainText || data.sourceText || '', presetId: data.presetId,
       } };
     }
+    case 'structuredOutput': {
+      const data = node.data as StructuredOutputNodeData;
+      return { handlerType: 'ai.structured.generate', config: {
+        fields: data.fields.map((field) => ({ id: field.id, key: field.key })),
+        instruction: data.instruction,
+        message: data.message ?? '',
+        model: data.model,
+        reasoning: data.reasoning ?? 'low',
+        schema: createStructuredOutputSchema(data.fields) as unknown as PipelineValue,
+        schemaName: data.schemaName,
+        temperature: data.temperature ?? 0,
+      } };
+    }
     case 'imageToText': {
       const data = node.data as ImageToTextNodeData;
       return { handlerType: 'ai.image.analyze', config: {
@@ -72,6 +88,19 @@ export function getRuntimeDescriptor(
         model: data.model, prompt: data.prompt ?? '', aspectRatio: data.aspectRatio, size: data.size,
       } };
     }
+    case 'qrCode': {
+      const data = node.data as QrCodeNodeData;
+      return { handlerType: 'image.qr.generate', config: {
+        backgroundColor: data.backgroundColor,
+        contentMode: data.contentMode,
+        errorCorrectionLevel: data.errorCorrectionLevel,
+        fallbackText: data.content ?? '',
+        foregroundColor: data.foregroundColor,
+        margin: data.margin,
+        outputFormat: data.outputFormat,
+        pixelSize: data.pixelSize,
+      } };
+    }
     case 'exportImage': {
       const data = node.data as ExportImageNodeData;
       return { handlerType: 'image.export', config: {
@@ -81,6 +110,38 @@ export function getRuntimeDescriptor(
     default:
       throw invalidPipeline(`Нода «${getNodeTitle(node)}» (${node.type}) пока не имеет серверного исполнителя.`);
   }
+}
+
+function createStructuredOutputSchema(fields: PipelineContractField[]): PipelineJsonSchema {
+  const properties: Record<string, PipelineJsonSchema> = {};
+  const required: string[] = [];
+  const keys = new Set<string>();
+  if (fields.length === 0) throw invalidPipeline('Structured Output должен содержать хотя бы одно поле.');
+  for (const field of fields) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]{0,119}$/.test(field.key) || keys.has(field.key)) {
+      throw invalidPipeline(`Structured Output содержит некорректный или повторяющийся ключ «${field.key}».`);
+    }
+    keys.add(field.key);
+    properties[field.key] = createStructuredOutputFieldSchema(field);
+    if (field.required) required.push(field.key);
+  }
+  return {
+    type: 'object',
+    additionalProperties: false,
+    properties,
+    ...(required.length ? { required } : {}),
+  };
+}
+
+function createStructuredOutputFieldSchema(field: PipelineContractField): PipelineJsonSchema {
+  const description = field.description ? { description: field.description } : {};
+  if (field.kind === 'text') return { type: 'string', ...description };
+  if (field.kind === 'number') return { type: 'number', ...description };
+  if (field.kind === 'boolean') return { type: 'boolean', ...description };
+  if (field.kind === 'json') {
+    return { ...createStructuredOutputSchema(field.fields ?? []), ...description };
+  }
+  throw invalidPipeline(`Structured Output не может вернуть поле изображения «${field.key}».`);
 }
 
 function getTextPromptRuntimeVariables(

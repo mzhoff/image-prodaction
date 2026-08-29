@@ -1,4 +1,5 @@
 import {
+  COMPOSITION_LAYER_MAX_INPUTS,
   getCompositionLayerPortIndex,
   getExportImageInputPortIndex,
   getTextConcatInputPortIndex,
@@ -12,7 +13,7 @@ export function expandDynamicInputPorts(node: ProductionNode, portId: string) {
   }
   if (node.type === 'composition') {
     const portIndex = getCompositionLayerPortIndex(portId);
-    if (portIndex < 0 || portIndex >= 12) return;
+    if (portIndex < 0 || portIndex >= COMPOSITION_LAYER_MAX_INPUTS) return;
     const data = node.data as ProductionNodeData & { layerInputCount?: number };
     const currentCount = Number(data.layerInputCount) || 2;
     node.data = { ...node.data, layerInputCount: Math.max(2, currentCount, portIndex + 1) };

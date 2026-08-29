@@ -205,9 +205,40 @@ try {
     && edge.targetPortId === 'text'
   )), true);
 
+  const staleSelectorRevision = afterTemplateUpdate.revision;
+  const unsavedContext = createContext({
+    documentId: created.id,
+    revision: staleSelectorRevision,
+    selectorHasUnsavedChanges: true,
+    selectorRevisionMatches: false,
+    toolCallId: 'tool-smoke-unsaved',
+    userId: actor.userId,
+    workspaceId: actor.workspaceId,
+  });
+  await assert.rejects(
+    () => preparePipelineBuildProposal({
+      ...request,
+      input: {
+        documentName: 'Must not be prepared from unsaved canvas',
+        summary: 'Reject a proposal while browser-only graph changes exist.',
+        nodes: [{ key: 'unsaved-export', type: 'exportImage' }],
+        edges: [],
+      },
+    }, unsavedContext),
+    /verified document context/u,
+  );
+  assert.equal((await getDocument(actor.userId, created.id)).revision, staleSelectorRevision);
+  await saveDocumentSnapshot({
+    documentId: created.id,
+    expectedRevision: staleSelectorRevision,
+    snapshot: afterTemplateUpdate.snapshot,
+    userId: actor.userId,
+  });
+  const afterAutosave = await getDocument(actor.userId, created.id);
   const conflictContext = createContext({
     documentId: created.id,
-    revision: afterTemplateUpdate.revision,
+    revision: afterAutosave.revision,
+    selectorRevisionMatches: false,
     toolCallId: 'tool-smoke-conflict',
     userId: actor.userId,
     workspaceId: actor.workspaceId,
@@ -221,9 +252,13 @@ try {
       edges: [],
     },
   }, conflictContext);
+  assert.equal(
+    conflictProposal.concurrencyToken,
+    `document:${created.id}:revision:${afterAutosave.revision}`,
+  );
   await saveDocumentSnapshot({
     documentId: created.id,
-    expectedRevision: afterTemplateUpdate.revision,
+    expectedRevision: afterAutosave.revision,
     snapshot: afterTemplateUpdate.snapshot,
     userId: actor.userId,
   });
@@ -238,7 +273,7 @@ try {
       document: {
         id: created.id,
         revision: latest.revision,
-        selectorRevisionMatches: true,
+        selectorRevisionMatches: false,
       },
     },
   });
@@ -246,7 +281,7 @@ try {
   assert.equal(conflicted.safeError?.code, 'CHAT_PIPELINE_CONCURRENCY_CONFLICT');
   assert.equal((await getDocument(actor.userId, created.id)).snapshot?.project.nodes.length, 7);
 
-  console.info('chat pipeline action smoke passed: build/update/template replacement + confirm + once-only execution + revision conflict');
+  console.info('chat pipeline action smoke passed: build/update/template replacement + stale selector rebase + confirm + once-only execution + revision conflict');
 } finally {
   await updateDocumentMetadata({
     documentId: created.id,
@@ -260,6 +295,8 @@ try {
 function createContext(input: {
   documentId: string;
   revision: number;
+  selectorHasUnsavedChanges?: boolean;
+  selectorRevisionMatches?: boolean;
   toolCallId: string;
   userId: string;
   workspaceId: string;
@@ -275,7 +312,8 @@ function createContext(input: {
       document: {
         id: input.documentId,
         revision: input.revision,
-        selectorRevisionMatches: true,
+        selectorHasUnsavedChanges: input.selectorHasUnsavedChanges ?? false,
+        selectorRevisionMatches: input.selectorRevisionMatches ?? true,
       },
     },
   };

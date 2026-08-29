@@ -62,8 +62,21 @@ test('verified user persists a private image and can reset the password', async 
   });
 
   await test.step('upload, autosave and reload an S3-backed image', async () => {
+    await expect(page.getByRole('textbox', { name: 'Pipeline name' })).toHaveValue('Untitled Pipeline');
+    const closeAssistant = page.getByRole('button', { name: 'Закрыть ассистента' });
+    await expect(closeAssistant).toBeVisible();
+    await closeAssistant.click();
+
+    await page.getByRole('button', { name: 'Open node palette' }).click();
+    const nodeAutosaveResponsePromise = waitForDocumentAutosave(page, projectId);
+    await page
+      .getByRole('complementary', { name: 'Document tools' })
+      .getByRole('button', { name: 'Import image' })
+      .click();
+
     const importNode = page.locator('.production-node-importImage').first();
     await expect(importNode).toBeVisible();
+    await nodeAutosaveResponsePromise;
 
     const autosaveResponsePromise = waitForDocumentAutosave(page, projectId);
     const uploadResponsePromise = page.waitForResponse((response) => (

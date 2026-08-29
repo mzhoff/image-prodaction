@@ -30,10 +30,44 @@ export type PipelineValueKind =
   | 'text'
   | 'text_collection';
 
+interface PipelineJsonSchemaBase {
+  description?: string;
+}
+
+export type PipelineJsonSchema =
+  | (PipelineJsonSchemaBase & {
+    enum?: string[];
+    type: 'string';
+  })
+  | (PipelineJsonSchemaBase & {
+    enum?: number[];
+    type: 'number';
+  })
+  | (PipelineJsonSchemaBase & {
+    enum?: number[];
+    type: 'integer';
+  })
+  | (PipelineJsonSchemaBase & {
+    enum?: boolean[];
+    type: 'boolean';
+  })
+  | (PipelineJsonSchemaBase & {
+    items: PipelineJsonSchema;
+    type: 'array';
+  })
+  | (PipelineJsonSchemaBase & {
+    additionalProperties: false;
+    properties: Record<string, PipelineJsonSchema>;
+    required?: string[];
+    type: 'object';
+  });
+
 export interface PipelineValueContract {
+  defaultValue?: PipelineValue;
   description?: string;
   kind: PipelineValueKind;
   required: boolean;
+  schema?: PipelineJsonSchema;
 }
 
 export type PipelineInputBinding =
@@ -67,6 +101,8 @@ export interface PipelineOutputBinding {
 export interface ExecutablePipelineDefinition {
   inputs: Record<string, PipelineValueContract>;
   nodes: PipelineNodeDefinition[];
+  /** Absent only on legacy schemaVersion 1 publications. */
+  outputContracts?: Record<string, PipelineValueContract>;
   outputs: Record<string, PipelineOutputBinding>;
   schemaVersion: 1;
 }
@@ -115,8 +151,10 @@ export type PipelineRunStatus =
   | 'succeeded';
 
 export interface PipelineRunJob {
+  apiKeyId: string | null;
   attemptCount: number;
   cancelRequestedAt: Date | null;
+  consumerId: string | null;
   createdAt: Date;
   errorCode: string | null;
   errorMessage: string | null;
@@ -189,6 +227,8 @@ export interface PipelineRunExecutor {
 }
 
 export interface NewPipelineRun {
+  apiKeyId?: string | null;
+  consumerId?: string | null;
   id: string;
   idempotencyKey: string;
   input: PipelineInputs;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Folder, ImageIcon, Type } from 'lucide-react';
+import { Folder, ImageIcon, Square, Type } from 'lucide-react';
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { CompositionLayerTreeDragItem, CompositionLayerTreeDropTarget, CompositionLayerTreeItem, CompositionLayerView } from '../../model/use-composition-node-model';
@@ -127,7 +127,7 @@ export function CompositionLayerTree({
           dragItem={{ id: layer.id, kind: 'layer' }}
           dropIndicator={getDropIndicator(layer.id, parentGroupId)}
           hidden={!model.isLayerVisible(layer)}
-          icon={layer.kind === 'image' ? <ImageIcon size={13} /> : <Type size={13} />}
+          icon={layer.kind === 'image' ? <ImageIcon size={13} /> : layer.kind === 'rectangle' ? <Square size={13} /> : <Type size={13} />}
           label={layer.name}
           linkedSource={Boolean(layer.sourceEdge)}
           locked={model.isLayerLocked(layer)}

@@ -9,6 +9,8 @@ export function toPipelineRunJob(record: PipelineRunRecord): PipelineRunJob {
     workspaceId: record.workspaceId,
     pipelineId: record.pipelineId,
     pipelineVersion: record.pipelineVersion,
+    consumerId: record.consumerId,
+    apiKeyId: record.apiKeyId,
     sourceApplication: record.sourceApplication,
     idempotencyKey: record.idempotencyKey,
     requestFingerprint: record.requestFingerprint,

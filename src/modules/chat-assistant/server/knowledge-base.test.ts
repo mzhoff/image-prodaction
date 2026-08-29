@@ -36,3 +36,29 @@ test('knowledge search separates the current runtime API from the planned SDK', 
   assert.match(excerpts, /SDK \*\*ещё не выпущен\*\*/);
   assert.match(excerpts, /Token нельзя встраивать в браузерный JavaScript/);
 });
+
+test('knowledge search returns the simple editable poster strategy', async () => {
+  const result = await searchAssistantKnowledge(
+    'редактируемый рекламный макет герой фон QR отдельные слои',
+    5,
+  );
+  const excerpts = result.results
+    .filter((entry) => entry.source === 'editable-advertising-layouts.md')
+    .map((entry) => entry.excerpt)
+    .join('\n');
+
+  assert.match(excerpts, /Герой, фон, текст.*единый основной арт/su);
+  assert.match(excerpts, /Функциональный QR всегда создаётся детерминированной нодой/u);
+
+  const contract = await searchAssistantKnowledge(
+    'контракт размещения сохранение пропорций градиент',
+    5,
+  );
+  assert.match(
+    contract.results
+      .filter((entry) => entry.source === 'editable-advertising-layouts.md')
+      .map((entry) => entry.excerpt)
+      .join('\n'),
+    /по умолчанию выключено/u,
+  );
+});

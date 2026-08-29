@@ -92,12 +92,12 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/image_prodaction
       S3_ENDPOINT: http://minio:9000
       CHAT_ATTACHMENT_S3_ENDPOINT: http://minio.localhost:9000
-      CHAT_ATTACHMENT_INLINE_READ_TARGETS: "true"
+      CHAT_ATTACHMENT_MODEL_DELIVERY: inline-bytes
       SMTP_HOST: mailpit
       SMTP_USER: reverie-local
       SMTP_PASSWORD: reverie-local-mailpit
       BETTER_AUTH_URL: http://localhost:3004
-      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3004
+      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3004,http://localhost:7310,http://127.0.0.1:7310
       OPENROUTER_SITE_URL: http://localhost:3004
       AI_PROVIDER_RUNTIME: ${AI_PROVIDER_RUNTIME:-}
       CI: ${CI:-false}

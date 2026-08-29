@@ -1,10 +1,13 @@
 'use client';
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import { toCssCompositionGradient } from '@/entities/production-graph/model/composition-gradient';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
+import { getCompositionTextPreviewStyle, getCompositionTextVerticalJustification } from '../../lib/composition-text-preview-style';
+import { getCompositionRectanglePreviewStyle } from '../../lib/composition-shape-preview-style';
 import type { CompositionLayerView } from '../../model/use-composition-node-model';
 import type { LayerBounds, ResizeHandle } from './composition-types';
-import { getCssBlendMode, toCanvasRelativeUnit } from './composition-canvas-geometry';
+import { getCssBlendMode } from './composition-canvas-geometry';
 
 export function CompositionLayerFrame({
   canvasHeight,
@@ -28,6 +31,7 @@ export function CompositionLayerFrame({
   selected: boolean;
 }) {
   const url = useAssetUrl(layer.assetId);
+  const textGradient = layer.style.gradient ? toCssCompositionGradient(layer.style.gradient) : undefined;
   const style: CSSProperties = {
     height: `${(layer.style.height / canvasHeight) * 100}%`,
     left: `${(layer.style.x / canvasWidth) * 100}%`,
@@ -43,6 +47,7 @@ export function CompositionLayerFrame({
       type="button"
       className={[
         'composition-preview-layer',
+        layer.kind === 'rectangle' ? 'composition-preview-layer-rectangle' : '',
         hovered ? 'composition-preview-layer-hovered' : '',
         selected ? 'composition-preview-layer-selected-underlay' : '',
         locked ? 'composition-preview-layer-locked' : '',
@@ -53,22 +58,21 @@ export function CompositionLayerFrame({
       onPointerLeave={() => onHoverChange(false)}
       onPointerDown={onPointerDown}
     >
-      {layer.kind === 'image' && url ? (
+      {layer.kind === 'rectangle' ? (
+        <span className="composition-preview-rectangle" style={getCompositionRectanglePreviewStyle(layer.style, canvasWidth)} />
+      ) : layer.kind === 'image' && url ? (
         <img src={url} alt={layer.name} draggable={false} style={{ objectFit: layer.style.fit === 'fill' ? 'cover' : layer.style.fit === 'stretch' ? 'fill' : 'contain' }} />
       ) : (
         <span
           className="composition-preview-text"
-          style={{
-            color: layer.style.color,
-            fontFamily: layer.style.fontFamily,
-            fontSize: toCanvasRelativeUnit(layer.style.fontSize, canvasWidth),
-            fontWeight: layer.style.fontWeight,
-            letterSpacing: toCanvasRelativeUnit((layer.style.fontSize * layer.style.letterSpacing) / 100, canvasWidth),
-            lineHeight: toCanvasRelativeUnit(layer.style.lineHeight, canvasWidth),
-            textAlign: layer.style.align,
-          }}
+          style={{ justifyContent: getCompositionTextVerticalJustification(layer.style.verticalAlign) }}
         >
-          {layer.text || layer.name}
+          <span
+            className="composition-preview-text-content"
+            style={getCompositionTextPreviewStyle(layer.style, canvasWidth, textGradient)}
+          >
+            {layer.text || layer.name}
+          </span>
         </span>
       )}
     </button>

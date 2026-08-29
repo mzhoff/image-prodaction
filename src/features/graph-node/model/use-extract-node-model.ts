@@ -41,14 +41,6 @@ export function useExtractNodeModel(node: ProductionNode) {
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [promptOpen, setPromptOpen] = useState(true);
   const [resultOpen, setResultOpen] = useState(true);
-  const allSectionsOpen = settingsOpen && promptOpen && resultOpen;
-
-  const toggleAllSections = () => {
-    const nextOpen = !allSectionsOpen;
-    setSettingsOpen(nextOpen);
-    setPromptOpen(nextOpen);
-    setResultOpen(nextOpen);
-  };
 
   const handlePresetChange = (presetIds: ExtractPresetId[]) => {
     const nextPresets = normalizeExtractPresetSelection(presetIds);
@@ -86,7 +78,6 @@ export function useExtractNodeModel(node: ProductionNode) {
   };
 
   return {
-    allSectionsOpen,
     data,
     disabledLayerIds,
     handleAnalyze,
@@ -106,6 +97,5 @@ export function useExtractNodeModel(node: ProductionNode) {
     setResultOpen,
     setSettingsOpen,
     settingsOpen,
-    toggleAllSections,
   };
 }

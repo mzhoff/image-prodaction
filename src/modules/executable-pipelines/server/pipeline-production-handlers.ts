@@ -2,7 +2,9 @@ import type { PipelineNodeHandlerRegistry } from '../contracts/pipeline-contract
 import {
   createAiPipelineHandlers,
   createOpenRouterTextGenerator,
+  createOpenRouterStructuredGenerator,
   type PipelineHandlerScope,
+  type PipelineStructuredGenerator,
   type PipelineTextGenerator,
 } from './pipeline-ai-handlers';
 import { createDeterministicTextHandlers } from './pipeline-text-handlers';
@@ -14,8 +16,13 @@ import {
   type PipelineImageExporter,
   type PipelineImageGenerator,
 } from './pipeline-image-operations';
+import {
+  createQrCodePipelineHandler,
+  createStoredQrCodeGenerator,
+  type PipelineQrCodeGenerator,
+} from './pipeline-qr-code';
 
-export type { PipelineTextGenerator } from './pipeline-ai-handlers';
+export type { PipelineStructuredGenerator, PipelineTextGenerator } from './pipeline-ai-handlers';
 
 export function createProductionPipelineHandlerRegistry(
   scope: PipelineHandlerScope,
@@ -23,6 +30,8 @@ export function createProductionPipelineHandlerRegistry(
     analyzeImage?: PipelineImageAnalyzer;
     exportImage?: PipelineImageExporter;
     generateImage?: PipelineImageGenerator;
+    generateQrCode?: PipelineQrCodeGenerator;
+    generateStructured?: PipelineStructuredGenerator;
     generateText?: PipelineTextGenerator;
   } = {},
 ): PipelineNodeHandlerRegistry {
@@ -32,8 +41,12 @@ export function createProductionPipelineHandlerRegistry(
       analyzeImage: dependencies.analyzeImage ?? createOpenRouterImageAnalyzer(scope),
       exportImage: dependencies.exportImage ?? createSharpImageExporter(scope),
       generateImage: dependencies.generateImage ?? createQueuedImageGenerator(scope),
+      generateStructured: dependencies.generateStructured ?? createOpenRouterStructuredGenerator(scope),
       generateText: dependencies.generateText ?? createOpenRouterTextGenerator(scope),
     }),
+    createQrCodePipelineHandler(
+      dependencies.generateQrCode ?? createStoredQrCodeGenerator(scope),
+    ),
   ];
   const byKey = new Map(handlers.map((handler) => [
     `${handler.handlerType}@${handler.handlerVersion}`,

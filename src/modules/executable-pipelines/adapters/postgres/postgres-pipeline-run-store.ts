@@ -64,6 +64,8 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
         pipelineId: input.pipelineId,
         pipelineVersionId: version.id,
         pipelineVersion: input.pipelineVersion,
+        consumerId: input.consumerId ?? null,
+        apiKeyId: input.apiKeyId ?? null,
         sourceApplication: input.sourceApplication,
         idempotencyKey: input.idempotencyKey,
         requestFingerprint: input.requestFingerprint,

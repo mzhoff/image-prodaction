@@ -10,69 +10,39 @@ import type {
   ProductionNode,
   ProductionNodeData,
   ProductionNodeType,
-  TextPromptVariable,
 } from '@/entities/production-graph/model/types';
 import { createId } from '@/shared/lib/id';
-import {
-  PIPELINE_NODE_CONFIGURABLE_FIELDS,
-  type PipelineNodeSetting,
-} from '../contracts/image-production-tools';
 import type {
   PipelineBuildSafePreview,
   PreparedPipelineBuildPatch,
 } from './pipeline-build-types';
+import {
+  compileCompositionBlueprints,
+  compositionBlueprintsSchema,
+} from './composition-blueprint';
 import { expandDynamicInputPorts } from './pipeline-dynamic-inputs';
 import { normalizeUnambiguousEdgePorts } from './pipeline-edge-normalization';
 import { positionPipelineBuildNodes } from './pipeline-layout';
+import {
+  pipelineNodeSettingsSchema,
+  sanitizePipelineNodeSettings,
+  toSafePreviewSettings,
+} from './pipeline-node-settings';
 
 export type { PipelineBuildSafePreview, PreparedPipelineBuildPatch } from './pipeline-build-types';
+export { sanitizePipelineNodeSettings };
+export type {
+  SanitizedPipelineNodeSettings,
+  SanitizedPipelineNodeSettingValue,
+} from './pipeline-node-settings';
 
-const MAX_PIPELINE_BUILD_NODES = 12;
+const MAX_PIPELINE_BUILD_NODES = 24;
 const MAX_PIPELINE_BUILD_EDGES = 24;
 const MAX_SAFE_PRESENTATION_BYTES = 32 * 1024;
 const CANVAS_MIN = 80;
 
 const nodeKeySchema = z.string().trim().min(1).max(48).regex(/^[a-zA-Z][a-zA-Z0-9_-]*$/);
 const shortTextSchema = z.string().trim().min(1).max(120);
-const longTextSchema = z.string().trim().max(4_000);
-const textPromptVariablesSchema = z.array(z.object({
-  alias: z.string().trim().min(1).max(48),
-  id: z.string().regex(/^variable-[0-9]$/),
-}).strict()).max(10).refine((variables) => (
-  new Set(variables.map((variable) => variable.alias.toLocaleLowerCase('ru-RU'))).size === variables.length
-), 'Text prompt variable aliases must be unique.').transform((variables) => (
-  variables.map((variable, index) => ({ ...variable, id: `variable-${index}` }))
-));
-
-const pipelineSettingValueSchemas = {
-  aspectRatio: z.string().trim().min(1).max(24),
-  background: z.enum(['transparent', 'white', 'black']),
-  customSeparator: z.string().max(80),
-  delimiter: z.string().max(40),
-  format: z.enum(['png', 'jpeg', 'webp']),
-  instruction: longTextSchema,
-  outputStyle: z.enum(['plain', 'markdown', 'numbered-list']),
-  prefix: z.string().max(1_000),
-  presetId: z.enum(['universal', 'telegram-post', 'blog-article', 'markdown']),
-  prompt: longTextSchema,
-  quality: z.string().regex(/^\d{1,3}$/),
-  reasoning: z.enum(['low', 'medium', 'high']),
-  scale: z.enum(['1', '0.75', '0.5', '0.25']),
-  separator: z.enum(['newline', 'double-newline', 'space', 'custom']),
-  size: z.string().trim().min(1).max(16),
-  suffix: z.string().max(1_000),
-  temperature: z.number().min(0).max(2),
-  text: longTextSchema,
-  title: shortTextSchema,
-  variableDisplayMode: z.enum(['source-value', 'value', 'source']),
-  variables: textPromptVariablesSchema,
-} satisfies Record<PipelineNodeSetting, z.ZodType>;
-
-export type SanitizedPipelineNodeSettingValue = string | number | TextPromptVariable[];
-export type SanitizedPipelineNodeSettings = Record<string, SanitizedPipelineNodeSettingValue>;
-
-const pipelineNodeSettingsSchema = z.record(z.string(), z.unknown())
-  .refine((value) => Object.keys(value).length <= 24, 'Node settings are limited to 24 fields.');
 
 const productionNodeTypeSchema = z.enum(PRODUCTION_NODE_TYPES as [ProductionNodeType, ...ProductionNodeType[]]);
 
@@ -91,6 +61,7 @@ export const pipelineBuildInputSchema = z.object({
     targetNodeKey: nodeKeySchema,
     targetPortId: z.string().trim().min(1).max(80),
   }).strict()).max(MAX_PIPELINE_BUILD_EDGES),
+  compositionBlueprints: compositionBlueprintsSchema,
   layout: z.object({
     columnGap: z.number().int().min(80).max(400).optional(),
     direction: z.enum(['horizontal', 'vertical']).optional(),
@@ -127,14 +98,35 @@ export function preparePipelineBuild(
     return configured;
   });
 
-  const positionedNodes = positionPipelineBuildNodes({ currentProject, input, nodes, warnings });
+  const compiledBlueprints = compileCompositionBlueprints({
+    blueprints: input.compositionBlueprints,
+    existingEdges: [],
+    existingNodeIds: new Set(),
+    nodeByRef: nodeByKey,
+  });
+  const edgeSpecs: PipelineBuildEdgeSpec[] = [
+    ...input.edges,
+    ...compiledBlueprints.edgeSpecs.map((edge) => ({
+      path: edge.path,
+      sourceNodeKey: edge.sourceNodeRef,
+      sourcePortId: edge.sourcePortId,
+      targetNodeKey: edge.targetNodeRef,
+      targetPortId: edge.targetPortId,
+    })),
+  ];
+  const positionedNodes = positionPipelineBuildNodes({
+    currentProject,
+    input: { ...input, edges: edgeSpecs },
+    nodes,
+    warnings,
+  });
   positionedNodes.forEach((node, index) => nodeByKey.set(input.nodes[index].key, node));
   const occupiedTargetPorts = new Set<string>();
-  const edges = input.edges.map((edge) => {
+  const edges = edgeSpecs.map((edge) => {
     const created = createValidatedEdge(edge, nodeByKey, warnings);
     const targetKey = `${created.targetNodeId}:${created.targetPortId}`;
     if (occupiedTargetPorts.has(targetKey)) {
-      throw new Error(`Target port ${edge.targetNodeKey}.${edge.targetPortId} already has an incoming connection.`);
+      throwEdgeError(edge, `Target port ${edge.targetNodeKey}.${edge.targetPortId} already has an incoming connection.`);
     }
     occupiedTargetPorts.add(targetKey);
     return created;
@@ -160,6 +152,7 @@ export function preparePipelineBuild(
     action: 'build-pipeline',
     addedEdgeCount: edges.length,
     addedNodeCount: positionedNodes.length,
+    compositionBlueprints: compiledBlueprints.safeSummaries,
     documentName: input.documentName,
     layout: input.layout?.direction ?? 'horizontal',
     nodes: positionedNodes.map((node, index) => ({
@@ -176,6 +169,8 @@ export function preparePipelineBuild(
   assertSafePresentationSize(safePreview);
   return { patch, safePreview };
 }
+
+type PipelineBuildEdgeSpec = PipelineBuildInput['edges'][number] & { path?: string };
 
 export function resolvePipelineDocumentName(
   currentName: string,
@@ -211,52 +206,14 @@ function appendUniqueAssets(current: AssetRecord[], added: AssetRecord[]) {
   return [...current, ...added.filter((asset) => !currentIds.has(asset.id))];
 }
 
-export function sanitizePipelineNodeSettings(
-  type: ProductionNodeType,
-  settings?: z.infer<typeof pipelineNodeSettingsSchema>,
-  nodeKey?: string,
-  warnings: string[] = [],
-): SanitizedPipelineNodeSettings {
-  if (!settings) return {};
-  const allowed = new Set<PipelineNodeSetting>(PIPELINE_NODE_CONFIGURABLE_FIELDS[type]);
-  const supportedEntries: Array<[string, SanitizedPipelineNodeSettingValue]> = [];
-  for (const [key, value] of Object.entries(settings)) {
-    if (!isPipelineNodeSetting(key) || !allowed.has(key)) {
-      warnings.push(`Настройка ${key} пропущена для ${nodeKey ?? type}: эта нода её не поддерживает.`);
-      continue;
-    }
-    const parsed = pipelineSettingValueSchemas[key].safeParse(value);
-    if (!parsed.success) {
-      warnings.push(`Настройка ${key} пропущена для ${nodeKey ?? type}: значение не поддерживается.`);
-      continue;
-    }
-    if (key === 'variables' && JSON.stringify(value) !== JSON.stringify(parsed.data)) {
-      warnings.push(`Идентификаторы variables ноды ${nodeKey ?? type} нормализованы в variable-0, variable-1 и так далее.`);
-    }
-    supportedEntries.push([key, parsed.data as SanitizedPipelineNodeSettingValue]);
-  }
-  return Object.fromEntries(supportedEntries);
-}
-
-function isPipelineNodeSetting(value: string): value is PipelineNodeSetting {
-  return value in pipelineSettingValueSchemas;
-}
-
-function toSafePreviewSettings(settings: SanitizedPipelineNodeSettings): Record<string, string | number> {
-  return Object.fromEntries(Object.entries(settings).flatMap(([key, value]) => {
-    if (key === 'variables' && Array.isArray(value)) return [[key, value.length]];
-    return typeof value === 'string' || typeof value === 'number' ? [[key, value]] : [];
-  }));
-}
-
 function createValidatedEdge(
-  spec: PipelineBuildInput['edges'][number],
+  spec: PipelineBuildEdgeSpec,
   nodeByKey: Map<string, ProductionNode>,
   warnings: string[],
 ): GraphEdge {
   const source = nodeByKey.get(spec.sourceNodeKey);
   const target = nodeByKey.get(spec.targetNodeKey);
-  if (!source || !target) throw new Error('Pipeline edge references an unknown node key.');
+  if (!source || !target) throwEdgeError(spec, 'Pipeline edge references an unknown node key.');
   expandDynamicInputPorts(target, spec.targetPortId);
   const normalized = normalizeUnambiguousEdgePorts({
     source,
@@ -268,7 +225,8 @@ function createValidatedEdge(
     warnings,
   });
   if (!canConnectPorts(source, normalized.sourcePortId, target, normalized.targetPortId)) {
-    throw new Error(
+    throwEdgeError(
+      spec,
       `Ports ${spec.sourceNodeKey}.${spec.sourcePortId} and ${spec.targetNodeKey}.${spec.targetPortId} are incompatible.`,
     );
   }
@@ -279,6 +237,10 @@ function createValidatedEdge(
     targetNodeId: target.id,
     targetPortId: normalized.targetPortId,
   };
+}
+
+function throwEdgeError(spec: PipelineBuildEdgeSpec, message: string): never {
+  throw new Error(spec.path ? `${spec.path}: ${message}` : message);
 }
 
 function assertUniqueNodeKeys(keys: string[]) {

@@ -1,4 +1,5 @@
-import type { CompositionNodeData, GraphPort, ProductionNode, ProductionNodeType, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
+import type { CompositionNodeData, GraphPort, PipelineContractField, PipelineContractFieldKind, PipelineInputNodeData, PipelineOutputNodeData, ProductionNode, ProductionNodeType, StructuredOutputNodeData, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
+import { getPipelineFieldPortId } from './pipeline-contract-fields';
 import { NODE_DEFINITIONS } from './node-registry';
 export { isNodeCollapsible } from './node-registry';
 
@@ -10,12 +11,16 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   textToSpeech: NODE_DEFINITIONS.textToSpeech.ports,
   textFormatter: NODE_DEFINITIONS.textFormatter.ports,
   textSplitter: NODE_DEFINITIONS.textSplitter.ports,
+  pipelineInput: NODE_DEFINITIONS.pipelineInput.ports,
+  pipelineOutput: NODE_DEFINITIONS.pipelineOutput.ports,
+  structuredOutput: NODE_DEFINITIONS.structuredOutput.ports,
   router: NODE_DEFINITIONS.router.ports,
   iterator: NODE_DEFINITIONS.iterator.ports,
   subjectBuilder: NODE_DEFINITIONS.subjectBuilder.ports,
   locationBuilder: NODE_DEFINITIONS.locationBuilder.ports,
   telegramPublication: NODE_DEFINITIONS.telegramPublication.ports,
   imageToText: NODE_DEFINITIONS.imageToText.ports,
+  qrCode: NODE_DEFINITIONS.qrCode.ports,
   referenceComposer: NODE_DEFINITIONS.referenceComposer.ports,
   composition: NODE_DEFINITIONS.composition.ports,
   generateImage: NODE_DEFINITIONS.generateImage.ports,
@@ -35,10 +40,45 @@ export function getNodePorts(node: ProductionNode) {
   if (node.type === 'textPrompt') return getTextPromptPorts(node);
   if (node.type === 'textConcat') return getTextConcatPorts(node);
   if (node.type === 'textSplitter') return getTextSplitterPorts(node);
+  if (node.type === 'pipelineInput') return getPipelineInputPorts(node);
+  if (node.type === 'pipelineOutput') return getPipelineOutputPorts(node);
+  if (node.type === 'structuredOutput') return getStructuredOutputPorts(node);
   if (node.type === 'telegramPublication') return getTelegramPublicationPorts(node);
   if (node.type === 'composition') return getCompositionPorts(node);
   if (node.type === 'exportImage') return getExportImagePorts(node);
   return NODE_PORTS[node.type];
+}
+
+export function pipelineFieldKindToPortKind(kind: PipelineContractFieldKind): GraphPort['kind'] {
+  return kind;
+}
+
+function getPipelineInputPorts(node: ProductionNode): GraphPort[] {
+  const data = node.data as PipelineInputNodeData;
+  return data.fields.map((field) => createPipelineFieldPort(field, 'output'));
+}
+
+function getPipelineOutputPorts(node: ProductionNode): GraphPort[] {
+  const data = node.data as PipelineOutputNodeData;
+  return data.fields.map((field) => createPipelineFieldPort(field, 'input'));
+}
+
+function getStructuredOutputPorts(node: ProductionNode): GraphPort[] {
+  const data = node.data as StructuredOutputNodeData;
+  return [
+    { id: 'source', label: 'Source', kind: 'any', side: 'input' },
+    { id: 'json', label: 'JSON', kind: 'json', side: 'output' },
+    ...data.fields.map((field) => createPipelineFieldPort(field, 'output')),
+  ];
+}
+
+function createPipelineFieldPort(field: PipelineContractField, side: GraphPort['side']): GraphPort {
+  return {
+    id: getPipelineFieldPortId(field.id),
+    label: field.key,
+    kind: pipelineFieldKindToPortKind(field.kind),
+    side,
+  };
 }
 
 export function getPortById(node: ProductionNode, portId: string) {
@@ -67,7 +107,7 @@ export const TEXT_CONCAT_PORT_PREFIX = 'text-';
 export const EXPORT_IMAGE_MAX_INPUTS = 10;
 export const EXPORT_IMAGE_MIN_INPUTS = 1;
 export const EXPORT_IMAGE_PORT_PREFIX = 'image-';
-export const COMPOSITION_LAYER_MAX_INPUTS = 12;
+export const COMPOSITION_LAYER_MAX_INPUTS = 24;
 export const COMPOSITION_LAYER_MIN_INPUTS = 2;
 export const COMPOSITION_LAYER_PORT_PREFIX = 'layer-';
 export const TEXT_PROMPT_VARIABLE_MAX_INPUTS = 10;

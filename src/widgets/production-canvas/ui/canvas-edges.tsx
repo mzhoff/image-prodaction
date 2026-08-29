@@ -71,6 +71,9 @@ function getDraftKind(connectionDraft: ConnectionDraft, nodesById: Map<string, P
     if (connectionDraft.kind === 'publication') return 'publication';
     if (connectionDraft.kind === 'video') return 'video';
     if (connectionDraft.kind === 'audio') return 'audio';
+    if (connectionDraft.kind === 'json') return 'json';
+    if (connectionDraft.kind === 'number') return 'number';
+    if (connectionDraft.kind === 'boolean') return 'boolean';
     if (connectionDraft.kind === 'image') return 'image';
     return 'text';
   }
@@ -82,6 +85,9 @@ function getDraftKind(connectionDraft: ConnectionDraft, nodesById: Map<string, P
   if (sourcePort?.kind === 'publication') return 'publication';
   if (sourcePort?.kind === 'video') return 'video';
   if (sourcePort?.kind === 'audio') return 'audio';
+  if (sourcePort?.kind === 'json') return 'json';
+  if (sourcePort?.kind === 'number') return 'number';
+  if (sourcePort?.kind === 'boolean') return 'boolean';
   if (sourcePort?.kind === 'image') return 'image';
   if (source?.type === 'router') return getRouterDataKind(source, { edges, nodes: Array.from(nodesById.values()) });
   return 'text';
@@ -95,6 +101,9 @@ function getEdgeKindClass(kind: string) {
   if (kind === 'subject') return 'edge-path-subject';
   if (kind === 'location') return 'edge-path-location';
   if (kind === 'publication') return 'edge-path-publication';
+  if (kind === 'json') return 'edge-path-json';
+  if (kind === 'number') return 'edge-path-number';
+  if (kind === 'boolean') return 'edge-path-boolean';
   return 'edge-path-text';
 }
 
@@ -105,6 +114,9 @@ function getEdgeStroke(kind: string) {
   if (kind === 'publication') return '#2aabee';
   if (kind === 'video') return '#f97316';
   if (kind === 'audio') return '#22c55e';
+  if (kind === 'json') return '#8b5cf6';
+  if (kind === 'number') return '#d97706';
+  if (kind === 'boolean') return '#db2777';
   if (kind === 'empty') return '#9ca3af';
   return '#16a34a';
 }

@@ -1,4 +1,4 @@
-import { Archive, BriefcaseBusiness, Clapperboard, Crop, Download, Eye, FileText, Fingerprint, ImagePlus, Images, Layers, Library, MapPin, MessageCircle, Newspaper, Paintbrush, PanelsTopLeft, Repeat2, Route, Scissors, Send, SlidersHorizontal, Sparkles, SquarePlay, StickyNote, TextCursorInput, Volume2, WandSparkles } from 'lucide-react';
+import { Archive, Braces, BriefcaseBusiness, Clapperboard, Crop, Download, Eye, FileInput, FileOutput, FileText, Fingerprint, ImagePlus, Images, Layers, Library, MapPin, MessageCircle, Newspaper, Paintbrush, PanelsTopLeft, QrCode, Repeat2, Route, Scissors, Send, SlidersHorizontal, Sparkles, SquarePlay, StickyNote, TextCursorInput, Volume2, WandSparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
@@ -7,12 +7,16 @@ import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   importImage: <ImagePlus size={14} />,
   imageToText: <WandSparkles size={14} />,
+  qrCode: <QrCode size={14} />,
   textPrompt: <TextCursorInput size={14} />,
   textConcat: <TextCursorInput size={14} />,
   textGeneration: <Sparkles size={14} />,
   textToSpeech: <Volume2 size={14} />,
   textFormatter: <TextCursorInput size={14} />,
   textSplitter: <TextCursorInput size={14} />,
+  pipelineInput: <FileInput size={14} />,
+  pipelineOutput: <FileOutput size={14} />,
+  structuredOutput: <Braces size={14} />,
   router: <Route size={14} />,
   iterator: <Repeat2 size={14} />,
   subjectBuilder: <Fingerprint size={14} />,
@@ -71,6 +75,12 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     types: ['importImage', 'router', 'iterator', 'exportImage', 'preview'],
   },
   {
+    id: 'pipeline',
+    label: 'Pipeline',
+    icon: <Braces size={14} />,
+    types: ['pipelineInput', 'pipelineOutput', 'structuredOutput'],
+  },
+  {
     id: 'text',
     label: 'Text',
     icon: <FileText size={14} />,
@@ -80,7 +90,7 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     id: 'image',
     label: 'Image',
     icon: <Images size={14} />,
-    types: ['generateImage', 'composition', 'imageToText', 'sketch', 'cropImage', 'adjustment', 'curves', 'frequencyRetouch', 'refineImage', 'removeBackground'],
+    types: ['generateImage', 'composition', 'qrCode', 'imageToText', 'sketch', 'cropImage', 'adjustment', 'curves', 'frequencyRetouch', 'refineImage', 'removeBackground'],
   },
   {
     id: 'sound',

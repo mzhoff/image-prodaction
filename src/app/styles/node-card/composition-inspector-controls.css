@@ -15,6 +15,7 @@
 }
 
 .composition-inspector-section .mini-select,
+.composition-canvas-preset-control,
 .composition-typography-button,
 .composition-unit-number-control,
 .composition-segmented-icon-control,
@@ -31,6 +32,15 @@
   max-width: none;
   justify-content: space-between;
   padding: 4px 8px;
+}
+
+.composition-canvas-preset-control {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 650;
+  outline: none;
 }
 
 .composition-typography-button {

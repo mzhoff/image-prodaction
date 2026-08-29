@@ -20,6 +20,7 @@ import {
   materializePipelineAttachmentImports,
   resolvePipelineAttachmentImports,
 } from './pipeline-attachment-import-service';
+import { readVerifiedDocumentContext } from './verified-document-context';
 
 const PROPOSAL_TTL_MS = 10 * 60 * 1_000;
 
@@ -28,7 +29,7 @@ export async function preparePipelineUpdateProposal(
   context: ToolExecutionContext,
   attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ) {
-  const verified = readVerifiedDocument(context);
+  const verified = readVerifiedDocumentContext(context);
   const idempotencyKey = context.idempotencyKey ?? context.toolCallId;
   const existing = await findProposal(context, verified.id, idempotencyKey);
   if (existing) return toActionProposal(existing);
@@ -36,7 +37,6 @@ export async function preparePipelineUpdateProposal(
   if (current.workspaceId !== context.tenantId || current.status !== 'active') {
     throw new Error('The current document cannot be changed.');
   }
-  if (current.revision !== verified.revision) throw new Error('The current document revision changed.');
   const graph = current.snapshot?.project ? structuredClone(current.snapshot.project) : structuredClone(initialProject);
   const prepared = preparePipelineUpdate(pipelineUpdateInputSchema.parse(request.input), graph);
   prepared.patch.attachmentImports = await resolvePipelineAttachmentImports(
@@ -66,7 +66,7 @@ export async function executePipelineUpdateProposal(
   context: ToolExecutionContext,
   attachmentAssetBridge?: ChatAttachmentAssetBridge,
 ): Promise<ToolCallResult> {
-  const verified = readVerifiedDocument(context);
+  const verified = readVerifiedDocumentContext(context);
   if (!request.executionRef || !isUuidV7(request.executionRef)) return invalidProposal();
   return getDb().transaction(async (transaction) => {
     const [proposal] = await transaction.select().from(chatPipelineUpdateProposal).where(and(
@@ -176,15 +176,6 @@ function toActionProposal(row: typeof chatPipelineUpdateProposal.$inferSelect): 
   };
 }
 
-function readVerifiedDocument(context: ToolExecutionContext) {
-  const value = context.verifiedContext?.document;
-  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.revision !== 'number'
-    || !Number.isInteger(value.revision) || value.selectorRevisionMatches === false) {
-    throw new Error('A verified document context is required for this action.');
-  }
-  return { id: value.id, revision: value.revision };
-}
-
 function concurrencyToken(documentId: string, revision: number) {
   return `document:${documentId}:revision:${revision}`;
 }
@@ -203,8 +194,4 @@ async function markConflict(
 ) {
   await transaction.update(chatPipelineUpdateProposal).set({ status: 'conflict' })
     .where(eq(chatPipelineUpdateProposal.id, proposalId));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

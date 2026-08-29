@@ -1,9 +1,10 @@
 'use client';
 
-import { Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, PlayCircle,
-  RotateCcw, Trash2, Unlock, Upload } from 'lucide-react';
+import { ClipboardCopy, Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, PlayCircle,
+  RotateCcw, Star, Trash2, Unlock, Upload } from 'lucide-react';
 import { useCallback } from 'react';
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react';
+import type { useFavoriteNodePresets } from '@/entities/production-graph/api/use-favorite-node-presets';
 import { getNodeCurrentImageAssetId,
   getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import type { GraphSection, ProductionNode,
@@ -22,14 +23,17 @@ type GraphModel = ReturnType<typeof useProductionCanvasStore>;
 type CanvasNavigation = ReturnType<typeof useCanvasNavigation>;
 type ContextMenu = ReturnType<typeof useContextMenu>;
 type StudioPipelines = ReturnType<typeof useStudioPipelinePublications>;
+type FavoriteNodes = ReturnType<typeof useFavoriteNodePresets>;
 
 interface ProductionCanvasMenusOptions {
   canvas: CanvasNavigation;
   closeContextMenu: () => void;
   contextMenu: ContextMenu;
+  copyAssetToClipboard: (assetId: string) => void;
   createNode: (type: ProductionNodeType, position: { x: number; y: number }) => string;
   downloadAssets: (assetIds: string[]) => Promise<void>;
   exportSectionPipelineTemplate: (sectionId: string, title: string) => void;
+  favoriteNodes: FavoriteNodes;
   graph: GraphModel;
   importPipelineTemplateAt: (position: { x: number; y: number }) => void;
   openImageViewer: (nodeId: string, initialIndex: number) => void;
@@ -41,8 +45,8 @@ interface ProductionCanvasMenusOptions {
 }
 
 export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) {
-  const { canvas, closeContextMenu, contextMenu, createNode, downloadAssets,
-    exportSectionPipelineTemplate, graph, importPipelineTemplateAt, openImageViewer,
+  const { canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
+    exportSectionPipelineTemplate, favoriteNodes, graph, importPipelineTemplateAt, openImageViewer,
     projectId, sectionColorPreviews, setSectionColorPreviews, showToast,
     studioPipelines } = options;
 
@@ -101,6 +105,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
   ], [canvas, createNode, graph, importPipelineTemplateAt]);
 
   const getNodeMenuActions = useCallback((node: ProductionNode): ContextMenuAction[] => {
+    const matchingFavorite = favoriteNodes.findMatchingFavorite(node);
     const assetIds = getNodeImageAssetIds(node);
     const currentAssetId = getNodeCurrentImageAssetId(node);
     const currentIndex = currentAssetId ? Math.max(0, assetIds.indexOf(currentAssetId)) : -1;
@@ -108,6 +113,8 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
       { id: 'open-node-image', label: 'Expand fullscreen', icon: <Maximize2 size={14} />,
         separatorBefore: true,
         onSelect: () => openImageViewer(node.id, currentIndex >= 0 ? currentIndex : 0) },
+      { id: 'copy-current-node-image', label: 'Copy image', icon: <ClipboardCopy size={14} />,
+        onSelect: () => copyAssetToClipboard(currentAssetId) },
       { id: 'download-current-node-image', label: 'Download current', icon: <Download size={14} />,
         onSelect: () => void downloadAssets([currentAssetId]) },
       { id: 'download-all-node-images', label: 'Download all', icon: <Download size={14} />,
@@ -125,6 +132,25 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
         onSelect: () => requestNodeTitleRename(node.id) },
       { id: 'copy-node', label: 'Duplicate', icon: <Copy size={14} />,
         onSelect: () => graph.duplicateNode(node.id) },
+      {
+        id: 'favorite-node-preset',
+        label: matchingFavorite ? 'Remove from Favorite' : 'Add to Favorite',
+        icon: <Star size={14} fill={matchingFavorite ? 'currentColor' : 'none'} />,
+        onSelect: () => {
+          const operation = matchingFavorite
+            ? favoriteNodes.removeFavorite(matchingFavorite.id).then(() => {
+              showToast('Node removed from Favorite.');
+            })
+            : favoriteNodes.saveFavorite(node).then((result) => {
+              showToast(result.strippedAssetReferenceCount > 0
+                ? 'Node saved to Favorite without unavailable assets.'
+                : 'Node saved to Favorite.');
+            });
+          void operation.catch((error) => showToast(
+            error instanceof Error ? error.message : 'Could not update Favorite.',
+          ));
+        },
+      },
       { id: 'toggle-node-lock', label: node.locked ? 'Unlock' : 'Lock',
         icon: node.locked ? <Unlock size={14} /> : <Lock size={14} />,
         onSelect: () => graph.toggleNodeLock(node.id) },
@@ -135,7 +161,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     return [...visibleBaseActions, ...imageActions, ...generationActions,
       { id: 'delete-node', label: 'Delete', icon: <Trash2 size={14} />,
         destructive: true, separatorBefore: true, onSelect: graph.deleteSelected }];
-  }, [downloadAssets, graph, openImageViewer, showToast]);
+  }, [copyAssetToClipboard, downloadAssets, favoriteNodes, graph, openImageViewer, showToast]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {
     const point = canvas.screenToWorld(event.nativeEvent) ?? { x: 0, y: 0 };

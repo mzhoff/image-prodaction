@@ -5,6 +5,7 @@ const KNOWLEDGE_FILES = [
   'product-overview.md',
   'executable-pipelines.md',
   'node-catalog.md',
+  'editable-advertising-layouts.md',
   'assistant-policy.md',
 ] as const;
 

@@ -2,17 +2,19 @@
 
 import {
   Crop,
+  Braces,
   Download,
   Ellipsis,
   Eye,
   FileInput,
   ImageIcon,
+  FileOutput,
   Layers,
   ListPlus,
   Minimize2,
   Paintbrush,
   Repeat2,
-  Route,
+  QrCode, Route,
   Scissors,
   Send,
   Slice,
@@ -242,6 +244,7 @@ export function TextNodeTitleActions({
 }
 
 function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
+  if (nodeType === 'qrCode' || (!nodeType && title === 'QR Code')) return QrCode;
   if (nodeType) {
     if (nodeType === 'importImage') return FileInput;
     if (nodeType === 'imageToText') return WandSparkles;
@@ -254,6 +257,9 @@ function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
     if (nodeType === 'textToSpeech') return Volume2;
     if (nodeType === 'textFormatter') return Text;
     if (nodeType === 'textSplitter') return Slice;
+    if (nodeType === 'pipelineInput') return FileInput;
+    if (nodeType === 'pipelineOutput') return FileOutput;
+    if (nodeType === 'structuredOutput') return Braces;
     if (nodeType === 'router') return Route;
     if (nodeType === 'iterator') return Repeat2;
     if (nodeType === 'subjectBuilder') return WandSparkles;

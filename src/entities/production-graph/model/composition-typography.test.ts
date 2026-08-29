@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { normalizeCompositionLayers } from './normalize-composition-node-data.ts';
+
+test('composition reload preserves every editable typography attribute from the document API snapshot', () => {
+  assert.deepEqual(normalizeCompositionLayers([{
+    id: 'layer-0',
+    align: 'right',
+    fontFamily: 'Onest',
+    fontSize: 72,
+    fontWeight: '500',
+    letterSpacing: 14,
+    lineHeight: 96,
+    verticalAlign: 'bottom',
+  }]), [{
+    id: 'layer-0',
+    align: 'right',
+    assetId: undefined,
+    blendMode: undefined,
+    blur: undefined,
+    color: undefined,
+    cornerRadius: undefined,
+    fit: undefined,
+    fillOpacity: undefined,
+    flipX: undefined,
+    flipY: undefined,
+    fontFamily: 'Onest',
+    fontSize: 72,
+    fontWeight: '500',
+    gradient: undefined,
+    groupId: undefined,
+    height: undefined,
+    kind: undefined,
+    letterSpacing: 14,
+    lineHeight: 96,
+    locked: undefined,
+    name: undefined,
+    opacity: undefined,
+    preserveAspectRatio: undefined,
+    rotation: undefined,
+    shadow: undefined,
+    sizingMode: undefined,
+    text: undefined,
+    verticalAlign: 'bottom',
+    visible: undefined,
+    width: undefined,
+    x: undefined,
+    y: undefined,
+  }]);
+});

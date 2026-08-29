@@ -195,6 +195,66 @@
 .document-node-palette-card-disabled span {
   color: #8d8d8d;
 }
+.document-node-palette-favorite-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 10px;
+}
+.document-node-palette-favorite-card {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: #333;
+  padding: 0;
+  text-align: left;
+}
+.document-node-palette-favorite-preview {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 9px;
+  overflow: hidden;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.document-node-palette-favorite-card:hover .document-node-palette-favorite-preview {
+  border-color: #cfcfcf;
+  background: #fafafa;
+}
+.document-node-palette-favorite-card:active {
+  cursor: grabbing;
+}
+.document-node-palette-favorite-preview > svg {
+  width: 22px;
+  height: 22px;
+}
+.document-node-palette-favorite-preview strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #333;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 15px;
+  text-align: center;
+}
+.document-node-palette-favorite-type {
+  overflow: hidden;
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .document-node-palette-empty {
   display: grid;
   align-content: center;

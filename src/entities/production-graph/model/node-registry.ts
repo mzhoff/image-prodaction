@@ -1,6 +1,7 @@
 import { contextNodeDefinitions } from './node-registry-context';
 import { imageNodeDefinitions } from './node-registry-image';
 import { publicationNodeDefinitions } from './node-registry-publication';
+import { pipelineNodeDefinitions } from './node-registry-pipeline';
 import { textNodeDefinitions } from './node-registry-text';
 import type { ProductionNodeDefinition } from './node-registry-types';
 import type { ProductionNodeData, ProductionNodeType } from './types';
@@ -15,12 +16,16 @@ export const NODE_DEFINITIONS = {
   textToSpeech: textNodeDefinitions.textToSpeech,
   textFormatter: textNodeDefinitions.textFormatter,
   textSplitter: textNodeDefinitions.textSplitter,
+  pipelineInput: pipelineNodeDefinitions.pipelineInput,
+  pipelineOutput: pipelineNodeDefinitions.pipelineOutput,
+  structuredOutput: pipelineNodeDefinitions.structuredOutput,
   router: contextNodeDefinitions.router,
   iterator: contextNodeDefinitions.iterator,
   subjectBuilder: contextNodeDefinitions.subjectBuilder,
   locationBuilder: contextNodeDefinitions.locationBuilder,
   telegramPublication: publicationNodeDefinitions.telegramPublication,
   imageToText: imageNodeDefinitions.imageToText,
+  qrCode: imageNodeDefinitions.qrCode,
   referenceComposer: imageNodeDefinitions.referenceComposer,
   composition: imageNodeDefinitions.composition,
   generateImage: imageNodeDefinitions.generateImage,

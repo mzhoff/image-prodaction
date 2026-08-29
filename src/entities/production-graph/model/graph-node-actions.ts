@@ -1,11 +1,13 @@
 import { createId } from '@/shared/lib/id';
 import { createDefaultNode } from './create-default-node';
+import { canConnectPorts, getNodePorts } from './node-definitions';
+import { normalizePipelineContractFields } from './pipeline-contract-fields';
 import { appendGenerationResult } from './generation-history';
 import { getClearedGenerationData, hasClearableGenerationData } from './graph-generation-clear';
 import { withHistory } from './graph-history';
 import type { ProductionGraphState } from './store-types';
 import type { StoreSet } from './store-action-types';
-import type { GenerateImageNodeData, ProductionNode, ProductionNodeData } from './types';
+import type { GenerateImageNodeData, PipelineContractField, ProductionNode, ProductionNodeData } from './types';
 
 export function createGraphNodeActions(set: StoreSet): Pick<
   ProductionGraphState,
@@ -23,6 +25,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
   | 'toggleNodeLock'
   | 'updateNodeData'
   | 'updateNodeDataSilent'
+  | 'updatePipelineContractFields'
   | 'updateNodePrompt'
   | 'updateNodeResult'
   | 'updateTextPrompt'
@@ -211,6 +214,52 @@ export function createGraphNodeActions(set: StoreSet): Pick<
         )),
       }));
     },
+    updatePipelineContractFields: (nodeId, fields) => {
+      let result: ReturnType<ProductionGraphState['updatePipelineContractFields']> = {
+        ok: false,
+        reason: 'Contract node was not found.',
+      };
+      set((state) => {
+        const node = state.nodes.find((item) => item.id === nodeId);
+        if (!node || !isPipelineContractNode(node)) return {};
+
+        const nextFields = normalizePipelineContractFields(fields);
+        const nextNode = {
+          ...node,
+          data: { ...node.data, fields: nextFields },
+        } as ProductionNode;
+        const previousPortIds = new Set(getNodePorts(node).map((port) => port.id));
+        const nextPortIds = new Set(getNodePorts(nextNode).map((port) => port.id));
+        const removedPortIds = new Set(Array.from(previousPortIds).filter((portId) => !nextPortIds.has(portId)));
+        const nextEdges = state.edges.filter((edge) => !(
+          (edge.sourceNodeId === nodeId && removedPortIds.has(edge.sourcePortId))
+          || (edge.targetNodeId === nodeId && removedPortIds.has(edge.targetPortId))
+        ));
+        const nextNodes = state.nodes.map((item) => item.id === nodeId ? nextNode : item);
+        const nodeById = new Map(nextNodes.map((item) => [item.id, item]));
+        const incompatibleEdge = nextEdges.find((edge) => {
+          if (edge.sourceNodeId !== nodeId && edge.targetNodeId !== nodeId) return false;
+          const source = nodeById.get(edge.sourceNodeId);
+          const target = nodeById.get(edge.targetNodeId);
+          return !source || !target || !canConnectPorts(source, edge.sourcePortId, target, edge.targetPortId);
+        });
+        if (incompatibleEdge) {
+          result = {
+            ok: false,
+            reason: 'Disconnect the field before changing it to an incompatible type.',
+          };
+          return {};
+        }
+
+        result = { ok: true };
+        return {
+          ...withHistory(state),
+          edges: nextEdges,
+          nodes: nextNodes,
+        };
+      });
+      return result;
+    },
     updateNodePrompt: (nodeId, prompt) => {
       set((state) => ({
         nodes: state.nodes.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, prompt } } : node)),
@@ -234,4 +283,12 @@ export function createGraphNodeActions(set: StoreSet): Pick<
       }));
     },
   };
+}
+
+function isPipelineContractNode(node: ProductionNode): node is ProductionNode & {
+  data: ProductionNode['data'] & { fields: PipelineContractField[] };
+} {
+  return node.type === 'pipelineInput'
+    || node.type === 'pipelineOutput'
+    || node.type === 'structuredOutput';
 }

@@ -5,6 +5,41 @@
   gap: 8px;
 }
 
+.composition-fill-mode-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.composition-fill-mode-row > .mini-select:only-child {
+  grid-column: 1 / -1;
+}
+
+.composition-fill-title-button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #111;
+}
+
+.composition-fill-title-button:hover {
+  background: #ededed;
+}
+
+.composition-fill-colors {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.composition-fill-colors-gradient {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .composition-fill-color {
   display: grid;
   min-width: 0;
@@ -19,6 +54,11 @@
   font-size: 12px;
   font-weight: 650;
   line-height: 16px;
+}
+
+.composition-fill-colors-gradient .composition-fill-color {
+  grid-template-columns: 20px minmax(0, 1fr);
+  padding: 0 5px;
 }
 
 .composition-fill-color input {
@@ -50,4 +90,31 @@
   border-radius: 5px;
   background: transparent;
   color: #111;
+}
+
+.composition-fill-icon-button:disabled {
+  opacity: 0.3;
+}
+
+.composition-gradient-stops {
+  display: grid;
+  gap: 6px;
+}
+
+.composition-gradient-stop-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px 28px;
+  align-items: center;
+  gap: 6px;
+}
+
+.composition-gradient-stop-row .composition-unit-number-control {
+  padding: 0 6px;
+}
+
+.composition-fill-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px 28px;
+  align-items: center;
+  gap: 8px;
 }

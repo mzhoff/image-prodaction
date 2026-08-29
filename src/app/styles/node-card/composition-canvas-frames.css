@@ -69,6 +69,23 @@
   cursor: move;
 }
 
+.composition-editor-stage-shape .composition-preview,
+.composition-editor-stage-shape .composition-preview-layer {
+  cursor: crosshair;
+}
+
+.composition-editor-stage-shape .composition-preview-layer {
+  pointer-events: none;
+}
+
+.composition-shape-draft {
+  position: absolute;
+  z-index: 60;
+  border: 1px solid var(--composition-frame-accent);
+  background: rgba(47, 91, 255, 0.16);
+  pointer-events: none;
+}
+
 .composition-editor-stage-hand .composition-preview,
 .composition-editor-stage-hand .composition-preview-layer,
 .composition-editor-stage-hand .composition-selection-frame {

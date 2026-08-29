@@ -2,6 +2,7 @@
 
 Дата фиксации: 2026-07-17
 Дата активации реализации: 2026-07-31
+Дата уточнения явных контрактных границ: 2026-08-21
 
 Горизонт: поэтапная реализация после production-фундамента Workspace AI
 Статус: целевая архитектура; contracts/compiler/queue foundation и публикация
@@ -23,6 +24,11 @@ Executable Pipeline превращает опубликованный участ
 
 Pipeline принимает типизированные входы, выполняет последовательность или DAG задач,
 учитывает usage и возвращает типизированный результат.
+
+В новых публикациях входы и выходы объявляются специальными нодами
+`Pipeline Input` и `Pipeline Output`. `Structured Output` формирует настоящий
+JSON по типизированной схеме. Подробный контракт и переходный режим описаны в
+[документе контрактных нод](./executable-pipeline-contract-nodes.md).
 
 ## 2. Раздел Pipelines в интерфейсе
 
@@ -131,8 +137,9 @@ endpoint молча.
 6. test run;
 7. explicit publish.
 
-Endpoint по умолчанию привязан к конкретной опубликованной версии. Переключение
-версии является отдельной операцией с audit event.
+Каждый внешний Consumer закреплён за конкретной опубликованной версией.
+Публикация новой версии и переключение Consumer являются разными операциями с
+audit event; новая публикация не должна молча менять работающую интеграцию.
 
 ## 4. Основные сущности
 
@@ -151,6 +158,8 @@ pipeline_version
   input_schema
   output_schema
   checksum
+  input_schema_checksum
+  output_schema_checksum
   published_by_user_id
   published_at
 
@@ -164,6 +173,13 @@ pipeline_endpoint
   concurrency_policy
   enabled
 
+pipeline_consumer
+  pipeline_id
+  pinned_version_id
+  source_application
+  enabled
+  execution_policy
+
 pipeline_run
   pipeline_id
   pipeline_version_id
@@ -171,6 +187,8 @@ pipeline_run
   initiator_type
   initiator_id
   source_application
+  consumer_id
+  api_key_id
   idempotency_key
   status
   input_reference

@@ -38,6 +38,19 @@
   position: relative;
 }
 
+.production-node-imageToText:has(.extract-node-collapsed-marker) {
+  min-height: 64px;
+  gap: 0;
+}
+
+.production-node-imageToText:has(.extract-node-collapsed-marker) > .node-port-input {
+  top: 20px !important;
+}
+
+.extract-node-collapsed-marker {
+  display: none;
+}
+
 .text-section-filter-tags,
 .extract-layer-tags {
   display: flex;

@@ -44,6 +44,11 @@ export interface UploadImageAssetInput {
   origin?: AssetOrigin;
   originalName: string;
   provider?: string | null;
+  /**
+   * Server-owned stable id for retry-safe deterministic transforms.
+   * Browser upload routes must never accept this value from a request.
+   */
+  requestedAssetId?: string;
   userId: string;
   workspaceId: string;
 }

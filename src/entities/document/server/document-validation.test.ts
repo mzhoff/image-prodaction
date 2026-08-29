@@ -28,3 +28,34 @@ test('rejects an unsupported snapshot version and oversized graph collections', 
     (error: unknown) => error instanceof DocumentValidationError && error.code === 'snapshot_limits_exceeded',
   );
 });
+
+test('validates explicit pipeline contract node fields on the server', () => {
+  const validNode = {
+    id: 'node-input',
+    type: 'pipelineInput',
+    data: {
+      title: 'Pipeline Input',
+      fields: [{ id: 'field-topic', key: 'topic', kind: 'text', required: true }],
+    },
+  };
+  assert.doesNotThrow(() => validateDocumentSnapshot({
+    ...validSnapshot,
+    project: { nodes: [validNode], edges: [] },
+  }));
+  assert.throws(
+    () => validateDocumentSnapshot({
+      ...validSnapshot,
+      project: {
+        nodes: [{
+          ...validNode,
+          data: {
+            ...validNode.data,
+            fields: [{ id: 'field-topic', key: 'bad key', kind: 'text', required: true }],
+          },
+        }],
+        edges: [],
+      },
+    }),
+    (error: unknown) => error instanceof DocumentValidationError && error.code === 'invalid_pipeline_contract',
+  );
+});

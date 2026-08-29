@@ -2,12 +2,11 @@ import type {
   ProductionNode,
   ProductionNodeData,
 } from '@/entities/production-graph/model/types';
-import type { SanitizedPipelineNodeSettings } from './pipeline-build';
 
 export function normalizeTextPromptTargetPort(input: {
   currentById: Map<string, ProductionNode>;
   requestedPortId: string;
-  settingsByNodeId: Map<string, SanitizedPipelineNodeSettings>;
+  settingsByNodeId: Map<string, Record<string, unknown>>;
   target: ProductionNode;
   warnings: string[];
 }) {

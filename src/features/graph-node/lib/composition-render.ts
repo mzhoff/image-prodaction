@@ -1,54 +1,12 @@
-import type { CompositionLayerBlendMode, CompositionLayerFit, CompositionTextAlign, CompositionTextVerticalAlign } from '@/entities/production-graph/model/types';
-
-export interface CompositionRenderImageLayer {
-  assetName?: string;
-  blendMode: CompositionLayerBlendMode;
-  blob: Blob;
-  fit: CompositionLayerFit;
-  flipX: boolean;
-  flipY: boolean;
-  height: number;
-  kind: 'image';
-  opacity: number;
-  rotation: number;
-  width: number;
-  x: number;
-  y: number;
-}
-
-export interface CompositionRenderTextLayer {
-  align: CompositionTextAlign;
-  blendMode: CompositionLayerBlendMode;
-  color: string;
-  flipX: boolean;
-  flipY: boolean;
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: string;
-  height: number;
-  kind: 'text';
-  letterSpacing: number;
-  lineHeight: number;
-  opacity: number;
-  rotation: number;
-  text: string;
-  verticalAlign: CompositionTextVerticalAlign;
-  width: number;
-  x: number;
-  y: number;
-}
-
-export type CompositionRenderLayer = CompositionRenderImageLayer | CompositionRenderTextLayer;
-
-export interface CompositionRenderOptions {
-  background?: string;
-  height: number;
-  layers: CompositionRenderLayer[];
-  width: number;
-}
+import type { CompositionLayerFit, CompositionTextAlign, CompositionTextVerticalAlign } from '@/entities/production-graph/model/types';
+import { getCompositionCanvasFontFamily, getCompositionCssFontFamily } from './composition-font-family';
+import { drawCompositionRectangle } from './composition-render-rectangle';
+import { getCanvasCompositeOperation, getCompositionTextFillStyle } from './composition-render-styles';
+import type { CompositionRenderLayer, CompositionRenderOptions, CompositionRenderTextLayer } from './composition-render-types';
+export type { CompositionRenderImageLayer, CompositionRenderLayer, CompositionRenderOptions, CompositionRenderRectangleLayer, CompositionRenderTextLayer } from './composition-render-types';
 
 export async function renderCompositionToBlob(options: CompositionRenderOptions) {
-  await waitForDocumentFonts();
+  await waitForDocumentFonts(options.layers);
 
   const canvas = document.createElement('canvas');
   canvas.width = options.width;
@@ -74,8 +32,10 @@ export async function renderCompositionToBlob(options: CompositionRenderOptions)
     if (layer.kind === 'image') {
       const image = await loadImageFromBlob(layer.blob);
       drawFittedImage(context, image, layer.width, layer.height, layer.fit);
-    } else {
+    } else if (layer.kind === 'text') {
       drawTextLayer(context, layer);
+    } else {
+      drawCompositionRectangle(context, layer);
     }
 
     context.restore();
@@ -123,7 +83,7 @@ function drawTextLayer(context: CanvasRenderingContext2D, layer: CompositionRend
   context.clip();
   context.font = font;
   context.fontKerning = 'normal';
-  context.fillStyle = layer.color;
+  context.fillStyle = getCompositionTextFillStyle(context, layer);
   context.textAlign = layer.align;
   context.textBaseline = 'top';
   const lineHeight = Math.max(1, layer.lineHeight);
@@ -138,7 +98,12 @@ function drawTextLayer(context: CanvasRenderingContext2D, layer: CompositionRend
 }
 
 function getCanvasFont(layer: CompositionRenderTextLayer) {
-  return `${layer.fontWeight} ${layer.fontSize}px ${layer.fontFamily}`;
+  const fontVariables = typeof document === 'undefined'
+    ? undefined
+    : {
+        onest: getComputedStyle(document.documentElement).getPropertyValue('--font-onest'),
+      };
+  return `${layer.fontWeight} ${layer.fontSize}px ${getCompositionCanvasFontFamily(layer.fontFamily, fontVariables)}`;
 }
 
 function getBrowserWrappedLines(layer: CompositionRenderTextLayer) {
@@ -149,7 +114,8 @@ function getBrowserWrappedLines(layer: CompositionRenderTextLayer) {
   Object.assign(container.style, {
     boxSizing: 'border-box',
     contain: 'layout style',
-    fontFamily: layer.fontFamily,
+    fontFamily: getCompositionCssFontFamily(layer.fontFamily),
+    fontKerning: 'normal',
     fontSize: `${layer.fontSize}px`,
     fontWeight: layer.fontWeight,
     left: '-100000px',
@@ -194,9 +160,11 @@ function getBrowserWrappedLines(layer: CompositionRenderTextLayer) {
   }
 }
 
-async function waitForDocumentFonts() {
+async function waitForDocumentFonts(layers: CompositionRenderLayer[]) {
   if (typeof document === 'undefined' || !('fonts' in document)) return;
   try {
+    const fonts = new Set(layers.flatMap((layer) => layer.kind === 'text' ? [getCanvasFont(layer)] : []));
+    await Promise.all(Array.from(fonts, (font) => document.fonts.load(font)));
     await document.fonts.ready;
   } catch {
     // Canvas can still render with fallback fonts if the browser font API fails.
@@ -276,25 +244,4 @@ function loadImageFromBlob(blob: Blob) {
     };
     image.src = url;
   });
-}
-function getCanvasCompositeOperation(blendMode: CompositionLayerBlendMode): GlobalCompositeOperation {
-  if (blendMode === 'multiply'
-    || blendMode === 'screen'
-    || blendMode === 'overlay'
-    || blendMode === 'darken'
-    || blendMode === 'lighten'
-    || blendMode === 'color-dodge'
-    || blendMode === 'color-burn'
-    || blendMode === 'hard-light'
-    || blendMode === 'soft-light'
-    || blendMode === 'difference'
-    || blendMode === 'exclusion'
-    || blendMode === 'hue'
-    || blendMode === 'saturation'
-    || blendMode === 'color'
-    || blendMode === 'luminosity') {
-    return blendMode;
-  }
-  if (blendMode === 'plus-lighter') return 'lighter';
-  return 'source-over';
 }

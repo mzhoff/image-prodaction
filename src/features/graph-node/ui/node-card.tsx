@@ -18,13 +18,17 @@ import { ImageToTextNode } from './nodes/image-to-text-node';
 import { ImportImageNode } from './nodes/import-image-node';
 import { IteratorNode } from './nodes/iterator-node';
 import { LocationBuilderNode } from './nodes/location-builder-node';
+import { PipelineInputNode } from './nodes/pipeline-input-node';
+import { PipelineOutputNode } from './nodes/pipeline-output-node';
 import { PreviewNode } from './nodes/preview-node';
+import { QrCodeNode } from './nodes/qr-code-node';
 import { RefineImageNode } from './nodes/refine-image-node';
 import { ReferenceComposerNode } from './nodes/reference-composer-node';
 import { RemoveBackgroundNode } from './nodes/remove-background-node';
 import { RouterNode } from './nodes/router-node';
 import { SketchNode } from './nodes/sketch-node';
 import { SubjectBuilderNode } from './nodes/subject-builder-node';
+import { StructuredOutputNode } from './nodes/structured-output-node';
 import { TelegramPublicationNode } from './nodes/telegram-publication-node';
 import { TextConcatNode } from './nodes/text-concat-node';
 import { TextFormatterNode } from './nodes/text-formatter-node';
@@ -56,12 +60,16 @@ const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
   textToSpeech: ({ node, onStartConnection }) => <TextToSpeechNode node={node} onStartConnection={onStartConnection} />,
   textFormatter: ({ node, onStartConnection }) => <TextFormatterNode node={node} onStartConnection={onStartConnection} />,
   textSplitter: ({ node, onStartConnection }) => <TextSplitterNode node={node} onStartConnection={onStartConnection} />,
+  pipelineInput: ({ node, onStartConnection }) => <PipelineInputNode node={node} onStartConnection={onStartConnection} />,
+  pipelineOutput: ({ node, onStartConnection }) => <PipelineOutputNode node={node} onStartConnection={onStartConnection} />,
+  structuredOutput: ({ node, onStartConnection }) => <StructuredOutputNode node={node} onStartConnection={onStartConnection} />,
   router: ({ node }) => <RouterNode node={node} />,
   iterator: ({ node, onStartConnection }) => <IteratorNode node={node} onStartConnection={onStartConnection} />,
   subjectBuilder: ({ node, onStartConnection }) => <SubjectBuilderNode node={node} onStartConnection={onStartConnection} />,
   locationBuilder: ({ node, onStartConnection }) => <LocationBuilderNode node={node} onStartConnection={onStartConnection} />,
   telegramPublication: ({ node, onStartConnection }) => <TelegramPublicationNode node={node} onStartConnection={onStartConnection} />,
   imageToText: ({ node, onStartConnection }) => <ImageToTextNode node={node} onStartConnection={onStartConnection} />,
+  qrCode: ({ node }) => <QrCodeNode node={node} />,
   referenceComposer: ({ node }) => <ReferenceComposerNode node={node} />,
   composition: ({ node }) => <CompositionNode node={node} />,
   sketch: ({ node }) => <SketchNode node={node} />,
@@ -100,7 +108,7 @@ export function NodeCard({
     if (node.type === 'generateImage' && port.side === 'input') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
     if (node.type === 'textPrompt') return false;
-    if (node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'iterator' || node.type === 'subjectBuilder' || node.type === 'locationBuilder' || node.type === 'telegramPublication') return false;
+    if (node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput' || node.type === 'iterator' || node.type === 'subjectBuilder' || node.type === 'locationBuilder' || node.type === 'telegramPublication') return false;
     return true;
   });
 
@@ -110,7 +118,8 @@ export function NodeCard({
       className={cn(
         'production-node',
         `production-node-${node.type}`,
-        (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'iterator') && 'production-node-text-workflow',
+        (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput' || node.type === 'iterator') && 'production-node-text-workflow',
+        (node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput') && 'production-node-pipeline-contract',
         node.type === 'iterator' && 'production-node-iterator-workflow',
         node.type === 'subjectBuilder' && 'production-node-text-workflow production-node-subject-workflow',
         node.type === 'locationBuilder' && 'production-node-text-workflow production-node-location-workflow',
