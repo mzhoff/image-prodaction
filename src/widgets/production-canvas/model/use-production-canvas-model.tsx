@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { getTextPromptVariablePortIndex, getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
-import type { ProductionNodeType } from '@/entities/production-graph/model/types';
+import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
+import type { NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
@@ -31,11 +32,11 @@ import type { CanvasTool } from './production-canvas-values';
 export const CANVAS_WORLD_SIZE = 4000;
 
 interface ProductionCanvasModelOptions {
+  onAskAiNode: (node: ProductionNode) => Promise<NodeAskAiLaunchResult>;
   projectId?: string;
 }
-
-export function useProductionCanvasModel(options: ProductionCanvasModelOptions = {}) {
-  const { projectId } = options;
+export function useProductionCanvasModel(options: ProductionCanvasModelOptions) {
+  const { onAskAiNode, projectId } = options;
   const contextMenu = useContextMenu();
   const graph = useProductionCanvasStore();
   const canvas = useCanvasNavigation({
@@ -216,7 +217,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
       canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
       favoriteNodes,
       exportSectionPipelineTemplate, graph, importPipelineTemplateAt, openImageViewer,
-      projectId, sectionColorPreviews, setSectionColorPreviews, showToast, studioPipelines,
+      onAskAiNode, projectId, sectionColorPreviews, setSectionColorPreviews, showToast, studioPipelines,
     });
   const { cursor, handleCanvasDragOver, handleCanvasDrop, handleCanvasMouseDown,
     handleCanvasMouseMove } = useProductionCanvasInteractions({
@@ -291,7 +292,6 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions =
     startNodeDrag,
     startSectionDrag,
     startSectionResize,
-    showAssistantHint: () => showToast('Assistant will be connected in the product chat.'),
     showToast,
     toastMessage,
     toggleGenerateComposing,

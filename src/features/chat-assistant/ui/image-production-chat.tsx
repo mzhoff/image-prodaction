@@ -24,6 +24,7 @@ import { PIPELINE_BUILD_TOOL, PIPELINE_UPDATE_TOOL } from '@/modules/chat-assist
 import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
 import { useDocumentConversation } from '../model/use-document-conversation';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
+import { useRegisterHostedChatLauncher } from '../model/chat-launcher-host';
 import { AssistantNotice, compactModelLabel } from './chat-attachment-presentation';
 import {
   APPEARANCE,
@@ -176,6 +177,11 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
     maxFiles: 3,
     transport,
   });
+  useRegisterHostedChatLauncher(
+    runtime,
+    attachmentController.items.length > 0,
+    state.phase,
+  );
   useEffect(() => {
     if (!registerAttachmentDropTarget) return;
     registerAttachmentDropTarget(attachmentController.dropTarget);

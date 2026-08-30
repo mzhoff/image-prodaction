@@ -1,6 +1,7 @@
 'use client';
 
 import { useChatAttachmentDropZone } from '@prodactionpro/chat-runtime-react';
+import type { ChatLauncher } from '@prodactionpro/chat-runtime-core';
 import { ChatAttachmentDropOverlay } from '@prodactionpro/chat-ui';
 import {
   Bot,
@@ -12,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -22,6 +24,7 @@ import {
   ImageProductionChat,
   type AssistantAttachmentDropTarget,
 } from '@/features/chat-assistant/ui/image-production-chat';
+import { ChatLauncherHostProvider } from '@/features/chat-assistant/model/chat-launcher-host';
 import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
 
@@ -30,8 +33,10 @@ interface AssistantShellProps {
   contextLabel: string;
   documentId?: string;
   documentRevision?: string;
+  onOpen?: () => void;
   onPipelineChanged?: () => void;
   onClose: () => void;
+  registerChatLauncher?: (launcher: ChatLauncher) => () => void;
   route?: string;
   selectionIds?: string[];
   workspaceId?: string;
@@ -52,7 +57,9 @@ export function AssistantShell({
   documentId,
   documentRevision,
   onClose,
+  onOpen,
   onPipelineChanged,
+  registerChatLauncher,
   route,
   selectionIds,
   workspaceId,
@@ -101,6 +108,11 @@ export function AssistantShell({
     setActiveView(view);
     setSettingsOpen(false);
   };
+  const openAssistantSurface = useCallback(() => {
+    setActiveView('assistant');
+    setSettingsOpen(false);
+    onOpen?.();
+  }, [onOpen]);
   const closeAssistant = () => {
     setActiveView('assistant');
     setExpanded(false);
@@ -222,12 +234,17 @@ export function AssistantShell({
         hidden={activeView !== 'assistant'}
         id="assistant-shell-assistant-panel"
       >
-        <ImageProductionChat
-          context={chatContext}
-          onPipelineChanged={onPipelineChanged}
-          registerAttachmentDropTarget={setAttachmentDropTarget}
-          workspaceId={workspaceId}
-        />
+        <ChatLauncherHostProvider
+          openSurface={openAssistantSurface}
+          registerLauncher={registerChatLauncher}
+        >
+          <ImageProductionChat
+            context={chatContext}
+            onPipelineChanged={onPipelineChanged}
+            registerAttachmentDropTarget={setAttachmentDropTarget}
+            workspaceId={workspaceId}
+          />
+        </ChatLauncherHostProvider>
       </div>
       <div
         aria-label="Feedback"
