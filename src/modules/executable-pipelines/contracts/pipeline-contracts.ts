@@ -1,3 +1,8 @@
+import type {
+  SemanticContractSnapshot,
+  SemanticJsonSchema,
+} from '@/shared/contracts/semantic-contract';
+
 export type PipelinePrimitive = boolean | number | string | null;
 
 export type PipelineValue =
@@ -30,37 +35,7 @@ export type PipelineValueKind =
   | 'text'
   | 'text_collection';
 
-interface PipelineJsonSchemaBase {
-  description?: string;
-}
-
-export type PipelineJsonSchema =
-  | (PipelineJsonSchemaBase & {
-    enum?: string[];
-    type: 'string';
-  })
-  | (PipelineJsonSchemaBase & {
-    enum?: number[];
-    type: 'number';
-  })
-  | (PipelineJsonSchemaBase & {
-    enum?: number[];
-    type: 'integer';
-  })
-  | (PipelineJsonSchemaBase & {
-    enum?: boolean[];
-    type: 'boolean';
-  })
-  | (PipelineJsonSchemaBase & {
-    items: PipelineJsonSchema;
-    type: 'array';
-  })
-  | (PipelineJsonSchemaBase & {
-    additionalProperties: false;
-    properties: Record<string, PipelineJsonSchema>;
-    required?: string[];
-    type: 'object';
-  });
+export type PipelineJsonSchema = SemanticJsonSchema;
 
 export interface PipelineValueContract {
   defaultValue?: PipelineValue;
@@ -99,10 +74,12 @@ export interface PipelineOutputBinding {
 }
 
 export interface ExecutablePipelineDefinition {
+  inputSemanticContract?: SemanticContractSnapshot;
   inputs: Record<string, PipelineValueContract>;
   nodes: PipelineNodeDefinition[];
   /** Absent only on legacy schemaVersion 1 publications. */
   outputContracts?: Record<string, PipelineValueContract>;
+  outputSemanticContract?: SemanticContractSnapshot;
   outputs: Record<string, PipelineOutputBinding>;
   schemaVersion: 1;
 }

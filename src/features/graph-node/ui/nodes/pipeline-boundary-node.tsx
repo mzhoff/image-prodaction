@@ -43,6 +43,34 @@ export function PipelineBoundaryNode({ node, onStartConnection, portSide }: Pipe
         />
       ) : (
         <>
+          <div className="pipeline-contract-preset" data-node-interactive>
+            <label>
+              <span>Contract preset</span>
+              <select
+                aria-label="Semantic contract preset"
+                value={model.semanticContract?.contractKey ?? ''}
+                onChange={(event) => model.handleSemanticContractPresetChange(event.target.value)}
+              >
+                <option value="">Manual contract</option>
+                {model.semanticContractPresets.map((preset) => (
+                  <option key={preset.semanticContract.contractKey} value={preset.semanticContract.contractKey}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {model.semanticContract ? (
+              <div className="pipeline-contract-preset-snapshot">
+                <span>Locked snapshot · {model.semanticContract.contractVersion}</span>
+                <code title={model.semanticContract.schemaChecksum}>
+                  {model.semanticContract.schemaChecksum.slice(0, 10)}
+                </code>
+                <button type="button" onClick={() => model.handleSemanticContractPresetChange('')}>
+                  Detach
+                </button>
+              </div>
+            ) : null}
+          </div>
           <div className="pipeline-contract-node-summary">
             {portSide === 'output'
               ? 'Values supplied when this pipeline starts.'
@@ -56,6 +84,7 @@ export function PipelineBoundaryNode({ node, onStartConnection, portSide }: Pipe
             onFieldsChange={model.handleFieldsChange}
             onStartConnection={onStartConnection}
             portSide={portSide}
+            readOnly={Boolean(model.semanticContract)}
           />
           {model.message ? <div className="pipeline-contract-node-message" role="alert">{model.message}</div> : null}
         </>

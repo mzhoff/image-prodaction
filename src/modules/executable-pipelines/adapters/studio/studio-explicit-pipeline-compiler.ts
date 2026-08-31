@@ -109,14 +109,21 @@ export function compileExplicitStudioSection(input: {
 
   const definition: ExecutablePipelineDefinition = {
     schemaVersion: 1,
+    ...((inputNode.data as PipelineInputNodeData).semanticContract
+      ? { inputSemanticContract: structuredClone((inputNode.data as PipelineInputNodeData).semanticContract) }
+      : {}),
     inputs,
     nodes: definitionNodes,
     outputs,
     outputContracts,
+    ...((outputNode.data as PipelineOutputNodeData).semanticContract
+      ? { outputSemanticContract: structuredClone((outputNode.data as PipelineOutputNodeData).semanticContract) }
+      : {}),
   };
   return {
     compiledPlan: compilePipelineDefinition(definition, input.options),
     sourceMetadata: {
+      ...(input.section.capabilityKey ? { capabilityKey: input.section.capabilityKey } : {}),
       sectionId: input.section.id,
       sectionTitle: input.section.title,
       nodeCount: input.nodes.length,

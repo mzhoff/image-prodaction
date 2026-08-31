@@ -7,6 +7,7 @@ import {
   compositionCanvasPresets,
   getCompositionCanvasPreset,
   getCompositionCanvasPresetId,
+  getCompositionCanvasPresetSelection,
   normalizeCompositionCanvasDimension,
 } from './composition-canvas-presets.ts';
 import { getCompositionCanvasSize, getCompositionSizeSelection } from './composition-options.ts';
@@ -33,6 +34,23 @@ test('canvas preset lookup resolves known formats and treats arbitrary dimension
   });
   assert.equal(getCompositionCanvasPresetId(1152, 2048), 'story-2k');
   assert.equal(getCompositionCanvasPresetId(1377, 2049), 'custom');
+});
+
+test('canvas preset selection exposes exact card labels and preserves arbitrary custom dimensions', () => {
+  const storySelection = getCompositionCanvasPresetSelection(1080, 1920);
+  assert.equal(storySelection.selectedPresetId, 'story-full-hd');
+  assert.deepEqual(
+    storySelection.presetOptions.find((option) => option.value === 'story-full-hd'),
+    { value: 'story-full-hd', label: 'Story / Reels / Shorts · 1080 × 1920' },
+  );
+  assert.equal(storySelection.presetOptions.some((option) => option.value === 'custom'), false);
+
+  const customSelection = getCompositionCanvasPresetSelection(1377, 2049);
+  assert.equal(customSelection.selectedPresetId, 'custom');
+  assert.deepEqual(customSelection.presetOptions[0], {
+    value: 'custom',
+    label: 'Custom · 1377 × 2049',
+  });
 });
 
 test('manual canvas dimensions are rounded and bounded without changing valid exact values', () => {

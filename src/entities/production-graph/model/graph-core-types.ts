@@ -55,6 +55,7 @@ export interface GraphPort {
 }
 
 export interface GraphSection {
+  capabilityKey?: string;
   id: string;
   title: string;
   parentId?: string;

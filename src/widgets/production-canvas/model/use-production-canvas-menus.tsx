@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardCopy, Copy, Download, HelpCircle, Lock, Palette, Pencil, Maximize2, PlayCircle,
+import { ClipboardCopy, Copy, Download, HelpCircle, Layers3, Lock, Palette, Pencil, Maximize2, PlayCircle,
   RotateCcw, Star, Trash2, Unlock, Upload } from 'lucide-react';
 import { useCallback } from 'react';
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react';
@@ -9,6 +9,7 @@ import { getNodeCurrentImageAssetId,
   getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import type { GraphSection, ProductionNode,
   ProductionNodeType } from '@/entities/production-graph/model/types';
+import { getSystemPipelinePresets } from '@/entities/production-graph/model/system-pipeline-presets';
 import { getNodeAskAiLaunchNotice,
   type NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { requestNodeTitleRename } from '@/features/graph-node/ui/node-title';
@@ -95,6 +96,16 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
   const getCanvasMenuActions = useCallback((worldPoint: { x: number; y: number }) => [
     { id: 'import-pipeline', label: 'Import Pipeline', icon: <Upload size={14} />,
       onSelect: () => importPipelineTemplateAt(worldPoint) },
+    { id: 'pipeline-presets', kind: 'submenu' as const, label: 'Pipeline presets',
+      icon: <Layers3 size={14} />,
+      actions: getSystemPipelinePresets().map((preset) => ({
+        id: `pipeline-preset-${preset.key}`,
+        label: preset.label,
+        onSelect: () => {
+          const result = graph.importPipelineTemplateAt(preset.template, worldPoint);
+          showToast(`${preset.label}: ${result.nodeCount} nodes added.`);
+        },
+      })) },
     ...addNodeMenuGroups.map((group) => ({
       id: `add-group-${group.id}`, kind: 'submenu' as const, label: group.label,
       icon: group.icon,
@@ -105,7 +116,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
       separatorBefore: true, onSelect: () => canvas.zoomToBounds(graph.bounds) },
     { id: 'reset-project', label: 'Reset local graph', icon: <RotateCcw size={14} />,
       separatorBefore: true, destructive: true, onSelect: graph.resetProject },
-  ], [canvas, createNode, graph, importPipelineTemplateAt]);
+  ], [canvas, createNode, graph, importPipelineTemplateAt, showToast]);
 
   const getNodeMenuActions = useCallback((node: ProductionNode): ContextMenuAction[] => {
     const matchingFavorite = favoriteNodes.findMatchingFavorite(node);

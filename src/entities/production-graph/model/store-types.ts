@@ -1,5 +1,5 @@
 import type { FavoriteNodeSnapshot } from './favorite-node-preset';
-import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, LocationRecord, PipelineContractField, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord, SubjectRecord } from './types';
+import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, LocationRecord, PipelineContractField, PipelineSemanticContractSnapshot, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord, SubjectRecord } from './types';
 import type { PipelineTemplateExport, PortableProjectExport, ProjectExport, ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'subjects' | 'locations' | 'publications' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
@@ -60,6 +60,11 @@ export interface ProductionGraphState extends GraphProject {
   redo: () => void;
   updateNodeData: (nodeId: string, data: Partial<ProductionNodeData>) => void;
   updateNodeDataSilent: (nodeId: string, data: Partial<ProductionNodeData>) => void;
+  applyPipelineSemanticContractPreset: (
+    nodeId: string,
+    fields: PipelineContractField[],
+    semanticContract: PipelineSemanticContractSnapshot,
+  ) => ConnectResult;
   updatePipelineContractFields: (nodeId: string, fields: PipelineContractField[]) => ConnectResult;
   updateNodePrompt: (nodeId: string, prompt: string) => void;
   updateNodeResult: (nodeId: string, result: string) => void;

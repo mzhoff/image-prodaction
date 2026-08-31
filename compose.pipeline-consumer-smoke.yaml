@@ -1,0 +1,62 @@
+name: image-production-pipeline-consumer-smoke
+
+services:
+  pipeline-consumer-smoke:
+    image: node:24.15.0-alpine3.23
+    restart: "no"
+    user: node
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    networks:
+      - prodaction-services-local
+    secrets:
+      - pipeline_token
+    volumes:
+      - type: bind
+        source: ./scripts/pipeline-external-consumer-smoke.mjs
+        target: /workspace/scripts/pipeline-external-consumer-smoke.mjs
+        read_only: true
+      - type: bind
+        source: ${PIPELINE_INPUT_FILE:?Set PIPELINE_INPUT_FILE to a contract-valid JSON file}
+        target: /run/configs/pipeline-input.json
+        read_only: true
+      - type: bind
+        source: ${PIPELINE_CONFLICT_INPUT_FILE:?Set PIPELINE_CONFLICT_INPUT_FILE to a second contract-valid JSON file}
+        target: /run/configs/pipeline-conflict-input.json
+        read_only: true
+    entrypoint:
+      - node
+      - /workspace/scripts/pipeline-external-consumer-smoke.mjs
+    command:
+      - --base-url
+      - ${PIPELINE_BASE_URL:-http://image-production-api:3000}
+      - --public-id
+      - ${PIPELINE_PUBLIC_ID:?Set PIPELINE_PUBLIC_ID to a published endpoint public ID}
+      - --expected-version
+      - ${PIPELINE_EXPECTED_VERSION:?Set PIPELINE_EXPECTED_VERSION to the consumer-pinned version}
+      - --expected-pipeline-checksum
+      - ${PIPELINE_EXPECTED_PIPELINE_CHECKSUM:?Set PIPELINE_EXPECTED_PIPELINE_CHECKSUM to the pinned version checksum}
+      - --conflict-input-file
+      - /run/configs/pipeline-conflict-input.json
+      - --output-kind
+      - ${PIPELINE_EXPECTED_OUTPUT_KIND:-auto}
+      - --max-allowed-attempts
+      - ${PIPELINE_MAX_ALLOWED_ATTEMPTS:-3}
+      - --max-wait-ms
+      - ${PIPELINE_MAX_WAIT_MS:-90000}
+      - --allow-legacy-runtime=${PIPELINE_ALLOW_LEGACY_RUNTIME:-false}
+
+secrets:
+  pipeline_token:
+    file: ${PIPELINE_TOKEN_FILE:?Set PIPELINE_TOKEN_FILE to a chmod 600 token file}
+
+networks:
+  prodaction-services-local:
+    external: true
+    name: prodaction-services-local

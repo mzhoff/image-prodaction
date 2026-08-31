@@ -91,7 +91,11 @@ export async function authenticatePipelineApiRequest(
     originDocumentId: executablePipeline.originDocumentId,
     pinnedVersionId: pipelineVersion.id,
     pipelineVersion: pipelineVersion.version,
+    pipelineChecksum: pipelineVersion.checksum,
+    inputSchemaChecksum: pipelineVersion.inputSchemaChecksum,
+    outputSchemaChecksum: pipelineVersion.outputSchemaChecksum,
     compiledPlan: pipelineVersion.compiledPlan,
+    sourceMetadata: pipelineVersion.sourceMetadata,
     publishedByUserId: pipelineVersion.publishedByUserId,
   }).from(pipelineApiKey)
     .innerJoin(pipelineConsumer, eq(pipelineConsumer.id, pipelineApiKey.consumerId))

@@ -5,6 +5,12 @@ import type {
   PipelineValueContract,
   PipelineValueKind,
 } from '../contracts/pipeline-contracts';
+import { getPipelineJsonSchemaDefinitionError } from './pipeline-schema-definition-validation';
+
+export {
+  getPipelineJsonSchemaDefinitionError,
+  getSemanticContractSnapshotDefinitionError,
+} from './pipeline-schema-definition-validation';
 
 const PIPELINE_VALUE_KINDS = new Set<PipelineValueKind>([
   'audio',
@@ -17,8 +23,6 @@ const PIPELINE_VALUE_KINDS = new Set<PipelineValueKind>([
   'text',
   'text_collection',
 ]);
-const MAX_SCHEMA_DEPTH = 5;
-const MAX_SCHEMA_PROPERTIES = 64;
 const MAX_JSON_VALUE_DEPTH = 8;
 const MAX_JSON_COLLECTION_ITEMS = 4_096;
 
@@ -43,53 +47,6 @@ export function getPipelineValueContractDefinitionError(
     if (issue) return `defaultValue ${issue}`;
   }
   return null;
-}
-
-export function getPipelineJsonSchemaDefinitionError(
-  schema: PipelineJsonSchema,
-  depth = 0,
-): string | null {
-  if (!isRecord(schema)) return 'must be an object';
-  if (depth >= MAX_SCHEMA_DEPTH) return `exceeds maximum depth ${MAX_SCHEMA_DEPTH}`;
-  if (schema.description !== undefined && typeof schema.description !== 'string') {
-    return 'description must be a string';
-  }
-
-  if (schema.type === 'object') {
-    if (schema.additionalProperties !== false) return 'must set additionalProperties to false';
-    if (!isRecord(schema.properties)) return 'properties must be an object';
-    const entries = Object.entries(schema.properties);
-    if (entries.length > MAX_SCHEMA_PROPERTIES) {
-      return `contains more than ${MAX_SCHEMA_PROPERTIES} properties`;
-    }
-    const required = schema.required ?? [];
-    if (!Array.isArray(required) || required.some((key) => typeof key !== 'string')) {
-      return 'required must be a string array';
-    }
-    if (new Set(required).size !== required.length) return 'required contains duplicate keys';
-    if (required.some((key) => !Object.hasOwn(schema.properties, key))) {
-      return 'required references an unknown property';
-    }
-    for (const [key, child] of entries) {
-      if (!isPublicContractKey(key)) return `property "${key}" has an invalid format`;
-      const childError = getPipelineJsonSchemaDefinitionError(child, depth + 1);
-      if (childError) return `property "${key}" ${childError}`;
-    }
-    return null;
-  }
-
-  if (schema.type === 'array') {
-    if (!schema.items) return 'array items are required';
-    const childError = getPipelineJsonSchemaDefinitionError(schema.items, depth + 1);
-    return childError ? `array items ${childError}` : null;
-  }
-
-  if (schema.type === 'string') return validateEnum(schema.enum, 'string');
-  if (schema.type === 'boolean') return validateEnum(schema.enum, 'boolean');
-  if (schema.type === 'number' || schema.type === 'integer') {
-    return validateNumberEnum(schema.enum, schema.type === 'integer');
-  }
-  return 'type is not supported';
 }
 
 export function getPipelineValueContractIssue(
@@ -131,6 +88,15 @@ export function getPipelineJsonValueIssue(
 ): string | null {
   if (schema.type === 'string') {
     if (typeof value !== 'string') return `${path} must be a string`;
+    if (schema.minLength !== undefined && value.length < schema.minLength) {
+      return `${path} must contain at least ${schema.minLength} characters`;
+    }
+    if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+      return `${path} must contain at most ${schema.maxLength} characters`;
+    }
+    if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(value)) {
+      return `${path} does not match the required pattern`;
+    }
     return schema.enum && !schema.enum.includes(value) ? `${path} is not in the allowed enum` : null;
   }
   if (schema.type === 'boolean') {
@@ -140,11 +106,19 @@ export function getPipelineJsonValueIssue(
   if (schema.type === 'number' || schema.type === 'integer') {
     if (typeof value !== 'number' || !Number.isFinite(value)) return `${path} must be a finite number`;
     if (schema.type === 'integer' && !Number.isInteger(value)) return `${path} must be an integer`;
+    if (schema.minimum !== undefined && value < schema.minimum) return `${path} must be at least ${schema.minimum}`;
+    if (schema.maximum !== undefined && value > schema.maximum) return `${path} must be at most ${schema.maximum}`;
     return schema.enum && !schema.enum.includes(value) ? `${path} is not in the allowed enum` : null;
   }
   if (schema.type === 'array') {
     if (!Array.isArray(value)) return `${path} must be an array`;
     if (value.length > MAX_JSON_COLLECTION_ITEMS) return `${path} contains too many items`;
+    if (schema.minItems !== undefined && value.length < schema.minItems) {
+      return `${path} must contain at least ${schema.minItems} items`;
+    }
+    if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+      return `${path} must contain at most ${schema.maxItems} items`;
+    }
     for (const [index, entry] of value.entries()) {
       const issue = getPipelineJsonValueIssue(entry, schema.items, `${path}[${index}]`);
       if (issue) return issue;
@@ -185,20 +159,6 @@ export function isPipelineArtifactReference(
 
 export function isPublicContractKey(value: string) {
   return /^[A-Za-z_][A-Za-z0-9_]{0,119}$/.test(value);
-}
-
-function validateEnum(value: unknown, type: 'boolean' | 'string') {
-  if (value === undefined) return null;
-  if (!Array.isArray(value) || value.length === 0 || value.length > 64) return 'enum is invalid';
-  return value.every((entry) => typeof entry === type) ? null : `enum must contain only ${type} values`;
-}
-
-function validateNumberEnum(value: unknown, integer: boolean) {
-  if (value === undefined) return null;
-  if (!Array.isArray(value) || value.length === 0 || value.length > 64) return 'enum is invalid';
-  return value.every((entry) => (
-    typeof entry === 'number' && Number.isFinite(entry) && (!integer || Number.isInteger(entry))
-  )) ? null : 'enum must contain only valid numbers';
 }
 
 function isJsonContainer(value: PipelineValue) {

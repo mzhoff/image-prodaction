@@ -30,7 +30,7 @@ AI-вызов использует отдельный durable generation job и 
 
 Runtime API не использует браузерную сессию. Для каждого endpoint создаётся
 отдельный service token. В базе хранится только SHA-256 hash; исходный token
-показывается один раз при создании.
+один раз записывается в указанный оператором закрытый файл и не печатается в stdout.
 
 Локальное создание ключа:
 
@@ -38,11 +38,27 @@ Runtime API не использует браузерную сессию. Для 
 npm run pipeline:key:create -- \
   pln_REPLACE_WITH_PUBLIC_ID \
   content-ops \
-  "Content Ops local integration"
+  "Content Ops local integration" \
+  --token-file "$PWD/.secrets/content-ops-pipeline-token"
 ```
 
-Сохраните поле `token` из JSON-ответа в secret-настройках сервиса-потребителя.
-Не добавляйте token в git, документы или клиентский JavaScript.
+CLI откажется перезаписывать существующий файл. Перед запуском создайте `.secrets/`
+с правами `0700`; каталог исключён из git. Передайте файл потребителю как Docker
+secret или через менеджер секретов. Не добавляйте token в документы, environment,
+shell arguments или клиентский JavaScript.
+
+Перед платным запуском consumer читает authenticated descriptor:
+
+```http
+GET /v1/pipelines/{publicId}
+Authorization: Bearer rvr_pipe_...
+```
+
+Descriptor возвращает immutable semantic `capabilityKey`, pinned version и
+pipeline checksum, а также input/output fields, schema checksums и embedded
+semantic contracts. Для старых ручных pipeline `capabilityKey` может быть `null`;
+системный preset `story.asset.render.v1` сохраняет ключ в версии pipeline, чтобы
+потребитель проверял назначение endpoint, а не полагался на canvas/section ID.
 
 ## Запуск
 
@@ -148,6 +164,9 @@ pipeline не конфликтуют.
 Критический smoke-тест CI проверяет публикацию, отказ без token, запуск через
 Runtime API, получение результата, повтор без второго вызова, конфликт payload,
 метрики и журнал нод.
+
+Изолированный межсервисный запуск, общая внутренняя Docker network и 20-run отчёт
+описаны в [local-pipeline-consumer-e2e.md](local-pipeline-consumer-e2e.md).
 
 Для `Import Image` внешний input имеет вид
 `{"kind":"image","assetId":"..."}`. Asset должен существовать в том же

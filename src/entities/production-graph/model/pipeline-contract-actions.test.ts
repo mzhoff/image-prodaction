@@ -81,3 +81,52 @@ test('removing a field removes its edge in the same undo snapshot', () => {
   useProductionGraphStore.getState().undo();
   assert.equal(useProductionGraphStore.getState().edges.length, 1);
 });
+
+test('semantic preset preserves connected ports by matching field key and kind', () => {
+  const result = useProductionGraphStore.getState().applyPipelineSemanticContractPreset(
+    INPUT_NODE_ID,
+    [{ id: 'preset-topic', key: 'topic', kind: 'text', required: true }],
+    semanticContract(['topic']),
+  );
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(useProductionGraphStore.getState().edges.length, 1);
+  assert.equal(useProductionGraphStore.getState().edges[0]?.sourcePortId, `field:${FIELD_ID}`);
+  const node = useProductionGraphStore.getState().nodes.find((item) => item.id === INPUT_NODE_ID);
+  assert.equal(node?.data && 'fields' in node.data ? node.data.fields[0]?.id : undefined, FIELD_ID);
+  assert.equal(
+    node?.data && 'semanticContract' in node.data
+      ? node.data.semanticContract?.contractKey
+      : undefined,
+    'example.request.v1',
+  );
+});
+
+test('semantic preset refuses to remove a connected field silently', () => {
+  const result = useProductionGraphStore.getState().applyPipelineSemanticContractPreset(
+    INPUT_NODE_ID,
+    [{ id: 'preset-brief', key: 'brief', kind: 'text', required: true }],
+    semanticContract(['brief']),
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(useProductionGraphStore.getState().edges.length, 1);
+  const node = useProductionGraphStore.getState().nodes.find((item) => item.id === INPUT_NODE_ID);
+  assert.equal(node?.data && 'fields' in node.data ? node.data.fields[0]?.key : undefined, 'topic');
+});
+
+function semanticContract(required: string[]) {
+  const properties = Object.fromEntries(required.map((key) => [key, { type: 'string' as const }]));
+  return {
+    contractKey: 'example.request.v1',
+    contractRef: 'urn:example:request:1.0.0',
+    contractVersion: '1.0.0',
+    schemaChecksum: 'a'.repeat(64),
+    schema: {
+      type: 'object' as const,
+      additionalProperties: false as const,
+      properties,
+      required,
+    },
+  };
+}

@@ -9,6 +9,8 @@
     "worker": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/generation-worker.ts",
     "pipeline-worker": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/pipeline-worker.ts",
     "pipeline:key:create": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/create-pipeline-api-key.ts",
+    "pipeline:key:revoke": "node --experimental-strip-types --loader ./scripts/node-test-loader.mjs scripts/revoke-pipeline-api-key.ts",
+    "test:pipeline-external-consumer-smoke": "node --test scripts/pipeline-external-consumer-smoke.test.mjs",
     "build": "next build",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:chatmodule-versions": "node scripts/check-chatmodule-versions.mjs",

@@ -11,6 +11,7 @@ import {
 } from '../adapters/postgres/pipeline-schema';
 import { compileStudioSection } from '../adapters/studio/studio-pipeline-compiler';
 import type { CompiledPipelinePlan } from '../contracts/pipeline-contracts';
+import { PipelineDomainError } from '../contracts/pipeline-errors';
 import type {
   StudioPipelinePublication,
   StudioPipelineSourceMetadata,
@@ -56,10 +57,18 @@ export async function publishStudioPipeline(input: {
   const compilation = compileStudioSection(snapshot.project, input.sectionId, {
     isHandlerSupported: isProductionPipelineHandlerSupported,
   });
+  verifySemanticContractChecksum(compilation.compiledPlan.definition.inputSemanticContract);
+  verifySemanticContractChecksum(compilation.compiledPlan.definition.outputSemanticContract);
   const checksum = checksumPublication(compilation);
-  const inputSchemaChecksum = checksumSchema(compilation.compiledPlan.definition.inputs);
+  const inputSchemaChecksum = checksumPipelineBoundarySchema(
+    compilation.compiledPlan.definition.inputs,
+    compilation.compiledPlan.definition.inputSemanticContract,
+  );
   const outputSchemaChecksum = compilation.compiledPlan.definition.outputContracts
-    ? checksumSchema(compilation.compiledPlan.definition.outputContracts)
+    ? checksumPipelineBoundarySchema(
+      compilation.compiledPlan.definition.outputContracts,
+      compilation.compiledPlan.definition.outputSemanticContract,
+    )
     : null;
   const publishedAt = new Date();
 
@@ -184,6 +193,9 @@ function toPublicationDto(input: {
   version: number;
 }): StudioPipelinePublication {
   return {
+    ...(input.sourceMetadata.capabilityKey
+      ? { capabilityKey: input.sourceMetadata.capabilityKey }
+      : {}),
     pipelineId: input.pipelineId,
     endpointPublicId: input.endpointPublicId,
     inputSchemaChecksum: input.inputSchemaChecksum,
@@ -207,6 +219,33 @@ function checksumPublication(publication: {
 
 function checksumSchema(schema: unknown) {
   return createHash('sha256').update(stableStringify(schema)).digest('hex');
+}
+
+export function checksumPipelineBoundarySchema(
+  fields: unknown,
+  semanticContract?: CompiledPipelinePlan['definition']['inputSemanticContract'],
+) {
+  // Preserve the historical checksum bytes for every manual pipeline. Semantic
+  // boundaries use an explicitly versioned envelope so their checksum meaning
+  // can evolve without silently drifting legacy consumer pins.
+  if (!semanticContract) return checksumSchema(fields);
+  return checksumSchema({
+    algorithmVersion: 2,
+    fields,
+    semanticContract,
+  });
+}
+
+function verifySemanticContractChecksum(
+  contract: CompiledPipelinePlan['definition']['inputSemanticContract'],
+) {
+  if (!contract) return;
+  const actual = checksumSchema(contract.schema);
+  if (actual === contract.schemaChecksum) return;
+  throw new PipelineDomainError({
+    code: 'pipeline_definition_invalid',
+    message: `Semantic contract "${contract.contractKey}@${contract.contractVersion}" checksum does not match its embedded schema.`,
+  });
 }
 
 function stableStringify(value: unknown): string {

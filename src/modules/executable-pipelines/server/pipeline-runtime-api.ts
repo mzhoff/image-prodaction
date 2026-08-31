@@ -11,6 +11,7 @@ import type {
   PipelineInputs,
   PipelineValue,
 } from '../contracts/pipeline-contracts';
+import type { PipelineRuntimeDescriptor } from '../contracts/pipeline-runtime-contracts';
 import { PipelineDomainError } from '../contracts/pipeline-errors';
 import { requestPipelineRunCancel } from '../core/pipeline-run-service';
 import {
@@ -26,6 +27,33 @@ import { canPipelineConsumerAccessRun } from './pipeline-runtime-access';
 const createRunBodySchema = z.object({
   input: z.record(z.string(), z.unknown()),
 }).strict();
+
+export async function getPipelineRuntimeDescriptor(request: Request, publicId: string) {
+  try {
+    const identity = await authenticatePipelineApiRequest(request, publicId);
+    const descriptor: PipelineRuntimeDescriptor = {
+      pipeline: {
+        capabilityKey: identity.sourceMetadata?.capabilityKey ?? null,
+        publicId: identity.endpointPublicId,
+        version: identity.pipelineVersion,
+        checksum: identity.pipelineChecksum,
+      },
+      input: {
+        fields: identity.compiledPlan.definition.inputs,
+        schemaChecksum: identity.inputSchemaChecksum,
+        semanticContract: identity.compiledPlan.definition.inputSemanticContract ?? null,
+      },
+      output: {
+        fields: identity.compiledPlan.definition.outputContracts ?? {},
+        schemaChecksum: identity.outputSchemaChecksum,
+        semanticContract: identity.compiledPlan.definition.outputSemanticContract ?? null,
+      },
+    };
+    return Response.json(descriptor, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) {
+    return toPipelineRuntimeError(error);
+  }
+}
 
 export async function postPipelineRuntimeRun(request: Request, publicId: string) {
   try {

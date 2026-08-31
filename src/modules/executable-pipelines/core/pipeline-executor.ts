@@ -55,6 +55,7 @@ export async function executeCompiledPipeline(
   const pipelineInputs = preparePipelineInputValues(
     input.plan.definition.inputs,
     input.inputs,
+    input.plan.definition.inputSemanticContract,
   );
   throwIfAborted(input.signal);
 
@@ -212,7 +213,11 @@ function resolvePipelineOutputs(
     outputs[outputName] = structuredClone(value);
   }
   if (plan.definition.outputContracts) {
-    validatePipelineOutputValues(plan.definition.outputContracts, outputs);
+    validatePipelineOutputValues(
+      plan.definition.outputContracts,
+      outputs,
+      plan.definition.outputSemanticContract,
+    );
   }
   return outputs;
 }

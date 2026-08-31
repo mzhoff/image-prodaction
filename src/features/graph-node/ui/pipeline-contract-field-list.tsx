@@ -22,6 +22,7 @@ export interface PipelineContractFieldListProps {
   onFieldsChange: (fields: PipelineContractField[]) => boolean;
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
   portSide: 'input' | 'output';
+  readOnly?: boolean;
 }
 
 export function PipelineContractFieldList({
@@ -32,6 +33,7 @@ export function PipelineContractFieldList({
   onFieldsChange,
   onStartConnection,
   portSide,
+  readOnly = false,
 }: PipelineContractFieldListProps) {
   const fieldCount = countPipelineContractFields(fields);
   const canAddField = fieldCount < PIPELINE_CONTRACT_MAX_FIELDS;
@@ -48,11 +50,12 @@ export function PipelineContractFieldList({
         onFieldsChange={onFieldsChange}
         onStartConnection={onStartConnection}
         portSide={portSide}
+        readOnly={readOnly}
       />
       <button
         type="button"
         className="pipeline-contract-add-field"
-        disabled={!canAddField}
+        disabled={readOnly || !canAddField}
         onClick={() => {
           if (!canAddField) return;
           onFieldsChange([...fields, createUniquePipelineContractField(fields)]);
@@ -82,6 +85,7 @@ function PipelineContractFieldLevel({
   onFieldsChange,
   onStartConnection,
   portSide,
+  readOnly = false,
 }: PipelineContractFieldLevelProps) {
   return (
     <div className="pipeline-contract-field-level" role="list">
@@ -98,6 +102,7 @@ function PipelineContractFieldLevel({
             onFieldsChange={onFieldsChange}
             onStartConnection={onStartConnection}
             portSide={portSide}
+            readOnly={readOnly}
           />
         ) : undefined;
 
@@ -116,6 +121,7 @@ function PipelineContractFieldLevel({
             onStartConnection={onStartConnection}
             portSide={portSide}
             siblingFields={fields}
+            readOnly={readOnly}
           />
         );
       })}

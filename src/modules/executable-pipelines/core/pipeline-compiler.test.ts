@@ -78,3 +78,44 @@ test('compiler validates defaults and required output contracts without breaking
 
   assert.doesNotThrow(() => compilePipelineDefinition(createTextPipelineFixture()));
 });
+
+test('compiler rejects an output semantic contract without enforceable output fields', () => {
+  const definition = createTextPipelineFixture();
+  definition.outputSemanticContract = {
+    contractKey: 'test.output.v1',
+    contractRef: 'contracts/test-output/1.0.0/schema.json',
+    contractVersion: '1.0.0',
+    schemaChecksum: '0'.repeat(64),
+    schema: {
+      additionalProperties: false,
+      properties: { text: { type: 'string' } },
+      required: ['text'],
+      type: 'object',
+    },
+  };
+
+  assert.throws(
+    () => compilePipelineDefinition(definition),
+    /output semantic contract requires outputContracts/,
+  );
+});
+
+test('compiler reports malformed semantic snapshots as controlled definition errors', () => {
+  const definition = createTextPipelineFixture();
+  definition.inputSemanticContract = {
+    contractKey: 'test.input.v1',
+    contractRef: 'contracts/test-input/1.0.0/schema.json',
+    contractVersion: '1.0.0',
+    schemaChecksum: '0'.repeat(64),
+    schema: null,
+  } as unknown as NonNullable<typeof definition.inputSemanticContract>;
+
+  assert.throws(
+    () => compilePipelineDefinition(definition),
+    (error: unknown) => (
+      error instanceof PipelineDomainError
+      && error.code === 'pipeline_definition_invalid'
+      && /schema must be an object/.test(error.message)
+    ),
+  );
+});

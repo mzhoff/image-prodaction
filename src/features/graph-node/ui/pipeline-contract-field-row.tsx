@@ -66,6 +66,7 @@ export interface PipelineContractFieldRowProps {
   onFieldsChange: (fields: PipelineContractField[]) => boolean;
   onStartConnection: (nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
   portSide: 'input' | 'output';
+  readOnly?: boolean;
   siblingFields: PipelineContractField[];
 }
 
@@ -81,6 +82,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
   onFieldsChange,
   onStartConnection,
   portSide,
+  readOnly = false,
   siblingFields,
 }: PipelineContractFieldRowProps) {
   const [draftKey, setDraftKey] = useState(field.key);
@@ -164,6 +166,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
           value={draftKey}
           aria-label="Contract field key"
           aria-invalid={Boolean(keyError)}
+          readOnly={readOnly}
           onBlur={commitKey}
           onChange={(event) => {
             setDraftKey(event.target.value);
@@ -188,6 +191,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
           className="pipeline-contract-type-select"
           value={field.kind}
           options={typeOptions}
+          disabled={readOnly}
           onChange={handleTypeChange}
         />
         <button
@@ -195,6 +199,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
           className={`pipeline-contract-required-toggle${field.required ? ' is-active' : ''}`}
           aria-label={field.required ? `${field.key} is required` : `${field.key} is optional`}
           aria-pressed={field.required}
+          disabled={readOnly}
           title={field.required ? 'Required field' : 'Optional field'}
           onClick={() => onFieldsChange(updatePipelineContractField(allFields, field.id, (current) => ({
             ...current,
@@ -209,6 +214,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
           className={`pipeline-contract-field-action${detailsOpen ? ' is-active' : ''}`}
           aria-label={`Configure ${field.key}`}
           aria-expanded={detailsOpen}
+          disabled={readOnly}
           title="Description and default value"
           onClick={() => setDetailsOpen((current) => !current)}
         >
@@ -219,7 +225,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
             type="button"
             className="pipeline-contract-field-action"
             aria-label={`Add nested field to ${field.key}`}
-            disabled={!canAddNested}
+            disabled={readOnly || !canAddNested}
             title={canAddNested ? 'Add nested JSON field' : 'Maximum schema depth or field count reached'}
             onClick={() => {
               setExpanded(true);
@@ -233,7 +239,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
           type="button"
           className="pipeline-contract-field-action pipeline-contract-field-remove"
           aria-label={`Remove ${field.key}`}
-          disabled={!canRemove}
+          disabled={readOnly || !canRemove}
           title={canRemove ? 'Remove field' : 'A contract must contain at least one field'}
           onClick={() => onFieldsChange(removePipelineContractField(allFields, field.id))}
         >
@@ -252,7 +258,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
         ) : null}
       </div>
       {keyError ? <div className="pipeline-contract-field-key-error" role="alert">{keyError}</div> : null}
-      {detailsOpen ? (
+      {detailsOpen && !readOnly ? (
         <PipelineContractFieldDetails
           allowDefault={allowDefault}
           field={field}
@@ -269,7 +275,7 @@ export const PipelineContractFieldRow = memo(function PipelineContractFieldRow({
             <button
               type="button"
               className="pipeline-contract-empty-json"
-              disabled={!canAddNested}
+              disabled={readOnly || !canAddNested}
               onClick={() => onFieldsChange(addPipelineContractChild(allFields, field.id))}
             >
               <Plus size={12} /> Add nested field

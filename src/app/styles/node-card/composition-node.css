@@ -16,6 +16,18 @@
   gap: 8px;
 }
 
+.composition-settings-row .composition-canvas-format-control {
+  grid-column: 1 / -1;
+}
+
+.composition-canvas-format-select.mini-select {
+  width: 100%;
+  max-width: none;
+  justify-content: space-between;
+  overflow: hidden;
+  text-align: left;
+}
+
 .composition-settings-row label,
 .composition-number-control,
 .composition-color-control,
@@ -43,7 +55,8 @@
   outline: none;
 }
 
-.composition-settings-row .dark-select-trigger {
+.composition-settings-row .dark-select-trigger,
+.composition-settings-row .mini-select {
   width: 100%;
 }
 

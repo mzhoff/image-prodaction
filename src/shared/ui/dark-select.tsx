@@ -17,9 +17,10 @@ interface DarkSelectProps {
   className?: string;
   wide?: boolean;
   ariaLabel?: string;
+  disabled?: boolean;
 }
 
-export function DarkSelect({ value, options, onChange, className, wide, ariaLabel }: DarkSelectProps) {
+export function DarkSelect({ value, options, onChange, className, wide, ariaLabel, disabled = false }: DarkSelectProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ bottom?: number; left: number; top?: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -70,9 +71,11 @@ export function DarkSelect({ value, options, onChange, className, wide, ariaLabe
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
+        disabled={disabled}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
+          if (disabled) return;
           if (open) {
             setOpen(false);
             return;
@@ -83,7 +86,7 @@ export function DarkSelect({ value, options, onChange, className, wide, ariaLabe
         {selected?.label ?? value}
         <ChevronDown size={13} />
       </button>
-      {open && anchor ? createPortal(
+      {open && anchor && !disabled ? createPortal(
         <>
           <div className="dark-select-backdrop" onClick={() => setOpen(false)} />
           <div

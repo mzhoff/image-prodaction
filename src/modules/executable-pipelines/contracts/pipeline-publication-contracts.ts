@@ -9,6 +9,7 @@ export interface StudioPipelineBoundary {
 }
 
 export interface StudioPipelineSourceMetadata {
+  capabilityKey?: string;
   inputs: StudioPipelineBoundary[];
   nodeCount: number;
   outputs: StudioPipelineBoundary[];
@@ -17,6 +18,7 @@ export interface StudioPipelineSourceMetadata {
 }
 
 export interface StudioPipelinePublication {
+  capabilityKey?: string;
   compiledPlan: CompiledPipelinePlan;
   endpointPublicId: string;
   inputSchemaChecksum: string | null;

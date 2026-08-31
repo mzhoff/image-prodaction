@@ -52,6 +52,16 @@ export function CompositionNode({ node }: { node: ProductionNode }) {
       <NodeTitle title={model.data.title} nodeType={node.type} muted />
       <div className="composition-node-body">
         <div className="composition-settings-row">
+          <label className="composition-canvas-format-control">
+            <span>Canvas format</span>
+            <DarkSelect
+              ariaLabel="Canvas format preset"
+              className="composition-canvas-format-select"
+              value={model.canvasPresetId}
+              options={model.canvasPresetOptions}
+              onChange={model.handleCanvasPresetChange}
+            />
+          </label>
           <label>
             <span>Aspect</span>
             <DarkSelect value={model.data.aspectRatio} options={compositionAspectRatioOptions} onChange={model.handleAspectRatioChange} />

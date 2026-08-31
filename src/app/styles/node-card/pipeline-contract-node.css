@@ -12,6 +12,68 @@
   line-height: 16px;
 }
 
+.pipeline-contract-preset {
+  display: grid;
+  gap: 7px;
+  border-bottom: 1px solid #ecece8;
+  padding: 10px 16px;
+}
+
+.pipeline-contract-preset label {
+  display: grid;
+  gap: 5px;
+  color: #7d858c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pipeline-contract-preset select {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid #dedfdb;
+  border-radius: 8px;
+  background: #f8f8f6;
+  color: #252525;
+  padding: 6px 8px;
+  outline: none;
+  font-size: 11px;
+  font-weight: 620;
+  text-transform: none;
+}
+
+.pipeline-contract-preset-snapshot {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: #6e767d;
+  font-size: 9px;
+  line-height: 13px;
+}
+
+.pipeline-contract-preset-snapshot code {
+  overflow: hidden;
+  color: #4e5963;
+  text-overflow: ellipsis;
+}
+
+.pipeline-contract-preset-snapshot button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #3158cb;
+  padding: 2px 0;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.pipeline-contract-field-key:read-only {
+  color: #5c646b;
+  cursor: default;
+}
+
 .pipeline-contract-fields {
   display: flex;
   min-width: 0;

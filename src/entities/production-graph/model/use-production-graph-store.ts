@@ -7,6 +7,7 @@ import { createGraphFavoriteNodeActions } from './graph-favorite-node-actions';
 import { createGraphHistoryActions } from './graph-history-actions';
 import { createGraphLocationActions } from './graph-location-actions';
 import { createGraphNodeActions } from './graph-node-actions';
+import { createGraphPipelineContractActions } from './graph-pipeline-contract-actions';
 import { createGraphPersistStorage, createPersistedGraphState, GRAPH_PERSIST_STORAGE_KEY } from './graph-persistence';
 import { createGraphPortabilityActions } from './graph-portability-actions';
 import { createGraphSectionActions } from './graph-section-actions';
@@ -29,6 +30,7 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       historyFuture: [],
       uiState: createEmptyProjectUiState(),
       ...createGraphNodeActions(set),
+      ...createGraphPipelineContractActions(set),
       ...createGraphFavoriteNodeActions(set),
       ...createGraphSectionActions(set, get),
       ...createGraphSubjectActions(set, get),
