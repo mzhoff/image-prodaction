@@ -9,37 +9,32 @@ import { normalizePipelineSemanticContractSnapshot } from './pipeline-contract-f
 import { getSystemPipelinePreset } from './system-pipeline-presets.ts';
 import type { CompositionNodeData } from './types.ts';
 
-test('Stories boundary presets embed closed schemas with matching immutable checksums', () => {
-  const input = getPipelineSemanticContractPreset('story.production.request.v1');
+test('Stories output preset embeds a closed schema with a matching immutable checksum', () => {
   const output = getPipelineSemanticContractPreset('story.production.result.v1');
 
-  assert.ok(input);
   assert.ok(output);
-  assert.equal(input.boundary, 'input');
+  assert.equal(getPipelineSemanticContractPreset('story.production.request.v1'), undefined);
   assert.equal(output.boundary, 'output');
-  assert.equal(input.semanticContract.schema.type, 'object');
   assert.equal(output.semanticContract.schema.type, 'object');
-  assert.equal(
-    input.semanticContract.schemaChecksum,
-    createHash('sha256').update(stableStringify(input.semanticContract.schema)).digest('hex'),
-  );
   assert.equal(
     output.semanticContract.schemaChecksum,
     createHash('sha256').update(stableStringify(output.semanticContract.schema)).digest('hex'),
   );
   assert.deepEqual(
-    Object.keys(input.semanticContract.schema.properties),
-    input.fields.map((field) => field.key),
+    Object.keys(output.semanticContract.schema.properties),
+    output.fields.map((field) => field.key),
   );
+  assert.deepEqual(output.semanticContract.schema.required, ['background']);
+  assert.deepEqual(output.fields.filter((field) => field.required).map((field) => field.key), ['background']);
 });
 
 test('preset readers return detached snapshots and normalizer rejects tampered metadata', () => {
-  const [first] = getPipelineSemanticContractPresets('input');
-  const [second] = getPipelineSemanticContractPresets('input');
+  const [first] = getPipelineSemanticContractPresets('output');
+  const [second] = getPipelineSemanticContractPresets('output');
   assert.ok(first);
   assert.ok(second);
   first.fields[0]!.key = 'changed';
-  assert.equal(second.fields[0]?.key, 'storyId');
+  assert.equal(second.fields[0]?.key, 'background');
   assert.ok(normalizePipelineSemanticContractSnapshot(second.semanticContract));
   assert.equal(normalizePipelineSemanticContractSnapshot({
     ...second.semanticContract,

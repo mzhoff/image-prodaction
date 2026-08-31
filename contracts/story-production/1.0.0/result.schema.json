@@ -61,6 +61,24 @@
         "sizeBytes",
         "width"
       ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "description": "Optional title generated for the slide."
+    },
+    "subtitle": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600,
+      "description": "Optional subtitle generated for the slide."
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "Optional supporting text generated for the slide."
     }
   },
   "required": ["background"]

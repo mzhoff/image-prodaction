@@ -1,4 +1,3 @@
-import requestSchemaJson from '../../../../contracts/story-production/1.0.0/request.schema.json' with { type: 'json' };
 import resultSchemaJson from '../../../../contracts/story-production/1.0.0/result.schema.json' with { type: 'json' };
 import type { SemanticJsonSchema } from '@/shared/contracts/semantic-contract';
 import type {
@@ -16,49 +15,31 @@ export interface PipelineSemanticContractPreset {
   semanticContract: PipelineSemanticContractSnapshot;
 }
 
-const requestSchema = requestSchemaJson as SemanticJsonSchema;
 const resultSchema = resultSchemaJson as SemanticJsonSchema;
 
 const PRESETS: readonly PipelineSemanticContractPreset[] = [{
-  boundary: 'input',
-  label: 'Story production request · v1',
-  description: 'Данные для генерации одного фонового изображения Stories.',
-  semanticContract: {
-    contractKey: 'story.production.request.v1',
-    contractVersion: '1.0.0',
-    contractRef: 'urn:prodaction:story.production.request:1.0.0',
-    schemaChecksum: '8aafa0a49b1b633d795b83a2b7f5e7274f5c7c8554b3e76b1de64c44a1780063',
-    schema: requestSchema,
-  },
-  fields: [
-    field('story-request-story-id', 'storyId', 'Идентификатор Stories.'),
-    field('story-request-revision-id', 'revisionId', 'Неизменяемая версия Stories.'),
-    field('story-request-slide-id', 'slideId', 'Идентификатор одного слайда.'),
-    field('story-request-brief', 'brief', 'Что должно быть изображено на фоне.'),
-    field('story-request-alt-text', 'altText', 'Краткое описание смысла изображения.', false),
-    field('story-request-locale', 'locale', 'Язык контента.'),
-    field('story-request-aspect-ratio', 'aspectRatio', 'Формат кадра Stories.'),
-    field('story-request-image-size', 'imageSize', 'Размер генерации у модели.'),
-    field('story-request-format-key', 'formatKey', 'Точный формат Composition.'),
-  ],
-}, {
   boundary: 'output',
   label: 'Story production result · v1',
-  description: 'Ссылка, метаданные и checksum готового фонового изображения.',
+  description: 'Фоновое изображение и необязательные тексты для одного слайда.',
   semanticContract: {
     contractKey: 'story.production.result.v1',
     contractVersion: '1.0.0',
     contractRef: 'urn:prodaction:story.production.result:1.0.0',
-    schemaChecksum: '362b07da2768b2898084193ce4ba5e98f9aa78521c30fc3ef6ea967de65ccf27',
+    schemaChecksum: '47aedfb52186e3639df655b8dee3c1f951d96c696af4f4f4ff1d195fcb8e0512',
     schema: resultSchema,
   },
-  fields: [{
-    id: 'story-result-background',
-    key: 'background',
-    kind: 'image',
-    required: true,
-    description: 'Готовое фоновое изображение с защищённой ссылкой на скачивание.',
-  }],
+  fields: [
+    {
+      id: 'story-result-background',
+      key: 'background',
+      kind: 'image',
+      required: true,
+      description: 'Готовое фоновое изображение. Его можно скачать по защищённой ссылке.',
+    },
+    field('story-result-title', 'title', 'Заголовок слайда, если пайплайн его создаёт.', false),
+    field('story-result-subtitle', 'subtitle', 'Подзаголовок слайда, если пайплайн его создаёт.', false),
+    field('story-result-body', 'body', 'Основной текст слайда, если пайплайн его создаёт.', false),
+  ],
 }] as const;
 
 export function getPipelineSemanticContractPresets(boundary: PipelineBoundaryKind) {

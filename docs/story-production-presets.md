@@ -4,8 +4,8 @@
 
 Image Production now uses three separate preset levels:
 
-1. **Contract preset** on `Pipeline Input` or `Pipeline Output` fixes the names,
-   types and exact embedded schema of data crossing the service boundary.
+1. **Contract preset** on `Pipeline Input` or `Pipeline Output` can fix the
+   names, types and exact embedded schema of data crossing the service boundary.
 2. **Canvas format preset** on `Composition` fixes the preview canvas dimensions.
    The first Stories format is `story-full-hd` (`1080 × 1920`).
 3. **Pipeline preset** inserts a prepared group of connected nodes into the
@@ -14,19 +14,46 @@ Image Production now uses three separate preset levels:
 These presets solve different problems and should not be treated as one shared
 mutable configuration.
 
-## Boundary contracts
+## Input fields belong to the pipeline
 
-The first capability has two immutable contracts:
+`Pipeline Input` is the place where a calling product supplies only the
+business context needed to perform this particular pipeline. Examples are:
 
-- `story.production.request.v1@1.0.0` — identifiers, visual brief and pinned
-  generation/format choices for one slide background;
-- `story.production.result.v1@1.0.0` — one workspace-scoped image artifact with
-  authenticated download URL, dimensions, MIME type, byte size and SHA-256.
+- `articleSummary` for an article cover;
+- `visualBrief` for an illustration;
+- `brief` for a single Stories background.
 
-The exact schemas live in:
+The Stories pipeline presets therefore use one required manual text field,
+`brief`. They do not apply a Stories input contract preset. The visual style,
+composition, aspect ratio, model and generation size are already configured in
+the pipeline and do not have to be repeated by every caller.
 
-- `contracts/story-production/1.0.0/request.schema.json`;
-- `contracts/story-production/1.0.0/result.schema.json`.
+Story, revision and slide identifiers describe the publishing lifecycle. The
+calling console keeps those identifiers and associates its slide with the
+returned run and result. Image Production does not need lifecycle identifiers
+to generate one asset.
+
+The generic input preset mechanism remains available for future capabilities
+that have a real shared input contract. A preset should be added only when
+several callers need the same stable business input, not merely because a field
+exists in a calling product.
+
+## Stories output contract
+
+`story.production.result.v1@1.0.0` describes the result of producing one
+Stories slide asset:
+
+- required `background` — one workspace-scoped image artifact with an
+  authenticated download URL, dimensions, MIME type, byte size and SHA-256;
+- optional `title` — generated slide title;
+- optional `subtitle` — generated slide subtitle;
+- optional `body` — generated supporting text.
+
+The exact closed schema lives in
+`contracts/story-production/1.0.0/result.schema.json`. A background-only
+pipeline omits all three text fields. A pipeline that also generates copy can
+connect any of them to its text-generation results; when present, a text value
+must not be empty.
 
 Applying a boundary preset copies the exact schema and its checksum into the
 node. Publishing copies that snapshot into the immutable pipeline version and
@@ -34,9 +61,11 @@ verifies the checksum again. The runtime validates the complete input and
 output objects, not only individual canvas fields. A user must explicitly
 detach the preset before manually editing its fields.
 
-This is an Image Production capability contract, not a duplicate of the full
+This is an Image Production result contract, not a duplicate of the full
 portable `stories.feed` contract. The Stories Platform package remains the
-source of truth for decks, slides, semantic layers, actions and poll behavior.
+source of truth for decks, slides and semantic layers. Buttons, polls, slide
+ordering and the story lifecycle belong to the calling console and consuming
+application.
 
 ## Pipeline presets
 
@@ -51,8 +80,9 @@ Story Production Input
   → Story Production Output
 ```
 
-One run produces one background image. The caller keeps the relationship
-between its story revision/slide and the returned durable run.
+One run receives a plain `brief` and produces one background image. The caller
+keeps the relationship between its story revision/slide and the returned
+durable run.
 
 ### `story.slide.preview.v1`
 
@@ -72,9 +102,10 @@ runtime has no `image.compose` handler, so this graph must not be published as
 an executable pipeline yet. The executable asset slice above is the honest
 first pilot.
 
-Text, title, poll and action layers stay semantic and host-rendered. Image
-Production generates content and background assets; the consuming application
-owns spacing tokens, colors, typography, safe areas, motion and interaction.
+Title, subtitle and body are optional generated content. Buttons, polls and
+other interactive layers stay console-owned and host-rendered. The consuming
+application owns spacing tokens, colors, typography, safe areas, motion and
+interaction.
 
 ## External consumer contract
 
@@ -104,6 +135,6 @@ model, actual cost, manual correction time, MIME/dimensions and artifact
 checksum. Proceed only if the result is stable and the manual correction cost
 does not erase the product value.
 
-Content Hub and ТОКБЕРИ are deliberately outside this implementation slice.
-They will consume the released contracts later without depending on canvas
-node IDs or mutable draft graphs.
+Content Hub can call released pipelines through their published authenticated
+descriptors and endpoints. Its server keeps its own publication identifiers
+and must not depend on canvas node IDs or mutable draft graphs.

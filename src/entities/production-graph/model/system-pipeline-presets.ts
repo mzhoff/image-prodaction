@@ -6,6 +6,7 @@ import type {
   ProductionNodeType,
 } from './types';
 import { getPipelineSemanticContractPreset } from './pipeline-semantic-contract-presets';
+import type { PipelineContractField } from './pipeline-contract-fields';
 
 export type SystemPipelinePresetKey = 'story.asset.render.v1' | 'story.slide.preview.v1';
 
@@ -17,14 +18,19 @@ export interface SystemPipelinePreset {
   template: PipelineTemplateExport;
 }
 
-const requestPreset = requiredContractPreset('story.production.request.v1');
 const resultPreset = requiredContractPreset('story.production.result.v1');
+const STORY_INPUT_FIELDS: PipelineContractField[] = [{
+  id: 'story-input-brief',
+  key: 'brief',
+  kind: 'text',
+  required: true,
+  description: 'Коротко опишите, что должно быть изображено на фоне.',
+}];
 
 const STORY_RENDER_NODES = [
   node('story-input', 'pipelineInput', 120, 180, 400, 650, {
     title: 'Story Production Input',
-    fields: requestPreset.fields,
-    semanticContract: requestPreset.semanticContract,
+    fields: STORY_INPUT_FIELDS,
   }),
   node('story-prompt', 'textGeneration', 620, 180, 400, 757, {
     title: 'Prepare visual prompt',
@@ -47,7 +53,7 @@ const STORY_RENDER_NODES = [
     activeResultIndex: -1,
     resultAssetIds: [],
   }),
-  node('story-output', 'pipelineOutput', 1620, 180, 400, 280, {
+  node('story-output', 'pipelineOutput', 1620, 180, 400, 430, {
     title: 'Story Production Output',
     fields: resultPreset.fields,
     semanticContract: resultPreset.semanticContract,
@@ -55,7 +61,7 @@ const STORY_RENDER_NODES = [
 ] satisfies ProductionNode[];
 
 const STORY_RENDER_EDGES = [
-  edge('story-brief-to-prompt', 'story-input', 'field:story-request-brief', 'story-prompt', 'text'),
+  edge('story-brief-to-prompt', 'story-input', 'field:story-input-brief', 'story-prompt', 'text'),
   edge('story-prompt-to-image', 'story-prompt', 'result', 'story-generate', 'prompt'),
   edge('story-image-to-output', 'story-generate', 'image', 'story-output', 'field:story-result-background'),
 ] satisfies GraphEdge[];
@@ -92,7 +98,7 @@ const PRESETS: readonly SystemPipelinePreset[] = [{
         layers: [],
         size: '1K',
       }),
-      node('story-output', 'pipelineOutput', 2120, 180, 400, 280, {
+      node('story-output', 'pipelineOutput', 2120, 180, 400, 430, {
         title: 'Story Production Output',
         fields: resultPreset.fields,
         semanticContract: resultPreset.semanticContract,

@@ -6,10 +6,9 @@ import {
   preparePipelineInputValues,
   validatePipelineOutputValues,
 } from '../../core/pipeline-io-validation';
-import { compilePipelineDefinition } from '../../core/pipeline-compiler';
 import { compileStudioSection } from './studio-pipeline-compiler';
 
-test('story.asset.render.v1 is a portable executable pipeline with pinned semantic boundaries', () => {
+test('story.asset.render.v1 is a portable executable pipeline with a simple brief input and pinned output', () => {
   const preset = getSystemPipelinePreset('story.asset.render.v1');
   assert.ok(preset);
   const imported = normalizePortableProjectExport(preset.template);
@@ -20,8 +19,15 @@ test('story.asset.render.v1 is a portable executable pipeline with pinned semant
   const definition = compilation.compiledPlan.definition;
   assert.equal(section.capabilityKey, 'story.asset.render.v1');
   assert.equal(compilation.sourceMetadata.capabilityKey, 'story.asset.render.v1');
-  assert.equal(definition.inputSemanticContract?.contractKey, 'story.production.request.v1');
+  assert.equal(definition.inputSemanticContract, undefined);
   assert.equal(definition.outputSemanticContract?.contractKey, 'story.production.result.v1');
+  assert.deepEqual(definition.inputs, {
+    brief: {
+      kind: 'text',
+      required: true,
+      description: 'Коротко опишите, что должно быть изображено на фоне.',
+    },
+  });
   assert.deepEqual(definition.nodes.map((node) => node.handlerType), [
     'ai.text.generate',
     'ai.image.generate',
@@ -32,25 +38,16 @@ test('story.asset.render.v1 is a portable executable pipeline with pinned semant
   });
 
   const prepared = preparePipelineInputValues(definition.inputs, {
-    storyId: 'story-1',
-    revisionId: 'revision-1',
-    slideId: 'slide-1',
     brief: 'Тёплый фон для анонса запуска.',
-    locale: 'ru-RU',
-    aspectRatio: '9:16',
-    imageSize: '1K',
-    formatKey: 'story-full-hd',
   }, definition.inputSemanticContract);
-  assert.equal(prepared.locale, 'ru-RU');
-  assert.equal(prepared.aspectRatio, '9:16');
-  assert.equal(prepared.imageSize, '1K');
-  assert.equal(prepared.formatKey, 'story-full-hd');
+  assert.deepEqual(prepared, { brief: 'Тёплый фон для анонса запуска.' });
 
-  const conflictingRequired = structuredClone(definition);
-  conflictingRequired.inputs.locale!.required = false;
   assert.throws(
-    () => compilePipelineDefinition(conflictingRequired),
-    /conflicting required metadata/,
+    () => preparePipelineInputValues(definition.inputs, {
+      brief: 'Тёплый фон для анонса запуска.',
+      storyId: 'story-1',
+    }, definition.inputSemanticContract),
+    /Unknown pipeline input "storyId"/,
   );
 
   assert.doesNotThrow(() => validatePipelineOutputValues(definition.outputContracts!, {
@@ -64,6 +61,9 @@ test('story.asset.render.v1 is a portable executable pipeline with pinned semant
       sizeBytes: 100,
       width: 1024,
     },
+    title: 'Летний запуск',
+    subtitle: 'Новая серия уже доступна',
+    body: 'Посмотрите детали в приложении.',
   }, definition.outputSemanticContract));
 });
 
@@ -90,4 +90,18 @@ test('story semantic output rejects incomplete artifact metadata', () => {
       width: 1080,
     },
   }, definition.outputSemanticContract), /required pattern/);
+
+  assert.throws(() => validatePipelineOutputValues(definition.outputContracts!, {
+    background: {
+      assetId: 'asset-1',
+      checksumSha256: 'a'.repeat(64),
+      contentUrl: '/v1/runs/run-1/artifacts/asset-1',
+      height: 1920,
+      kind: 'image',
+      mimeType: 'image/png',
+      sizeBytes: 100,
+      width: 1080,
+    },
+    title: '',
+  }, definition.outputSemanticContract), /at least 1 characters/);
 });
