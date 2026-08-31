@@ -1,11 +1,13 @@
 'use client';
 
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
+import { createNodeAskAiLaunchCoordinator,
+  createNodeAskAiLaunchRequest } from '@/features/chat-assistant/model/node-ask-ai';
 import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
 import { CanvasGrid } from './canvas-grid';
@@ -21,9 +23,17 @@ interface ProductionCanvasProps {
 }
 
 export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
-  const model = useProductionCanvasModel({ projectId });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const openAssistant = useCallback(() => setAssistantOpen(true), []);
+  const [chatLaunchCoordinator] = useState(() => createNodeAskAiLaunchCoordinator(openAssistant));
+  const askAiNode = useCallback(
+    (node: Parameters<typeof createNodeAskAiLaunchRequest>[0]) => (
+      chatLaunchCoordinator.open(createNodeAskAiLaunchRequest(node))
+    ),
+    [chatLaunchCoordinator],
+  );
+  const model = useProductionCanvasModel({ onAskAiNode: askAiNode, projectId });
   const autoOpenedProjectRef = useRef<string | undefined>(undefined);
   const projectTitle = model.documentName
     ?? (model.documentSync.phase === 'loading' ? 'Загрузка документа…' : 'Untitled Pipeline');
@@ -140,7 +150,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         </button>
         <AssistantFloatingButton
           className={assistantOpen ? 'assistant-floating-button-hidden' : ''}
-          onClick={() => setAssistantOpen(true)}
+          onClick={openAssistant}
         />
         <AssistantShell
           open={assistantOpen}
@@ -151,8 +161,13 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             : model.documentSync.phase === 'saved'
               ? String(model.documentRevision)
               : `unsaved:${model.documentRevision}`}
-          onClose={() => setAssistantOpen(false)}
+          onClose={() => {
+            chatLaunchCoordinator.cancelPending();
+            setAssistantOpen(false);
+          }}
+          onOpen={openAssistant}
           onPipelineChanged={model.reloadDocumentFromServer}
+          registerChatLauncher={chatLaunchCoordinator.register}
           route={projectId ? `/projects/${projectId}` : '/projects'}
           selectionIds={[...model.selectedSet, ...model.selectedSectionSet]}
           workspaceId={model.workspaceId}

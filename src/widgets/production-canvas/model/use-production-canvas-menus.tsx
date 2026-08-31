@@ -9,6 +9,8 @@ import { getNodeCurrentImageAssetId,
   getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import type { GraphSection, ProductionNode,
   ProductionNodeType } from '@/entities/production-graph/model/types';
+import { getNodeAskAiLaunchNotice,
+  type NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { requestNodeTitleRename } from '@/features/graph-node/ui/node-title';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
@@ -36,6 +38,7 @@ interface ProductionCanvasMenusOptions {
   favoriteNodes: FavoriteNodes;
   graph: GraphModel;
   importPipelineTemplateAt: (position: { x: number; y: number }) => void;
+  onAskAiNode: (node: ProductionNode) => Promise<NodeAskAiLaunchResult>;
   openImageViewer: (nodeId: string, initialIndex: number) => void;
   projectId?: string;
   sectionColorPreviews: Record<string, string>;
@@ -47,7 +50,7 @@ interface ProductionCanvasMenusOptions {
 export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) {
   const { canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
     exportSectionPipelineTemplate, favoriteNodes, graph, importPipelineTemplateAt, openImageViewer,
-    projectId, sectionColorPreviews, setSectionColorPreviews, showToast,
+    onAskAiNode, projectId, sectionColorPreviews, setSectionColorPreviews, showToast,
     studioPipelines } = options;
 
   const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => {
@@ -127,7 +130,10 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     ] : [];
     const baseActions: ContextMenuAction[] = [
       { id: 'ask-ai-node', label: 'Ask AI', icon: <HelpCircle size={14} />,
-        onSelect: () => showToast('Ask AI assistant will be connected in the product chat.') },
+        onSelect: () => { void onAskAiNode(node)
+          .then((result) => { const notice = getNodeAskAiLaunchNotice(result);
+            if (notice) showToast(notice); })
+          .catch(() => showToast('Не удалось открыть Ask AI. Повторите попытку.')); } },
       { id: 'rename-node', label: 'Rename', icon: <Pencil size={14} />,
         onSelect: () => requestNodeTitleRename(node.id) },
       { id: 'copy-node', label: 'Duplicate', icon: <Copy size={14} />,
@@ -156,12 +162,13 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
         onSelect: () => graph.toggleNodeLock(node.id) },
     ];
     const visibleBaseActions = node.type === 'banner'
-      ? baseActions.filter((action) => !['ask-ai-node', 'rename-node'].includes(action.id))
+      ? baseActions.filter((action) => action.id !== 'rename-node')
       : baseActions;
     return [...visibleBaseActions, ...imageActions, ...generationActions,
       { id: 'delete-node', label: 'Delete', icon: <Trash2 size={14} />,
         destructive: true, separatorBefore: true, onSelect: graph.deleteSelected }];
-  }, [copyAssetToClipboard, downloadAssets, favoriteNodes, graph, openImageViewer, showToast]);
+  }, [copyAssetToClipboard, downloadAssets, favoriteNodes, graph, onAskAiNode,
+    openImageViewer, showToast]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {
     const point = canvas.screenToWorld(event.nativeEvent) ?? { x: 0, y: 0 };

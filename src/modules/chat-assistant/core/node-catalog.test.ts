@@ -1,60 +1,109 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { buildNodeAskAiDraft } from '@/entities/production-graph/model/node-help';
 import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-registry';
 import { getAssistantNodeCatalog } from './node-catalog.ts';
 
-test('assistant node catalog is derived from the live product registry', () => {
+test('assistant node catalog exposes complete product-owned help for the live registry', () => {
   const nodes = getAssistantNodeCatalog();
-  const prompt = nodes.find((node) => node.type === 'textPrompt');
-  const generateImage = nodes.find((node) => node.type === 'generateImage');
 
-  assert.equal(nodes.length, PRODUCTION_NODE_TYPES.length);
+  assert.deepEqual(nodes.map((node) => node.type), PRODUCTION_NODE_TYPES);
+  assert.equal(nodes.length, 30);
+  for (const node of nodes) {
+    assert.ok(node.aliases.length > 0, `${node.type} has no aliases`);
+    assert.ok(node.description.length > 0, `${node.type} has no description`);
+    assert.ok(node.capabilities.length > 0, `${node.type} has no capabilities`);
+    assert.ok(node.limitations.length > 0, `${node.type} has no limitations`);
+    assert.ok(node.portRules.length > 0, `${node.type} has no port rules`);
+  }
+});
+
+test('assistant node catalog preserves live ports and assistant configurable fields', () => {
+  const prompt = getAssistantNodeCatalog('textPrompt')[0];
+  const generateImage = getAssistantNodeCatalog('generateImage')[0];
+  const qr = getAssistantNodeCatalog('qrCode')[0];
+
   assert.ok(prompt?.ports.some((port) => port.id === 'text' && port.side === 'output'));
   assert.ok(prompt?.configurableFields.includes('text'));
   assert.ok(prompt?.configurableFields.includes('variables'));
   assert.ok(prompt?.portRules.some((rule) => rule.includes('variable-0')));
   assert.ok(generateImage?.ports.some((port) => port.id === 'prompt' && port.kind === 'text'));
   assert.ok(generateImage?.configurableFields.includes('prompt'));
+  assert.ok(qr?.ports.some((port) => port.id === 'text' && port.kind === 'text' && port.side === 'input'));
+  assert.ok(qr?.ports.some((port) => port.id === 'image' && port.kind === 'image' && port.side === 'output'));
+  assert.deepEqual(qr?.configurableFields, ['title', 'content', 'contentMode']);
+  assert.match(qr?.limitations.join(' ') ?? '', /нельзя заменять.*Generate image/u);
+});
+
+test('assistant node catalog reports verified availability and executable support', () => {
+  const nodes = getAssistantNodeCatalog();
+  const byType = new Map(nodes.map((node) => [node.type, node]));
+  const serverTypes = nodes
+    .filter((node) => node.execution === 'server')
+    .map((node) => node.type);
+
+  assert.deepEqual(serverTypes, [
+    'textPrompt',
+    'textConcat',
+    'textGeneration',
+    'textFormatter',
+    'textSplitter',
+    'structuredOutput',
+    'imageToText',
+    'qrCode',
+    'generateImage',
+    'exportImage',
+  ]);
+  assert.equal(byType.get('importImage')?.execution, 'boundary');
+  assert.equal(byType.get('pipelineInput')?.execution, 'boundary');
+  assert.equal(byType.get('pipelineOutput')?.execution, 'boundary');
+  assert.equal(byType.get('router')?.execution, 'transparent');
+  assert.equal(byType.get('preview')?.execution, 'boundary');
+  assert.equal(byType.get('referenceComposer')?.availability, 'hidden-incomplete');
+  assert.match(byType.get('referenceComposer')?.limitations.join(' ') ?? '', /нет в меню добавления/u);
+  assert.ok(nodes
+    .filter((node) => node.type !== 'referenceComposer')
+    .every((node) => node.availability === 'addable'));
+});
+
+test('assistant node catalog gives exact type, label and alias matches precedence', () => {
   assert.deepEqual(
-    getAssistantNodeCatalog('textGeneration textFormatter telegramPublication ports')
-      .map((node) => node.type),
-    ['textConcat', 'textGeneration', 'textFormatter', 'telegramPublication', 'composition'],
+    getAssistantNodeCatalog('textGeneration').map((node) => node.type),
+    ['textGeneration'],
   );
-  assert.ok(getAssistantNodeCatalog('textFormatter')[0]?.configurableFields.includes('presetId'));
-  const concat = getAssistantNodeCatalog('склеивание текста');
+  assert.deepEqual(
+    getAssistantNodeCatalog('Preview').map((node) => node.type),
+    ['preview'],
+  );
+  assert.deepEqual(
+    getAssistantNodeCatalog('remove bg').map((node) => node.type),
+    ['removeBackground'],
+  );
+  assert.deepEqual(
+    getAssistantNodeCatalog('сборка промпта').map((node) => node.type),
+    ['textConcat', 'textGeneration'],
+  );
+  assert.deepEqual(
+    getAssistantNodeCatalog('шаблон с переменными').map((node) => node.type),
+    ['textPrompt'],
+  );
+  assert.deepEqual(
+    getAssistantNodeCatalog('что такое нода Extract').map((node) => node.type),
+    ['imageToText'],
+  );
+  assert.deepEqual(
+    getAssistantNodeCatalog(buildNodeAskAiDraft('imageToText')).map((node) => node.type),
+    ['imageToText'],
+  );
+});
+
+test('assistant node catalog keeps fuzzy search bounded and fails open to the registry', () => {
+  const allNodes = getAssistantNodeCatalog();
+  const concat = getAssistantNodeCatalog('склеивание текста с разделителем');
+
   assert.deepEqual(concat.map((node) => node.type), ['textConcat']);
-  assert.match(concat[0]?.description ?? '', /два или больше текстовых входа/u);
+  assert.match(concat[0]?.description ?? '', /несколько текстовых входов/u);
   assert.ok(concat[0]?.portRules.some((rule) => rule.includes('text-2')));
-  assert.deepEqual(getAssistantNodeCatalog('шаблон с переменными').map((node) => node.type), ['textPrompt']);
-  assert.deepEqual(getAssistantNodeCatalog('remove bg').map((node) => node.type), ['removeBackground']);
-  const qr = getAssistantNodeCatalog('генератор qr-кода');
-  assert.deepEqual(qr.map((node) => node.type), ['qrCode']);
-  assert.ok(qr[0]?.ports.some((port) => port.id === 'text' && port.kind === 'text' && port.side === 'input'));
-  assert.ok(qr[0]?.ports.some((port) => port.id === 'image' && port.kind === 'image' && port.side === 'output'));
-  assert.deepEqual(qr[0]?.configurableFields, ['title', 'content', 'contentMode']);
-  assert.match(qr[0]?.description ?? '', /без AI-генерации/u);
-  assert.match(qr[0]?.portRules.join(' ') ?? '', /targetUrl.*field:target-url.*qrCode\.text/u);
-  assert.match(qr[0]?.portRules.join(' ') ?? '', /URL не дан.*не спрашивай.*не выдумывай.*пустым локально редактируемым content/u);
-  assert.match(qr[0]?.portRules.join(' ') ?? '', /не требует pipelineInput\/pipelineOutput.*явном запросе/u);
-  assert.match(qr[0]?.portRules.join(' ') ?? '', /Не используй generateImage/u);
-  assert.match(qr[0]?.portRules.join(' ') ?? '', /product-owned.*не передавай.*assistant settings.*JPEG\/SVG не поддерживаются/u);
-  const composition = getAssistantNodeCatalog('сборка слоёв');
-  assert.deepEqual(composition.map((node) => node.type), ['composition']);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /layer-0.*layer-1.*layer-2/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /максимум 24/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /qrCode\.image/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /textPrompt\.text.*textGeneration\.result.*нативный перемещаемый текстовый слой/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /composition\.image.*exportImage\.image-0/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /Не добавляй pipelineInput\/pipelineOutput.*без явного запроса/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /переиспользуемый межпродуктовый контракт.*отдельный этап/u);
-  assert.match(composition[0]?.portRules.join(' ') ?? '', /compositionBlueprints V1.*compiler.*layer-N/u);
-  assert.match(prompt?.portRules.join(' ') ?? '', /текст частью общего generateImage-арта.*явно хочет управлять/u);
-  const importNode = getAssistantNodeCatalog('входное изображение');
-  assert.match(importNode[0]?.description ?? '', /sourceAttachmentIndex.*не передавай/u);
-  const structuredOutput = getAssistantNodeCatalog('структурированный вывод');
-  assert.deepEqual(structuredOutput.map((node) => node.type), ['structuredOutput']);
-  assert.ok(structuredOutput[0]?.configurableFields.includes('fields'));
-  assert.match(structuredOutput[0]?.portRules.join(' ') ?? '', /field:<field\.id>/u);
-  assert.equal(getAssistantNodeCatalog('node groups генерация prompt export preview').length, nodes.length);
-  assert.equal(getAssistantNodeCatalog('совершенно неизвестная нода').length, nodes.length);
+  assert.equal(getAssistantNodeCatalog('все доступные ноды').length, allNodes.length);
+  assert.equal(getAssistantNodeCatalog('абракадабра xyzzy').length, allNodes.length);
 });
