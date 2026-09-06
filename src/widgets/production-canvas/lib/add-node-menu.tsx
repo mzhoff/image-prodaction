@@ -12,6 +12,8 @@ const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   textConcat: <TextCursorInput size={14} />,
   textGeneration: <Sparkles size={14} />,
   textToSpeech: <Volume2 size={14} />,
+  speechToText: <FileText size={14} />,
+  audioConvert: <SlidersHorizontal size={14} />,
   textFormatter: <TextCursorInput size={14} />,
   textSplitter: <TextCursorInput size={14} />,
   pipelineInput: <FileInput size={14} />,
@@ -36,13 +38,11 @@ const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
   banner: <PanelsTopLeft size={14} />,
   preview: <Eye size={14} />,
 };
-
 export interface AddNodeMenuItem {
   type: ProductionNodeType;
   label: string;
   icon: ReactNode;
 }
-
 export interface AddNodeMenuDisabledItem {
   id: string;
   label: string;
@@ -96,7 +96,7 @@ const addNodeTypesByGroup: Array<Omit<AddNodeMenuGroup, 'items'> & { types: Prod
     id: 'sound',
     label: 'Sound',
     icon: <Volume2 size={14} />,
-    types: ['textToSpeech'],
+    types: ['textToSpeech', 'speechToText', 'audioConvert'],
   },
   {
     id: 'video',

@@ -1,3 +1,4 @@
+import { getSpeechHistory } from '@/entities/production-graph/model/speech-result-history';
 import type {
   TextConcatNodeData,
   TextConcatSeparator,
@@ -66,12 +67,7 @@ export function getTextHistory(data: TextGenerationNodeData) {
   return { activeIndex, activeText: items[activeIndex] ?? '', items };
 }
 
-export function getSpeechHistory(data: TextToSpeechNodeData) {
-  const items = uniqueStrings([...(data.resultAssetIds ?? []), data.resultAssetId]);
-  if (items.length === 0) return { activeAssetId: undefined, activeIndex: -1, items };
-  const activeIndex = clampIndex(data.activeResultIndex ?? items.length - 1, items.length);
-  return { activeAssetId: items[activeIndex], activeIndex, items };
-}
+export { getSpeechHistory } from '@/entities/production-graph/model/speech-result-history';
 
 export function appendSpeechResult(
   data: TextToSpeechNodeData,

@@ -1,3 +1,4 @@
+import type { AudioConvertNodeData, SpeechToTextNodeData } from './node-data-audio';
 import type {
   CompositionNodeData,
   GenerateImageNodeData,
@@ -40,6 +41,7 @@ import type {
 } from './node-data-pipeline';
 
 export * from './node-data-image';
+export * from './node-data-audio';
 export * from './node-data-text';
 export * from './node-data-context';
 export * from './node-data-editing';
@@ -50,6 +52,7 @@ export type ProductionNodeData =
   | ImportImageNodeData | ImageToTextNodeData | QrCodeNodeData | ReferenceComposerNodeData
   | CompositionNodeData | GenerateImageNodeData | TextPromptNodeData
   | TextConcatNodeData | TextGenerationNodeData | TextToSpeechNodeData
+  | AudioConvertNodeData | SpeechToTextNodeData
   | TextFormatterNodeData | TextSplitterNodeData | IteratorNodeData | RouterNodeData
   | PipelineInputNodeData | PipelineOutputNodeData | StructuredOutputNodeData
   | SubjectBuilderNodeData | LocationBuilderNodeData | TelegramPublicationNodeData

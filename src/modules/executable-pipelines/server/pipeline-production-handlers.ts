@@ -1,4 +1,6 @@
 import type { PipelineNodeHandlerRegistry } from '../contracts/pipeline-contracts';
+import { createAudioPipelineHandlers, type AudioHandlerDependencies } from './pipeline-audio-handlers';
+import { createStoredAudioOperations } from './pipeline-audio-operations';
 import {
   createAiPipelineHandlers,
   createOpenRouterTextGenerator,
@@ -27,6 +29,7 @@ export type { PipelineStructuredGenerator, PipelineTextGenerator } from './pipel
 export function createProductionPipelineHandlerRegistry(
   scope: PipelineHandlerScope,
   dependencies: {
+    audio?: Partial<AudioHandlerDependencies>;
     analyzeImage?: PipelineImageAnalyzer;
     exportImage?: PipelineImageExporter;
     generateImage?: PipelineImageGenerator;
@@ -36,6 +39,7 @@ export function createProductionPipelineHandlerRegistry(
   } = {},
 ): PipelineNodeHandlerRegistry {
   const handlers = [
+    ...createAudioPipelineHandlers({ ...createStoredAudioOperations(scope), ...dependencies.audio }),
     ...createDeterministicTextHandlers(),
     ...createAiPipelineHandlers({
       analyzeImage: dependencies.analyzeImage ?? createOpenRouterImageAnalyzer(scope),

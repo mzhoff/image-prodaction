@@ -1,7 +1,7 @@
 import { createId } from '@/shared/lib/id';
 import type { SemanticContractSnapshot, SemanticJsonSchema } from '@/shared/contracts/semantic-contract';
 
-export const PIPELINE_CONTRACT_FIELD_KINDS = ['text', 'number', 'boolean', 'image', 'json'] as const;
+export const PIPELINE_CONTRACT_FIELD_KINDS = ['text', 'number', 'boolean', 'image', 'audio', 'json'] as const;
 export type PipelineContractFieldKind = (typeof PIPELINE_CONTRACT_FIELD_KINDS)[number];
 
 export type PipelineContractValue =

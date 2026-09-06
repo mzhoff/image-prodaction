@@ -4,11 +4,12 @@ export const runtimeV2Scopes = [
   'pipeline.catalog.read', 'pipeline.descriptor.read', 'pipeline.run.create',
   'pipeline.run.read', 'pipeline.run.cancel', 'pipeline.artifact.read',
   'pipeline.grants.manage',
+  'pipeline.asset.write',
 ] as const;
 export const runtimeV2ScopeSchema = z.enum(runtimeV2Scopes);
 export type RuntimeV2Scope = z.infer<typeof runtimeV2ScopeSchema>;
-export const runtimeV2DefaultScopes = runtimeV2Scopes.filter((scope) => scope !== 'pipeline.grants.manage');
-const scopes = z.array(runtimeV2ScopeSchema).min(1).max(7)
+export const runtimeV2DefaultScopes = runtimeV2Scopes.filter((scope) => scope !== 'pipeline.grants.manage' && scope !== 'pipeline.asset.write');
+const scopes = z.array(runtimeV2ScopeSchema).min(1).max(runtimeV2Scopes.length)
   .refine((value) => new Set(value).size === value.length).meta({ uniqueItems: true });
 const label = z.string().trim().min(1).max(120);
 const opaque = z.string().trim().min(1).max(160).regex(/^[A-Za-z0-9._:-]+$/);

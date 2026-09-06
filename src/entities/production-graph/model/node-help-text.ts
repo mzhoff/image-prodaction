@@ -68,23 +68,6 @@ export const textNodeHelp = {
     ],
     summary: 'Преобразует входной текст AI-моделью по постоянной instruction и возвращает новый текст.',
   },
-  textToSpeech: {
-    aliases: ['text to speech', 'tts', 'voice generation', 'синтез речи', 'озвучка', 'голос'],
-    availability: 'addable',
-    capabilities: [
-      'Генерирует голосовую дорожку из входного или локального текста.',
-      'Поддерживает выбор модели, языка, голоса, формата и доступных параметров модели.',
-      'Хранит историю результатов и позволяет воспроизводить выбранную версию.',
-    ],
-    execution: 'canvas-only',
-    limitations: [
-      'В реестре нет выходного audio-порта, поэтому результат нельзя штатно продолжить связью.',
-      'Серверного исполнителя executable pipeline нет.',
-      'Доступные параметры и результат зависят от провайдера и модели.',
-    ],
-    portRules: ['Вход text принимает text; выходных портов нет.'],
-    summary: 'Генерирует голосовую дорожку из текста с выбранными моделью, языком, голосом и форматом.',
-  },
   textFormatter: {
     aliases: ['formatter', 'format text', 'rich text', 'форматирование текста', 'редактор текста', 'телеграм форматирование'],
     availability: 'addable',
@@ -124,5 +107,5 @@ export const textNodeHelp = {
     summary: 'Разбивает входной текст по разделителю на коллекцию и отдельные элементы.',
   },
 } satisfies ProductionNodeHelpMap<
-  'textPrompt' | 'textConcat' | 'textGeneration' | 'textToSpeech' | 'textFormatter' | 'textSplitter'
+  'textPrompt' | 'textConcat' | 'textGeneration' | 'textFormatter' | 'textSplitter'
 >;

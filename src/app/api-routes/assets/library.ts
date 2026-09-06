@@ -6,7 +6,7 @@ import { isUuidV7 } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from './error-response';
 
 const originSchema = z.enum(['uploaded', 'generated', 'saved', 'unknown']);
-const mediaKindSchema = z.enum(['image', 'video']);
+const mediaKindSchema = z.enum(['image', 'video', 'audio']);
 
 export async function getAssetLibrary(request: Request) {
   try {
@@ -31,7 +31,9 @@ export async function getAssetLibrary(request: Request) {
     const page = await listLibraryAssets(session.user.id, {
       workspaceId,
       origins,
-      mediaKinds,
+      // The current Library renderer is visual-only. Audio remains durable and
+      // explicitly queryable, without appearing as broken image thumbnails.
+      mediaKinds: mediaKinds.length ? mediaKinds : ['image', 'video'],
       providers: parseTextFilters(params, 'provider'),
       modelIds: parseTextFilters(params, 'modelId'),
       documentIds,
@@ -39,7 +41,10 @@ export async function getAssetLibrary(request: Request) {
       cursor: params.get('cursor'),
       limit,
     });
-    return Response.json(page, {
+    const visiblePage = mediaKinds.includes('audio') ? page : {
+      ...page, facets: { ...page.facets, mediaKinds: page.facets.mediaKinds.filter((kind) => kind.value !== 'audio') },
+    };
+    return Response.json(visiblePage, {
       headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch (error) {

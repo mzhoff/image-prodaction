@@ -1,5 +1,6 @@
 import { getNodeImageAssetId, getNodeLocationResult, getNodePublicationResult, getNodeSubjectResult, getNodeTextResult, getRouterDataKind } from '@/entities/production-graph/model/graph-io';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
+import { getNodeAudioAssetId } from '@/entities/production-graph/model/graph-audio-io';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
 
@@ -48,9 +49,11 @@ export function getEdgeHasData(edge: GraphEdge, nodesById: Map<string, Productio
     if (kind === 'subject') return Boolean(getNodeSubjectResult(source, context));
     if (kind === 'location') return Boolean(getNodeLocationResult(source, context));
     if (kind === 'publication') return Boolean(getNodePublicationResult(source, context));
-    if (kind === 'video' || kind === 'audio') return true;
+    if (kind === 'audio') return Boolean(getNodeAudioAssetId(source, context));
+    if (kind === 'video') return true;
   }
   if (sourcePort?.kind === 'image') return Boolean(getNodeImageAssetId(source, { ...context, assets: [] }));
+  if (sourcePort?.kind === 'audio') return Boolean(getNodeAudioAssetId(source, context));
   if (sourcePort?.kind === 'subject') return Boolean(getNodeSubjectResult(source, context));
   if (sourcePort?.kind === 'location') return Boolean(getNodeLocationResult(source, context));
   if (sourcePort?.kind === 'publication') return Boolean(getNodePublicationResult(source, context));

@@ -388,7 +388,7 @@ test('connecting a new Export source invalidates its previously transformed outp
         ...exportImageTarget,
         status: 'success',
         data: {
-          ...exportImageTarget.data,
+          ...(exportImageTarget.data as import('./types').ExportImageNodeData),
           resultAssetId: 'asset-old-export',
           resultSignature: 'asset-old:png:90:1:transparent',
           sourceAssetId: 'asset-old',
@@ -468,7 +468,7 @@ test('export image delete edge compacts dynamic ports and keeps image inputs ali
       {
         ...exportImageTarget,
         data: {
-          ...exportImageTarget.data,
+          ...(exportImageTarget.data as import('./types').ExportImageNodeData),
           imageInputCount: 3,
         },
       },

@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { isUuidV7 } from '@/shared/lib/id';
 import { mapRemoteImageAsset } from '../lib/remote-asset';
+import { mapRemoteAudioAsset, remoteAudioAssetSchema } from '../lib/remote-audio-asset';
 import { filterNodeTemplateAssetIds, getNodeTemplateAssetIds, type NodeTemplateSnapshot } from '../model/node-template-preset';
 
 const metadataSchema = z.object({ asset: z.object({
   id: z.string(), workspaceId: z.string(), status: z.string(), mediaKind: z.string(),
   originalName: z.string(), contentType: z.string(), createdAt: z.string(),
   width: z.number().nullable(), height: z.number().nullable(),
+  audio: z.unknown().optional(),
 }) });
 type FetchAsset = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -31,8 +33,10 @@ export async function hydrateNodeTemplateAssets(
     if (!parsed.success) throw new Error('The image metadata response is invalid.');
     const asset = parsed.data.asset;
     if (asset.id !== assetId || asset.workspaceId !== workspaceId
-      || asset.status !== 'ready' || asset.mediaKind !== 'image') return null;
-    return mapRemoteImageAsset(asset);
+      || asset.status !== 'ready') return null;
+    if (asset.mediaKind === 'image') return mapRemoteImageAsset(asset);
+    if (asset.mediaKind === 'audio') return mapRemoteAudioAsset(remoteAudioAssetSchema.parse(asset));
+    return null;
   }));
   const assets = candidates.filter((asset) => asset !== null);
   signal?.throwIfAborted();

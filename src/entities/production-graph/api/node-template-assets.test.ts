@@ -14,6 +14,18 @@ const metadata = (id: string, overrides = {}) => ({ id, workspaceId, status: 're
   originalName: 'Saved image.webp', contentType: 'image/webp', createdAt: '2026-09-06T00:00:00.000Z',
   width: 1024, height: 768, ...overrides });
 
+test('audio template assets hydrate with server-validated metadata in the same workspace', async () => {
+  const node = createDefaultNode('importImage', { x: 0, y: 0 });
+  const snapshot = createNodeTemplateSnapshot({ ...node, data: { title: 'Audio', mediaKind: 'audio', assetId: assetIds[0] } });
+  const hydrated = await hydrateNodeTemplateAssets(snapshot, workspaceId, undefined, async () => Response.json({ asset: metadata(assetIds[0], {
+    mediaKind: 'audio', contentType: 'audio/wav', originalName: 'Audio.wav', width: null, height: null,
+    audio: { container: 'wav', codec: 'pcm_s16le', contentType: 'audio/wav', durationSeconds: 2, sampleRateHz: 24000, channels: 1 },
+  }) }));
+  assert.equal(hydrated.assets[0].kind, 'audio');
+  assert.equal(hydrated.assets[0].audio?.durationSeconds, 2);
+  assert.deepEqual(getNodeTemplateAssetIds(hydrated.snapshot), [assetIds[0]]);
+});
+
 function imageSnapshot(ids = [assetIds[0]]) {
   const node = createDefaultNode('generateImage', { x: 0, y: 0 });
   return createNodeTemplateSnapshot({ ...node,

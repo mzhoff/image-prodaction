@@ -112,6 +112,10 @@ function stripDataUrlPrefix(value: string) {
 
 function mediaTypeToAudioFormat(mediaType: string | undefined) {
   if (!mediaType) return 'wav';
+  if (mediaType.includes('flac')) return 'flac';
+  if (mediaType.includes('mp4') || mediaType.includes('m4a')) return 'm4a';
+  if (mediaType.includes('aac')) return 'aac';
+  if (mediaType.includes('aiff')) return 'aiff';
   if (mediaType.includes('mpeg')) return 'mp3';
   if (mediaType.includes('ogg')) return 'ogg';
   if (mediaType.includes('webm')) return 'webm';
@@ -119,6 +123,10 @@ function mediaTypeToAudioFormat(mediaType: string | undefined) {
 }
 
 function audioFormatToMediaType(format: string) {
+  if (format === 'flac') return 'audio/flac';
+  if (format === 'm4a') return 'audio/mp4';
+  if (format === 'aac') return 'audio/aac';
+  if (format === 'aiff') return 'audio/aiff';
   if (format === 'mp3') return 'audio/mpeg';
   if (format === 'ogg') return 'audio/ogg';
   if (format === 'webm') return 'audio/webm';

@@ -5,7 +5,7 @@ export const pipelineNodeHelp = {
     aliases: ['pipeline input', 'public input', 'endpoint input', 'вход пайплайна', 'публичный вход'],
     availability: 'addable',
     capabilities: [
-      'Объявляет top-level поля типов text, number, boolean, image и json.',
+      'Объявляет top-level поля типов text, number, boolean, image, audio и json.',
       'Использует field.key как стабильное внешнее имя параметра.',
       'Создаёт динамический выход для каждого top-level поля.',
       'Передаёт runtime value потребителя в явно подключённый порт производственной ноды.',
@@ -18,6 +18,7 @@ export const pipelineNodeHelp = {
       'Общая схема ограничена 24 полями и тремя уровнями вложенности.',
       'Постоянные инструкции и правила остаются в обычных нодах графа, а не становятся внешними параметрами.',
       'На design-time canvas доступно имя поля, но не значение будущего API-запуска.',
+      'Аудиополе получает private audio asset текущего Workspace после загрузки; не принимает произвольный URL, base64 или путь к файлу.',
     ],
     portRules: [
       'Каждое top-level поле создаёт выход field:<field.id> с kind поля и label, равным field.key.',
@@ -30,7 +31,7 @@ export const pipelineNodeHelp = {
     aliases: ['pipeline output', 'public output', 'endpoint result', 'выход пайплайна', 'публичный результат'],
     availability: 'addable',
     capabilities: [
-      'Объявляет top-level результаты типов text, number, boolean, image и json.',
+      'Объявляет top-level результаты типов text, number, boolean, image, audio и json.',
       'Поддерживает обязательные и optional поля со стабильными semantic keys.',
       'Создаёт динамический вход для каждого top-level поля.',
       'Возвращает потребителю финальное значение или подготовленный artifact, подключённый к полю.',
@@ -45,6 +46,7 @@ export const pipelineNodeHelp = {
     portRules: [
       'Каждое top-level поле создаёт вход field:<field.id> с kind поля и label, равным field.key.',
       'Если потребителю нужен конкретный формат/quality/scale/background изображения, подключайте exportImage.image, а не исходный generateImage.image.',
+      'Для готового аудиофайла подключайте textToSpeech.audio или audioConvert.audio к полю kind audio; потребитель скачивает объявленный результат через защищённый artifact route.',
       'Выходных портов нет.',
     ],
     summary: 'Объявляет типизированные публичные результаты executable pipeline.',
@@ -60,7 +62,7 @@ export const pipelineNodeHelp = {
     execution: 'server',
     limitations: [
       'Нужна схема минимум с одним полем; общий предел — 24 поля и три уровня вложенности.',
-      'Executable Structured output не поддерживает image-поля ни на верхнем, ни на вложенном уровне.',
+      'Executable Structured output не создаёт image/audio assets: такие поля ни на верхнем, ни на вложенном уровне не поддержаны. Для них используются отдельные media-ноды и Pipeline output.',
       'Вызывает AI-модель, поэтому результат зависит от провайдера и проходит серверную валидацию.',
     ],
     portRules: [

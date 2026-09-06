@@ -42,6 +42,7 @@ const PIPELINE_FIELD_TYPE_LABELS: Record<PipelineContractFieldKind, string> = {
   number: 'Number',
   boolean: 'Boolean',
   image: 'Image',
+  audio: 'Audio',
   json: 'JSON',
 };
 
@@ -51,7 +52,7 @@ const PIPELINE_FIELD_TYPE_OPTIONS: DarkSelectOption[] = PIPELINE_CONTRACT_FIELD_
 }));
 
 const PIPELINE_STRUCTURED_FIELD_TYPE_OPTIONS = PIPELINE_FIELD_TYPE_OPTIONS.filter(
-  (option) => option.value !== 'image',
+  (option) => option.value !== 'image' && option.value !== 'audio',
 );
 
 export interface PipelineContractFieldRowProps {

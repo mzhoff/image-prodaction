@@ -4,7 +4,6 @@ const OPENROUTER_SPEECH_MODELS_URL = 'https://openrouter.ai/api/v1/models?output
 const OPENROUTER_SPEECH_URL = 'https://openrouter.ai/api/v1/audio/speech';
 const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 180_000;
-
 interface OpenRouterFetchOptions extends RequestInit {
   next?: {
     revalidate?: number;
@@ -77,7 +76,6 @@ export async function sendOpenRouterChat({
   temperature?: number;
 }) {
   assertExplicitApiKey(apiKey);
-
   const response = await fetchOpenRouter(OPENROUTER_URL, {
     method: 'POST',
     headers: {
@@ -162,6 +160,7 @@ export async function sendOpenRouterSpeech({
   temperature,
   topP,
   voice,
+  signal,
 }: {
   apiKey: string;
   input: string;
@@ -172,10 +171,11 @@ export async function sendOpenRouterSpeech({
   temperature?: number;
   topP?: number;
   voice: string;
+  signal?: AbortSignal;
 }) {
   assertExplicitApiKey(apiKey);
-
   const response = await fetchOpenRouter(OPENROUTER_SPEECH_URL, {
+    signal,
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,

@@ -183,6 +183,13 @@
       "when": 1788634605053,
       "tag": "0025_node_template_preset",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788671640777,
+      "tag": "0026_bright_shadowcat",
+      "breakpoints": true
     }
   ]
 }

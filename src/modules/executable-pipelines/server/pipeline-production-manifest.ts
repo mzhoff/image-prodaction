@@ -1,6 +1,13 @@
 import type { PipelineNodeOperationManifest } from '../contracts/pipeline-node-operation-manifest';
 
 export const PRODUCTION_PIPELINE_NODE_MANIFEST = [
+  operation({ handlerType: 'asset.reference', inputs: {}, outputs: { asset: 'any' }, deterministic: true }),
+  operation({ handlerType: 'audio.convert', inputs: { source: 'audio' }, outputs: { audio: 'audio' },
+    deterministic: true, sideEffect: 'storage-write', timeoutMs: 180_000 }),
+  operation({ handlerType: 'ai.audio.transcribe', inputs: { audio: 'audio' }, outputs: { text: 'text' },
+    paid: true, sideEffect: 'provider-call', timeoutMs: 1_800_000 }),
+  operation({ handlerType: 'ai.audio.generate', inputs: { text: 'text?' }, outputs: { audio: 'audio' },
+    paid: true, sideEffect: 'storage-write', timeoutMs: 240_000 }),
   operation({
     handlerType: 'text.template.render',
     inputs: { '*': 'text?' },

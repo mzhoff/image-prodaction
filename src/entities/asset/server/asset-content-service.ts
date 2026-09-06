@@ -1,4 +1,5 @@
 import type { AssetVariantPurpose } from './asset-repository';
+import { AssetRangeError, parseAssetByteRange } from '@/shared/storage/byte-range';
 import { toAssetDto } from './asset-dto';
 import {
   AssetNotFoundError,
@@ -19,6 +20,7 @@ export async function getAssetContent(
   assetId: string,
   dependencies: AssetStorageDependencies = createDefaultStorageDependencies(),
   purpose?: AssetVariantPurpose,
+  rangeHeader?: string,
 ) {
   const record = await requireAccessibleAsset(userId, assetId, dependencies.repository);
   if (record.status === 'deleted') throw new AssetNotFoundError();
@@ -26,6 +28,7 @@ export async function getAssetContent(
   let variant = purpose ? await dependencies.repository.findVariant(record.id, purpose) : undefined;
   try {
     if (purpose === 'thumbnail' && !variant && dependencies.createId && dependencies.createThumbnail) {
+      if (record.mediaKind !== 'image') throw new AssetNotFoundError();
       const original = await dependencies.objectStore.get({ bucket: record.bucket, key: record.storageKey });
       const bytes = new Uint8Array(await new Response(original.body).arrayBuffer());
       await storeThumbnailVariant(record, await dependencies.createThumbnail(bytes), {
@@ -36,17 +39,21 @@ export async function getAssetContent(
     }
     if (purpose && !variant) throw new AssetNotFoundError();
     const location = variant ?? record;
+    const range = parseAssetByteRange(rangeHeader, location.byteSize);
     const object = await dependencies.objectStore.get({
       bucket: location.bucket,
       key: location.storageKey,
+      range,
     });
     return {
       asset: toAssetDto(record, Boolean(variant)),
       byteSize: variant?.byteSize ?? record.byteSize,
       contentType: variant?.contentType ?? record.contentType,
       object,
+      range,
     };
   } catch (error) {
+    if (error instanceof AssetRangeError || error instanceof AssetNotFoundError) throw error;
     logStorageFailure('read', record.id, error);
     throw new AssetStorageError();
   }

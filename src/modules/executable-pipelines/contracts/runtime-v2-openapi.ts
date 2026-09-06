@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { runtimeV2ClientSchema, runtimeV2CreateGrantSchema, runtimeV2GrantEnabledSchema, runtimeV2RepinSchema } from './runtime-v2-contracts';
 import { runtimeV2GrantSchema, runtimeV2PipelineSchema, runtimeV2PipelineVersionDescriptorSchema, runtimeV2UpdatesSchema, runtimeV2VersionSchema } from './runtime-v2-descriptor-contracts';
 import { runtimeV2RunRequestSchema, runtimeV2RunSchema } from './runtime-v2-run-contracts';
+import { runtimeAudioUploadResponseSchema } from './runtime-audio-contracts';
 
 export const runtimeV2ErrorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }).strict() }).strict();
 const grant = z.object({ grant: runtimeV2GrantSchema }).strict();
@@ -24,6 +25,11 @@ export function runtimeV2OpenApi() {
     servers: [{ url: '/v2/runtime' }],
     components: { securitySchemes: { RuntimeClientCredential: { type: 'http', scheme: 'bearer', bearerFormat: 'rvr_client_*' } } },
     paths: {
+      '/assets/audio': { post: {
+        ...operation('Upload private audio (explicit pipeline.asset.write; 50 MiB / 30 minutes)', runtimeAudioUploadResponseSchema, undefined, 201),
+        parameters: [{ name: 'Idempotency-Key', in: 'header', required: false, schema: { type: 'string', minLength: 1, maxLength: 255 } }],
+        requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', additionalProperties: false, required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } } } },
+      } },
       '/client': { get: operation('Current service connection', z.object({ client: runtimeV2ClientSchema }).strict()) },
       '/pipelines': { get: operation('Published Workspace catalog (pipeline.catalog.read)', z.object({ pipelines: z.array(runtimeV2PipelineSchema) }).strict()) },
       '/pipelines/{publicId}/versions': { parameters: [pathId('publicId')], get: operation('Published versions, never drafts', z.object({ versions: z.array(runtimeV2VersionSchema) }).strict()) },

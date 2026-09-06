@@ -4,7 +4,7 @@ export type PresetRole = ProductionLayerId;
 export type ExtractPresetId = 'default' | ProductionLayerId;
 
 export interface BaseNodeData { title: string; prompt?: string }
-export interface ImportImageNodeData extends BaseNodeData { assetId?: string }
+export interface ImportImageNodeData extends BaseNodeData { assetId?: string; mediaKind?: 'image' | 'audio' }
 
 export interface ImageToTextNodeData extends BaseNodeData {
   disabledLayerIds?: ProductionLayerId[];

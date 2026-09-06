@@ -5,8 +5,10 @@ import type {
   AssetRepository,
 } from './asset-repository';
 import type { AssetObjectStore } from '@/shared/storage/s3-assets';
+import type { AudioMetadata } from '@/shared/media/audio-contracts';
 
 export interface AssetDto {
+  audio?: AudioMetadata;
   byteSize: number;
   checksumSha256: string;
   contentType: string;

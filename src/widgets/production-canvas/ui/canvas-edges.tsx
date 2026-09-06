@@ -113,7 +113,7 @@ function getEdgeStroke(kind: string) {
   if (kind === 'location') return '#0f766e';
   if (kind === 'publication') return '#2aabee';
   if (kind === 'video') return '#f97316';
-  if (kind === 'audio') return '#22c55e';
+  if (kind === 'audio') return '#c026d3';
   if (kind === 'json') return '#8b5cf6';
   if (kind === 'number') return '#d97706';
   if (kind === 'boolean') return '#db2777';

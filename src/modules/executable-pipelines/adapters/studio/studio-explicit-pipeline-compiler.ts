@@ -204,5 +204,5 @@ function jsonSchemaFromField(field: PipelineContractField): PipelineJsonSchema {
   if (field.kind === 'number') return { type: 'number', ...description };
   if (field.kind === 'boolean') return { type: 'boolean', ...description };
   if (field.kind === 'json') return { ...objectSchemaFromFields(field.fields ?? []), ...description };
-  throw invalidPipeline(`Поле изображения «${field.key}» нельзя вложить в JSON object.`);
+  throw invalidPipeline(`Медиа-поле «${field.key}» нельзя вложить в JSON object. Используйте отдельный выход ${field.kind}.`);
 }

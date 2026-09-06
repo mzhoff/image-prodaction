@@ -10,6 +10,7 @@ import type {
   IteratorNodeData,
   LocationBuilderNodeData,
   ProductionNode,
+  SpeechToTextNodeData,
   ReferenceComposerNodeData,
   SubjectBuilderNodeData,
   TelegramPublicationNodeData,
@@ -28,6 +29,7 @@ export function getNodeTextResult(
   context?: GraphRoutingContext,
   visited = new Set<string>(),
 ): string {
+  if (node.type === 'speechToText') return (node.data as SpeechToTextNodeData).result || '';
   if (node.type === 'router') {
     const source = getRouterIncomingSource(node, context, visited);
     return source ? getNodeTextResult(source.sourceNode, source.sourcePortId, context, visited) : '';

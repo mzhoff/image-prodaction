@@ -74,4 +74,11 @@ test('prepares one safe UI proposal without a textual confirmation loop', () => 
   assert.match(prompt, /Согласие на сборку.*не является согласием на запуск/u);
   assert.match(prompt, /отдельное прямое указание пользователя/u);
   assert.match(prompt, /Не передавай documentName/u);
+  assert.match(prompt, /speechToText\.audio -> speechToText\.text/u);
+  assert.match(prompt, /audioConvert\.source -> audioConvert\.audio/u);
+  assert.match(prompt, /не меняй mediaKind.*не выдумывай assetId/u);
+  assert.match(prompt, /sourceAttachmentIndex переносит только image attachment/u);
+  assert.match(prompt, /Не обещай разметку говорящих.*тайм-коды слов/u);
+  assert.match(prompt, /pipeline\.asset\.write/u);
+  assert.match(prompt, /длинная запись означает несколько оплачиваемых вызовов/u);
 });

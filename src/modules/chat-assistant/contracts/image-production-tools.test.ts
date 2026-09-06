@@ -58,6 +58,10 @@ test('write tool descriptions prepare a single UI-confirmed canvas proposal by d
   assert.match(updateDescription, /change, add, implement or apply/u);
   assert.match(updateDescription, /pipelineInput\.field:<id>.*textPrompt variable-N.*public field key/u);
   assert.match(updateDescription, /exportImage\.image-0.*exportImage\.image.*pipelineOutput/u);
+  assert.match(buildDescription, /audioConvert\.source -> audioConvert\.audio/u);
+  assert.match(buildDescription, /managed private Workspace assets, not URLs or base64/u);
+  assert.match(buildDescription, /sourceAttachmentIndex imports audio/u);
+  assert.match(updateDescription, /sourceAttachmentIndex remains image-only/u);
 });
 
 test('pipeline tool keeps graph structure strict while settings stay bounded and recoverable', () => {
@@ -82,12 +86,17 @@ test('pipeline tool keeps graph structure strict while settings stay bounded and
 
   assert.equal((nodes?.properties?.type as { enum?: string[] } | undefined)?.enum?.includes('textFormatter'), true);
   assert.equal((nodes?.properties?.type as { enum?: string[] } | undefined)?.enum?.includes('qrCode'), true);
+  assert.equal((nodes?.properties?.type as { enum?: string[] } | undefined)?.enum?.includes('speechToText'), true);
+  assert.equal((nodes?.properties?.type as { enum?: string[] } | undefined)?.enum?.includes('audioConvert'), true);
   assert.equal(inputSchema?.required?.includes('documentName'), true);
   assert.equal('documentName' in (inputSchema?.properties ?? {}), true);
   assert.equal('presetId' in (settingProperties ?? {}), true);
   assert.equal('variables' in (settingProperties ?? {}), true);
   assert.equal('content' in (settingProperties ?? {}), true);
   assert.equal('contentMode' in (settingProperties ?? {}), true);
+  for (const audioSetting of ['bitrateKbps', 'sampleRateHz', 'channels', 'language', 'responseFormat', 'voice', 'speed']) {
+    assert.equal(audioSetting in (settingProperties ?? {}), true);
+  }
   for (const advancedQrSetting of [
     'errorCorrectionLevel', 'foregroundColor', 'backgroundColor',
     'margin', 'pixelSize', 'outputFormat',

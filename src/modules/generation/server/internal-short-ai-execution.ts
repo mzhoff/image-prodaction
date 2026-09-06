@@ -17,6 +17,7 @@ import { createRuntimeOpenRouterAdapter } from '@/modules/provider-connections/s
 import { recordUsageEvent } from '@/modules/usage';
 import {
   executeShortOpenRouterChatCore,
+  executeShortOpenRouterCallCore,
   type ShortAiExecutionDependencies,
 } from './short-ai-execution-core';
 import {
@@ -53,6 +54,13 @@ export function executeInternalOpenRouterChat<T>(input: {
     providerRequest: input.providerRequest,
     transform: input.transform,
   }, createInternalDependencies(input.actorUserId));
+}
+
+/** Server-only counterpart of the session wrapper; retains paid-call checkpoints and usage. */
+export function executeInternalOpenRouterCall<TProvider, TResult>(
+  input: Parameters<typeof executeShortOpenRouterCallCore<TProvider, TResult>>[0] & { actorUserId: string },
+) {
+  return executeShortOpenRouterCallCore(input, createInternalDependencies(input.actorUserId));
 }
 
 function createInternalDependencies(actorUserId: string): ShortAiExecutionDependencies {

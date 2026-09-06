@@ -11,7 +11,7 @@ import {
 
 test('node help metadata is an exact complete record for all production node types', () => {
   assert.deepEqual(Object.keys(NODE_HELP_METADATA), PRODUCTION_NODE_TYPES);
-  assert.equal(Object.keys(NODE_HELP_METADATA).length, 30);
+  assert.equal(Object.keys(NODE_HELP_METADATA).length, 32);
 });
 
 test('Ask AI draft uses only the canonical label and type for every node', () => {
@@ -29,4 +29,15 @@ test('Ask AI draft contains no node instance data or identifier', () => {
 
   assert.match(draft, /нода «Extract» \(тип imageToText\)/u);
   assert.doesNotMatch(draft, /node-[a-z0-9]|sourceId|nodeId|assetId|настройки текущей ноды/iu);
+});
+
+test('audio help describes exact dataflow and does not promise speaker labels or automatic recognition', () => {
+  assert.match(NODE_HELP_METADATA.speechToText.portRules.join(' '), /Вход audio.*выход text/u);
+  assert.match(NODE_HELP_METADATA.audioConvert.portRules.join(' '), /Вход source.*выход audio/u);
+  assert.match(NODE_HELP_METADATA.textToSpeech.portRules.join(' '), /Вход text.*выход audio/u);
+  assert.match(NODE_HELP_METADATA.importImage.portRules.join(' '), /ID выходного порта — image.*kind.*image или audio/u);
+  assert.match(NODE_HELP_METADATA.importImage.limitations.join(' '), /sourceAttachmentIndex.*только изображение/u);
+  assert.match(NODE_HELP_METADATA.speechToText.limitations.join(' '), /Не возвращает разметку говорящих.*тайм-коды/u);
+  assert.match(NODE_HELP_METADATA.audioConvert.capabilities.join(' '), /без вызова AI/u);
+  assert.equal(NODE_HELP_METADATA.textToSpeech.execution, 'server');
 });

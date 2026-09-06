@@ -10,7 +10,7 @@ const pipelineContractDefaultValueSchema: z.ZodType<PipelineContractValue> = cre
 const pipelineContractFieldSchema: z.ZodType<PipelineContractField> = z.lazy(() => z.object({
   id: z.string().trim().min(1).max(80).regex(/^[A-Za-z][A-Za-z0-9_-]*$/),
   key: z.string().trim().min(1).max(80).regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
-  kind: z.enum(['text', 'number', 'boolean', 'image', 'json']),
+  kind: z.enum(['text', 'number', 'boolean', 'image', 'audio', 'json']),
   required: z.boolean(),
   description: z.string().trim().max(500).optional(),
   defaultValue: pipelineContractDefaultValueSchema.optional(),

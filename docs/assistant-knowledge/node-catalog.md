@@ -19,7 +19,7 @@
 Черновик использует только канонические `label` и `type`: данные, настройки и ID
 конкретной карточки в него не попадают.
 
-## Полный список 30/30
+## Полный список 32/32
 
 `server` означает поддержку опубликованным executable runtime, а не просто
 наличие кнопки в браузере. `boundary` — внешняя граница pipeline,
@@ -27,15 +27,17 @@
 
 | Type | Label | Для чего нужна | Доступность | Execution |
 | --- | --- | --- | --- | --- |
-| `importImage` | Import image | Добавляет загруженное изображение как исходный asset. | addable | boundary |
+| `importImage` | Import | Загружает изображение или аудио; фактический тип выхода определяется файлом. | addable | boundary |
 | `textPrompt` | Text prompt | Собирает текстовый шаблон и подставляет локальные или внешние значения в именованные `@Alias`. | addable | server |
 | `textConcat` | Text concat | Склеивает тексты; prefix пока учитывает server runtime, но не Studio preview. | addable | server |
 | `textGeneration` | Text generation | Преобразует текст AI-моделью по постоянной instruction. | addable | server |
-| `textToSpeech` | Text to speech | Генерирует голосовую дорожку из текста. | addable | canvas-only |
+| `textToSpeech` | Text to speech | Озвучивает текст и отдаёт выбранную дорожку как audio asset. | addable | server |
+| `speechToText` | Speech to text | Распознаёт речь в записи и отдаёт текст без разметки говорящих и тайм-кодов. | addable | server |
+| `audioConvert` | Audio convert | Готовит MP3/WAV/FLAC/Ogg Opus без AI и отдаёт преобразованное аудио. | addable | server |
 | `textFormatter` | Formatter | Редактирует и форматирует текст по preset. | addable | server |
 | `textSplitter` | Text splitter | Разбивает текст на коллекцию и отдельные элементы. | addable | server |
 | `pipelineInput` | Pipeline input | Объявляет типизированные внешние параметры; text-поле можно явно вставить в Text prompt как `@fieldKey`. | addable | boundary |
-| `pipelineOutput` | Pipeline output | Объявляет типизированные публичные результаты, включая финальный image artifact после Export. | addable | boundary |
+| `pipelineOutput` | Pipeline output | Объявляет типизированные результаты, включая подготовленные image/audio artifacts. | addable | boundary |
 | `structuredOutput` | Structured output | Преобразует контекст в проверенный JSON по схеме. | addable | server |
 | `router` | Router | Прозрачно передаёт значение через именованные порты. | addable | transparent |
 | `iterator` | Iterator | Выбирает текущий image/text элемент коллекции. | addable | canvas-only |
@@ -70,6 +72,23 @@
   `producer.image -> exportImage.image-0 -> exportImage.image ->
   pipelineOutput.field:<id>`. Выход Export — преобразованный первый image, а не
   исходник; batch не имеет отдельного collection-порта на canvas.
+- Аудиорежим Import сохраняет технический тип `importImage` и ID выхода `image`,
+  но фактический `kind` — `audio`. Не подменяйте тип данными из названия порта.
+  Пустая Import не получает аудиосвязь до загрузки записи; `mediaKind` не является
+  настраиваемым агентом параметром. Перенос вложений `sourceAttachmentIndex`
+  пока работает только для изображений.
+- Распознавание: `importImage.image -> speechToText.audio`, затем
+  `speechToText.text -> textGeneration.text`. Только текст, без обещаний
+  диаризации, тайм-кодов слов или готовых субтитров.
+- Озвучка и подготовка файла: `textGeneration.result -> textToSpeech.text`,
+  `textToSpeech.audio -> audioConvert.source`, `audioConvert.audio ->
+  pipelineOutput.field:<id>` с `kind: audio`. Export image не конвертирует аудио.
+- В explicit pipeline загруженная Import сохраняется как managed
+  `asset.reference`; в старом неявном режиме остаётся внешней входной границей.
+  Аудиофайл приватен, принадлежит Workspace и скачивается по защищённому пути.
+
+Форматы, лимиты и последовательность локальной проверки:
+[Аудиопайплайны](../audio-pipelines.md).
 
 ## QA каждой ноды
 

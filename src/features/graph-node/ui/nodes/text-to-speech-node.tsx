@@ -28,6 +28,7 @@ export function TextToSpeechNode({ node, onStartConnection }: TextToSpeechNodePr
     <>
       <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} onCollapsedChange={setCollapsed} />} />
       {collapsed ? (
+        <>
         <PortButton
           nodeId={node.id}
           portId="text"
@@ -38,6 +39,8 @@ export function TextToSpeechNode({ node, onStartConnection }: TextToSpeechNodePr
           style={{ top: 20 }}
           onStartConnection={onStartConnection}
         />
+        <PortButton nodeId={node.id} portId="audio" side="output" kind="audio" label="Audio" style={{ top: 20 }} onStartConnection={onStartConnection} />
+        </>
       ) : null}
       {!collapsed ? (
         <>
@@ -99,6 +102,7 @@ export function TextToSpeechNode({ node, onStartConnection }: TextToSpeechNodePr
               </label>
             ) : null}
           </CollapsibleSection>
+          <div className="node-note node-note-compact">Up to 5000 characters per generation. Audio is saved to the workspace.</div>
           <PrimaryActionButton
             className="text-generation-button"
             icon={node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Volume2 size={17} />}
@@ -112,6 +116,7 @@ export function TextToSpeechNode({ node, onStartConnection }: TextToSpeechNodePr
             className="text-node-section text-to-speech-result-section"
             open={resultOpen}
             onOpenChange={setResultOpen}
+            sidePort={<PortButton nodeId={node.id} portId="audio" side="output" kind="audio" label="Audio" className="node-port-section" onStartConnection={onStartConnection} />}
           >
             {model.history.items.length > 1 ? (
               <AudioResultVersionControl
@@ -188,7 +193,7 @@ function AudioResultPlayer({
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
-      await audio.play();
+      await audio.play().catch(() => setPlaying(false));
     } else {
       audio.pause();
     }
@@ -206,6 +211,7 @@ function AudioResultPlayer({
       <audio
         ref={audioRef}
         src={url}
+        preload="metadata"
         onDurationChange={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
         onEnded={() => setPlaying(false)}
         onPause={() => setPlaying(false)}
@@ -219,6 +225,7 @@ function AudioResultPlayer({
         <span className="text-to-speech-time">{formatAudioTime(time)}</span>
         <input
           type="range"
+          aria-label="Seek audio"
           min={0}
           max={Math.max(duration, 0.01)}
           step={0.01}

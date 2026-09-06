@@ -5,6 +5,7 @@ import type {
   TextPromptVariable,
 } from '@/entities/production-graph/model/types';
 import { QR_CODE_LIMITS } from '@/shared/qr-code';
+import { audioConvertOptionsSchema } from '@/shared/media/audio-contracts';
 import {
   PIPELINE_NODE_CONFIGURABLE_FIELDS,
   type PipelineNodeSetting,
@@ -25,6 +26,8 @@ const textPromptVariablesSchema = z.array(z.object({
 const pipelineSettingValueSchemas = {
   aspectRatio: z.string().trim().min(1).max(24),
   background: z.enum(['transparent', 'white', 'black']),
+  bitrateKbps: audioConvertOptionsSchema.shape.bitrateKbps.unwrap(),
+  channels: audioConvertOptionsSchema.shape.channels.unwrap(),
   content: z.string()
     .max(QR_CODE_LIMITS.maxContentBytes)
     .refine((value) => (
@@ -33,9 +36,11 @@ const pipelineSettingValueSchemas = {
   contentMode: z.enum(['url', 'text']),
   customSeparator: z.string().max(80),
   delimiter: z.string().max(40),
-  format: z.enum(['png', 'jpeg', 'webp']),
+  format: z.enum(['png', 'jpeg', 'webp', 'mp3', 'wav', 'flac', 'ogg']),
   instruction: longTextSchema,
   fields: pipelineContractFieldsSchema,
+  language: z.string().trim().min(1).max(80),
+  localText: longTextSchema,
   model: z.string().trim().min(1).max(160),
   outputStyle: z.enum(['plain', 'markdown', 'numbered-list']),
   prefix: z.string().max(1_000),
@@ -43,14 +48,18 @@ const pipelineSettingValueSchemas = {
   prompt: longTextSchema,
   quality: z.string().regex(/^\d{1,3}$/),
   reasoning: z.enum(['low', 'medium', 'high']),
+  responseFormat: z.enum(['mp3', 'pcm']),
+  sampleRateHz: audioConvertOptionsSchema.shape.sampleRateHz.unwrap(),
   scale: z.enum(['1', '0.75', '0.5', '0.25']),
   separator: z.enum(['newline', 'double-newline', 'space', 'custom']),
   size: z.string().trim().min(1).max(16),
+  speed: z.number().min(0.25).max(4),
   schemaName: z.string().trim().min(1).max(80).regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   suffix: z.string().max(1_000),
   temperature: z.number().min(0).max(2),
   text: longTextSchema,
   title: shortTextSchema,
+  voice: z.string().trim().min(1).max(100),
   variableDisplayMode: z.enum(['source-value', 'value', 'source']),
   variables: textPromptVariablesSchema,
 } satisfies Record<PipelineNodeSetting, z.ZodType>;
@@ -75,7 +84,11 @@ export function sanitizePipelineNodeSettings(
       warnings.push(`Настройка ${key} пропущена для ${nodeKey ?? type}: эта нода её не поддерживает.`);
       continue;
     }
-    const parsed = pipelineSettingValueSchemas[key].safeParse(value);
+    const schema = key === 'format'
+      ? type === 'audioConvert' ? audioConvertOptionsSchema.shape.format : z.enum(['png', 'jpeg', 'webp'])
+      : key === 'language' && type === 'textToSpeech' ? z.enum(['auto', 'ru', 'en', 'de', 'es', 'zh'])
+        : pipelineSettingValueSchemas[key];
+    const parsed = schema.safeParse(value);
     if (!parsed.success) {
       warnings.push(`Настройка ${key} пропущена для ${nodeKey ?? type}: значение не поддерживается.`);
       continue;
@@ -85,7 +98,12 @@ export function sanitizePipelineNodeSettings(
     }
     supportedEntries.push([key, parsed.data as SanitizedPipelineNodeSettingValue]);
   }
-  return Object.fromEntries(supportedEntries);
+  const result = Object.fromEntries(supportedEntries);
+  if (type === 'audioConvert' && result.format === 'ogg' && result.sampleRateHz === 44100) {
+    delete result.sampleRateHz;
+    warnings.push(`Настройка sampleRateHz пропущена для ${nodeKey ?? type}: Ogg Opus не поддерживает 44.1 kHz; частота будет выбрана автоматически.`);
+  }
+  return result;
 }
 
 export function toSafePreviewSettings(settings: SanitizedPipelineNodeSettings): Record<string, string | number> {

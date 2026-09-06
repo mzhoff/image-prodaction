@@ -24,7 +24,7 @@ export const imageNodeDefinitions = {
   importImage: {
     type: 'importImage',
     title: 'Import',
-    menuLabel: 'Import image',
+    menuLabel: 'Import',
     defaultHeight: 300,
     ports: [{ id: 'image', label: 'Image', kind: 'image', side: 'output' }],
     createData: () => ({ title: 'Import' }),

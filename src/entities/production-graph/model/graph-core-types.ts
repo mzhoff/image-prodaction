@@ -11,6 +11,8 @@ export type ProductionNodeType =
   | 'textConcat'
   | 'textGeneration'
   | 'textToSpeech'
+  | 'speechToText'
+  | 'audioConvert'
   | 'textFormatter'
   | 'textSplitter'
   | 'pipelineInput'

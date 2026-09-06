@@ -7,6 +7,7 @@ import { getPortTop } from '@/entities/production-graph/model/node-port-layout';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import { AdjustmentNode } from './nodes/adjustment-node';
+import { AudioNode } from './nodes/audio-nodes';
 import { BannerNode } from './nodes/banner-node';
 import { CompositionNode } from './nodes/composition-node';
 import { CropNode } from './nodes/crop-node';
@@ -58,6 +59,8 @@ const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
   textConcat: ({ node, onStartConnection }) => <TextConcatNode node={node} onStartConnection={onStartConnection} />,
   textGeneration: ({ node, onStartConnection }) => <TextGenerationNode node={node} onStartConnection={onStartConnection} />,
   textToSpeech: ({ node, onStartConnection }) => <TextToSpeechNode node={node} onStartConnection={onStartConnection} />,
+  speechToText: ({ node, onStartConnection }) => <AudioNode node={node} onStartConnection={onStartConnection} />,
+  audioConvert: ({ node, onStartConnection }) => <AudioNode node={node} onStartConnection={onStartConnection} />,
   textFormatter: ({ node, onStartConnection }) => <TextFormatterNode node={node} onStartConnection={onStartConnection} />,
   textSplitter: ({ node, onStartConnection }) => <TextSplitterNode node={node} onStartConnection={onStartConnection} />,
   pipelineInput: ({ node, onStartConnection }) => <PipelineInputNode node={node} onStartConnection={onStartConnection} />,
@@ -105,6 +108,7 @@ export function NodeCard({
   const ports = getNodePorts(node);
   const renderNode = nodeRenderers[node.type];
   const visiblePorts = ports.filter((port) => {
+    if (node.type === 'speechToText' || node.type === 'audioConvert') return false;
     if (node.type === 'generateImage' && port.side === 'input') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
     if (node.type === 'textPrompt') return false;
@@ -118,6 +122,7 @@ export function NodeCard({
       className={cn(
         'production-node',
         `production-node-${node.type}`,
+        (node.type === 'speechToText' || node.type === 'audioConvert') && 'production-node-text-workflow',
         (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput' || node.type === 'iterator') && 'production-node-text-workflow',
         (node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput') && 'production-node-pipeline-contract',
         node.type === 'iterator' && 'production-node-iterator-workflow',

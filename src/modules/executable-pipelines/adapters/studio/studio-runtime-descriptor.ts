@@ -14,6 +14,10 @@ import type {
   TextGenerationNodeData,
   TextPromptNodeData,
   TextSplitterNodeData,
+  ImportImageNodeData,
+  SpeechToTextNodeData,
+  AudioConvertNodeData,
+  TextToSpeechNodeData,
 } from '@/entities/production-graph/model/types';
 import type { PipelineJsonSchema, PipelineValue } from '../../contracts/pipeline-contracts';
 import {
@@ -31,6 +35,35 @@ export function getRuntimeDescriptor(
   },
 ): { handlerType: string; config: Record<string, PipelineValue> } {
   switch (node.type) {
+    case 'importImage': {
+      const data = node.data as ImportImageNodeData;
+      if (!data.assetId) throw invalidPipeline('Загрузите файл в Import перед публикацией.');
+      return { handlerType: 'asset.reference', config: { assetId: data.assetId, mediaKind: data.mediaKind ?? 'image' } };
+    }
+    case 'speechToText': {
+      const data = node.data as SpeechToTextNodeData;
+      return { handlerType: 'ai.audio.transcribe', config: { model: data.model, language: data.language ?? 'auto' } };
+    }
+    case 'audioConvert': {
+      const data = node.data as AudioConvertNodeData;
+      return { handlerType: 'audio.convert', config: {
+        format: data.format,
+        ...(data.bitrateKbps !== undefined ? { bitrateKbps: data.bitrateKbps } : {}),
+        ...(data.sampleRateHz !== undefined ? { sampleRateHz: data.sampleRateHz } : {}),
+        ...(data.channels !== undefined ? { channels: data.channels } : {}),
+      } };
+    }
+    case 'textToSpeech': {
+      const data = node.data as TextToSpeechNodeData;
+      return { handlerType: 'ai.audio.generate', config: {
+        model: data.model, voice: data.voice, responseFormat: data.responseFormat, language: data.language,
+        inputText: data.localText ?? '',
+        ...(data.seed !== undefined ? { seed: data.seed } : {}),
+        ...(data.speed !== undefined ? { speed: data.speed } : {}),
+        ...(data.temperature !== undefined ? { temperature: data.temperature } : {}),
+        ...(data.topP !== undefined ? { topP: data.topP } : {}),
+      } };
+    }
     case 'textPrompt': {
       const data = node.data as TextPromptNodeData;
       return { handlerType: 'text.template.render', config: {

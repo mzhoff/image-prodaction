@@ -9,6 +9,8 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   textConcat: NODE_DEFINITIONS.textConcat.ports,
   textGeneration: NODE_DEFINITIONS.textGeneration.ports,
   textToSpeech: NODE_DEFINITIONS.textToSpeech.ports,
+  speechToText: NODE_DEFINITIONS.speechToText.ports,
+  audioConvert: NODE_DEFINITIONS.audioConvert.ports,
   textFormatter: NODE_DEFINITIONS.textFormatter.ports,
   textSplitter: NODE_DEFINITIONS.textSplitter.ports,
   pipelineInput: NODE_DEFINITIONS.pipelineInput.ports,
@@ -35,8 +37,10 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   banner: NODE_DEFINITIONS.banner.ports,
   preview: NODE_DEFINITIONS.preview.ports,
 };
-
 export function getNodePorts(node: ProductionNode) {
+  if (node.type === 'importImage' && 'mediaKind' in node.data && node.data.mediaKind === 'audio') {
+    return [{ id: 'image', label: 'Audio', kind: 'audio', side: 'output' }] satisfies GraphPort[];
+  }
   if (node.type === 'textPrompt') return getTextPromptPorts(node);
   if (node.type === 'textConcat') return getTextConcatPorts(node);
   if (node.type === 'textSplitter') return getTextSplitterPorts(node);
@@ -48,21 +52,17 @@ export function getNodePorts(node: ProductionNode) {
   if (node.type === 'exportImage') return getExportImagePorts(node);
   return NODE_PORTS[node.type];
 }
-
 export function pipelineFieldKindToPortKind(kind: PipelineContractFieldKind): GraphPort['kind'] {
   return kind;
 }
-
 function getPipelineInputPorts(node: ProductionNode): GraphPort[] {
   const data = node.data as PipelineInputNodeData;
   return data.fields.map((field) => createPipelineFieldPort(field, 'output'));
 }
-
 function getPipelineOutputPorts(node: ProductionNode): GraphPort[] {
   const data = node.data as PipelineOutputNodeData;
   return data.fields.map((field) => createPipelineFieldPort(field, 'input'));
 }
-
 function getStructuredOutputPorts(node: ProductionNode): GraphPort[] {
   const data = node.data as StructuredOutputNodeData;
   return [

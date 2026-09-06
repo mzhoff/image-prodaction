@@ -1,3 +1,4 @@
+import { audioNodeDefinitions } from './node-registry-audio';
 import { contextNodeDefinitions } from './node-registry-context';
 import { imageNodeDefinitions } from './node-registry-image';
 import { publicationNodeDefinitions } from './node-registry-publication';
@@ -14,6 +15,8 @@ export const NODE_DEFINITIONS = {
   textConcat: textNodeDefinitions.textConcat,
   textGeneration: textNodeDefinitions.textGeneration,
   textToSpeech: textNodeDefinitions.textToSpeech,
+  speechToText: audioNodeDefinitions.speechToText,
+  audioConvert: audioNodeDefinitions.audioConvert,
   textFormatter: textNodeDefinitions.textFormatter,
   textSplitter: textNodeDefinitions.textSplitter,
   pipelineInput: pipelineNodeDefinitions.pipelineInput,

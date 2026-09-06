@@ -18,6 +18,7 @@ export const PIPELINE_NODE_CONFIGURABLE_FIELDS: Record<
   readonly import('./pipeline-node-tool-schema').PipelineNodeSetting[]
 > = {
   adjustment: ['title'], banner: ['title'], composition: ['title', 'aspectRatio', 'size'],
+  audioConvert: ['title', 'format', 'bitrateKbps', 'sampleRateHz', 'channels'],
   cropImage: ['title', 'aspectRatio'], curves: ['title'],
   exportImage: ['title', 'format', 'quality', 'scale', 'background'],
   frequencyRetouch: ['title'], generateImage: ['title', 'prompt', 'aspectRatio', 'size'],
@@ -32,7 +33,9 @@ export const PIPELINE_NODE_CONFIGURABLE_FIELDS: Record<
   textFormatter: ['title', 'presetId'],
   textGeneration: ['title', 'instruction', 'outputStyle', 'reasoning', 'temperature'],
   textPrompt: ['title', 'text', 'variables', 'variableDisplayMode'],
-  textSplitter: ['title', 'delimiter'], textToSpeech: ['title'],
+  textSplitter: ['title', 'delimiter'],
+  textToSpeech: ['title', 'localText', 'model', 'language', 'voice', 'responseFormat', 'speed'],
+  speechToText: ['title', 'model', 'language'],
   structuredOutput: ['title', 'fields', 'instruction', 'model', 'reasoning', 'temperature', 'schemaName'],
 };
 
@@ -85,6 +88,8 @@ export const imageProductionTools: AgentToolDefinition[] = [
       'In an ordinary canvas request, phrases such as separate input, prompt input or editable input mean a separate textPrompt node, not pipelineInput.',
       'For an executable free-form text field that must be embedded into stable prompt instructions, declare the pipelineInput field, add a textPrompt variable-N whose alias equals the public field key, place @Alias in textPrompt.settings.text, connect field:<id> to variable-N, then connect textPrompt.text to the consumer. Connect field:<id> directly to a text input only when the external value is the complete input.',
       'When an image result needs export conversion before it becomes public, connect the producer image to exportImage.image-0 and connect exportImage.image to the image field on pipelineOutput. Do not bypass Export with the unconverted producer image.',
+      'For audio use speechToText.audio -> speechToText.text, textToSpeech.text -> textToSpeech.audio, and audioConvert.source -> audioConvert.audio. Audio convert formats are mp3/wav/flac/ogg (Opus), never image Export. Declare kind audio on executable Input/Output fields; these values reference managed private Workspace assets, not URLs or base64.',
+      'Import is one universal node with technical type importImage. Its output id stays image, but its actual kind follows the uploaded image or audio file. Read document_graph after upload; do not force mediaKind, forge asset ids, or claim that sourceAttachmentIndex imports audio. A new empty Import has no audio file yet; prepare processing nodes and connect them after the user uploads the recording.',
       'For a functional QR code, use qrCode and never generateImage. For an executable URL input, declare pipelineInput field { id: "target-url", key: "targetUrl", kind: "text", required: true }, connect field:target-url to qrCode.text, then declare qrCode.image as the source of the QR image layer in compositionBlueprints.',
       'If the user explicitly says that QR is not needed, omit qrCode, targetUrl/target-url and every QR layer from compositionBlueprints even when an earlier plan mentioned QR.',
       'For editable Composition layouts, use top-level compositionBlueprints V1 instead of guessing layer-N. Describe canvas size and each semantic text/image layer with its source, normalized frame and zIndex; the product compiler validates ports and creates Composition layer edges.',
@@ -178,6 +183,7 @@ export const imageProductionTools: AgentToolDefinition[] = [
       'By default update an ordinary editable canvas pipeline. Use textPrompt plus textConcat for locally editable parts; use pipelineInput fields only when the user explicitly requests an endpoint, API, SDK, MCP, external run or Executable Pipeline.',
       'When external text must be embedded into fixed instructions, map pipelineInput.field:<id> to a textPrompt variable-N named with the public field key, reference @Alias in settings.text, and continue from textPrompt.text. A direct field-to-text connection means the external value is the whole input.',
       'For a public converted image artifact, route the source through exportImage.image-0 and connect the new exportImage.image output to pipelineOutput. Preserve existing format, quality, scale and background settings unless the user changes them.',
+      'For audio connect the actual audio source to speechToText.audio or audioConvert.source. speechToText.text continues to text consumers; textToSpeech.audio and audioConvert.audio continue to audio consumers or kind audio Pipeline output. Export image is not an audio converter. Import keeps technical type importImage and output id image with file-detected kind; sourceAttachmentIndex remains image-only.',
       'For a functional QR code, add qrCode rather than generateImage. Connect an executable targetUrl field through field:target-url -> qrCode.text, then declare qrCode.image as the source of the QR image layer in compositionBlueprints.',
       'For editable Composition layouts, use top-level compositionBlueprints V1 instead of manually targeting layer-N. The product compiler resolves stable layer keys to real ports and validates sources before presenting the proposal.',
       'For qrCode V1, update only title, content or contentMode; do not send advanced rendering settings.',

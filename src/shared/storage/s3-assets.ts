@@ -14,7 +14,7 @@ export interface AssetObjectLocation {
 
 export interface AssetObjectStore {
   delete(location: AssetObjectLocation): Promise<void>;
-  get(location: AssetObjectLocation): Promise<{ body: ReadableStream; contentLength?: number; contentType?: string }>;
+  get(location: AssetObjectLocation & { range?: { start: number; end: number } }): Promise<{ body: ReadableStream; contentLength?: number; contentType?: string }>;
   health(): Promise<void>;
   put(input: AssetObjectLocation & { body: Uint8Array; contentType: string }): Promise<void>;
 }
@@ -53,7 +53,8 @@ export function createS3AssetStore(): AssetObjectStore {
     },
     async get(location) {
       enforceConfiguredBucket(location.bucket, config.bucket);
-      const result = await client.send(new GetObjectCommand({ Bucket: location.bucket, Key: location.key }));
+      const result = await client.send(new GetObjectCommand({ Bucket: location.bucket, Key: location.key,
+        ...(location.range ? { Range: `bytes=${location.range.start}-${location.range.end}` } : {}) }));
       if (!result.Body) throw new Error('Asset object has no response body.');
       return {
         body: toWebStream(result.Body as Readable),

@@ -8,7 +8,7 @@ test('assistant node catalog exposes complete product-owned help for the live re
   const nodes = getAssistantNodeCatalog();
 
   assert.deepEqual(nodes.map((node) => node.type), PRODUCTION_NODE_TYPES);
-  assert.equal(nodes.length, 30);
+  assert.equal(nodes.length, 32);
   for (const node of nodes) {
     assert.ok(node.aliases.length > 0, `${node.type} has no aliases`);
     assert.ok(node.description.length > 0, `${node.type} has no description`);
@@ -56,6 +56,9 @@ test('assistant node catalog reports verified availability and executable suppor
     'textPrompt',
     'textConcat',
     'textGeneration',
+    'textToSpeech',
+    'speechToText',
+    'audioConvert',
     'textFormatter',
     'textSplitter',
     'structuredOutput',
@@ -74,6 +77,23 @@ test('assistant node catalog reports verified availability and executable suppor
   assert.ok(nodes
     .filter((node) => node.type !== 'referenceComposer')
     .every((node) => node.availability === 'addable'));
+});
+
+test('audio catalog exposes separate recognition, voice and conversion with safe editable settings', () => {
+  const stt = getAssistantNodeCatalog('speechToText')[0];
+  const convert = getAssistantNodeCatalog('audioConvert')[0];
+  const voice = getAssistantNodeCatalog('textToSpeech')[0];
+  assert.deepEqual(getAssistantNodeCatalog('расшифровка').map((node) => node.type), ['speechToText']);
+  assert.deepEqual(stt?.configurableFields, ['title', 'model', 'language']);
+  assert.deepEqual(convert?.configurableFields, ['title', 'format', 'bitrateKbps', 'sampleRateHz', 'channels']);
+  assert.ok(convert?.ports.some((port) => port.id === 'source' && port.side === 'input' && port.kind === 'audio'));
+  assert.ok(convert?.ports.some((port) => port.id === 'audio' && port.side === 'output' && port.kind === 'audio'));
+  assert.ok(stt?.ports.some((port) => port.id === 'text' && port.side === 'output' && port.kind === 'text'));
+  assert.ok(voice?.ports.some((port) => port.id === 'audio' && port.side === 'output' && port.kind === 'audio'));
+  for (const node of [stt, convert, voice]) {
+    assert.equal(node?.execution, 'server');
+    assert.equal(new Set<string>(node?.configurableFields).has('audioAssetId'), false);
+  }
 });
 
 test('assistant node catalog gives exact type, label and alias matches precedence', () => {

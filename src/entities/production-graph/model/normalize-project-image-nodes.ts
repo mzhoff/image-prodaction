@@ -21,7 +21,7 @@ export function normalizeImageNode(node: ProductionNode): ProductionNode | null 
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
-      data: { title: 'Import', ...nextData },
+      data: { title: 'Import', ...nextData, mediaKind: nextData.mediaKind === 'audio' ? 'audio' : 'image' },
     } as ProductionNode;
   }
 

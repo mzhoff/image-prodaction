@@ -1,4 +1,5 @@
 import { contextNodeHelp } from './node-help-context';
+import { audioNodeHelp } from './node-help-audio';
 import { imageEditingNodeHelp } from './node-help-image-editing';
 import { imageGenerationNodeHelp } from './node-help-image-generation';
 import { pipelineNodeHelp } from './node-help-pipeline';
@@ -19,7 +20,9 @@ export const NODE_HELP_METADATA = {
   textPrompt: textNodeHelp.textPrompt,
   textConcat: textNodeHelp.textConcat,
   textGeneration: textNodeHelp.textGeneration,
-  textToSpeech: textNodeHelp.textToSpeech,
+  textToSpeech: audioNodeHelp.textToSpeech,
+  speechToText: audioNodeHelp.speechToText,
+  audioConvert: audioNodeHelp.audioConvert,
   textFormatter: textNodeHelp.textFormatter,
   textSplitter: textNodeHelp.textSplitter,
   pipelineInput: pipelineNodeHelp.pipelineInput,

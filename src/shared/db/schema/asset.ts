@@ -19,7 +19,7 @@ import { generationJob } from './generation';
 import { workspace } from './workspace';
 
 export const assetStatus = pgEnum('asset_status', ['pending', 'ready', 'failed', 'deleted']);
-export const assetMediaKind = pgEnum('asset_media_kind', ['image', 'video']);
+export const assetMediaKind = pgEnum('asset_media_kind', ['image', 'video', 'audio']);
 export const assetOrigin = pgEnum('asset_origin', ['uploaded', 'generated', 'saved', 'unknown']);
 export const assetVariantPurpose = pgEnum('asset_variant_purpose', ['thumbnail', 'preview', 'poster']);
 

@@ -67,7 +67,7 @@ document context продолжают проверяться обычным пу
 направляет модель в read-only `node_catalog`.
 
 Product-owned описания, возможности, ограничения и правила портов хранятся в
-типизированном `NODE_HELP_METADATA` для 30/30 типов. Полный тестовый индекс и
+типизированном `NODE_HELP_METADATA` для 32/32 типов. Полный тестовый индекс и
 единый шаблон вопроса находятся в
 [`assistant-knowledge/node-catalog.md`](./assistant-knowledge/node-catalog.md).
 

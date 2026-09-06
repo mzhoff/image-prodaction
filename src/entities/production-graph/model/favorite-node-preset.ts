@@ -25,6 +25,7 @@ export interface FavoriteNodePreset {
 }
 
 const ALLOWED_DATA_FIELDS = new Set([
+  'mediaKind', 'audioAssetId', 'sourceAudioAssetId', 'audioResultSignature', 'bitrateKbps', 'sampleRateHz', 'channels',
   'activeChannel', 'activeImageAssetId', 'activeIndex', 'activeItemIndex',
   'activeKind', 'activeResultIndex', 'activeText', 'adjustment', 'align',
   'aspectRatio', 'assetId', 'atmosphere', 'background', 'backgroundColor', 'body', 'brushColor',

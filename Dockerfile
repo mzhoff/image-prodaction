@@ -29,7 +29,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
-RUN addgroup --system --gid 1001 nodejs \
+RUN apk add --no-cache ffmpeg \
+  && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -38,6 +39,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs package.json package-lock.json tsconfig.json drizzle.config.ts ./
 COPY --chown=nextjs:nodejs drizzle ./drizzle
+COPY --chown=nextjs:nodejs contracts ./contracts
 COPY --chown=nextjs:nodejs docs/assistant-knowledge ./docs/assistant-knowledge
 COPY --chown=nextjs:nodejs scripts ./scripts
 COPY --chown=nextjs:nodejs src ./src

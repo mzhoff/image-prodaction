@@ -32,7 +32,10 @@ export function getNodeImageAssetId(
     const source = getRouterIncomingSource(node, context, visited);
     return source ? getNodeImageAssetId(source.sourceNode, context, visited) : undefined;
   }
-  if (node.type === 'importImage') return (node.data as ImportImageNodeData).assetId;
+  if (node.type === 'importImage') {
+    const data = node.data as ImportImageNodeData;
+    return data.mediaKind === 'audio' ? undefined : data.assetId;
+  }
   if (node.type === 'iterator') {
     const data = node.data as IteratorNodeData;
     return data.activeKind === 'image' ? data.activeImageAssetId : undefined;

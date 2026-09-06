@@ -5,12 +5,13 @@ import type { CSSProperties } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getNodeImageAssetId, getNodeLocationResult, getNodePublicationResult, getNodeSubjectResult, getNodeTextResult, getRouterDataKind } from '@/entities/production-graph/model/graph-io';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
+import { getNodeAudioAssetId } from '@/entities/production-graph/model/graph-audio-io';
 import type { PortKind, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 
 type PortDataKind = 'audio' | 'boolean' | 'empty' | 'image' | 'json' | 'location' | 'number' | 'publication' | 'subject' | 'text' | 'video';
-export type PortConnectionState = 'empty' | 'text' | 'number' | 'boolean' | 'json' | 'image' | 'subject' | 'location' | 'publication' | 'mixed';
+export type PortConnectionState = 'empty' | 'audio' | 'text' | 'number' | 'boolean' | 'json' | 'image' | 'subject' | 'location' | 'publication' | 'mixed';
 
 interface PortButtonProps {
   style?: CSSProperties;
@@ -93,6 +94,7 @@ function getPortVisualState({
   const fallbackDataKind = getFallbackDataKind(kind, portId);
   if (connectionState === 'mixed') return { connected: true, dataKind: fallbackDataKind, hasData: true };
   if (connectionState === 'image') return { connected: true, dataKind: 'image' as const, hasData: true };
+  if (connectionState === 'audio') return { connected: true, dataKind: 'audio' as const, hasData: true };
   if (connectionState === 'subject') return { connected: true, dataKind: 'subject' as const, hasData: true };
   if (connectionState === 'location') return { connected: true, dataKind: 'location' as const, hasData: true };
   if (connectionState === 'publication') return { connected: true, dataKind: 'publication' as const, hasData: true };
@@ -112,7 +114,7 @@ function getPortVisualState({
     ? getRouterDataKind(currentNode, { edges, nodes })
     : undefined;
   if (currentNode && routedKind && routedKind !== 'empty') {
-    const hasRoutedData = routedKind === 'image'
+    const hasRoutedData = routedKind === 'audio' ? Boolean(getNodeAudioAssetId(currentNode, { edges, nodes })) : routedKind === 'image'
       ? Boolean(getNodeImageAssetId(currentNode, { assets: [], edges, nodes }))
       : routedKind === 'subject'
         ? Boolean(getNodeSubjectResult(currentNode, { edges, nodes }))
@@ -135,7 +137,7 @@ function getPortVisualState({
     ? anyInputDataKind ?? 'empty'
     : side === 'input'
     ? fallbackDataKind
-    : firstSourcePort?.kind === 'subject' || (!firstSourcePort && fallbackDataKind === 'subject') ? 'subject'
+    : fallbackDataKind === 'audio' ? 'audio' : firstSourcePort?.kind === 'subject' || (!firstSourcePort && fallbackDataKind === 'subject') ? 'subject'
       : firstSourcePort?.kind === 'location' || (!firstSourcePort && fallbackDataKind === 'location') ? 'location'
         : firstSourcePort?.kind === 'publication' || (!firstSourcePort && fallbackDataKind === 'publication') ? 'publication'
           : firstSourcePort?.kind === 'image' || (!firstSourcePort && fallbackDataKind === 'image') ? 'image'
@@ -148,6 +150,7 @@ function getPortVisualState({
     if (!sourceNode) return false;
     const sourcePort = getNodePorts(sourceNode).find((port) => port.id === edge.sourcePortId);
     if (sourcePort?.kind === 'image') return Boolean(getNodeImageAssetId(sourceNode, { assets: [], edges, nodes }));
+    if (sourcePort?.kind === 'audio') return sourceNode.type === 'pipelineInput' || Boolean(getNodeAudioAssetId(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'subject') return Boolean(getNodeSubjectResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'location') return Boolean(getNodeLocationResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'publication') return Boolean(getNodePublicationResult(sourceNode, { edges, nodes }));
@@ -161,7 +164,8 @@ function getPortVisualState({
       if (nextKind === 'subject') return Boolean(getNodeSubjectResult(sourceNode, { edges, nodes }));
       if (nextKind === 'location') return Boolean(getNodeLocationResult(sourceNode, { edges, nodes }));
       if (nextKind === 'publication') return Boolean(getNodePublicationResult(sourceNode, { edges, nodes }));
-      if (nextKind === 'video' || nextKind === 'audio') return true;
+      if (nextKind === 'audio') return Boolean(getNodeAudioAssetId(sourceNode, { edges, nodes }));
+      if (nextKind === 'video') return true;
     }
     return Boolean(getNodeTextResult(sourceNode, edge.sourcePortId, { edges, nodes }));
   });

@@ -84,6 +84,10 @@ jobs:
         run: npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+      - name: Install audio codec test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
       - name: Start MinIO and Mailpit
         run: |
           docker run --detach \
@@ -129,6 +133,8 @@ jobs:
       - name: Enforce implementation file-size limit
         run: npm run check:size
       - name: Unit tests with coverage thresholds
+        env:
+          AUDIO_CODEC_TESTS_REQUIRED: '1'
         run: npm run test:coverage
       - name: Production build
         run: npm run build

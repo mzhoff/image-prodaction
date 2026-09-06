@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
-import { saveAssetBlob } from '@/entities/production-graph/lib/asset-db';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { saveUploadedAudioAsset } from '@/entities/production-graph/lib/remote-audio-asset';
+import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
 import type { ProductionNode, TextToSpeechNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
@@ -30,6 +31,8 @@ import {
 
 export function useTextToSpeechNodeModel(node: ProductionNode) {
   const data = node.data as TextToSpeechNodeData;
+  const requestGuard = useRef<symbol | null>(null);
+  useEffect(() => () => { requestGuard.current = null; }, [node.id]);
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
@@ -69,12 +72,18 @@ export function useTextToSpeechNodeModel(node: ProductionNode) {
   }, [data.language, data.responseFormat, data.sourceText, data.speed, data.voice, inputText, language, node.id, responseFormat, selectedVoice, speed, updateNodeDataSilent]);
 
   const handleGenerate = useCallback(async () => {
+    if (requestGuard.current) return;
+    const scope = getActiveAssetScope();
+    if (!scope) { updateNodeDataSilent(node.id, { message: 'Open a saved project before generating audio.' }); return; }
     const text = effectiveText.trim();
-    if (!text) {
-      updateNodeData(node.id, { message: 'Подключи текст ко входу Text или добавь текст в поле ноды.' });
+    if (!text || text.length > 5000) {
+      updateNodeData(node.id, { message: text ? 'Для Voice нужно не больше 5000 символов.' : 'Подключи текст ко входу Text или добавь текст в поле ноды.' });
       return;
     }
     const resolvedLanguage = language === 'auto' ? detectSpeechLanguage(text) : language;
+    const requestId = Symbol(); requestGuard.current = requestId;
+    const isCurrent = () => requestGuard.current === requestId
+      && getActiveAssetScope()?.documentId === scope.documentId && getActiveAssetScope()?.workspaceId === scope.workspaceId;
     try {
       setNodeStatus(node.id, 'running');
       updateNodeDataSilent(node.id, { message: '' });
@@ -89,12 +98,10 @@ export function useTextToSpeechNodeModel(node: ProductionNode) {
         topP: capabilities.supportsTopP ? topP : undefined,
         voice: selectedVoice,
       });
+      if (!isCurrent()) return;
       const extension = result.mimeType.includes('wav') ? 'wav' : responseFormat === 'mp3' ? 'mp3' : 'pcm';
-      const asset = await saveAssetBlob(result.blob, {
-        kind: 'audio',
-        mimeType: result.mimeType,
-        name: `voice-${Date.now()}.${extension}`,
-      });
+      const asset = await saveUploadedAudioAsset(new File([result.blob], `voice-${Date.now()}.${extension}`, { type: result.mimeType }), scope, 'saved');
+      if (!isCurrent()) return;
       addAsset(asset);
       updateNodeData(node.id, appendSpeechResult(data, asset.id, {
         createdAt: asset.createdAt,
@@ -107,11 +114,12 @@ export function useTextToSpeechNodeModel(node: ProductionNode) {
       }));
       setNodeStatus(node.id, 'success');
     } catch (error) {
+      if (!isCurrent()) return;
       setNodeStatus(node.id, 'error');
       updateNodeDataSilent(node.id, {
         message: error instanceof Error ? error.message : 'OpenRouter speech generation failed',
       });
-    }
+    } finally { if (requestGuard.current === requestId) requestGuard.current = null; }
   }, [addAsset, capabilities.supportsSeed, capabilities.supportsSpeed, capabilities.supportsTemperature, capabilities.supportsTopP, data, effectiveText, language, node.id, responseFormat, seed, selectedModel, selectedVoice, setNodeStatus, speed, temperature, topP, updateNodeData, updateNodeDataSilent]);
 
   return {

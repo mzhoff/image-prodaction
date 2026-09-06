@@ -9,11 +9,13 @@ import { submitRuntimeV2Run } from './runtime-v2-run-service';
 import { cancelRuntimeV2Run, getRuntimeV2Artifact, getRuntimeV2Run, runtimeV2RunDto } from './runtime-v2-run-read';
 import { readRuntimeBody, runtimeError, runtimeId, runtimeJson, runtimeVersionNumber } from './runtime-v2-http';
 import { runtimeV2OpenApi } from '../contracts/runtime-v2-openapi';
+import { uploadRuntimeAudio } from './runtime-audio-upload';
 
 export async function handleRuntimeV2(request: Request, segments: string[]) {
   try {
     const [root, id, action, artifactId] = segments;
     const method = request.method;
+    if (root === 'assets' && id === 'audio' && segments.length === 2 && method === 'POST') return await uploadRuntimeAudio(request);
     if (root === 'openapi.json' && segments.length === 1 && method === 'GET') return runtimeJson(runtimeV2OpenApi());
     if (root === 'client' && segments.length === 1 && method === 'GET') {
       const actor = await authenticateRuntimeClientRequest(request);

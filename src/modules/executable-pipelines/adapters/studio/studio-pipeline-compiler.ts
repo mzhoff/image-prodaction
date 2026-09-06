@@ -108,7 +108,7 @@ function createInputBoundaries(
   const boundaries = nodes.filter((node) => BOUNDARY_INPUT_TYPES.has(node.type)
     && (incomingByNode.get(node.id)?.length ?? 0) === 0).map((node) => {
     const port = getNodePorts(node).find((candidate) => candidate.side === 'output');
-    if (!port || (port.kind !== 'text' && port.kind !== 'image')) {
+    if (!port || (port.kind !== 'text' && port.kind !== 'image' && port.kind !== 'audio')) {
       throw invalidPipeline(`Нода «${getNodeTitle(node)}» не может стать входом endpoint.`);
     }
     const name = createUniqueKey(getNodeTitle(node), 'input', usedNames);

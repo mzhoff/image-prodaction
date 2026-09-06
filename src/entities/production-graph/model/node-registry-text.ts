@@ -74,6 +74,7 @@ export const textNodeDefinitions = {
     defaultHeight: 420,
     ports: [
       { id: 'text', label: 'Text', kind: 'text', side: 'input' },
+      { id: 'audio', label: 'Audio', kind: 'audio', side: 'output' },
     ],
     createData: () => ({
       title: 'Voice',

@@ -83,10 +83,15 @@ async function validateRuntimeInputAssets(db: RuntimeDatabase, workspaceId: stri
   const record = value as Record<string, unknown>;
   if ((record.kind === 'image' || record.kind === 'audio') && typeof record.assetId === 'string') {
     runtimeId(record.assetId);
-    const [owned] = await db.select({ id: asset.id }).from(asset).where(and(
-      eq(asset.id, record.assetId), eq(asset.workspaceId, workspaceId), eq(asset.status, 'ready'),
+    const [owned] = await db.select({ id: asset.id, contentType: asset.contentType, byteSize: asset.byteSize, checksumSha256: asset.checksumSha256 }).from(asset).where(and(
+      eq(asset.id, record.assetId), eq(asset.workspaceId, workspaceId), eq(asset.status, 'ready'), eq(asset.mediaKind, record.kind),
     )).limit(1);
     if (!owned) throw new RuntimeV2Error('invalid_input', 'An input artifact is unavailable in this workspace.', 422);
+    if ((record.mimeType !== undefined && record.mimeType !== owned.contentType)
+      || (record.sizeBytes !== undefined && record.sizeBytes !== owned.byteSize)
+      || (record.checksumSha256 !== undefined && record.checksumSha256 !== owned.checksumSha256)) {
+      throw new RuntimeV2Error('invalid_input', 'An input artifact does not match its stored metadata.', 422);
+    }
     return;
   }
   for (const child of Object.values(value)) await validateRuntimeInputAssets(db, workspaceId, child);

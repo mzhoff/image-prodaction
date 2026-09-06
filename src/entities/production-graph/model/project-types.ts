@@ -1,3 +1,4 @@
+import type { AudioMetadata } from '@/shared/media/audio-contracts';
 import type { PublicationArtifact } from './publication';
 import type { ProjectSchemaVersion } from './project-schema-version';
 import type { GraphEdge, GraphPoint, GraphSection, GraphSize, NodeStatus, ProductionNodeType } from './graph-core-types';
@@ -27,6 +28,7 @@ export interface AssetRecord {
   libraryAssetId?: string;
   name: string;
   mimeType: string;
+  audio?: AudioMetadata;
   width?: number;
   height?: number;
   createdAt: string;

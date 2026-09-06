@@ -3,6 +3,7 @@ import { createDefaultNode } from './create-default-node';
 import { appendGenerationResult } from './generation-history';
 import { getClearedGenerationData, hasClearableGenerationData } from './graph-generation-clear';
 import { withHistory } from './graph-history';
+import { assignImportMedia } from './import-media-assignment';
 import type { ProductionGraphState } from './store-types';
 import type { StoreSet } from './store-action-types';
 import type { GenerateImageNodeData, ProductionNode, ProductionNodeData } from './types';
@@ -45,11 +46,16 @@ export function createGraphNodeActions(set: StoreSet): Pick<
       }));
     },
     assignAssetToNode: (nodeId, assetId) => {
-      set((state) => ({
+      set((state) => {
+        const asset = state.assets.find((candidate) => candidate.id === assetId);
+        if (state.nodes.some((node) => node.id === nodeId && node.type === 'importImage')) {
+          return asset ? { ...withHistory(state), ...assignImportMedia(state.nodes, state.edges, nodeId, asset) } : {};
+        }
+        return {
         ...withHistory(state),
         nodes: state.nodes.map((node) => {
           if (node.id !== nodeId) return node;
-          if (node.type === 'importImage' || node.type === 'preview' || node.type === 'sketch') {
+          if (node.type === 'preview' || node.type === 'sketch') {
             return { ...node, data: { ...node.data, assetId } };
           }
           if (node.type === 'generateImage') {
@@ -57,7 +63,8 @@ export function createGraphNodeActions(set: StoreSet): Pick<
           }
           return node;
         }),
-      }));
+        };
+      });
     },
     assignBannerAssetToNode: (nodeId, asset) => {
       set((state) => {
@@ -128,9 +135,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
           return {
             ...withHistory(state),
             assets: nextAssets,
-            nodes: state.nodes.map((node) => (
-              node.id === targetNode.id ? { ...node, data: { ...node.data, assetId: asset.id } } : node
-            )),
+            ...assignImportMedia(state.nodes, state.edges, targetNode.id, asset),
             selectedNodeIds: [targetNode.id],
             selectedSectionIds: [],
           };

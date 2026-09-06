@@ -127,6 +127,10 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   const data = { ...node.data } as Record<string, unknown>;
 
   delete data.assetId;
+  delete data.audioAssetId;
+  delete data.audioResultSignature;
+  delete data.sourceAudioAssetId;
+  delete data.lastRequest;
   delete data.activeIndex;
   delete data.activeResultIndex;
   delete data.activeItemIndex;

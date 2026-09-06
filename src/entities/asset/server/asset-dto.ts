@@ -1,9 +1,12 @@
 import type { AssetRecord, LibraryAssetRecord } from './asset-repository';
 import { AssetNotFoundError, type AssetDto, type LibraryAssetDto } from './asset-service-contracts';
+import { audioMetadataSchema } from '@/shared/media/audio-contracts';
 
 export function toAssetDto(record: AssetRecord, hasThumbnail = false): AssetDto {
   if (record.status === 'deleted') throw new AssetNotFoundError();
+  const audio = record.mediaKind === 'audio' ? audioMetadataSchema.safeParse(record.metadata?.audio) : null;
   return {
+    ...(audio?.success ? { audio: audio.data } : {}),
     id: record.id,
     workspaceId: record.workspaceId,
     documentId: record.documentId,

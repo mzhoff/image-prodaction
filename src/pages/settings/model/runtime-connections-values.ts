@@ -9,6 +9,7 @@ export const runtimeScopeLabels: Record<RuntimeV2Scope, string> = {
   'pipeline.run.cancel': 'Отменять запуски',
   'pipeline.artifact.read': 'Скачивать готовые файлы',
   'pipeline.grants.manage': 'Самостоятельно подключать pipelines',
+  'pipeline.asset.write': 'Загружать аудио для pipelines',
 };
 
 export function resolveCatalogReference(reference: string, catalog: RuntimeV2Pipeline[]) {

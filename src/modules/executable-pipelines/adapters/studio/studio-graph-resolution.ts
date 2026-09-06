@@ -1,5 +1,5 @@
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
-import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
+import type { GraphEdge, ProductionNode, ImportImageNodeData } from '@/entities/production-graph/model/types';
 import type { StructuredOutputNodeData } from '@/entities/production-graph/model/types';
 import { getPipelineFieldIdFromPortId } from '@/entities/production-graph/model/pipeline-contract-fields';
 import type { PipelineValueKind } from '../../contracts/pipeline-contracts';
@@ -42,6 +42,11 @@ export function getRuntimeOutput(
   node: ProductionNode,
   sourcePortId: string,
 ): { kind: PipelineValueKind; outputKey: string } | null {
+  if (node.type === 'importImage' && sourcePortId === 'image') {
+    return { kind: (node.data as ImportImageNodeData).mediaKind ?? 'image', outputKey: 'asset' };
+  }
+  if ((node.type === 'textToSpeech' || node.type === 'audioConvert') && sourcePortId === 'audio') return { kind: 'audio', outputKey: 'audio' };
+  if (node.type === 'speechToText' && sourcePortId === 'text') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textPrompt' && sourcePortId === 'text') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textConcat' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textGeneration' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
