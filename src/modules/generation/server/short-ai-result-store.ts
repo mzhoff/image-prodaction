@@ -2,6 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
 import { createGenerationPayloadStore } from './generation-payload-store';
+import { markRuntimeProviderDispatched } from '@/modules/executable-pipelines/server/runtime-cost-dispatch';
 
 export async function saveShortAiResultCheckpoint(input: {
   attemptCount: number;
@@ -53,6 +54,7 @@ export async function markShortAiProviderDispatched(input: {
   attemptCount: number;
   jobId: string;
 }) {
+  if (await markRuntimeProviderDispatched(input)) return;
   const now = new Date();
   const [updated] = await getDb().update(generationJob).set({
     providerDispatchedAt: now,

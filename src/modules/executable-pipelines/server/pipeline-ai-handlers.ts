@@ -1,5 +1,6 @@
 import type { ProviderResult } from '@/modules/provider-connections';
 import { executeInternalOpenRouterChat } from '@/modules/generation';
+import { getRuntimeGenerationAttribution } from './runtime-usage-attribution';
 import type {
   PipelineArtifactReference,
   PipelineExecutionContext,
@@ -64,6 +65,7 @@ export function createAiPipelineHandlers(input: {
 export function createOpenRouterTextGenerator(scope: PipelineHandlerScope): PipelineTextGenerator {
   return async (input) => {
     const execution = await executeInternalOpenRouterChat({
+      runtimeAttribution: await getRuntimeGenerationAttribution(input.context, input.nodeId),
       actorUserId: scope.actorUserId,
       documentId: scope.documentId,
       idempotencyKey: `pipeline:${input.context.runId}:node:${input.nodeId}`,

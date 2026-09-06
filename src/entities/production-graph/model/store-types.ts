@@ -1,5 +1,5 @@
 import type { FavoriteNodeSnapshot } from './favorite-node-preset';
-import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, LocationRecord, PipelineContractField, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord, SubjectRecord } from './types';
+import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, LocationRecord, PipelineContractField, PipelineSemanticContractSnapshot, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord, SubjectRecord } from './types';
 import type { PipelineTemplateExport, PortableProjectExport, ProjectExport, ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
 
 export type GraphSnapshot = Pick<GraphProject, 'nodes' | 'sections' | 'edges' | 'assets' | 'presets' | 'subjects' | 'locations' | 'publications' | 'runs' | 'selectedNodeIds' | 'selectedSectionIds'>;
@@ -19,7 +19,7 @@ export interface ProductionGraphState extends GraphProject {
   uiState: ProjectUiState;
   addSection: (rect: { x: number; y: number; width: number; height: number }) => string;
   addNode: (type: ProductionNodeType, position: GraphPoint) => string;
-  addNodeFromFavorite: (snapshot: FavoriteNodeSnapshot, position: GraphPoint) => string;
+  addNodeFromFavorite: (snapshot: FavoriteNodeSnapshot, position: GraphPoint, assets?: AssetRecord[]) => string;
   addAsset: (asset: AssetRecord) => void;
   assignAssetToNode: (nodeId: string, assetId: string) => void;
   assignBannerAssetToNode: (nodeId: string, asset: AssetRecord) => void;
@@ -53,6 +53,7 @@ export interface ProductionGraphState extends GraphProject {
   selectNodesInRect: (rect: { x: number; y: number; width: number; height: number }) => void;
   selectSection: (sectionId: string, additive?: boolean) => void;
   setSectionColor: (sectionId: string, color: string) => void;
+  setSectionCapabilityKey: (sectionId: string, capabilityKey: string) => ConnectResult;
   toggleSectionLock: (sectionId: string) => void;
   setNodeStatus: (nodeId: string, status: ProductionNode['status']) => void;
   pushHistory: () => void;
@@ -60,6 +61,11 @@ export interface ProductionGraphState extends GraphProject {
   redo: () => void;
   updateNodeData: (nodeId: string, data: Partial<ProductionNodeData>) => void;
   updateNodeDataSilent: (nodeId: string, data: Partial<ProductionNodeData>) => void;
+  applyPipelineSemanticContractPreset: (
+    nodeId: string,
+    fields: PipelineContractField[],
+    semanticContract: PipelineSemanticContractSnapshot,
+  ) => ConnectResult;
   updatePipelineContractFields: (nodeId: string, fields: PipelineContractField[]) => ConnectResult;
   updateNodePrompt: (nodeId: string, prompt: string) => void;
   updateNodeResult: (nodeId: string, result: string) => void;

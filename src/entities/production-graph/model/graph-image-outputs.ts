@@ -1,4 +1,6 @@
 import { getGenerationHistory } from './generation-history';
+import { getExportImageInputPortIndex } from './node-definitions';
+import { createExportImageResultSignature } from './export-image-result';
 import type { GraphIoContext } from './graph-io-contracts';
 import { getRouterIncomingSource, getSafeIndex, uniqueStrings } from './graph-io-sources';
 import type {
@@ -7,6 +9,7 @@ import type {
   CompositionNodeData,
   CropImageNodeData,
   CurvesNodeData,
+  ExportImageNodeData,
   FrequencyRetouchNodeData,
   GenerateImageNodeData,
   ImportImageNodeData,
@@ -53,6 +56,30 @@ export function getNodeImageAssetId(
   }
   if (node.type === 'refineImage') return getGenerationHistory(node.data as RefineImageNodeData).activeAssetId;
   if (node.type === 'removeBackground') return (node.data as RemoveBackgroundNodeData).resultAssetId;
+  if (node.type === 'exportImage') {
+    const data = node.data as ExportImageNodeData;
+    if (!data.resultAssetId) return undefined;
+    if (!context) return data.resultAssetId;
+    if (visited.has(node.id)) return undefined;
+    visited.add(node.id);
+    const primaryEdge = context.edges
+      .filter((edge) => edge.targetNodeId === node.id && getExportImageInputPortIndex(edge.targetPortId) >= 0)
+      .sort((first, second) => (
+        getExportImageInputPortIndex(first.targetPortId) - getExportImageInputPortIndex(second.targetPortId)
+      ))[0];
+    const sourceNode = primaryEdge
+      ? context.nodes.find((candidate) => candidate.id === primaryEdge.sourceNodeId)
+      : undefined;
+    const currentSourceAssetId = sourceNode
+      ? getNodeImageAssetId(sourceNode, context, visited)
+      : undefined;
+    const expectedSignature = currentSourceAssetId
+      ? createExportImageResultSignature(currentSourceAssetId, data)
+      : undefined;
+    return data.sourceAssetId === currentSourceAssetId && data.resultSignature === expectedSignature
+      ? data.resultAssetId
+      : undefined;
+  }
   if (node.type === 'preview') return (node.data as PreviewNodeData).assetId;
   if (node.type === 'banner') return (node.data as BannerNodeData).assetId;
   return undefined;

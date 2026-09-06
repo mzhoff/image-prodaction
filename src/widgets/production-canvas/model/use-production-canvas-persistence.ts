@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useDocumentBackendSync } from '@/entities/document/api/use-document-backend-sync';
-import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useStudioPipelinePublications } from '@/modules/executable-pipelines/adapters/studio/use-studio-pipeline-publications';
@@ -18,10 +17,6 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
   projectId?: string;
 }) {
   const didInitialFitRef = useRef(false);
-  const didApplyRestoredViewportRef = useRef(false);
-  const hasRestoredViewport = graph.uiState.viewport.x !== DEFAULT_PROJECT_VIEWPORT.x
-    || graph.uiState.viewport.y !== DEFAULT_PROJECT_VIEWPORT.y
-    || graph.uiState.viewport.zoom !== DEFAULT_PROJECT_VIEWPORT.zoom;
   const subscribeToProjectChanges = useCallback((
     listener: (change?: { thumbnailRelevant?: boolean }) => void,
   ) => useProductionGraphStore.subscribe((state, previous) => {
@@ -54,19 +49,27 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
     exportSnapshot: graph.exportProjectSnapshot,
     projectId,
   });
+  const documentPhase = documentSync.syncState.phase;
+  const zoomToBounds = canvas.zoomToBounds;
 
   useEffect(() => {
-    if (!hasRestoredViewport || didApplyRestoredViewportRef.current) return;
-    didApplyRestoredViewportRef.current = true;
-    canvas.setPan({ x: graph.uiState.viewport.x, y: graph.uiState.viewport.y });
-    canvas.setZoom(graph.uiState.viewport.zoom);
-  }, [canvas, graph.uiState.viewport.x, graph.uiState.viewport.y,
-    graph.uiState.viewport.zoom, hasRestoredViewport]);
-  useEffect(() => {
-    if (hasRestoredViewport || didInitialFitRef.current || graph.nodes.length === 0) return;
-    didInitialFitRef.current = true;
-    window.requestAnimationFrame(() => canvas.zoomToBounds(graph.bounds, 64));
-  }, [canvas, graph.bounds, graph.nodes.length, hasRestoredViewport]);
+    if (documentPhase === 'loading') {
+      didInitialFitRef.current = false;
+      return undefined;
+    }
+    const documentReady = !projectId
+      || documentPhase === 'saved'
+      || documentPhase === 'recovery';
+    const hasCanvasContent = graph.nodes.length > 0 || graph.sections.length > 0;
+    if (!documentReady || !hasCanvasContent || didInitialFitRef.current) return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      didInitialFitRef.current = true;
+      zoomToBounds(graph.bounds);
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [documentPhase, graph.bounds, graph.nodes.length,
+    graph.sections.length, projectId, zoomToBounds]);
   useEffect(() => {
     const viewport = { x: canvas.pan.x, y: canvas.pan.y, zoom: canvas.zoom };
     const timeoutId = window.setTimeout(() => graph.setProjectUiViewport(viewport), 150);

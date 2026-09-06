@@ -3,6 +3,7 @@ import {
   failGenerationJob,
   startGenerationJob,
   succeedGenerationJob,
+  type CreateGenerationJobInput,
 } from '@/entities/generation/server/generation-orchestrator';
 import type {
   ProviderExecuteRequest,
@@ -25,6 +26,7 @@ import {
 } from './short-ai-result-store';
 
 export function executeInternalOpenRouterChat<T>(input: {
+  runtimeAttribution?: CreateGenerationJobInput['runtimeAttribution'];
   actorUserId: string;
   documentId?: string;
   idempotencyKey: string;
@@ -45,6 +47,7 @@ export function executeInternalOpenRouterChat<T>(input: {
       documentId: input.documentId,
       idempotencyKey: input.idempotencyKey,
       metadata: input.metadata,
+      runtimeAttribution: input.runtimeAttribution,
       workspaceId: input.workspaceId,
     },
     providerRequest: input.providerRequest,

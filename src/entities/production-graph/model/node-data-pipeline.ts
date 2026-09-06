@@ -1,13 +1,18 @@
 import type { BaseNodeData } from './node-data-image';
-import type { PipelineContractField } from './pipeline-contract-fields';
+import type {
+  PipelineContractField,
+  PipelineSemanticContractSnapshot,
+} from './pipeline-contract-fields';
 import type { TextGenerationReasoning } from './node-data-text';
 
 export interface PipelineInputNodeData extends BaseNodeData {
   fields: PipelineContractField[];
+  semanticContract?: PipelineSemanticContractSnapshot;
 }
 
 export interface PipelineOutputNodeData extends BaseNodeData {
   fields: PipelineContractField[];
+  semanticContract?: PipelineSemanticContractSnapshot;
 }
 
 export interface StructuredOutputNodeData extends BaseNodeData {

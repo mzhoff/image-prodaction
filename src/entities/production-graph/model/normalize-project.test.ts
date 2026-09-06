@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import { normalizeProject } from './normalize-project.ts';
+import type { TextPromptNodeData } from './types';
 
 const textSourceA = {
   id: 'source-a',
@@ -222,6 +223,58 @@ test('normalizeProject keeps one edge per prompt variable slot', () => {
   assert.equal(project.edges.length, 1);
   assert.equal(project.edges[0].sourceNodeId, 'source-a');
   assert.equal(project.edges[0].targetPortId, 'variable-0');
+});
+
+test('normalizeProject makes an existing Pipeline Input binding explicit without duplicating it', () => {
+  const project = normalizeProject({
+    version: 1,
+    nodes: [{
+      id: 'pipeline-input',
+      type: 'pipelineInput',
+      position: { x: 0, y: 0 },
+      size: { width: 300, height: 200 },
+      status: 'idle',
+      data: {
+        title: 'Pipeline Input',
+        fields: [{ id: 'article-field', key: 'articleSummary', kind: 'text', required: true }],
+      },
+    }, {
+      id: 'article-prompt',
+      type: 'textPrompt',
+      position: { x: 400, y: 0 },
+      size: { width: 300, height: 360 },
+      status: 'idle',
+      data: {
+        title: 'Article prompt',
+        text: 'Create a cover from this article.',
+        result: '',
+        variables: [{ id: 'variable-0', alias: 'Variable 1' }],
+      },
+    }] as never,
+    edges: [{
+      id: 'article-edge',
+      sourceNodeId: 'pipeline-input',
+      sourcePortId: 'field:article-field',
+      targetNodeId: 'article-prompt',
+      targetPortId: 'variable-0',
+    }],
+    sections: [],
+    assets: [],
+    presets: [],
+    subjects: [],
+    locations: [],
+    publications: [],
+    runs: [],
+    selectedNodeIds: [],
+    selectedSectionIds: [],
+  });
+  const normalizedAgain = normalizeProject(project);
+  const prompt = normalizedAgain.nodes.find((node) => node.id === 'article-prompt');
+
+  assert.equal(
+    (prompt?.data as TextPromptNodeData | undefined)?.text,
+    'Create a cover from this article.\n\n@Variable 1',
+  );
 });
 
 test('normalizeProject migrates legacy export image target image port to image-0 and compacts duplicates', () => {

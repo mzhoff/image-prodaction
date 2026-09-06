@@ -28,14 +28,14 @@
 | Type | Label | Для чего нужна | Доступность | Execution |
 | --- | --- | --- | --- | --- |
 | `importImage` | Import image | Добавляет загруженное изображение как исходный asset. | addable | boundary |
-| `textPrompt` | Text prompt | Хранит текст или шаблон с подключаемыми `@Alias`. | addable | server |
+| `textPrompt` | Text prompt | Собирает текстовый шаблон и подставляет локальные или внешние значения в именованные `@Alias`. | addable | server |
 | `textConcat` | Text concat | Склеивает тексты; prefix пока учитывает server runtime, но не Studio preview. | addable | server |
 | `textGeneration` | Text generation | Преобразует текст AI-моделью по постоянной instruction. | addable | server |
 | `textToSpeech` | Text to speech | Генерирует голосовую дорожку из текста. | addable | canvas-only |
 | `textFormatter` | Formatter | Редактирует и форматирует текст по preset. | addable | server |
 | `textSplitter` | Text splitter | Разбивает текст на коллекцию и отдельные элементы. | addable | server |
-| `pipelineInput` | Pipeline input | Объявляет типизированные внешние параметры pipeline. | addable | boundary |
-| `pipelineOutput` | Pipeline output | Объявляет типизированные публичные результаты pipeline. | addable | boundary |
+| `pipelineInput` | Pipeline input | Объявляет типизированные внешние параметры; text-поле можно явно вставить в Text prompt как `@fieldKey`. | addable | boundary |
+| `pipelineOutput` | Pipeline output | Объявляет типизированные публичные результаты, включая финальный image artifact после Export. | addable | boundary |
 | `structuredOutput` | Structured output | Преобразует контекст в проверенный JSON по схеме. | addable | server |
 | `router` | Router | Прозрачно передаёт значение через именованные порты. | addable | transparent |
 | `iterator` | Iterator | Выбирает текущий image/text элемент коллекции. | addable | canvas-only |
@@ -54,9 +54,22 @@
 | `frequencyRetouch` | Frequency retouch | Сглаживает тон, сохраняя текстуру через WebGL. | addable | canvas-only |
 | `refineImage` | Refine / Enhance | Generative refine улучшает или очищает изображение. | addable | canvas-only |
 | `removeBackground` | Remove BG | Удаляет фон и возвращает PNG с прозрачностью. | addable | canvas-only |
-| `exportImage` | Export image | Экспортирует изображения через 1–10 входных слотов. | addable | server |
+| `exportImage` | Export image | Конвертирует 1–10 изображений; output `image` возвращает преобразованный первый вход. | addable | server |
 | `banner` | Banner | Организует canvas визуальным баннером без dataflow. | addable | canvas-only |
 | `preview` | Preview | Показывает terminal preview и служит image output boundary. | addable | boundary |
+
+## Критические правила связок
+
+- Для executable text-поля, которое нужно вставить в постоянную инструкцию:
+  `pipelineInput.field:<id> -> textPrompt.variable-N -> textPrompt.text`.
+  В шаблоне используется `@fieldKey`. Canvas показывает имя source даже когда
+  runtime value ещё не известен; значение подставляется при запуске.
+- Прямая связь `pipelineInput.field:<id>` с обычным text-входом означает, что
+  внешнее значение является всем входом, без постоянного текста вокруг него.
+- Для изображения, которое нужно конвертировать до публичного результата:
+  `producer.image -> exportImage.image-0 -> exportImage.image ->
+  pipelineOutput.field:<id>`. Выход Export — преобразованный первый image, а не
+  исходник; batch не имеет отдельного collection-порта на canvas.
 
 ## QA каждой ноды
 

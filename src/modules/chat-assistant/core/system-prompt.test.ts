@@ -33,6 +33,7 @@ test('prepares one safe UI proposal without a textual confirmation loop', () => 
   assert.match(prompt, /Не встраивай изменяемые пользовательские данные в textGeneration\.instruction/u);
   assert.match(prompt, /локально редактируемом графе.*textPrompt.*исполняемого endpoint.*pipelineInput/u);
   assert.match(prompt, /textPrompt\.text -> textGeneration\.text/u);
+  assert.match(prompt, /pipelineInput.*field:<id>.*textPrompt variable-N.*field\.key.*@Alias/u);
   assert.match(prompt, /textConcat.*text-0.*text-1.*text-2/u);
   assert.match(prompt, /settings\.variables.*variable-0.*@Alias/u);
   assert.match(prompt, /textPrompt\.text.*потребителю/u);
@@ -48,6 +49,7 @@ test('prepares one safe UI proposal without a textual confirmation loop', () => 
   assert.match(prompt, /linear gradient.*color stops/u);
   assert.match(prompt, /не больше 24 нод\/слоёв/u);
   assert.match(prompt, /generateImage\.image.*compositionBlueprints.*не угадывай layer-N/u);
+  assert.match(prompt, /exportImage\.image-0.*exportImage\.image.*pipelineOutput\.field:<id>/u);
   assert.match(prompt, /design_element_selection.*выбор не изменяет граф/iu);
   assert.match(prompt, /частью одного ответа.*не говори «подожди».*«дождись выбора»/iu);
   assert.match(prompt, /дождись структурированного выбора пользователя.*selectedElements\.referenceFrame.*CompositionBlueprint\.frame/u);

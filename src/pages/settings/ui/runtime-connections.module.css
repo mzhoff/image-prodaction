@@ -1,0 +1,53 @@
+.section { display: grid; gap: 18px; }
+.section > :global(.settings-section-head) { margin-bottom: 0; }
+.section :global(.settings-card + .settings-card) { margin-top: 0; }
+.stack { display: grid; min-width: 0; gap: 18px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cardHeader { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; }
+.cardHeader > div { min-width: 0; }
+.cardHeader h4, .nestedForm h4 { margin: 0; font-size: 14px; }
+.muted { margin: 6px 0 0; color: #74747e; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.selectLabel { display: grid; min-width: 0; gap: 8px; color: #3d3d43; font-size: 13px; font-weight: 620; }
+.selectLabel select { width: 100%; min-height: 42px; border: 1px solid #dedee4; border-radius: 11px; padding: 9px 12px; background: #fbfbfc; color: #171719; font: inherit; }
+.selectLabel select:disabled { opacity: .65; cursor: not-allowed; }
+.selectLabel select:focus-visible, .diagnostics summary:focus-visible, .secret input:focus-visible { outline: 3px solid rgba(82, 53, 239, .22); outline-offset: 2px; }
+.selectLabel small { color: #85858e; font-size: 11px; font-weight: 400; line-height: 1.5; }
+.scopes { display: grid; min-width: 0; gap: 8px; padding: 0; border: 0; }
+.scopes legend { padding: 0 0 10px; color: #3d3d43; font-size: 13px; font-weight: 620; }
+.scopes :global(.settings-checkbox) { align-items: flex-start; }
+.scopes :global(.settings-checkbox) > span { font-size: 12px; font-weight: 500; }
+.callout, .update { padding: 13px 15px; border: 1px solid #ded8fa; border-radius: 12px; background: #f8f6ff; color: #524293; font-size: 12px; line-height: 1.6; }
+.callout { margin: 0; }
+.update p { margin: 8px 0; }
+.diagnostics { min-width: 0; padding-top: 10px; border-top: 1px solid #ececef; color: #74747e; font-size: 11px; }
+.diagnostics summary { cursor: pointer; padding: 5px 0; color: #585360; font-size: 12px; }
+.diagnostics dl { display: grid; grid-template-columns: minmax(90px, auto) minmax(0, 1fr); gap: 8px 12px; margin: 14px 0; }
+.diagnostics dt { color: #74747e; }
+.diagnostics dd { min-width: 0; margin: 0; color: #47444f; overflow-wrap: anywhere; user-select: text; }
+.diagnostics p { overflow-wrap: anywhere; line-height: 1.6; }
+.diagnostics ul { padding-left: 18px; line-height: 1.9; }
+.list { list-style: none; padding: 0; margin: 0; }
+.listItem { display: grid; min-width: 0; gap: 8px; padding: 15px 0; border-top: 1px solid #ececef; }
+.listItem:first-child { border-top: 0; padding-top: 0; }
+.listItem strong { font-size: 13px; }
+.secret { display: grid; gap: 12px; border: 1px solid #c8e5d5; border-radius: 14px; padding: 16px; background: #f2faf6; color: #276447; }
+.secret strong { font-size: 14px; }
+.secret p { margin: 0; font-size: 12px; line-height: 1.6; }
+.secret label { display: grid; gap: 8px; font-size: 12px; }
+.secret input { width: 100%; min-width: 0; min-height: 42px; border: 1px solid #c8d7cf; border-radius: 9px; background: #fff; color: #171719; padding: 10px; font: 12px monospace; user-select: text; }
+.nestedForm { min-width: 0; border-top: 1px solid #ececef; padding-top: 18px; }
+.referenceRow { display: grid; align-items: end; gap: 10px; grid-template-columns: minmax(0, 1fr) auto; }
+.grant { display: grid; min-width: 0; gap: 12px; border: 1px solid #e7e7eb; border-radius: 12px; padding: 16px; }
+.jsonInput { resize: vertical; min-height: 140px; width: 100%; border: 1px solid #dedee4; border-radius: 10px; padding: 12px; background: #fbfbfc; color: #171719; font: 12px/1.6 monospace; user-select: text; }
+.jsonInput:focus-visible { outline: 3px solid rgba(82, 53, 239, .22); outline-offset: 2px; }
+.result { min-width: 0; display: grid; gap: 8px; }
+.textResult { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border-radius: 10px; background: #f5f5f7; color: #33313a; font: 12px/1.7 monospace; user-select: text; }
+.preview { margin: 0; }
+.preview img { width: 100%; height: auto; border-radius: 10px; }
+.preview figcaption { padding-top: 8px; font-size: 12px; }
+@media (max-width: 600px) {
+  .cardHeader { flex-wrap: wrap; }
+  .referenceRow { grid-template-columns: minmax(0, 1fr); }
+  .diagnostics dl { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .diagnostics dd { margin-bottom: 7px; }
+}

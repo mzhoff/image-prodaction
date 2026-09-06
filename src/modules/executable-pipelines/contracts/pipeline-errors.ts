@@ -1,4 +1,7 @@
 export type PipelineErrorCode =
+  | 'cost_estimate_unavailable'
+  | 'cost_limit_exceeded'
+  | 'cost_enforcement_unsupported'
   | 'pipeline_aborted'
   | 'pipeline_cycle_detected'
   | 'pipeline_definition_invalid'

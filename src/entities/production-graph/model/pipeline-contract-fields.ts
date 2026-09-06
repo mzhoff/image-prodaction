@@ -1,4 +1,5 @@
 import { createId } from '@/shared/lib/id';
+import type { SemanticContractSnapshot, SemanticJsonSchema } from '@/shared/contracts/semantic-contract';
 
 export const PIPELINE_CONTRACT_FIELD_KINDS = ['text', 'number', 'boolean', 'image', 'json'] as const;
 export type PipelineContractFieldKind = (typeof PIPELINE_CONTRACT_FIELD_KINDS)[number];
@@ -20,6 +21,8 @@ export interface PipelineContractField {
   kind: PipelineContractFieldKind;
   required: boolean;
 }
+
+export type PipelineSemanticContractSnapshot = SemanticContractSnapshot;
 
 export const PIPELINE_CONTRACT_MAX_DEPTH = 3;
 export const PIPELINE_CONTRACT_MAX_FIELDS = 24;
@@ -111,6 +114,28 @@ export function normalizePipelineContractFields(
   });
 }
 
+export function normalizePipelineSemanticContractSnapshot(
+  value: unknown,
+): PipelineSemanticContractSnapshot | undefined {
+  if (!isRecord(value)) return undefined;
+  const contractKey = normalizeContractIdentifier(value.contractKey, 120);
+  const contractVersion = normalizeContractIdentifier(value.contractVersion, 64);
+  const contractRef = typeof value.contractRef === 'string' ? value.contractRef.trim() : '';
+  const schemaChecksum = typeof value.schemaChecksum === 'string'
+    ? value.schemaChecksum.trim().toLowerCase()
+    : '';
+  if (!contractKey || !contractVersion || !contractRef || contractRef.length > 500) return undefined;
+  if (!/^[a-f0-9]{64}$/.test(schemaChecksum) || !isPipelineContractValue(value.schema)) return undefined;
+  if (JSON.stringify(value.schema).length > 65_536) return undefined;
+  return {
+    contractKey,
+    contractRef,
+    contractVersion,
+    schema: structuredClone(value.schema) as unknown as SemanticJsonSchema,
+    schemaChecksum,
+  };
+}
+
 export function isPipelineContractValue(value: unknown): value is PipelineContractValue {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return true;
@@ -121,6 +146,14 @@ export function isPipelineContractValue(value: unknown): value is PipelineContra
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeContractIdentifier(value: unknown, maxLength: number) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(normalized) && normalized.length <= maxLength
+    ? normalized
+    : '';
 }
 
 function validateFieldArray(

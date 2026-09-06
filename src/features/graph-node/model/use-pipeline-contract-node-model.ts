@@ -9,6 +9,10 @@ import type {
   StructuredOutputNodeData,
 } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import {
+  getPipelineSemanticContractPreset,
+  getPipelineSemanticContractPresets,
+} from '@/entities/production-graph/model/pipeline-semantic-contract-presets';
 
 type PipelineContractNodeData =
   | PipelineInputNodeData
@@ -17,6 +21,9 @@ type PipelineContractNodeData =
 
 export function usePipelineContractNodeModel(node: ProductionNode) {
   const data = node.data as PipelineContractNodeData;
+  const applyPipelineSemanticContractPreset = useProductionGraphStore(
+    (state) => state.applyPipelineSemanticContractPreset,
+  );
   const updatePipelineContractFields = useProductionGraphStore((state) => state.updatePipelineContractFields);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const [message, setMessage] = useState('');
@@ -34,11 +41,43 @@ export function usePipelineContractNodeModel(node: ProductionNode) {
     updateNodeData(node.id, { schemaName: nextSchemaName });
   }, [node, updateNodeData]);
 
+  const boundary = node.type === 'pipelineInput'
+    ? 'input'
+    : node.type === 'pipelineOutput'
+      ? 'output'
+      : undefined;
+  const semanticContract = boundary ? (data as PipelineInputNodeData | PipelineOutputNodeData).semanticContract : undefined;
+  const semanticContractPresets = boundary ? getPipelineSemanticContractPresets(boundary) : [];
+
+  const handleSemanticContractPresetChange = useCallback((contractKey: string) => {
+    if (!boundary) return;
+    if (!contractKey) {
+      updateNodeData(node.id, { semanticContract: undefined });
+      setMessage('');
+      return;
+    }
+    const preset = getPipelineSemanticContractPreset(contractKey);
+    if (!preset || preset.boundary !== boundary) return;
+    const result = applyPipelineSemanticContractPreset(
+      node.id,
+      preset.fields,
+      preset.semanticContract,
+    );
+    if (!result.ok) {
+      setMessage(result.reason);
+      return;
+    }
+    setMessage('');
+  }, [applyPipelineSemanticContractPreset, boundary, node.id, updateNodeData]);
+
   return {
     data,
     fields: data.fields,
     handleFieldsChange,
     handleSchemaNameChange,
+    handleSemanticContractPresetChange,
     message,
+    semanticContract,
+    semanticContractPresets,
   };
 }

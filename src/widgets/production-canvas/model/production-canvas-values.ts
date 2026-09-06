@@ -1,5 +1,9 @@
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
-import { FAVORITE_NODE_DRAG_MIME_TYPE, NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
+import {
+  FAVORITE_NODE_DRAG_MIME_TYPE,
+  NODE_DRAG_MIME_TYPE,
+  NODE_TEMPLATE_DRAG_MIME_TYPE,
+} from '../lib/node-drag';
 
 export type CanvasTool = 'select' | 'section';
 
@@ -18,6 +22,14 @@ export function getDraggedFavoriteNodeId(dataTransfer: DataTransfer) {
 
 export function hasDraggedFavoriteNode(dataTransfer: DataTransfer) {
   return Array.from(dataTransfer.types).includes(FAVORITE_NODE_DRAG_MIME_TYPE);
+}
+
+export function getDraggedNodeTemplateId(dataTransfer: DataTransfer) {
+  return dataTransfer.getData(NODE_TEMPLATE_DRAG_MIME_TYPE) || null;
+}
+
+export function hasDraggedNodeTemplate(dataTransfer: DataTransfer) {
+  return Array.from(dataTransfer.types).includes(NODE_TEMPLATE_DRAG_MIME_TYPE);
 }
 
 export function hasClearableGenerationData(node: ProductionNode) {

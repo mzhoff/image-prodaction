@@ -4,6 +4,7 @@ import {
   type ProviderUsage,
 } from '@/modules/provider-connections';
 import { recordUsageEvent } from '@/modules/usage';
+import { normalizeProviderCostUsd } from '@/shared/lib/provider-cost-decimal';
 import { GenerationExecutionError } from './generation-worker';
 import type { getGenerationExecutionRecord } from './generation-execution-repository';
 
@@ -16,7 +17,7 @@ export function toGenerationUsageFromProviderUsage(usage: ProviderUsage) {
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     totalTokens: usage.totalTokens,
-    providerCostUsd: usage.providerCostUsd,
+    providerCostUsd: normalizeProviderCostUsd(usage.providerCostUsd),
     internalCreditsCharged: null,
     internalCreditsBalanceAfter: null,
   };
@@ -41,7 +42,7 @@ export function usageMissingFromJobLedger(
     inputTokens: job.inputTokens === null ? result.usage.inputTokens : null,
     outputTokens: job.outputTokens === null ? result.usage.outputTokens : null,
     totalTokens: job.totalTokens === null ? result.usage.totalTokens : null,
-    providerCostUsd: job.providerCostUsd === null ? result.usage.providerCostUsd : null,
+    providerCostUsd: job.providerCostUsd === null ? normalizeProviderCostUsd(result.usage.providerCostUsd) : null,
     internalCreditsCharged: null,
     internalCreditsBalanceAfter: null,
   };

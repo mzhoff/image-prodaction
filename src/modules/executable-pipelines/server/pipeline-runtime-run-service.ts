@@ -32,6 +32,7 @@ export async function submitPipelineRuntimeRun(input: {
   validatePipelineInputValues(
     input.target.compiledPlan.definition.inputs,
     input.pipelineInput,
+    input.target.compiledPlan.definition.inputSemanticContract,
   );
 
   return createPipelineRun({

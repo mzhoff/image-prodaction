@@ -5,6 +5,9 @@
 Каноническая платформенная архитектура хранится в центральном репозитории
 Ludimogut: docs/product-platform-architecture.md.
 
+Связанный proposed ADR для потребителей Runtime API:
+[API-first integration and a thin consumer SDK](./runtime-api-consumer-sdk-adr.md).
+
 ## 1. Роль продукта
 
 Image Production остается самостоятельной визуальной производственной студией:

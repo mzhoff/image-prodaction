@@ -1,16 +1,4 @@
-import {
-  boolean,
-  index,
-  integer,
-  jsonb,
-  numeric,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import type {
   CompiledPipelinePlan,
   PipelineInputs,
@@ -18,6 +6,7 @@ import type {
 } from '../../contracts/pipeline-contracts';
 import type { StudioPipelineSourceMetadata } from '../../contracts/pipeline-publication-contracts';
 import type { PipelineConsumerExecutionPolicy } from '../../contracts/pipeline-consumer-contracts';
+import type { RuntimeV2RunSnapshot } from '../../contracts/runtime-v2-run-contracts';
 import { user } from '@/shared/db/schema/auth';
 import { document } from '@/shared/db/schema/document';
 import { workspace } from '@/shared/db/schema/workspace';
@@ -201,6 +190,13 @@ export const pipelineRun = pgTable('pipeline_run', {
     .references(() => pipelineConsumer.id, { onDelete: 'restrict' }),
   apiKeyId: uuid('api_key_id')
     .references(() => pipelineApiKey.id, { onDelete: 'set null' }),
+  // Nullable v2 attribution preserves legacy runs. Cross-schema FKs are added
+  // explicitly by the additive migration to avoid a schema import cycle.
+  runtimeServiceClientId: uuid('runtime_service_client_id'),
+  runtimeCredentialId: uuid('runtime_credential_id'),
+  runtimeGrantId: uuid('runtime_grant_id'),
+  grantRevision: integer('grant_revision'),
+  runtimeSnapshot: jsonb('runtime_snapshot').$type<RuntimeV2RunSnapshot>(),
   sourceApplication: text('source_application').notNull(),
   initiatorType: text('initiator_type').default('service').notNull(),
   initiatorId: text('initiator_id'),
@@ -234,6 +230,11 @@ export const pipelineRun = pgTable('pipeline_run', {
   uniqueIndex('pipeline_run_pipeline_source_idempotency_unique').on(
     table.pipelineId,
     table.sourceApplication,
+    table.idempotencyKey,
+  ),
+  uniqueIndex('pipeline_run_runtime_client_grant_idempotency_unique').on(
+    table.runtimeServiceClientId,
+    table.runtimeGrantId,
     table.idempotencyKey,
   ),
   index('pipeline_run_claim_idx').on(

@@ -9,6 +9,7 @@ import {
 } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { pipelineRun } from './pipeline-schema';
+import { refreshRuntimeUsageIfPresent } from '../../server/runtime-usage-service';
 
 export async function findPipelineRunByIdempotency(
   pipelineId: string,
@@ -16,6 +17,7 @@ export async function findPipelineRunByIdempotency(
   idempotencyKey: string,
 ) {
   const [record] = await getDb().select().from(pipelineRun).where(and(
+    isNull(pipelineRun.runtimeServiceClientId),
     eq(pipelineRun.pipelineId, pipelineId),
     eq(pipelineRun.sourceApplication, sourceApplication),
     eq(pipelineRun.idempotencyKey, idempotencyKey),
@@ -44,6 +46,7 @@ export async function cancelOwnedPipelineRun(
     eq(pipelineRun.attemptCount, attemptCount),
     isNotNull(pipelineRun.cancelRequestedAt),
   )).returning({ id: pipelineRun.id });
+  if (canceled) await getDb().transaction((tx) => refreshRuntimeUsageIfPresent(tx, runId));
   return Boolean(canceled);
 }
 
@@ -51,7 +54,7 @@ export async function closeExpiredPipelineRuns(
   transaction: Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0],
   at: Date,
 ) {
-  await transaction.update(pipelineRun).set({
+  const canceled = await transaction.update(pipelineRun).set({
     status: 'canceled',
     retryable: false,
     leaseExpiresAt: null,
@@ -62,9 +65,9 @@ export async function closeExpiredPipelineRuns(
     eq(pipelineRun.status, 'running'),
     isNotNull(pipelineRun.cancelRequestedAt),
     or(isNull(pipelineRun.leaseExpiresAt), lte(pipelineRun.leaseExpiresAt, at)),
-  ));
+  )).returning({ id: pipelineRun.id });
 
-  await transaction.update(pipelineRun).set({
+  const failed = await transaction.update(pipelineRun).set({
     status: 'failed',
     retryable: false,
     errorCode: 'pipeline_max_attempts_exhausted',
@@ -78,5 +81,6 @@ export async function closeExpiredPipelineRuns(
     isNull(pipelineRun.cancelRequestedAt),
     sql`${pipelineRun.attemptCount} >= ${pipelineRun.maxAttempts}`,
     or(isNull(pipelineRun.leaseExpiresAt), lte(pipelineRun.leaseExpiresAt, at)),
-  ));
+  )).returning({ id: pipelineRun.id });
+  for (const run of [...canceled, ...failed]) await refreshRuntimeUsageIfPresent(transaction, run.id);
 }

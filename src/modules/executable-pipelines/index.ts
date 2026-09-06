@@ -36,6 +36,10 @@ export type {
   StudioPipelinePublication,
   StudioPipelineSourceMetadata,
 } from './contracts/pipeline-publication-contracts';
+export type {
+  PipelineRuntimeDescriptor,
+  PipelineRuntimeRun,
+} from './contracts/pipeline-runtime-contracts';
 export {
   PipelineDomainError,
   PipelineNodeHandlerError,

@@ -1,0 +1,12 @@
+services:
+  web:
+    networks:
+      default: {}
+      prodaction-services-local:
+        aliases:
+          - image-production-api
+
+networks:
+  prodaction-services-local:
+    external: true
+    name: prodaction-services-local

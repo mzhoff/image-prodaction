@@ -380,6 +380,86 @@ test('export image node allows multiple image edges each on its own dynamic port
   assert.equal(second.targetPortId, 'image-1');
 });
 
+test('connecting a new Export source invalidates its previously transformed output', () => {
+  resetState({
+    nodes: [
+      imageSourceA,
+      {
+        ...exportImageTarget,
+        status: 'success',
+        data: {
+          ...exportImageTarget.data,
+          resultAssetId: 'asset-old-export',
+          resultSignature: 'asset-old:png:90:1:transparent',
+          sourceAssetId: 'asset-old',
+        },
+      },
+    ],
+  });
+
+  const result = useProductionGraphStore.getState().connect(
+    'image-source-a',
+    'image',
+    'export-target',
+    'image-0',
+  );
+
+  assert.equal(result.ok, true);
+  const updated = useProductionGraphStore.getState().nodes.find((node) => node.id === 'export-target');
+  assert.ok(updated);
+  assert.equal((updated.data as { resultAssetId?: string }).resultAssetId, undefined);
+  assert.equal((updated.data as { resultSignature?: string }).resultSignature, undefined);
+  assert.equal((updated.data as { sourceAssetId?: string }).sourceAssetId, undefined);
+  assert.equal(updated.status, 'idle');
+});
+
+test('moving an edge away invalidates the previous Export output', () => {
+  const previousExport: ProductionNode = {
+    ...exportImageTarget,
+    status: 'success',
+    data: {
+      ...exportImageTarget.data,
+      resultAssetId: 'asset-old-export',
+      resultSignature: 'asset-a:png:90:1:transparent',
+      sourceAssetId: 'asset-a',
+    },
+  };
+  const nextExport: ProductionNode = {
+    ...exportImageTarget,
+    id: 'export-target-next',
+    data: { ...exportImageTarget.data, title: 'Next Export' },
+  };
+  const detachedEdge: GraphEdge = {
+    id: 'edge-to-move',
+    sourceNodeId: imageSourceA.id,
+    sourcePortId: 'image',
+    targetNodeId: previousExport.id,
+    targetPortId: 'image-0',
+  };
+  resetState({
+    nodes: [imageSourceA, previousExport, nextExport],
+    edges: [detachedEdge],
+  });
+
+  const result = useProductionGraphStore.getState().connect(
+    imageSourceA.id,
+    'image',
+    nextExport.id,
+    'image-0',
+    { detachedEdge },
+  );
+
+  assert.equal(result.ok, true);
+  const state = useProductionGraphStore.getState();
+  assert.equal(state.edges[0]?.targetNodeId, nextExport.id);
+  const previous = state.nodes.find((node) => node.id === previousExport.id);
+  assert.ok(previous);
+  assert.equal((previous.data as { resultAssetId?: string }).resultAssetId, undefined);
+  assert.equal((previous.data as { resultSignature?: string }).resultSignature, undefined);
+  assert.equal((previous.data as { sourceAssetId?: string }).sourceAssetId, undefined);
+  assert.equal(previous.status, 'idle');
+});
+
 test('export image delete edge compacts dynamic ports and keeps image inputs aligned', () => {
   resetState({
     nodes: [
@@ -411,6 +491,11 @@ test('export image delete edge compacts dynamic ports and keeps image inputs ali
   assert.equal(firstEdge.targetPortId, 'image-0');
   assert.equal(secondEdge.targetPortId, 'image-1');
 
+  state.updateNodeDataSilent('export-target', {
+    resultAssetId: 'asset-current-export',
+    resultSignature: 'asset-a:png:90:1:transparent',
+    sourceAssetId: 'asset-a',
+  });
   state.deleteEdge(secondEdge.id, { preserveDynamicInputSlots: false });
 
   const rest = useProductionGraphStore.getState().edges;
@@ -421,6 +506,9 @@ test('export image delete edge compacts dynamic ports and keeps image inputs ali
   const updatedExportImage = useProductionGraphStore.getState().nodes.find((item) => item.id === 'export-target');
   assert.ok(updatedExportImage);
   assert.equal((updatedExportImage.data as { imageInputCount?: number }).imageInputCount, 2);
+  assert.equal((updatedExportImage.data as { resultAssetId?: string }).resultAssetId, undefined);
+  assert.equal((updatedExportImage.data as { resultSignature?: string }).resultSignature, undefined);
+  assert.equal((updatedExportImage.data as { sourceAssetId?: string }).sourceAssetId, undefined);
 });
 
 test('composition invalidates rendered result when image input edge changes', () => {

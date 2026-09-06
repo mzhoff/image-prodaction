@@ -71,6 +71,11 @@ Product-owned описания, возможности, ограничения �
 единый шаблон вопроса находятся в
 [`assistant-knowledge/node-catalog.md`](./assistant-knowledge/node-catalog.md).
 
+При изменении поведения, портов или settings ноды описание меняется в том же
+PR: live registry/runtime contract, `NODE_HELP_METADATA`, agent tool schema и
+system prompt, этот QA-индекс и focused tests должны снова описывать одну и ту
+же механику. Полный обязательный checklist закреплён в корневом `AGENTS.md`.
+
 ## Вертикальный сценарий: построить или улучшить пайплайн
 
 1. Пользователь описывает задачу обычным текстом.

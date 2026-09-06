@@ -8,12 +8,17 @@ import type {
   ExportImageScale,
   ProductionNode,
 } from '@/entities/production-graph/model/types';
+import { getExportImageInputPortIndex } from '@/entities/production-graph/model/node-definitions';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveSavedImageAsset } from '@/entities/production-graph/lib/asset-db';
-import { getIncomingImageCollectionInputs } from '@/entities/production-graph/model/graph-io';
+import {
+  getFirstIncomingImageAsset,
+  getIncomingImageCollectionInputs,
+} from '@/entities/production-graph/model/graph-io';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import { createZipBlob } from '@/shared/lib/zip-file';
 import { exportImageBlob, getExportFileName } from '../lib/export-image';
+import { useExportImageOutput } from './use-export-image-output';
 
 export const exportFormatOptions: DarkSelectOption[] = [
   { value: 'png', label: 'PNG' },
@@ -46,7 +51,6 @@ const opaqueBackgroundOptions = exportBackgroundOptions.filter((option) => optio
 
 export function useExportImageNodeModel(node: ProductionNode) {
   const data = node.data as ExportImageNodeData;
-  const [activeIndex, setActiveIndex] = useState(0);
   const [message, setMessage] = useState('');
   const [exporting, setExporting] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
@@ -58,38 +62,56 @@ export function useExportImageNodeModel(node: ProductionNode) {
   const sourceItems = useMemo(() => (
     getIncomingImageCollectionInputs(node.id, undefined, { edges, nodes, assets })
       .sort((first, second) => {
-        const firstY = first.sourceNode.position.y;
-        const secondY = second.sourceNode.position.y;
-        if (firstY !== secondY) return firstY - secondY;
-        if (first.sourceNode.position.x !== second.sourceNode.position.x) {
-          return first.sourceNode.position.x - second.sourceNode.position.x;
-        }
+        const firstPortIndex = getExportImageInputPortIndex(first.targetPortId);
+        const secondPortIndex = getExportImageInputPortIndex(second.targetPortId);
+        if (firstPortIndex !== secondPortIndex) return firstPortIndex - secondPortIndex;
         return (first.collectionIndex ?? 0) - (second.collectionIndex ?? 0);
       })
   ), [assets, edges, node.id, nodes]);
-  const safeActiveIndex = getSafeIndex(activeIndex, sourceItems.length);
-  const activeSourceItem = sourceItems[safeActiveIndex];
-  const sourceAsset = activeSourceItem?.asset;
-  const sourceAssetIds = useMemo(() => sourceItems.map((item) => item.assetId), [sourceItems]);
+  const primaryInputPortId = sourceItems[0]?.targetPortId;
+  const primarySourceAsset = useMemo(() => (
+    primaryInputPortId
+      ? getFirstIncomingImageAsset(node.id, primaryInputPortId, { edges, nodes, assets })
+      : undefined
+  ), [assets, edges, node.id, nodes, primaryInputPortId]);
+  const activeSourceItem = sourceItems.find((item) => item.assetId === primarySourceAsset?.id)
+    ?? sourceItems[0];
+  const sourceAsset = primarySourceAsset;
+  const output = useExportImageOutput(node.id, data, primarySourceAsset);
 
   const handleFormatChange = useCallback((format: string) => {
     const nextFormat = format as ExportImageFormat;
     updateNodeData(node.id, {
       format: nextFormat,
       ...(nextFormat === 'jpeg' && data.background === 'transparent' ? { background: 'white' as const } : {}),
+      resultAssetId: undefined,
+      resultSignature: undefined,
+      sourceAssetId: undefined,
     });
   }, [data.background, node.id, updateNodeData]);
 
   const handleQualityChange = useCallback((quality: string) => {
-    updateNodeData(node.id, { quality });
+    updateNodeData(node.id, {
+      quality, resultAssetId: undefined, resultSignature: undefined, sourceAssetId: undefined,
+    });
   }, [node.id, updateNodeData]);
 
   const handleScaleChange = useCallback((scale: string) => {
-    updateNodeData(node.id, { scale: scale as ExportImageScale });
+    updateNodeData(node.id, {
+      scale: scale as ExportImageScale,
+      resultAssetId: undefined,
+      resultSignature: undefined,
+      sourceAssetId: undefined,
+    });
   }, [node.id, updateNodeData]);
 
   const handleBackgroundChange = useCallback((background: string) => {
-    updateNodeData(node.id, { background: background as ExportImageBackground });
+    updateNodeData(node.id, {
+      background: background as ExportImageBackground,
+      resultAssetId: undefined,
+      resultSignature: undefined,
+      sourceAssetId: undefined,
+    });
   }, [node.id, updateNodeData]);
 
   const handleDownload = useCallback(async () => {
@@ -180,10 +202,10 @@ export function useExportImageNodeModel(node: ProductionNode) {
   ]);
 
   return {
-    activeIndex: safeActiveIndex,
     activeSourceItem,
     backgroundOptions: data.format === 'jpeg' ? opaqueBackgroundOptions : exportBackgroundOptions,
     data,
+    outputAssetId: output.resultAsset?.id,
     downloadLabel: sourceItems.length > 1 ? 'Download ZIP' : 'Download',
     exporting,
     handleBackgroundChange,
@@ -192,12 +214,10 @@ export function useExportImageNodeModel(node: ProductionNode) {
     handleQualityChange,
     handleSaveToLibrary,
     handleScaleChange,
-    message,
+    message: message || output.message,
     savingToLibrary,
     sourceAsset,
-    sourceAssetIds,
     sourceCount: sourceItems.length,
-    setActiveIndex,
   };
 }
 
@@ -210,11 +230,6 @@ function downloadBlob(blob: Blob, fileName: string) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-function getSafeIndex(index: number, length: number) {
-  if (length <= 0) return -1;
-  return Math.min(Math.max(index, 0), length - 1);
 }
 
 function getBatchExportFileName(sourceName: string | undefined, extension: string, index: number, total: number) {

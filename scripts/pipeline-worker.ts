@@ -107,7 +107,7 @@ async function updateHeartbeat(
     workerName,
     instanceId,
     status,
-    metadata,
+    metadata: { ...metadata, runtimeApiVersions: [1, 2] },
     startedAt,
     lastSeenAt: now,
   }).onConflictDoUpdate({
@@ -115,7 +115,7 @@ async function updateHeartbeat(
     set: {
       instanceId,
       status,
-      metadata,
+      metadata: { ...metadata, runtimeApiVersions: [1, 2] },
       startedAt,
       lastSeenAt: now,
     },

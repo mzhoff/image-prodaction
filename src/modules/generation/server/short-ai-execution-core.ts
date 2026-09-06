@@ -4,6 +4,7 @@ import type {
   ProviderResult,
 } from '@/modules/provider-connections';
 import { resolveRequestId } from '@/shared/api/request-id';
+import { PipelineDomainError } from '@/modules/executable-pipelines/contracts/pipeline-errors';
 import {
   ShortAiExecutionError,
   type ProviderCallResult,
@@ -60,6 +61,7 @@ export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: 
     idempotencyKey,
     maxAttempts: 1,
     metadata: input.scope.metadata ?? null,
+    runtimeAttribution: input.scope.runtimeAttribution,
     modelId: input.modelId,
     operation: input.operation,
     provider: 'openrouter',
@@ -104,6 +106,13 @@ export async function executeShortOpenRouterCallCore<TProvider, TResult>(input: 
     });
     return { job: { id: job.id }, result: transformed };
   } catch (error) {
+    if (error instanceof PipelineDomainError && !providerCallStarted) {
+      await dependencies.failJob({
+        attemptCount: started.attemptCount, jobId: job.id,
+        errorCode: error.code, errorMessage: error.message, retryable: false,
+      });
+      throw error;
+    }
     if (providerCallStarted && !callResult) {
       await markProviderUsedSafely(dependencies, credential.connection.id);
     }

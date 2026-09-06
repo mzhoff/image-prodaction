@@ -11,6 +11,7 @@ import type {
 import type { RecordUsageEventInput } from '@/modules/usage';
 
 export interface ShortAiScope {
+  runtimeAttribution?: CreateGenerationJobInput['runtimeAttribution'];
   documentId?: string;
   idempotencyKey?: string;
   metadata?: Record<string, unknown> | null;

@@ -15,6 +15,8 @@ import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
 import { usageEvent } from '@/shared/db/schema/usage';
 import { createUuidV7 } from '@/shared/lib/id';
+import { normalizeProviderCostUsd } from '@/shared/lib/provider-cost-decimal';
+import { lockRuntimeUsageRun, settleRuntimeUsageCall } from '@/modules/executable-pipelines/server/runtime-usage-service';
 
 export interface RecordUsageEventInput {
   attemptCount: number;
@@ -36,6 +38,7 @@ export async function recordUsageEvent(input: RecordUsageEventInput) {
       .where(eq(generationJob.id, input.generationJobId))
       .limit(1);
     if (!job) throw new Error('Generation job does not exist for usage event.');
+    if (job.pipelineRunId) await lockRuntimeUsageRun(transaction, job.pipelineRunId);
 
     const usageComplete = input.inputTokens !== null
       && input.outputTokens !== null
@@ -46,6 +49,11 @@ export async function recordUsageEvent(input: RecordUsageEventInput) {
       workspaceId: job.workspaceId,
       documentId: job.documentId,
       generationJobId: job.id,
+      pipelineRunId: job.pipelineRunId,
+      pipelineNodeRunId: job.pipelineNodeRunId,
+      serviceClientId: job.serviceClientId,
+      grantId: job.grantId,
+      capabilityKey: job.capabilityKey,
       createdByUserId: job.createdByUserId,
       provider: job.provider,
       providerOperationId,
@@ -80,6 +88,9 @@ export async function recordUsageEvent(input: RecordUsageEventInput) {
       }).where(eq(generationJob.id, job.id));
     }
     await refreshGenerationJobUsage(transaction, job.id);
+    if (job.pipelineRunId) await settleRuntimeUsageCall(transaction, {
+      runId: job.pipelineRunId, generationJobId: job.id, attemptCount: input.attemptCount,
+    });
     return event;
   });
 }
@@ -217,10 +228,10 @@ function normalizeTokenCount(value: number | null) {
 function normalizeDecimal(value: string | null | undefined) {
   if (value === null || value === undefined) return null;
   const normalized = value.trim();
-  if (!/^(?:0|[1-9]\d{0,11})(?:\.\d{1,8})?$/.test(normalized)) {
-    throw new Error('Provider cost must be a non-negative decimal with at most 8 fractional digits.');
+  if (!/^(?:0|[1-9]\d{0,11})(?:\.\d{1,40})?$/.test(normalized)) {
+    throw new Error('Provider cost must be a non-negative decimal string.');
   }
-  return normalized;
+  return normalizeProviderCostUsd(normalized);
 }
 
 function normalizeOptionalText(value: string | null | undefined, maxLength: number) {

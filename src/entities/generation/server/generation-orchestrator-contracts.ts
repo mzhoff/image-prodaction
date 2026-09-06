@@ -1,6 +1,8 @@
 import type { GenerationJobRepository } from './generation-job-repository';
+import type { RuntimeUsageAttribution } from '@/shared/contracts/runtime-usage-attribution';
 
 export interface CreateGenerationJobInput {
+  runtimeAttribution?: RuntimeUsageAttribution;
   documentId?: string | null;
   idempotencyKey: string;
   maxAttempts?: number;

@@ -29,6 +29,41 @@
 - If a change alters an ecosystem boundary, update the product direction
   document or add a focused ADR before implementation.
 
+## Node behavior and assistant knowledge invariant
+
+Any change to a node's behavior, ports, settings, execution support, limits, or
+user-visible dataflow must update the node's product explanation in the same
+change. A node change is incomplete while Studio, Ask AI, MCP/agent tools,
+documentation, and tests describe different contracts.
+
+Review and update all applicable sources of truth:
+
+- live type, settings, and static ports: `src/entities/production-graph/model/types.ts`,
+  `node-registry*.ts`, and `node-definitions.ts`;
+- Ask AI and live `node_catalog` metadata:
+  `src/entities/production-graph/model/node-help-*.ts`;
+- agent/MCP settings and action contract:
+  `src/modules/chat-assistant/contracts/image-production-tools.ts`,
+  `pipeline-node-tool-schema.ts`, and the relevant instructions in
+  `src/modules/chat-assistant/core/system-prompt.ts`;
+- executable runtime truth when server behavior changes:
+  `src/modules/executable-pipelines/adapters/studio/studio-runtime-descriptor.ts`,
+  `studio-pipeline-compiler.ts`, `studio-explicit-pipeline-compiler.ts`, and
+  `src/modules/executable-pipelines/server/pipeline-*-handlers.ts`;
+- concise user/QA index: `docs/assistant-knowledge/node-catalog.md`, plus the
+  relevant product or executable-pipeline documentation;
+- tests for the changed surface, including `node-help.test.ts`,
+  `node-catalog.test.ts`, tool-schema/action tests, port/connection tests, and
+  executable compiler/handler tests when runtime behavior changes.
+
+`NODE_DEFINITIONS` and the runtime descriptor/handler remain authoritative for
+what the product can execute. `NODE_HELP_METADATA` is authoritative for what
+Ask AI explains. Markdown is a user-facing and QA projection, not a substitute
+for either live contract. At minimum run the focused tests for every touched
+surface, then `npm run typecheck`, `npm run lint`, and
+`npm run check:architecture`. Do not document a port or setting as available
+until its live contract and tests exist.
+
 <!-- portfolio-context:start -->
 ## Портфельный контекст продукта
 

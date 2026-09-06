@@ -2,6 +2,8 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
 import { GenerationExecutionError } from './generation-worker';
+import { markRuntimeProviderDispatched } from '@/modules/executable-pipelines/server/runtime-cost-dispatch';
+import { PipelineDomainError } from '@/modules/executable-pipelines/contracts/pipeline-errors';
 
 export async function getGenerationExecutionRecord(jobId: string) {
   const [record] = await getDb().select().from(generationJob)
@@ -47,6 +49,12 @@ export async function saveProviderOperationId(input: {
 }
 
 export async function markProviderCallDispatched(jobId: string, attemptCount: number) {
+  try {
+    if (await markRuntimeProviderDispatched({ jobId, attemptCount })) return;
+  } catch (error) {
+    if (error instanceof PipelineDomainError) throw executionError(error.code, error.message, false);
+    throw error;
+  }
   const now = new Date();
   const [updated] = await getDb().update(generationJob).set({
     providerDispatchedAt: now,

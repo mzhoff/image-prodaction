@@ -20,15 +20,25 @@ test('assistant node catalog exposes complete product-owned help for the live re
 
 test('assistant node catalog preserves live ports and assistant configurable fields', () => {
   const prompt = getAssistantNodeCatalog('textPrompt')[0];
+  const pipelineInput = getAssistantNodeCatalog('pipelineInput')[0];
+  const pipelineOutput = getAssistantNodeCatalog('pipelineOutput')[0];
   const generateImage = getAssistantNodeCatalog('generateImage')[0];
+  const exportImage = getAssistantNodeCatalog('exportImage')[0];
   const qr = getAssistantNodeCatalog('qrCode')[0];
 
   assert.ok(prompt?.ports.some((port) => port.id === 'text' && port.side === 'output'));
   assert.ok(prompt?.configurableFields.includes('text'));
   assert.ok(prompt?.configurableFields.includes('variables'));
   assert.ok(prompt?.portRules.some((rule) => rule.includes('variable-0')));
+  assert.ok(prompt?.portRules.some((rule) => rule.includes('pipelineInput.field:<id>')));
+  assert.match(pipelineInput?.portRules.join(' ') ?? '', /textPrompt\.variable-N.*@fieldKey/u);
+  assert.match(pipelineOutput?.portRules.join(' ') ?? '', /exportImage\.image/u);
   assert.ok(generateImage?.ports.some((port) => port.id === 'prompt' && port.kind === 'text'));
   assert.ok(generateImage?.configurableFields.includes('prompt'));
+  assert.ok(exportImage?.ports.some((port) => (
+    port.id === 'image' && port.kind === 'image' && port.side === 'output'
+  )));
+  assert.match(exportImage?.portRules.join(' ') ?? '', /image-0.*output image/u);
   assert.ok(qr?.ports.some((port) => port.id === 'text' && port.kind === 'text' && port.side === 'input'));
   assert.ok(qr?.ports.some((port) => port.id === 'image' && port.kind === 'image' && port.side === 'output'));
   assert.deepEqual(qr?.configurableFields, ['title', 'content', 'contentMode']);

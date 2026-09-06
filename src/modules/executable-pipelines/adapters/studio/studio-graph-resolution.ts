@@ -61,6 +61,7 @@ export function getRuntimeOutput(
   if (node.type === 'imageToText' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'generateImage' && sourcePortId === 'image') return { kind: 'image', outputKey: 'image' };
   if (node.type === 'qrCode' && sourcePortId === 'image') return { kind: 'image', outputKey: 'image' };
+  if (node.type === 'exportImage' && sourcePortId === 'image') return { kind: 'image', outputKey: 'image' };
   return null;
 }
 

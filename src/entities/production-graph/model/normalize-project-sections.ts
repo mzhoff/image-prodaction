@@ -6,7 +6,9 @@ export function normalizeProjectSections(sections: GraphProject['sections']) {
 }
 
 function normalizeSection(section: GraphProject['sections'][number], index: number) {
+  const capabilityKey = normalizeSectionCapabilityKey(section.capabilityKey);
   return {
+    ...(capabilityKey ? { capabilityKey } : {}),
     id: section.id || `section-${index + 1}`,
     title: section.title || `Section ${index + 1}`,
     parentId: typeof section.parentId === 'string' ? section.parentId : undefined,
@@ -15,6 +17,13 @@ function normalizeSection(section: GraphProject['sections'][number], index: numb
     color: normalizeSectionColor(section.color),
     locked: section.locked === true,
   };
+}
+
+export function normalizeSectionCapabilityKey(value: unknown) {
+  return typeof value === 'string' && /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(value)
+    && value.length <= 120
+    ? value
+    : undefined;
 }
 
 function normalizeSectionColor(color: unknown) {

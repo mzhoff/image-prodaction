@@ -7,6 +7,7 @@ import {
   type ProviderExecuteRequest,
 } from '@/modules/provider-connections';
 import type { RecordUsageEventInput } from '@/modules/usage';
+import { RuntimeCostError } from '@/modules/executable-pipelines/core/runtime-cost-policy';
 import {
   executeShortOpenRouterChatCore,
   ShortAiExecutionError,
@@ -22,6 +23,21 @@ const request: ProviderExecuteRequest = {
   modelId: 'fake/text-model',
   operation: 'generate_text',
 };
+
+test('Runtime budget failure stops short AI before provider dispatch and keeps the stable cost error', async () => {
+  const fixture = createFixture();
+  fixture.dependencies.markProviderDispatched = async () => { throw new RuntimeCostError('cost_limit_exceeded'); };
+  fixture.dependencies.adapter.execute = async () => { assert.fail('A refused reservation must never call the provider.'); };
+  await assert.rejects(executeShortOpenRouterChatCore({
+    request: new Request('http://localhost/api/ai/generate-text'),
+    scope: { workspaceId: 'workspace-test', idempotencyKey: 'runtime-budget-test' },
+    providerRequest: request, transform: (result) => result,
+  }, fixture.dependencies), (error: unknown) => error instanceof RuntimeCostError && error.code === 'cost_limit_exceeded');
+  assert.equal(fixture.calls.usage.length, 0);
+  assert.equal(fixture.calls.succeeded.length, 0);
+  assert.equal(fixture.calls.failed[0]?.errorCode, 'cost_limit_exceeded');
+  assert.equal(fixture.calls.failed[0]?.retryable, false);
+});
 
 test('short AI execution persists successful provider usage before completing the job', async () => {
   const fixture = createFixture();

@@ -8,7 +8,7 @@ import { createCompositionGroupActions } from './composition-group-actions';
 import { getAlignedLayerPatch, normalizeCanvasDimension, upsertLayerStyle, upsertLayerStyles } from './composition-layer-style';
 import { isLayerLocked, isLayerVisible } from './composition-layer-tree-model';
 import type { CompositionAlignment, CompositionLayerView } from './composition-model-types';
-import { getCompositionCanvasPreset } from './composition-canvas-presets';
+import { getCompositionCanvasPreset, getCompositionCanvasPresetSelection } from './composition-canvas-presets';
 import { getCompositionCanvasSize, getCompositionSizeSelection } from './composition-options';
 import { createCompositionSelectionActions } from './composition-selection-actions';
 import { createCompositionRectanglePatch, type CompositionRectangleBounds } from './composition-shape-actions';
@@ -31,6 +31,8 @@ export function useCompositionNodeModel(node: ProductionNode) {
   const layerCount = getCompositionLayerInputCount(node);
   const canvasWidth = normalizeCanvasDimension(data.canvasWidth, 1080);
   const canvasHeight = normalizeCanvasDimension(data.canvasHeight, 1080);
+  const { presetOptions: canvasPresetOptions, selectedPresetId: canvasPresetId } =
+    getCompositionCanvasPresetSelection(canvasWidth, canvasHeight);
   const { selectedSize, sizeOptions } = getCompositionSizeSelection(data.size, canvasWidth, canvasHeight);
   const {
     connectedLayerIds,
@@ -120,12 +122,10 @@ export function useCompositionNodeModel(node: ProductionNode) {
       layers: upsertLayerStyles(data.layers, patches),
     });
   };
-
   const commitLayerSnapshot = (layerId: string) => {
     const layer = layers.find((item) => item.id === layerId);
     updateLayer(layerId, layer ? layer.style : {});
   };
-
   const commitLayerSnapshots = (layerIds: string[]) => {
     updateNodeData(node.id, {
       layers: upsertLayerStyles(data.layers, layerIds.flatMap((layerId) => {
@@ -137,13 +137,11 @@ export function useCompositionNodeModel(node: ProductionNode) {
       selectedLayerIds: layerIds,
     });
   };
-
   const alignLayerToCanvas = (layerId: string, alignment: CompositionAlignment) => {
     const layer = layers.find((item) => item.id === layerId);
     if (!layer) return;
     updateLayer(layerId, getAlignedLayerPatch(layer, { x: 0, y: 0, width: canvasWidth, height: canvasHeight }, alignment));
   };
-
   const alignLayerToNeighbor = (layerId: string, alignment: CompositionAlignment) => {
     const layer = layers.find((item) => item.id === layerId);
     if (!layer) return;
@@ -151,7 +149,6 @@ export function useCompositionNodeModel(node: ProductionNode) {
     if (!target) return;
     updateLayer(layerId, getAlignedLayerPatch(layer, target.style, alignment));
   };
-
   const handleAddLayer = () => {
     updateNodeData(node.id, { layerInputCount: Math.min(COMPOSITION_LAYER_MAX_INPUTS, layerCount + 1) });
   };
@@ -244,6 +241,8 @@ export function useCompositionNodeModel(node: ProductionNode) {
 
   return {
     canvasHeight,
+    canvasPresetId,
+    canvasPresetOptions,
     canvasWidth,
     clearSelection,
     connectedLayers,

@@ -4,18 +4,24 @@ import type {
   PipelineValueContract,
 } from '../contracts/pipeline-contracts';
 import { PipelineDomainError } from '../contracts/pipeline-errors';
-import { getPipelineValueContractIssue } from './pipeline-value-validation';
+import {
+  getPipelineJsonValueIssue,
+  getPipelineValueContractIssue,
+} from './pipeline-value-validation';
+import type { SemanticContractSnapshot } from '@/shared/contracts/semantic-contract';
 
 export function validatePipelineInputValues(
   contracts: Record<string, PipelineValueContract>,
   values: PipelineInputs,
+  semanticContract?: SemanticContractSnapshot,
 ) {
-  preparePipelineInputValues(contracts, values);
+  preparePipelineInputValues(contracts, values, semanticContract);
 }
 
 export function preparePipelineInputValues(
   contracts: Record<string, PipelineValueContract>,
   values: PipelineInputs,
+  semanticContract?: SemanticContractSnapshot,
 ): PipelineInputs {
   for (const inputKey of Object.keys(values)) {
     if (!contracts[inputKey]) {
@@ -48,12 +54,14 @@ export function preparePipelineInputValues(
     }
     prepared[inputKey] = structuredClone(value);
   }
+  validateSemanticBoundaryValues(prepared, semanticContract, 'pipeline_input_invalid', 'Pipeline input');
   return prepared;
 }
 
 export function validatePipelineOutputValues(
   contracts: Record<string, PipelineValueContract>,
   values: PipelineNodeOutputs,
+  semanticContract?: SemanticContractSnapshot,
 ) {
   for (const outputKey of Object.keys(values)) {
     if (!contracts[outputKey]) {
@@ -82,4 +90,20 @@ export function validatePipelineOutputValues(
       });
     }
   }
+  validateSemanticBoundaryValues(values, semanticContract, 'pipeline_output_invalid', 'Pipeline output');
+}
+
+function validateSemanticBoundaryValues(
+  values: PipelineInputs | PipelineNodeOutputs,
+  semanticContract: SemanticContractSnapshot | undefined,
+  code: 'pipeline_input_invalid' | 'pipeline_output_invalid',
+  label: string,
+) {
+  if (!semanticContract) return;
+  const issue = getPipelineJsonValueIssue(values, semanticContract.schema);
+  if (!issue) return;
+  throw new PipelineDomainError({
+    code,
+    message: `${label} does not match semantic contract "${semanticContract.contractKey}@${semanticContract.contractVersion}": ${issue}.`,
+  });
 }

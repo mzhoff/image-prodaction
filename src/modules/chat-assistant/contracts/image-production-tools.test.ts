@@ -52,8 +52,12 @@ test('write tool descriptions prepare a single UI-confirmed canvas proposal by d
 
   assert.match(buildDescription, /build, create, add, change, implement or apply/u);
   assert.match(buildDescription, /separate input, prompt input or editable input.*textPrompt.*not pipelineInput/u);
+  assert.match(buildDescription, /pipelineInput field.*variable-N.*public field key.*@Alias/u);
+  assert.match(buildDescription, /exportImage\.image-0.*exportImage\.image.*pipelineOutput/u);
   assert.match(buildDescription, /QR is not needed.*omit qrCode.*targetUrl\/target-url.*QR layer/u);
   assert.match(updateDescription, /change, add, implement or apply/u);
+  assert.match(updateDescription, /pipelineInput\.field:<id>.*textPrompt variable-N.*public field key/u);
+  assert.match(updateDescription, /exportImage\.image-0.*exportImage\.image.*pipelineOutput/u);
 });
 
 test('pipeline tool keeps graph structure strict while settings stay bounded and recoverable', () => {
@@ -93,6 +97,13 @@ test('pipeline tool keeps graph structure strict while settings stay bounded and
   assert.equal((nodes?.properties?.settings as { maxProperties?: number } | undefined)?.maxProperties, 24);
   assert.ok((nodes?.properties?.settings as { additionalProperties?: unknown } | undefined)?.additionalProperties);
   assert.match(nodes?.description ?? '', /only key, type.*settings.*sourceAttachmentIndex.*title.*inside settings/u);
+  const variablesSchema = settingProperties?.variables as {
+    anyOf?: Array<{ description?: string }>;
+  } | undefined;
+  assert.match(
+    variablesSchema?.anyOf?.find((candidate) => candidate.description)?.description ?? '',
+    /Pipeline Input field.*field\.key/u,
+  );
   assert.match(edgeItem?.description ?? '', /only four scalar string fields.*Do not add nested source\/target/u);
   assert.match(
     (edgeItem?.properties?.sourceNodeKey as { description?: string } | undefined)?.description ?? '',

@@ -33,7 +33,7 @@ const PIPELINE_SETTING_SCHEMAS = {
   variables: {
     type: 'array',
     maxItems: 10,
-    description: 'Sequential textPrompt inputs. Array index N must use id variable-N; aliases must be unique and referenced from settings.text as @Alias.',
+    description: 'Sequential textPrompt inputs. Array index N must use id variable-N; aliases must be unique and referenced from settings.text as @Alias. When the source is a Pipeline Input field, use its public field.key as the alias.',
     items: {
       type: 'object',
       additionalProperties: false,

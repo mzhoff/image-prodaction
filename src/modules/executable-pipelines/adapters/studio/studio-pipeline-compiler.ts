@@ -88,6 +88,7 @@ export function compileStudioSection(
   return {
     compiledPlan: compilePipelineDefinition(definition, options),
     sourceMetadata: {
+      ...(section.capabilityKey ? { capabilityKey: section.capabilityKey } : {}),
       sectionId: section.id,
       sectionTitle: section.title,
       nodeCount: nodes.length,

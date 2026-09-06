@@ -21,6 +21,7 @@ import {
   pipelineVersion,
 } from './pipeline-schema';
 import { toPipelineRunJob } from './pipeline-run-mapping';
+import { refreshRuntimeUsageIfPresent } from '../../server/runtime-usage-service';
 import {
   cancelOwnedPipelineRun,
   closeExpiredPipelineRuns,
@@ -112,7 +113,10 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
           eq(pipelineRun.status, 'failed'),
         ),
       )).returning();
-      if (closed) return toPipelineRunJob(closed);
+      if (closed) {
+        await getDb().transaction((tx) => refreshRuntimeUsageIfPresent(tx, closed.id));
+        return toPipelineRunJob(closed);
+      }
 
       const [running] = await getDb().update(pipelineRun).set({
         cancelRequestedAt: sql`coalesce(
@@ -239,7 +243,10 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
         isNull(pipelineRun.cancelRequestedAt),
         gt(pipelineRun.leaseExpiresAt, input.completedAt),
       )).returning({ id: pipelineRun.id });
-      if (completed) return true;
+      if (completed) {
+        await getDb().transaction((tx) => refreshRuntimeUsageIfPresent(tx, input.runId));
+        return true;
+      }
       return cancelOwnedPipelineRun(input.runId, input.attemptCount, input.completedAt);
     },
 
@@ -260,7 +267,10 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
         isNull(pipelineRun.cancelRequestedAt),
         gt(pipelineRun.leaseExpiresAt, input.failedAt),
       )).returning({ id: pipelineRun.id });
-      if (failed) return true;
+      if (failed) {
+        await getDb().transaction((tx) => refreshRuntimeUsageIfPresent(tx, input.runId));
+        return true;
+      }
       return cancelOwnedPipelineRun(input.runId, input.attemptCount, input.failedAt);
     },
 

@@ -8,10 +8,12 @@ export function createGraphFavoriteNodeActions(set: StoreSet): Pick<
   'addNodeFromFavorite'
 > {
   return {
-    addNodeFromFavorite: (snapshot, position) => {
+    addNodeFromFavorite: (snapshot, position, assets = []) => {
       const node = createNodeFromFavoriteSnapshot(snapshot, position);
+      const assetIds = new Set(assets.map((asset) => asset.id));
       set((state) => ({
         ...withHistory(state),
+        assets: assets.length ? [...state.assets.filter((asset) => !assetIds.has(asset.id)), ...assets] : state.assets,
         nodes: [...state.nodes, node],
         selectedNodeIds: [node.id],
         selectedSectionIds: [],

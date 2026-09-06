@@ -8,6 +8,7 @@ export const pipelineNodeHelp = {
       'Объявляет top-level поля типов text, number, boolean, image и json.',
       'Использует field.key как стабильное внешнее имя параметра.',
       'Создаёт динамический выход для каждого top-level поля.',
+      'Передаёт runtime value потребителя в явно подключённый порт производственной ноды.',
     ],
     execution: 'boundary',
     limitations: [
@@ -16,9 +17,11 @@ export const pipelineNodeHelp = {
       'Входящие связи запрещены; вложенные JSON-поля не создают отдельные graph-порты.',
       'Общая схема ограничена 24 полями и тремя уровнями вложенности.',
       'Постоянные инструкции и правила остаются в обычных нодах графа, а не становятся внешними параметрами.',
+      'На design-time canvas доступно имя поля, но не значение будущего API-запуска.',
     ],
     portRules: [
       'Каждое top-level поле создаёт выход field:<field.id> с kind поля и label, равным field.key.',
+      'Чтобы вставить text-поле внутрь постоянной инструкции, подключите field:<id> к textPrompt.variable-N и упомяните @fieldKey; textPrompt.text передаёт собранный текст дальше.',
       'Входных портов нет.',
     ],
     summary: 'Объявляет типизированные внешние параметры опубликованного executable pipeline.',
@@ -30,6 +33,7 @@ export const pipelineNodeHelp = {
       'Объявляет top-level результаты типов text, number, boolean, image и json.',
       'Поддерживает обязательные и optional поля со стабильными semantic keys.',
       'Создаёт динамический вход для каждого top-level поля.',
+      'Возвращает потребителю финальное значение или подготовленный artifact, подключённый к полю.',
     ],
     execution: 'boundary',
     limitations: [
@@ -40,6 +44,7 @@ export const pipelineNodeHelp = {
     ],
     portRules: [
       'Каждое top-level поле создаёт вход field:<field.id> с kind поля и label, равным field.key.',
+      'Если потребителю нужен конкретный формат/quality/scale/background изображения, подключайте exportImage.image, а не исходный generateImage.image.',
       'Выходных портов нет.',
     ],
     summary: 'Объявляет типизированные публичные результаты executable pipeline.',

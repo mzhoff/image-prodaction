@@ -1,5 +1,8 @@
 import { normalizeNodeSize } from './node-layout';
-import { normalizePipelineContractFields } from './pipeline-contract-fields';
+import {
+  normalizePipelineContractFields,
+  normalizePipelineSemanticContractSnapshot,
+} from './pipeline-contract-fields';
 import type { ProductionNode } from './types';
 
 export function normalizePipelineNode(node: ProductionNode): ProductionNode | null {
@@ -11,6 +14,7 @@ export function normalizePipelineNode(node: ProductionNode): ProductionNode | nu
       data: {
         ...data,
         fields: normalizePipelineContractFields(data.fields),
+        semanticContract: normalizePipelineSemanticContractSnapshot(data.semanticContract),
         title: normalizeTitle(data.title, node.type === 'pipelineInput' ? 'Pipeline Input' : 'Pipeline Output'),
       },
     } as ProductionNode;

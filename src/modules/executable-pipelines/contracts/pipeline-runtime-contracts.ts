@@ -1,7 +1,28 @@
 import type {
   PipelineNodeOutputs,
   PipelineRunStatus,
+  PipelineValueContract,
 } from './pipeline-contracts';
+import type { SemanticContractSnapshot } from '@/shared/contracts/semantic-contract';
+
+export interface PipelineRuntimeDescriptor {
+  input: {
+    fields: Record<string, PipelineValueContract>;
+    schemaChecksum: string | null;
+    semanticContract: SemanticContractSnapshot | null;
+  };
+  output: {
+    fields: Record<string, PipelineValueContract>;
+    schemaChecksum: string | null;
+    semanticContract: SemanticContractSnapshot | null;
+  };
+  pipeline: {
+    capabilityKey: string | null;
+    checksum: string;
+    publicId: string;
+    version: number;
+  };
+}
 
 export interface PipelineRuntimeRun {
   attemptCount: number;

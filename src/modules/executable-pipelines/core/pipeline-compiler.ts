@@ -9,6 +9,7 @@ import {
   getPipelineValueContractDefinitionError,
   isPublicContractKey,
 } from './pipeline-value-validation';
+import { getSemanticBoundaryDefinitionError } from './pipeline-semantic-contract-validation';
 
 export interface PipelineCompilerOptions {
   isHandlerSupported?: (handlerType: string, handlerVersion: string) => boolean;
@@ -46,12 +47,27 @@ function validateDefinitionShape(definition: ExecutablePipelineDefinition) {
     throw invalidDefinition('Pipeline must declare at least one output.');
   }
 
+  validateSemanticBoundary(
+    definition.inputSemanticContract,
+    definition.inputs,
+    'Pipeline input semantic contract',
+  );
+
   for (const [inputKey, contract] of Object.entries(definition.inputs)) {
     validatePublicKey(inputKey, 'Pipeline input');
     validateContract(contract, `Pipeline input "${inputKey}"`);
   }
 
+  if (definition.outputSemanticContract && definition.outputContracts === undefined) {
+    throw invalidDefinition('Pipeline output semantic contract requires outputContracts.');
+  }
+
   if (definition.outputContracts !== undefined) {
+    validateSemanticBoundary(
+      definition.outputSemanticContract,
+      definition.outputContracts,
+      'Pipeline output semantic contract',
+    );
     for (const [outputKey, contract] of Object.entries(definition.outputContracts)) {
       validatePublicKey(outputKey, 'Pipeline output contract');
       validateContract(contract, `Pipeline output contract "${outputKey}"`);
@@ -65,6 +81,15 @@ function validateDefinitionShape(definition: ExecutablePipelineDefinition) {
       }
     }
   }
+}
+
+function validateSemanticBoundary(
+  semanticContract: ExecutablePipelineDefinition['inputSemanticContract'],
+  contracts: Record<string, ExecutablePipelineDefinition['inputs'][string]>,
+  label: string,
+) {
+  const issue = getSemanticBoundaryDefinitionError(semanticContract, contracts);
+  if (issue) throw invalidDefinition(`${label} ${issue}.`);
 }
 
 function validateNode(

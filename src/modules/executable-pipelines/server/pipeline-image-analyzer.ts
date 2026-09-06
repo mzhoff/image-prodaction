@@ -1,5 +1,6 @@
 import type { ProviderResult } from '@/modules/provider-connections';
 import { executeInternalOpenRouterChat } from '@/modules/generation';
+import { getRuntimeGenerationAttribution } from './runtime-usage-attribution';
 import type { PipelineImageAnalyzer, PipelineImageOperationScope } from './pipeline-image-contracts';
 import { readPipelineImageDataUrl } from './pipeline-image-artifacts';
 import { requireString } from './pipeline-handler-values';
@@ -14,6 +15,7 @@ export function createOpenRouterImageAnalyzer(
       input.artifact,
     );
     const execution = await executeInternalOpenRouterChat({
+      runtimeAttribution: await getRuntimeGenerationAttribution(input.context, input.nodeId),
       actorUserId: scope.actorUserId,
       documentId: scope.documentId,
       idempotencyKey: `pipeline:${input.context.runId}:node:${input.nodeId}`,

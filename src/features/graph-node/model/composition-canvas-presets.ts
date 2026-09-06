@@ -46,6 +46,22 @@ export function getCompositionCanvasPresetId(width: number, height: number) {
   return compositionCanvasPresets.find((preset) => preset.width === width && preset.height === height)?.id ?? 'custom';
 }
 
+export function getCompositionCanvasPresetSelection(width: number, height: number) {
+  const selectedPresetId = getCompositionCanvasPresetId(width, height);
+  return {
+    selectedPresetId,
+    presetOptions: [
+      ...(selectedPresetId === 'custom'
+        ? [{ value: 'custom', label: `Custom · ${width} × ${height}` }]
+        : []),
+      ...compositionCanvasPresets.map((preset) => ({
+        value: preset.id,
+        label: preset.label,
+      })),
+    ],
+  };
+}
+
 export function normalizeCompositionCanvasDimension(value: number, fallback: number) {
   return Number.isFinite(value)
     ? Math.min(COMPOSITION_CANVAS_DIMENSION_MAX, Math.max(COMPOSITION_CANVAS_DIMENSION_MIN, Math.round(value)))

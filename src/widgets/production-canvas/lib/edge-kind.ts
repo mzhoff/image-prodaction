@@ -40,6 +40,7 @@ export function getEdgeHasData(edge: GraphEdge, nodesById: Map<string, Productio
   const source = nodesById.get(edge.sourceNodeId);
   if (!source) return false;
   const sourcePort = getNodePorts(source).find((port) => port.id === edge.sourcePortId);
+  if (source.type === 'pipelineInput') return Boolean(sourcePort);
   const context = { edges, nodes: Array.from(nodesById.values()) };
   if (source?.type === 'router') {
     const kind = getRouterDataKind(source, context);

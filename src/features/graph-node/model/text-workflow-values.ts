@@ -1,6 +1,4 @@
-import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type {
-  ProductionNode,
   TextConcatNodeData,
   TextConcatSeparator,
   TextGenerationNodeData,
@@ -39,12 +37,6 @@ export function samePromptVariables(
   if (!Array.isArray(first) || first.length !== second.length) return false;
   return first.every((variable, index) => variable.id === second[index]?.id
     && variable.alias === second[index]?.alias);
-}
-
-export function getCustomTextPromptSourceAlias(sourceNode: ProductionNode | undefined) {
-  const title = sourceNode?.data.title?.trim();
-  if (!sourceNode || !title) return undefined;
-  return title === getNodeDefinition(sourceNode.type).title ? undefined : title;
 }
 
 export function clampTextPromptTextareaHeight(value: unknown) {
