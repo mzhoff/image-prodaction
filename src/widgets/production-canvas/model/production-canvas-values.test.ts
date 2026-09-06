@@ -1,7 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
-import { hasClearableGenerationData } from './production-canvas-values';
+import { NODE_TEMPLATE_DRAG_MIME_TYPE } from '../lib/node-drag';
+import { getDraggedNodeTemplateId, hasClearableGenerationData,
+  hasDraggedNodeTemplate } from './production-canvas-values';
+
+test('canvas recognizes a saved node template drag payload', () => {
+  const dataTransfer = {
+    getData: (type: string) => type === NODE_TEMPLATE_DRAG_MIME_TYPE ? 'template-1' : '',
+    types: [NODE_TEMPLATE_DRAG_MIME_TYPE],
+  } as unknown as DataTransfer;
+
+  assert.equal(hasDraggedNodeTemplate(dataTransfer), true);
+  assert.equal(getDraggedNodeTemplateId(dataTransfer), 'template-1');
+});
 
 test('canvas generation cleanup is offered only when a node has generated output', () => {
   assert.equal(hasClearableGenerationData(createNode('generateImage', {

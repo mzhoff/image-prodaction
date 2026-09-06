@@ -6,7 +6,7 @@ const publicPagePaths = new Set([
   '/reset-password',
   '/verify-email',
 ]);
-const publicApiRoots = ['/api/auth', '/api/health', '/v1'];
+const publicApiRoots = ['/api/auth', '/api/health', '/v1', '/v2/runtime'];
 
 export function isPublicPagePath(pathname: string) {
   return publicPagePaths.has(pathname);
@@ -37,7 +37,9 @@ export function getSafePostAuthPath(candidate: string | null | undefined) {
     || url.pathname === '/api'
     || url.pathname.startsWith('/api/')
     || url.pathname === '/v1'
-    || url.pathname.startsWith('/v1/')) {
+    || url.pathname.startsWith('/v1/')
+    || url.pathname === '/v2'
+    || url.pathname.startsWith('/v2/')) {
     return '/';
   }
 

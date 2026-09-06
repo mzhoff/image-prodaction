@@ -23,6 +23,36 @@ Pipeline Input -> production nodes -> Structured Output -> Pipeline Output
 - `Structured Output` формирует и проверяет JSON по схеме;
 - `Pipeline Output` объявляет публичный результат.
 
+Для свободного текста внешнее поле не должно неявно «заменять ноду». Если
+значение нужно встроить в постоянную инструкцию, связь выражается явно:
+
+```text
+Pipeline Input.field:article-summary
+  -> Text prompt.variable-0 (@articleSummary)
+  -> Text prompt.text
+  -> Generate image.prompt
+```
+
+На canvas Text prompt показывает source `articleSummary`; реальное значение
+появляется только при Runtime-запуске и детерминированно подставляется вместо
+`@articleSummary`. Прямое подключение Pipeline Input к обычному text-входу
+остаётся допустимым, когда весь вход должен состоять только из внешнего значения.
+При загрузке старого draft уже существующая связь с Text prompt дополняется
+недостающим упоминанием переменной, не удаляя сохранённую инструкцию пользователя.
+
+Если публичным результатом должно стать изображение конкретного формата, граф
+явно продолжает dataflow через Export:
+
+```text
+Generate image.image
+  -> Export image.image-0
+  -> Export image.image
+  -> Pipeline Output.field:result
+```
+
+Output `Export image.image` — преобразованный первый вход с применёнными
+format/quality/scale/background, а не исходный image до конвертации.
+
 ## Модель поля
 
 Каждое поле содержит:

@@ -145,3 +145,31 @@ test('favorite asset references can be restricted to server-approved durable ass
     ['asset-approved', undefined],
   );
 });
+
+test('favorite snapshot retains dynamic input counts and source text', () => {
+  const cases = [
+    ['textConcat', 'inputCount', 5],
+    ['telegramPublication', 'mediaInputCount', 4],
+    ['exportImage', 'imageInputCount', 7],
+    ['composition', 'layerInputCount', 6],
+  ] as const;
+
+  cases.forEach(([type, field, value]) => {
+    const node = createDefaultNode(type, { x: 0, y: 0 });
+    const snapshot = createFavoriteNodeSnapshot({
+      ...node,
+      data: { ...node.data, [field]: value },
+    });
+    assert.equal((snapshot.data as unknown as Record<string, unknown>)[field], value);
+  });
+
+  const formatter = createDefaultNode('textFormatter', { x: 0, y: 0 });
+  const formatterSnapshot = createFavoriteNodeSnapshot({
+    ...formatter,
+    data: { ...formatter.data, sourceText: 'Saved source output' },
+  });
+  assert.equal(
+    (formatterSnapshot.data as unknown as Record<string, unknown>).sourceText,
+    'Saved source output',
+  );
+});

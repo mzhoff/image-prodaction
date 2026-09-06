@@ -1,5 +1,12 @@
 # Runtime API исполняемых пайплайнов
 
+Этот документ описывает сохранённый API v1. Новые Workspace-подключения с одним
+ключом на несколько pipelines используют отдельный `/v2/runtime`: см.
+[Runtime v2](runtime-workspace-connections-v2-adr.md),
+[инструкцию для Content Hub](content-hub-runtime-v2-handoff.md) и
+[результаты локальных проверок](runtime-v2-verification-2026-09-05.md).
+V2 не добавляет поля в старые ответы v1.
+
 ## Что уже работает
 
 Опубликованный в Studio pipeline получает стабильный `publicId`. Внешний сервис
@@ -15,7 +22,9 @@
 - `text.format`;
 - `ai.text.generate` через Workspace OpenRouter connection;
 - `ai.image.analyze` для ноды Extract;
-- `ai.image.generate` через общую очередь генерации и S3/MinIO assets.
+- `ai.image.generate` через общую очередь генерации и S3/MinIO assets;
+- `image.export` для преобразования format/quality/scale/background и возврата
+  подготовленного image artifact.
 
 `Router` не запускает отдельную операцию: при публикации компилятор прозрачно
 соединяет его вход с потребителем. Публикация отклоняется заранее, если хотя бы
@@ -172,4 +181,6 @@ Runtime API, получение результата, повтор без вто
 `{"kind":"image","assetId":"..."}`. Asset должен существовать в том же
 Workspace. Отдельный service endpoint для загрузки входных файлов остаётся
 следующим этапом; первый внешний image-pipeline уже можно строить как
-`Text Prompt → Generate Image → Preview`.
+`Pipeline Input → Text Prompt → Generate Image → Export image → Pipeline Output`.
+`Preview` остаётся удобной canvas-проверкой, но публичный результат явно
+объявляет `Pipeline Output`.

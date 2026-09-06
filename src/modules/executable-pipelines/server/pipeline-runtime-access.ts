@@ -10,6 +10,7 @@ export function canPipelineConsumerAccessRun(
   identity: PipelineConsumerRunIdentity,
   run: PipelineRunJob,
 ) {
+  if (run.runtimeServiceClientId) return false;
   if (run.pipelineId !== identity.pipelineId) return false;
   if (run.consumerId) return run.consumerId === identity.consumerId;
   return run.sourceApplication === identity.sourceApplication;

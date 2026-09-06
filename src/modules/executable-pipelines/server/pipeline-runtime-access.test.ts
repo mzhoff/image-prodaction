@@ -60,3 +60,11 @@ test('legacy runs without consumer id remain isolated by pipeline and source app
     sourceApplication: 'shared-source-name',
   }, legacyRun), false);
 });
+
+test('v1 consumers cannot access v2 runs even with an identical source application or consumer id', () => {
+  const identity = { consumerId: 'consumer-a', pipelineId: run.pipelineId, sourceApplication: run.sourceApplication };
+  const v2 = { ...run, apiKeyId: null, consumerId: null, runtimeServiceClientId: 'service-client-a' };
+  assert.equal(canPipelineConsumerAccessRun(identity, v2), false);
+  assert.equal(canPipelineConsumerAccessRun(identity, { ...v2, consumerId: identity.consumerId }), false);
+  assert.equal(canPipelineConsumerAccessRun(identity, { ...v2, runtimeServiceClientId: null }), true);
+});

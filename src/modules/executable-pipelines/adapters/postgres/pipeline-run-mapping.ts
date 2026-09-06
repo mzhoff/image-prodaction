@@ -11,6 +11,7 @@ export function toPipelineRunJob(record: PipelineRunRecord): PipelineRunJob {
     pipelineVersion: record.pipelineVersion,
     consumerId: record.consumerId,
     apiKeyId: record.apiKeyId,
+    runtimeServiceClientId: record.runtimeServiceClientId,
     sourceApplication: record.sourceApplication,
     idempotencyKey: record.idempotencyKey,
     requestFingerprint: record.requestFingerprint,

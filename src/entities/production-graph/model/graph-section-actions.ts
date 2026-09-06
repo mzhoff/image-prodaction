@@ -5,6 +5,7 @@ import {
   normalizeSectionHierarchyByGeometry,
 } from './graph-section-layout';
 import { getNodeIdsInsideSectionTree } from './graph-section-membership';
+import { normalizeSectionCapabilityKey } from './normalize-project-sections';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
 
@@ -24,6 +25,7 @@ export function createGraphSectionActions(set: StoreSet, get: StoreGet): Pick<
   | 'resizeSection'
   | 'selectSection'
   | 'setSectionColor'
+  | 'setSectionCapabilityKey'
   | 'toggleSectionLock'
 > {
   return {
@@ -190,6 +192,23 @@ export function createGraphSectionActions(set: StoreSet, get: StoreGet): Pick<
           section.id === sectionId && section.color !== nextColor ? { ...section, color: nextColor } : section
         )),
       }));
+    },
+    setSectionCapabilityKey: (sectionId, capabilityKey) => {
+      const value = capabilityKey.trim();
+      const normalized = normalizeSectionCapabilityKey(value);
+      if (value && !normalized) return { ok: false, reason: 'Используйте строчные латинские буквы, цифры и разделители . _ -. Начните с буквы; максимум 120 символов.' };
+      const target = get().sections.find((section) => section.id === sectionId);
+      if (!target) return { ok: false, reason: 'Секция не найдена.' };
+      if (target.capabilityKey === normalized) return { ok: true };
+      set((state) => ({
+        ...withHistory(state),
+        sections: state.sections.map((section) => {
+          if (section.id !== sectionId) return section;
+          const { capabilityKey: _previous, ...rest } = section;
+          return normalized ? { ...rest, capabilityKey: normalized } : rest;
+        }),
+      }));
+      return { ok: true };
     },
     toggleSectionLock: (sectionId) => {
       set((state) => ({

@@ -1,5 +1,5 @@
 import { getTextPromptVariables } from '@/entities/production-graph/model/node-definitions';
-import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
+import { getTextPromptSourceAlias } from '@/entities/production-graph/model/text-prompt-source-alias';
 import type {
   ExportImageNodeData,
   GenerateImageNodeData,
@@ -156,10 +156,10 @@ function getTextPromptRuntimeVariables(
     const edge = graph.edges.find((candidate) => (
       candidate.targetNodeId === node.id && candidate.targetPortId === variable.id
     ));
-    const source = edge
-      ? resolveTransparentSource(edge, graph.incomingByNode, graph.nodeById)?.source
+    const resolvedSource = edge
+      ? resolveTransparentSource(edge, graph.incomingByNode, graph.nodeById)
       : undefined;
-    const sourceAlias = getCustomTextPromptSourceAlias(source);
+    const sourceAlias = getTextPromptSourceAlias(resolvedSource?.source, resolvedSource?.sourcePortId);
     const alias = sourceAlias ?? variable.alias;
     return {
       id: variable.id,
@@ -167,10 +167,4 @@ function getTextPromptRuntimeVariables(
       ...(sourceAlias && sourceAlias !== variable.alias ? { mentionAliases: [variable.alias] } : {}),
     };
   });
-}
-
-function getCustomTextPromptSourceAlias(source: ProductionNode | undefined) {
-  const title = source?.data.title?.trim();
-  if (!source || !title) return undefined;
-  return title === getNodeDefinition(source.type).title ? undefined : title;
 }

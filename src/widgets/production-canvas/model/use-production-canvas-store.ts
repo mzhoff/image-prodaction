@@ -46,6 +46,7 @@ export function useProductionCanvasStore() {
   const setNodeUiState = useProductionGraphStore((state) => state.setNodeUiState);
   const setProjectUiViewport = useProductionGraphStore((state) => state.setProjectUiViewport);
   const setSectionColor = useProductionGraphStore((state) => state.setSectionColor);
+  const setSectionCapabilityKey = useProductionGraphStore((state) => state.setSectionCapabilityKey);
   const toggleSectionLock = useProductionGraphStore((state) => state.toggleSectionLock);
   const toggleNodeLock = useProductionGraphStore((state) => state.toggleNodeLock);
   const undo = useProductionGraphStore((state) => state.undo);
@@ -99,6 +100,7 @@ export function useProductionCanvasStore() {
     setNodeUiState,
     setProjectUiViewport,
     setSectionColor,
+    setSectionCapabilityKey,
     sections,
     toggleSectionLock,
     toggleNodeLock,
@@ -148,6 +150,7 @@ export function useProductionCanvasStore() {
     setNodeUiState,
     setProjectUiViewport,
     setSectionColor,
+    setSectionCapabilityKey,
     sections,
     toggleSectionLock,
     toggleNodeLock,

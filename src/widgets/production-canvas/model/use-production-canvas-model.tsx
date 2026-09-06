@@ -1,19 +1,20 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { getTextPromptVariablePortIndex, getPortById, isNodeCollapsible } from '@/entities/production-graph/model/node-definitions';
+import { getTextPromptVariablePortIndex, getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
 import type { NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
-import { normalizeNodeDisplayState } from '@/entities/production-graph/model/project-schema';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
 import { preparePipelineConnectCreate } from '../lib/prepare-pipeline-connect-create';
 import { useCanvasClipboard } from './use-canvas-clipboard';
 import { useCanvasImageImport } from './use-canvas-image-import';
 import { useCanvasImageViewer } from './use-canvas-image-viewer';
 import { useCanvasFavoriteNodes } from './use-canvas-favorite-nodes';
+import { useCanvasNodeTemplates } from './use-canvas-node-templates';
+import { useCanvasSelectedCollapse } from './use-canvas-selected-collapse';
 import { useCanvasNodeFactory } from './use-canvas-node-factory';
 import { useCanvasProjectTransfer } from './use-canvas-project-transfer';
 import { useCanvasToast } from './use-canvas-toast';
@@ -198,31 +199,25 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     showToast,
     workspaceId: documentSync.workspaceId,
   });
-  const toggleCollapsedStateForSelectedNodes = useCallback(() => {
-    const candidateNodeIds = Array.from(graph.selectedSet).flatMap((nodeId) => {
-      const node = graph.nodesById.get(nodeId);
-      if (!node || !isNodeCollapsible(node.type)) return [];
-      return [node.id];
-    });
-
-    if (candidateNodeIds.length === 0) return;
-
-    const shouldCollapse = !candidateNodeIds.every((nodeId) => normalizeNodeDisplayState(graph.uiState.nodes[nodeId]) === 'Collapsed');
-    const nextState = shouldCollapse ? 'Collapsed' : 'Expanded';
-    candidateNodeIds.forEach((nodeId) => graph.setNodeUiState(nodeId, { state: nextState }));
-  }, [graph]);
+  const nodeTemplates = useCanvasNodeTemplates({
+    closeContextMenu, getPalettePosition: getFallbackPastePosition,
+    graph, projectId, showToast, workspaceId: documentSync.workspaceId,
+  });
+  const toggleCollapsedStateForSelectedNodes = useCanvasSelectedCollapse(graph);
 
   const { openCanvasMenu, openNodeMenu, openNodeOptionsMenu, openSectionMenu } =
     useProductionCanvasMenus({
       canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
       favoriteNodes,
       exportSectionPipelineTemplate, graph, importPipelineTemplateAt, openImageViewer,
-      onAskAiNode, projectId, sectionColorPreviews, setSectionColorPreviews, showToast, studioPipelines,
+      nodeTemplates, onAskAiNode, projectId, sectionColorPreviews, setSectionColorPreviews,
+      showToast, studioPipelines,
     });
   const { cursor, handleCanvasDragOver, handleCanvasDrop, handleCanvasMouseDown,
     handleCanvasMouseMove } = useProductionCanvasInteractions({
     boxSelection, canvas, canvasTool, closeContextMenu,
     createFavoriteNode: favoriteNodes.createFavoriteNode, createNode,
+    createTemplateNode: nodeTemplates.createTemplateNode,
     getFallbackPastePosition, importImageFiles, lastPointerWorldRef,
     nodesById: graph.nodesById, sectionDrawing, setCanvasTool, showToast,
     toggleCollapsedStateForSelectedNodes,
@@ -242,6 +237,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     connectionDraft,
     contextMenu,
     createFavoriteNodeFromPalette: favoriteNodes.createFavoriteNodeFromPalette,
+    createTemplateNodeFromPalette: nodeTemplates.createTemplateNodeFromPalette,
     createNodeFromPalette,
     cursor,
     edges: graph.edges,
@@ -254,6 +250,9 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     favoriteNodesError: favoriteNodes.error,
     favoriteNodes: favoriteNodes.favorites,
     favoriteNodesLoading: favoriteNodes.loading,
+    nodeTemplatesError: nodeTemplates.error,
+    nodeTemplates: nodeTemplates.templates,
+    nodeTemplatesLoading: nodeTemplates.loading,
     imageViewer,
     importProjectSnapshotFile,
     measuredPortPoints,

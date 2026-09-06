@@ -1,6 +1,7 @@
 import { createId } from '@/shared/lib/id';
 import { compactDynamicInputNodeState, isDynamicInputPort } from './dynamic-input-slot';
 import { getTextPromptVariables } from './node-definitions';
+import { hasTextPromptMention } from './text-prompt-source-alias';
 import type { GraphEdge, ProductionNode, TextPromptNodeData } from './types';
 
 interface ConnectEdgeParams {
@@ -56,16 +57,22 @@ function insertConnectedTextPromptMention(
 ) {
   const edge = state.edges.find((item) => item.id === edgeId);
   if (!edge) return state;
+  const source = state.nodes.find((node) => node.id === edge.sourceNodeId);
   const target = state.nodes.find((node) => node.id === edge.targetNodeId);
   if (target?.type !== 'textPrompt') return state;
   const data = target.data as TextPromptNodeData;
-  if (data.text.trim()) return state;
+  if (data.text.trim() && source?.type !== 'pipelineInput') return state;
   const variable = getTextPromptVariables(target).find((item) => item.id === edge.targetPortId);
   if (!variable) return state;
+  const mention = `@${variable.alias}`;
+  if (hasTextPromptMention(data.text, variable.alias)) return state;
+  const text = data.text.trim()
+    ? `${data.text.trimEnd()}\n\n${mention}`
+    : mention;
   return {
     ...state,
     nodes: state.nodes.map((node) => node.id === target.id
-      ? { ...node, data: { ...data, text: `@${variable.alias}` } } as ProductionNode
+      ? { ...node, data: { ...data, text } } as ProductionNode
       : node),
   };
 }

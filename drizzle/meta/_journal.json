@@ -169,6 +169,20 @@
       "when": 1787297200924,
       "tag": "0023_favorite_node_preset",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788629718574,
+      "tag": "0024_needy_hellcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788634605053,
+      "tag": "0025_node_template_preset",
+      "breakpoints": true
     }
   ]
 }

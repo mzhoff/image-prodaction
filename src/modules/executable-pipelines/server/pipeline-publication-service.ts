@@ -150,6 +150,7 @@ export async function publishStudioPipeline(input: {
       await tx.update(pipelineEndpoint).set({
         activeVersionId: activeVersion.id,
         enabled: true,
+        authPolicy: { mode: 'bearer', playground: 'workspace-member' },
         updatedAt: publishedAt,
       }).where(eq(pipelineEndpoint.id, existingEndpoint.id));
     } else {
@@ -159,7 +160,7 @@ export async function publishStudioPipeline(input: {
         activeVersionId: activeVersion.id,
         publicId: endpointPublicId,
         enabled: true,
-        authPolicy: { mode: 'workspace-member' },
+        authPolicy: { mode: 'bearer', playground: 'workspace-member' },
         executionPolicy: { maxAttempts: 3, mode: 'queued' },
       });
     }

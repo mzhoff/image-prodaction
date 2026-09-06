@@ -67,3 +67,21 @@ test('splitTextPromptMentionTokens exposes source and value parts separately', (
     valueText: 'remote startup moms',
   });
 });
+
+test('source-value display keeps a runtime-only variable visible without a None placeholder', () => {
+  const tokens = splitTextPromptMentionTokens(
+    'Article: @Variable 1',
+    [{ alias: 'articleSummary', mentionAliases: ['Variable 1'], value: '' }],
+    'source-value',
+  );
+  const mention = tokens.find((token) => token.type === 'mention');
+
+  assert.deepEqual(mention, {
+    type: 'mention',
+    alias: 'articleSummary',
+    sourceText: 'articleSummary',
+    text: 'articleSummary',
+    value: '',
+    valueText: '',
+  });
+});

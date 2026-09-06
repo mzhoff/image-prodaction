@@ -1,6 +1,7 @@
 import { normalizeNodeSize } from './node-layout';
 import { normalizeContextNode } from './normalize-project-context-nodes';
 import { normalizeImageNode } from './normalize-project-image-nodes';
+import { getNodeDefinition } from './node-registry';
 import { normalizePublicationNode } from './normalize-project-publication-nodes';
 import { normalizePipelineNode } from './normalize-project-pipeline-nodes';
 import { normalizeTextNode } from './normalize-project-text-nodes';
@@ -13,7 +14,7 @@ export function normalizeNodeRuntimeStatus(node: ProductionNode): ProductionNode
 }
 
 export function normalizeNode(node: ProductionNode): ProductionNode {
-  return normalizeImageNode(node)
+  const normalized = normalizeImageNode(node)
     ?? normalizeTextNode(node)
     ?? normalizeContextNode(node)
     ?? normalizePublicationNode(node)
@@ -22,4 +23,11 @@ export function normalizeNode(node: ProductionNode): ProductionNode {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
     };
+  const customTitle = typeof node.data.title === 'string' ? node.data.title.trim() : '';
+  const normalizedTitle = typeof normalized.data.title === 'string'
+    ? normalized.data.title.trim()
+    : '';
+  const title = customTitle || normalizedTitle || getNodeDefinition(node.type).title;
+  if (normalized.data.title === title) return normalized;
+  return { ...normalized, data: { ...normalized.data, title } } as ProductionNode;
 }

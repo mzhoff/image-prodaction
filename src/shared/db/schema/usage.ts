@@ -15,15 +15,19 @@ import { user } from './auth';
 import { document } from './document';
 import { generationJob } from './generation';
 import { workspace } from './workspace';
+import { runtimeUsageColumns } from './runtime-usage-columns';
 
 /**
- * Append-only accounting event for one physical provider call.
+ * Append-only observation of one physical provider call (job + attempt).
+ * callIndex is an observation revision: reconciliation supersedes prior usage
+ * without pretending that the status lookup made another generation call.
  *
  * generation_job is the product state shown to the user; usage_event is the
  * audit trail used for provider cost and future internal credit accounting.
  */
 export const usageEvent = pgTable('usage_event', {
   id: uuid('id').primaryKey(),
+  ...runtimeUsageColumns(),
   workspaceId: uuid('workspace_id')
     .notNull()
     .references(() => workspace.id, { onDelete: 'cascade' }),
@@ -59,6 +63,7 @@ export const usageEvent = pgTable('usage_event', {
   index('usage_event_workspace_model_idx').on(table.workspaceId, table.modelId),
   index('usage_event_workspace_operation_idx').on(table.workspaceId, table.operation),
   index('usage_event_provider_operation_idx').on(table.provider, table.providerOperationId),
+  index('usage_event_pipeline_run_idx').on(table.workspaceId, table.pipelineRunId),
 ]);
 
 export const usageEventRelations = relations(usageEvent, ({ one }) => ({

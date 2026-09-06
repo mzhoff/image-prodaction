@@ -1,10 +1,11 @@
 'use client';
 
-import { ClipboardCopy, Copy, Download, HelpCircle, Layers3, Lock, Palette, Pencil, Maximize2, PlayCircle,
-  RotateCcw, Star, Trash2, Unlock, Upload } from 'lucide-react';
+import { ClipboardCopy, Copy, Download, HelpCircle, Layers3, LayoutTemplate, Link2, Lock, Palette, Pencil,
+  Maximize2, PlayCircle, RotateCcw, Star, Trash2, Unlock, Upload } from 'lucide-react';
 import { useCallback } from 'react';
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react';
 import type { useFavoriteNodePresets } from '@/entities/production-graph/api/use-favorite-node-presets';
+import type { useNodeTemplatePresets } from '@/entities/production-graph/api/use-node-template-presets';
 import { getNodeCurrentImageAssetId,
   getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
 import type { GraphSection, ProductionNode,
@@ -27,6 +28,7 @@ type CanvasNavigation = ReturnType<typeof useCanvasNavigation>;
 type ContextMenu = ReturnType<typeof useContextMenu>;
 type StudioPipelines = ReturnType<typeof useStudioPipelinePublications>;
 type FavoriteNodes = ReturnType<typeof useFavoriteNodePresets>;
+type NodeTemplates = ReturnType<typeof useNodeTemplatePresets>;
 
 interface ProductionCanvasMenusOptions {
   canvas: CanvasNavigation;
@@ -39,6 +41,7 @@ interface ProductionCanvasMenusOptions {
   favoriteNodes: FavoriteNodes;
   graph: GraphModel;
   importPipelineTemplateAt: (position: { x: number; y: number }) => void;
+  nodeTemplates: NodeTemplates;
   onAskAiNode: (node: ProductionNode) => Promise<NodeAskAiLaunchResult>;
   openImageViewer: (nodeId: string, initialIndex: number) => void;
   projectId?: string;
@@ -51,7 +54,7 @@ interface ProductionCanvasMenusOptions {
 export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) {
   const { canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
     exportSectionPipelineTemplate, favoriteNodes, graph, importPipelineTemplateAt, openImageViewer,
-    onAskAiNode, projectId, sectionColorPreviews, setSectionColorPreviews, showToast,
+    nodeTemplates, onAskAiNode, projectId, sectionColorPreviews, setSectionColorPreviews, showToast,
     studioPipelines } = options;
 
   const getSectionMenuActions = useCallback((section: GraphSection): ContextMenuAction[] => {
@@ -73,6 +76,15 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
       { id: 'rename-section', label: 'Rename group', icon: <Pencil size={14} />,
         onSelect: () => { const title = window.prompt('Group name', section.title);
           if (title) graph.renameSection(section.id, title); } },
+      { id: 'section-capability', label: 'Integration capability', icon: <Link2 size={14} />,
+        onSelect: () => {
+          const value = window.prompt('Назначение pipeline, например content.generate-article-summary. Пустое значение удалит назначение из черновика. Затем опубликуйте новую executable version.', section.capabilityKey ?? '');
+          if (value === null) return;
+          const result = graph.setSectionCapabilityKey(section.id, value);
+          showToast(result.ok
+            ? 'Назначение обновлено в черновике. Выберите Publish executable version, чтобы применить его в новой публикации.'
+            : result.reason);
+        } },
       { id: 'duplicate-section', label: 'Duplicate group', icon: <Copy size={14} />,
         onSelect: () => graph.duplicateSection(section.id) },
       { id: 'section-color', kind: 'color', label: 'Background', icon: <Palette size={14} />,
@@ -120,6 +132,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
 
   const getNodeMenuActions = useCallback((node: ProductionNode): ContextMenuAction[] => {
     const matchingFavorite = favoriteNodes.findMatchingFavorite(node);
+    const matchingTemplate = nodeTemplates.findMatchingTemplate(node);
     const assetIds = getNodeImageAssetIds(node);
     const currentAssetId = getNodeCurrentImageAssetId(node);
     const currentIndex = currentAssetId ? Math.max(0, assetIds.indexOf(currentAssetId)) : -1;
@@ -168,6 +181,25 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
           ));
         },
       },
+      {
+        id: 'node-template-preset',
+        label: matchingTemplate ? 'Remove from Templates' : 'Save to Templates',
+        icon: <LayoutTemplate size={14} />,
+        onSelect: () => {
+          const operation = matchingTemplate
+            ? nodeTemplates.removeTemplate(matchingTemplate.id).then(() => {
+              showToast('Node removed from Templates.');
+            })
+            : nodeTemplates.saveTemplate(node).then((result) => {
+              showToast(result.strippedAssetReferenceCount > 0
+                ? 'Node saved to Templates without unavailable assets.'
+                : 'Node saved to Templates.');
+            });
+          void operation.catch((error) => showToast(
+            error instanceof Error ? error.message : 'Could not update Templates.',
+          ));
+        },
+      },
       { id: 'toggle-node-lock', label: node.locked ? 'Unlock' : 'Lock',
         icon: node.locked ? <Unlock size={14} /> : <Lock size={14} />,
         onSelect: () => graph.toggleNodeLock(node.id) },
@@ -178,8 +210,8 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     return [...visibleBaseActions, ...imageActions, ...generationActions,
       { id: 'delete-node', label: 'Delete', icon: <Trash2 size={14} />,
         destructive: true, separatorBefore: true, onSelect: graph.deleteSelected }];
-  }, [copyAssetToClipboard, downloadAssets, favoriteNodes, graph, onAskAiNode,
-    openImageViewer, showToast]);
+  }, [copyAssetToClipboard, downloadAssets, favoriteNodes, graph, nodeTemplates,
+    onAskAiNode, openImageViewer, showToast]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {
     const point = canvas.screenToWorld(event.nativeEvent) ?? { x: 0, y: 0 };

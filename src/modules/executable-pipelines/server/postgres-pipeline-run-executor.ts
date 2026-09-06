@@ -6,6 +6,7 @@ import { generationJob } from '@/shared/db/schema/generation';
 import {
   executablePipeline,
   pipelineNodeRun,
+  pipelineRun,
   pipelineVersion,
 } from '../adapters/postgres/pipeline-schema';
 import type {
@@ -14,14 +15,18 @@ import type {
 } from '../contracts/pipeline-contracts';
 import { executeCompiledPipeline } from '../core/pipeline-executor';
 import { createProductionPipelineHandlerRegistry } from './pipeline-production-handlers';
+import { getRuntimeRunUsage } from './runtime-usage-service';
+import { verifyRuntimePublication } from './runtime-v2-run-service';
 
 export function createPostgresPipelineRunExecutor(): PipelineRunExecutor {
   return {
     async execute({ run, signal }) {
+      const [record] = await getDb().select().from(pipelineRun).where(eq(pipelineRun.id, run.id)).limit(1);
       const [published] = await getDb().select({
         compiledPlan: pipelineVersion.compiledPlan,
         documentId: executablePipeline.originDocumentId,
         publishedByUserId: pipelineVersion.publishedByUserId,
+        version: pipelineVersion,
       }).from(pipelineVersion)
         .innerJoin(executablePipeline, eq(executablePipeline.id, pipelineVersion.pipelineId))
         .where(and(
@@ -31,13 +36,19 @@ export function createPostgresPipelineRunExecutor(): PipelineRunExecutor {
         ))
         .limit(1);
       if (!published) throw new Error('Published pipeline version could not be loaded.');
+      if (record?.runtimeSnapshot) verifyRuntimePublication(published.version, {
+        pinnedVersion: record.pipelineVersion, pipelineChecksum: record.runtimeSnapshot.checksum,
+        inputSchemaChecksum: record.runtimeSnapshot.inputSchemaChecksum,
+        outputSchemaChecksum: record.runtimeSnapshot.outputSchemaChecksum,
+        capabilityKey: record.runtimeSnapshot.capabilityKey,
+      });
 
       const result = await executeCompiledPipeline({
         context: {
           pipelineId: run.pipelineId,
           pipelineVersion: run.pipelineVersion,
           runId: run.id,
-          sourceApplication: run.sourceApplication,
+          sourceApplication: record?.runtimeSnapshot?.sourceApplication ?? run.sourceApplication,
           workspaceId: run.workspaceId,
         },
         handlers: createProductionPipelineHandlerRegistry({
@@ -105,6 +116,10 @@ export function createPostgresPipelineRunExecutor(): PipelineRunExecutor {
         plan: published.compiledPlan,
         signal,
       });
+      if (record?.runtimeServiceClientId) {
+        const usage = await getRuntimeRunUsage(run.id);
+        return { ...result, usage: { actualCostUsd: usage.actualProviderCostUsd, totalTokens: usage.totalTokens } };
+      }
       const [usage] = await getDb().select({
         actualCostUsd: sql<string | null>`sum(${generationJob.providerCostUsd})::text`,
         totalTokens: sql<string | null>`sum(${generationJob.totalTokens})::text`,

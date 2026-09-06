@@ -13,6 +13,8 @@ import { PipelineNodeHandlerError } from '../contracts/pipeline-errors';
 import { readPipelineImageDataUrl, toPipelineImageArtifact } from './pipeline-image-artifacts';
 import type { PipelineImageGenerator, PipelineImageOperationScope } from './pipeline-image-contracts';
 import { readString, requireString } from './pipeline-handler-values';
+import { getRuntimeGenerationAttribution } from './runtime-usage-attribution';
+import { RuntimeCostError } from '../core/runtime-cost-policy';
 
 export function createQueuedImageGenerator(
   scope: PipelineImageOperationScope,
@@ -50,6 +52,7 @@ export function createQueuedImageGenerator(
       workspaceId: input.context.workspaceId,
     };
     const job = await submitGenerationJob({
+      runtimeAttribution: await getRuntimeGenerationAttribution(input.context, input.nodeId),
       documentId: scope.documentId,
       idempotencyKey: `pipeline:${input.context.runId}:node:${input.nodeId}`,
       maxAttempts: 3,
@@ -106,6 +109,8 @@ async function waitForGenerationJob(input: {
     if (job.status === 'succeeded') return job;
     if (job.status === 'canceled') throw handlerError('Image generation was canceled.', input.nodeId);
     if (job.status === 'failed' && (!job.error?.retryable || job.attemptCount >= job.maxAttempts)) {
+      if (job.error?.code === 'cost_estimate_unavailable' || job.error?.code === 'cost_limit_exceeded'
+        || job.error?.code === 'cost_enforcement_unsupported') throw new RuntimeCostError(job.error.code);
       throw new PipelineNodeHandlerError({
         message: job.error?.message ?? 'Image generation failed.',
         nodeId: input.nodeId,

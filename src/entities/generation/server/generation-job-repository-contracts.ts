@@ -1,8 +1,10 @@
 import { generationJob } from '@/shared/db/schema/generation';
+import type { RuntimeUsageAttribution } from '@/shared/contracts/runtime-usage-attribution';
 
-export type GenerationJobRecord = typeof generationJob.$inferSelect;
+export type GenerationJobRecord = Omit<typeof generationJob.$inferSelect, keyof RuntimeUsageAttribution>
+  & Partial<{ [Key in keyof RuntimeUsageAttribution]: string | null }>;
 
-export interface NewGenerationJobRecord {
+export interface NewGenerationJobRecord extends Partial<RuntimeUsageAttribution> {
   createdByUserId: string;
   documentId: string | null;
   id: string;

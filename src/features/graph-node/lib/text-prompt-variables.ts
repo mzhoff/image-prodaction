@@ -32,9 +32,9 @@ export function formatTextPromptVariable(alias: string, value: string, displayMo
 }
 
 export function formatTextPromptVariableParts(alias: string, value: string, displayMode: TextPromptVariableDisplayMode) {
-  const safeValue = value.trim() || 'None';
+  const safeValue = value.trim();
   if (displayMode === 'source') return { sourceText: alias, valueText: '' };
-  if (displayMode === 'value') return { sourceText: '', valueText: safeValue };
+  if (displayMode === 'value') return { sourceText: '', valueText: safeValue || 'None' };
   return {
     sourceText: alias,
     valueText: safeValue,

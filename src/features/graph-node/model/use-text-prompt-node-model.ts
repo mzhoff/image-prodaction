@@ -9,12 +9,12 @@ import {
   getTextPromptVariables,
 } from '@/entities/production-graph/model/node-definitions';
 import type { ProductionNode, TextPromptNodeData } from '@/entities/production-graph/model/types';
+import { getTextPromptSourceAlias } from '@/entities/production-graph/model/text-prompt-source-alias';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { composeTextPromptResult, normalizeTextPromptVariableDisplayMode } from '../lib/text-prompt-variables';
 import { useTextSectionFilters } from './use-text-section-filters';
 import {
   clampTextPromptTextareaHeight,
-  getCustomTextPromptSourceAlias,
   samePromptVariables,
 } from './text-workflow-values';
 
@@ -33,7 +33,7 @@ export function useTextPromptNodeModel(node: ProductionNode) {
     const incoming = getIncomingTextInputs(node.id, variable.id, { edges, nodes });
     const sourceNode = incoming[0]?.sourceNode
       ?? (incomingEdge ? nodes.find((item) => item.id === incomingEdge.sourceNodeId) : undefined);
-    const sourceAlias = getCustomTextPromptSourceAlias(sourceNode);
+    const sourceAlias = getTextPromptSourceAlias(sourceNode, incomingEdge?.sourcePortId);
     const connected = Boolean(incomingEdge);
     return {
       ...variable,
@@ -42,7 +42,7 @@ export function useTextPromptNodeModel(node: ProductionNode) {
       index,
       mentionAliases: sourceAlias && sourceAlias !== variable.alias ? [variable.alias] : undefined,
       portId: variable.id,
-      sourceLabel: sourceNode?.data.title ?? incoming[0]?.sourceLabel,
+      sourceLabel: sourceAlias ?? sourceNode?.data.title ?? incoming[0]?.sourceLabel,
       value: incoming.map((input) => input.text).join('\n\n'),
     };
   }), [edges, node.id, nodes, variables]);

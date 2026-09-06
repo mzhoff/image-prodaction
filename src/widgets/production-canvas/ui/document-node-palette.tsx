@@ -4,12 +4,14 @@ import { Minus } from 'lucide-react';
 import type { DragEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import type { FavoriteNodePreset } from '@/entities/production-graph/model/favorite-node-preset';
+import type { NodeTemplatePreset } from '@/entities/production-graph/model/node-template-preset';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
 import { useScrollableWheel } from '@/shared/ui/use-scrollable-wheel';
 import { addNodeMenuGroups } from '../lib/add-node-menu';
 import type { AddNodeMenuEntry } from '../lib/add-node-menu';
 import { FAVORITE_NODE_DRAG_MIME_TYPE, NODE_DRAG_MIME_TYPE } from '../lib/node-drag';
+import { DocumentNodeTemplateRow } from './document-node-template-row';
 
 interface PaletteNode {
   disabled?: boolean;
@@ -23,9 +25,13 @@ interface DocumentNodePaletteProps {
   favoriteNodes: FavoriteNodePreset[];
   favoriteNodesError?: string;
   favoriteNodesLoading: boolean;
+  nodeTemplates: NodeTemplatePreset[];
+  nodeTemplatesError?: string;
+  nodeTemplatesLoading: boolean;
   onClose: () => void;
   onCreateFavoriteNode: (favoriteId: string) => void;
   onCreateNode: (type: ProductionNodeType) => void;
+  onCreateTemplateNode: (templateId: string) => void;
   open: boolean;
 }
 
@@ -37,8 +43,9 @@ const paletteTabs: Array<{ id: PaletteTab; label: string }> = [
   { id: 'favorite', label: 'Favorite' },
 ];
 
-export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favoriteNodesLoading, onClose,
-  onCreateFavoriteNode, onCreateNode, open }: DocumentNodePaletteProps) {
+export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favoriteNodesLoading,
+  nodeTemplates, nodeTemplatesError, nodeTemplatesLoading, onClose, onCreateFavoriteNode,
+  onCreateNode, onCreateTemplateNode, open }: DocumentNodePaletteProps) {
   const [activeTab, setActiveTab] = useState<PaletteTab>('tools');
   const handleWheel = useScrollableWheel<HTMLDivElement>();
 
@@ -74,6 +81,16 @@ export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favorit
               </div>
             </section>
           ))
+        ) : activeTab === 'templates' && nodeTemplates.length > 0 ? (
+          <div className="document-node-palette-template-list">
+            {nodeTemplates.map((template) => (
+              <DocumentNodeTemplateRow
+                key={template.id}
+                onCreateTemplateNode={onCreateTemplateNode}
+                template={template}
+              />
+            ))}
+          </div>
         ) : activeTab === 'favorite' && favoriteNodes.length > 0 ? (
           <div className="document-node-palette-favorite-grid">
             {favoriteNodes.map((favorite) => (
@@ -87,13 +104,17 @@ export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favorit
         ) : (
           <div className="document-node-palette-empty">
             <strong>{activeTab === 'templates' ? 'Templates' : 'Favorite'}</strong>
-            <span>{activeTab === 'favorite'
-              ? favoriteNodesLoading
+            <span>{activeTab === 'templates'
+              ? nodeTemplatesLoading
+                ? 'Loading your templates…'
+                : nodeTemplatesError
+                  ? nodeTemplatesError
+                  : 'Use a node menu to save your first reusable template.'
+              : favoriteNodesLoading
                 ? 'Loading your saved nodes…'
                 : favoriteNodesError
                   ? favoriteNodesError
-                : 'Use a node menu to add your first reusable preset.'
-              : 'This section is ready for custom node collections.'}</span>
+                  : 'Use a node menu to add your first reusable preset.'}</span>
           </div>
         )}
       </div>

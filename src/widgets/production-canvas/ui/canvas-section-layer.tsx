@@ -107,7 +107,9 @@ function CanvasSection({
     <div
       className={cn('canvas-section', selected && 'canvas-section-selected', section.locked && 'canvas-section-locked')}
       data-canvas-section
-      onContextMenu={(event) => onSectionContextMenu(section, event)}
+      onContextMenu={(event) => {
+        if (selected) onSectionContextMenu(section, event);
+      }}
       onClick={(event) => {
         event.stopPropagation();
         const pointerDown = pointerDownRef.current;
@@ -132,7 +134,8 @@ function CanvasSection({
       } as CSSProperties}
     >
       <div
-        className={cn('canvas-section-badge', publication && 'canvas-section-badge-executable')}
+        className="canvas-section-badge"
+        onContextMenu={(event) => onSectionContextMenu(section, event)}
         onDoubleClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -176,20 +179,6 @@ function CanvasSection({
             </span>
           ) : null}
         </div>
-        {publication ? (
-          <div className="canvas-section-executable-contract">
-            {publication.inputs.map((input) => (
-              <span key={`${input.nodeId}-${input.portId}`}>
-                Input: {input.nodeTitle} · {input.kind}
-              </span>
-            ))}
-            {publication.outputs.map((output) => (
-              <span key={`${output.nodeId}-${output.portId}`}>
-                Output: {output.nodeTitle} · {output.kind}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
       {selected && !section.locked ? (
         <>

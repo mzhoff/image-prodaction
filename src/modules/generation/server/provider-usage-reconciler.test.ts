@@ -94,3 +94,44 @@ test('reconciler leaves incomplete usage pending and isolates candidate failures
     failed: 1,
   });
 });
+
+test('late price is reconciled even when all token counts were already complete', async () => {
+  const adapter = createFakeProviderAdapter();
+  adapter.getOperationStatus = async (providerOperationId) => ({
+    state: 'succeeded', error: null, modelId: 'fake/text-model', providerOperationId,
+    usage: { complete: true, inputTokens: 12, outputTokens: 8, totalTokens: 20,
+      providerCostUsd: '0.003', cacheReadTokens: null, cacheWriteTokens: null, reasoningTokens: null },
+  });
+  let writes = 0;
+  const result = await reconcileOpenRouterUsageBatch(1, {
+    adapter, resolveCredential: async () => 'test-only',
+    loadCandidates: async () => [{
+      id: 'job-1', attemptCount: 2, providerDispatchedAttempt: 2,
+      providerOperationId: 'op-2', workspaceId: 'workspace-1', usageRevision: 0,
+      inputTokens: '12', outputTokens: '8', totalTokens: '20', providerCostUsd: null,
+    }],
+    reconcileCandidate: async (_candidate, usage) => { writes += 1; assert.equal(usage.providerCostUsd, '0.003'); },
+  });
+  assert.equal(result.reconciled, 1);
+  assert.equal(writes, 1);
+});
+
+test('unchanged token-only response does not append endless reconciliation revisions', async () => {
+  const adapter = createFakeProviderAdapter();
+  adapter.getOperationStatus = async (providerOperationId) => ({
+    state: 'succeeded', error: null, modelId: 'fake/text-model', providerOperationId,
+    usage: { complete: true, inputTokens: 12, outputTokens: 8, totalTokens: 20,
+      providerCostUsd: null, cacheReadTokens: null, cacheWriteTokens: null, reasoningTokens: null },
+  });
+  const result = await reconcileOpenRouterUsageBatch(1, {
+    adapter, resolveCredential: async () => 'test-only',
+    loadCandidates: async () => [{
+      id: 'job-1', attemptCount: 1, providerDispatchedAttempt: 1,
+      providerOperationId: 'op-1', workspaceId: 'workspace-1', usageRevision: 0,
+      inputTokens: '12', outputTokens: '8', totalTokens: '20', providerCostUsd: null,
+    }],
+    reconcileCandidate: async () => { assert.fail('No newly known data.'); },
+  });
+  assert.equal(result.pending, 1);
+  assert.equal(result.reconciled, 0);
+});

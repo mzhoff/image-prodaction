@@ -16,6 +16,7 @@ import { asset } from './asset';
 import { user } from './auth';
 import { document } from './document';
 import { workspace } from './workspace';
+import { runtimeUsageColumns } from './runtime-usage-columns';
 
 export const generationJobStatus = pgEnum('generation_job_status', [
   'queued',
@@ -33,6 +34,7 @@ export const generationJobStatus = pgEnum('generation_job_status', [
  */
 export const generationJob = pgTable('generation_job', {
   id: uuid('id').primaryKey(),
+  ...runtimeUsageColumns(),
   workspaceId: uuid('workspace_id')
     .notNull()
     .references(() => workspace.id, { onDelete: 'cascade' }),
@@ -95,6 +97,7 @@ export const generationJob = pgTable('generation_job', {
   index('generation_job_dispatch_idx').on(table.status, table.enqueuedAt, table.createdAt),
   index('generation_job_final_asset_idx').on(table.finalAssetId),
   index('generation_job_provider_operation_idx').on(table.provider, table.providerOperationId),
+  index('generation_job_pipeline_run_idx').on(table.workspaceId, table.pipelineRunId),
 ]);
 
 export const generationJobRelations = relations(generationJob, ({ one }) => ({

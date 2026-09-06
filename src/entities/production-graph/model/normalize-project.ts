@@ -7,6 +7,7 @@ import { canKeepSingleIncomingEdge } from './port-contract';
 import { normalizeNode, normalizeNodeRuntimeStatus } from './normalize-project-node';
 import { normalizeLocationRecords, normalizeSubjectRecords } from './normalize-project-records';
 import { normalizeProjectSections } from './normalize-project-sections';
+import { ensurePipelineInputPromptMentions } from './text-prompt-source-alias';
 import type { GraphProject } from './types';
 
 export function normalizeProject(project: GraphProject): GraphProject {
@@ -18,6 +19,7 @@ export function normalizeProject(project: GraphProject): GraphProject {
     edges: normalizedPortState.edges,
     nodes: nodesWithPortCounts,
   });
+  const nodesWithRuntimeMentions = ensurePipelineInputPromptMentions(nodesWithPortCounts, edges);
   const sections = normalizeProjectSections(project.sections ?? []);
   const sectionIds = new Set(sections.map((section) => section.id));
   const subjects = normalizeSubjectRecords(project.subjects ?? []);
@@ -27,7 +29,7 @@ export function normalizeProject(project: GraphProject): GraphProject {
   return {
     ...initialProject,
     ...project,
-    nodes: nodesWithPortCounts,
+    nodes: nodesWithRuntimeMentions,
     sections,
     edges,
     subjects,

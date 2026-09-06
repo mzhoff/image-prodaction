@@ -1,10 +1,13 @@
-import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNotNull, isNull, notExists, or } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { type ProviderAdapter } from '@/modules/provider-connections';
 import { resolveOpenRouterCredentialForWorkspace } from '@/modules/provider-connections/server/provider-connection-service';
 import { createRuntimeOpenRouterAdapter } from '@/modules/provider-connections/server/runtime-provider-adapter';
 import { recordUsageEvent } from '@/modules/usage';
 import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
+import { usageEvent } from '@/shared/db/schema/usage';
+import { normalizeProviderCostUsd } from '@/shared/lib/provider-cost-decimal';
 
 interface UsageReconciliationCandidate {
   attemptCount: number;
@@ -12,6 +15,12 @@ interface UsageReconciliationCandidate {
   providerDispatchedAttempt: number | null;
   providerOperationId: string;
   workspaceId: string;
+  usageRevision?: number;
+  succeeded?: boolean;
+  inputTokens?: string | null;
+  outputTokens?: string | null;
+  totalTokens?: string | null;
+  providerCostUsd?: string | null;
 }
 
 export interface ProviderUsageReconcilerDependencies {
@@ -40,7 +49,8 @@ export async function reconcileOpenRouterUsageBatch(
         candidate.providerOperationId,
         { credential },
       );
-      if (!status.usage.complete) {
+      if ((!status.usage.complete && status.usage.providerCostUsd === null)
+        || !hasImprovedUsage(candidate, status.usage)) {
         pending += 1;
         continue;
       }
@@ -65,21 +75,48 @@ function createDependencies(): ProviderUsageReconcilerDependencies {
 }
 
 async function loadCandidates(limit: number): Promise<UsageReconciliationCandidate[]> {
+  const newer = alias(usageEvent, 'newer_usage_revision');
   const rows = await getDb().select({
-    attemptCount: generationJob.attemptCount,
+    attemptCount: usageEvent.attemptCount,
     id: generationJob.id,
-    providerDispatchedAttempt: generationJob.providerDispatchedAttempt,
-    providerOperationId: generationJob.providerOperationId,
+    providerOperationId: usageEvent.providerOperationId,
     workspaceId: generationJob.workspaceId,
-  }).from(generationJob).where(and(
+    usageRevision: usageEvent.callIndex,
+    succeeded: usageEvent.succeeded,
+    inputTokens: usageEvent.inputTokens,
+    outputTokens: usageEvent.outputTokens,
+    totalTokens: usageEvent.totalTokens,
+    providerCostUsd: usageEvent.providerCostUsd,
+  }).from(usageEvent).innerJoin(generationJob, eq(generationJob.id, usageEvent.generationJobId)).where(and(
     eq(generationJob.provider, 'openrouter'),
-    eq(generationJob.usageComplete, false),
-    isNotNull(generationJob.providerOperationId),
+    or(eq(usageEvent.usageComplete, false), isNull(usageEvent.providerCostUsd)),
+    isNotNull(usageEvent.providerOperationId),
     inArray(generationJob.status, ['succeeded', 'failed', 'canceled']),
-  )).orderBy(asc(generationJob.updatedAt)).limit(limit);
-  return rows.flatMap((row) => row.providerOperationId
-    ? [{ ...row, providerOperationId: row.providerOperationId }]
+    gt(generationJob.finishedAt, new Date(Date.now() - 24 * 60 * 60 * 1_000)),
+    notExists(getDb().select({ id: newer.id }).from(newer).where(and(
+      eq(newer.generationJobId, usageEvent.generationJobId),
+      eq(newer.attemptCount, usageEvent.attemptCount), gt(newer.callIndex, usageEvent.callIndex),
+    ))),
+  )).orderBy(asc(usageEvent.occurredAt)).limit(limit);
+  const candidates: UsageReconciliationCandidate[] = rows.flatMap((row) => row.providerOperationId
+    ? [{ ...row, providerDispatchedAttempt: row.attemptCount, providerOperationId: row.providerOperationId }]
     : []);
+  if (candidates.length < limit) {
+    const missingEvents = await getDb().select({
+      id: generationJob.id, attemptCount: generationJob.attemptCount,
+      providerDispatchedAttempt: generationJob.providerDispatchedAttempt,
+      providerOperationId: generationJob.providerOperationId, workspaceId: generationJob.workspaceId,
+    }).from(generationJob).where(and(
+      eq(generationJob.provider, 'openrouter'), isNotNull(generationJob.providerOperationId),
+      inArray(generationJob.status, ['succeeded', 'failed', 'canceled']),
+      gt(generationJob.finishedAt, new Date(Date.now() - 24 * 60 * 60 * 1_000)),
+      notExists(getDb().select({ id: usageEvent.id }).from(usageEvent)
+        .where(eq(usageEvent.generationJobId, generationJob.id))),
+    )).orderBy(asc(generationJob.updatedAt)).limit(limit - candidates.length);
+    candidates.push(...missingEvents.flatMap((row) => row.providerOperationId
+      ? [{ ...row, providerOperationId: row.providerOperationId }] : []));
+  }
+  return candidates;
 }
 
 async function reconcileCandidate(
@@ -89,16 +126,30 @@ async function reconcileCandidate(
   const attemptCount = candidate.providerDispatchedAttempt ?? candidate.attemptCount;
   await recordUsageEvent({
     attemptCount,
-    callIndex: 1,
+    callIndex: (candidate.usageRevision ?? 0) + 1,
     generationJobId: candidate.id,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-    providerCostUsd: usage.providerCostUsd,
+    inputTokens: usage.inputTokens ?? nullableToken(candidate.inputTokens),
+    outputTokens: usage.outputTokens ?? nullableToken(candidate.outputTokens),
+    providerCostUsd: normalizeProviderCostUsd(usage.providerCostUsd) ?? candidate.providerCostUsd,
     providerOperationId: candidate.providerOperationId,
-    succeeded: true,
-    totalTokens: usage.totalTokens,
+    succeeded: candidate.succeeded ?? true,
+    totalTokens: usage.totalTokens ?? nullableToken(candidate.totalTokens),
     metadata: {
       reconciliation: true,
     },
   });
+}
+
+function nullableToken(value: string | null | undefined) {
+  return value == null ? null : Number(value);
+}
+
+function hasImprovedUsage(
+  candidate: UsageReconciliationCandidate,
+  usage: Awaited<ReturnType<ProviderAdapter['getOperationStatus']>>['usage'],
+) {
+  return (candidate.providerCostUsd == null && normalizeProviderCostUsd(usage.providerCostUsd) !== null)
+    || (candidate.inputTokens == null && usage.inputTokens !== null)
+    || (candidate.outputTokens == null && usage.outputTokens !== null)
+    || (candidate.totalTokens == null && usage.totalTokens !== null);
 }

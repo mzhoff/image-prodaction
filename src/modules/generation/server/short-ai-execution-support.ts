@@ -5,6 +5,7 @@ import {
   type ProviderUsage,
 } from '@/modules/provider-connections';
 import type { RecordUsageEventInput } from '@/modules/usage';
+import { normalizeProviderCostUsd } from '@/shared/lib/provider-cost-decimal';
 import type {
   ShortAiExecutionDependencies,
   ProviderCallResult,
@@ -42,10 +43,7 @@ export function toGenerationUsage(usage: ProviderUsage): GenerationUsageInput {
 }
 
 export function normalizeCost(value: string | null) {
-  if (value === null) return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  return parsed.toFixed(8).replace(/\.?0+$/, '') || '0';
+  return normalizeProviderCostUsd(value);
 }
 
 export function readProviderFailureUsage(error: unknown): ProviderUsage {

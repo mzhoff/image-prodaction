@@ -234,7 +234,10 @@ export const imageNodeDefinitions = {
     title: 'Export',
     menuLabel: 'Export image',
     defaultHeight: 400,
-    ports: [{ id: 'image-0', label: 'Image 1', kind: 'image', side: 'input' }],
+    ports: [
+      { id: 'image-0', label: 'Image 1', kind: 'image', side: 'input' },
+      { id: 'image', label: 'Result', kind: 'image', side: 'output' },
+    ],
     createData: () => ({
       title: 'Export',
       imageInputCount: 1,

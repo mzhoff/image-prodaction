@@ -6,7 +6,7 @@ export function normalizeProjectSections(sections: GraphProject['sections']) {
 }
 
 function normalizeSection(section: GraphProject['sections'][number], index: number) {
-  const capabilityKey = normalizeCapabilityKey(section.capabilityKey);
+  const capabilityKey = normalizeSectionCapabilityKey(section.capabilityKey);
   return {
     ...(capabilityKey ? { capabilityKey } : {}),
     id: section.id || `section-${index + 1}`,
@@ -19,7 +19,7 @@ function normalizeSection(section: GraphProject['sections'][number], index: numb
   };
 }
 
-function normalizeCapabilityKey(value: unknown) {
+export function normalizeSectionCapabilityKey(value: unknown) {
   return typeof value === 'string' && /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(value)
     && value.length <= 120
     ? value

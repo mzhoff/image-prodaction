@@ -279,6 +279,7 @@ function getExportImagePorts(node: ProductionNode): GraphPort[] {
       kind: 'image' as const,
       side: 'input' as const,
     })),
+    { id: 'image', label: 'Result', kind: 'image' as const, side: 'output' as const },
   ];
 }
 

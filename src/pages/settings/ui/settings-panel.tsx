@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { PlugZap, Shield, UserRound, X } from 'lucide-react';
+import { Cable, PlugZap, Shield, UserRound, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { SettingsSection } from '../model/settings-section';
 import { AccountSettings } from './account-settings';
 import { ProviderSettings } from './provider-settings';
 import { SecuritySettings } from './security-settings';
+import { RuntimeConnectionsSettings } from './runtime-connections-settings';
 
 interface SettingsPanelProps {
   section: SettingsSection;
@@ -20,6 +21,7 @@ const navigation = [
   { section: 'account' as const, label: 'Аккаунт', icon: UserRound, group: 'Личные' },
   { section: 'security' as const, label: 'Безопасность', icon: Shield, group: 'Личные' },
   { section: 'providers' as const, label: 'AI Providers', icon: PlugZap, group: 'Workspace' },
+  { section: 'integrations' as const, label: 'Подключения', icon: Cable, group: 'Workspace' },
 ];
 
 export function SettingsPanel({
@@ -112,7 +114,9 @@ export function SettingsPanel({
             ? <AccountSettings onDirtyChange={updateDirty} />
             : section === 'security'
               ? <SecuritySettings onDirtyChange={updateDirty} />
-              : <ProviderSettings onDirtyChange={updateDirty} />}
+              : section === 'providers'
+                ? <ProviderSettings onDirtyChange={updateDirty} />
+                : <RuntimeConnectionsSettings onDirtyChange={updateDirty} />}
         </div>
       </div>
     </div>

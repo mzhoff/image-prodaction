@@ -3,6 +3,7 @@ export * from './auth';
 export * from './document';
 export * from './generation';
 export * from './favorite-node';
+export * from './node-template';
 export * from './provider';
 export * from './usage';
 export * from './worker';

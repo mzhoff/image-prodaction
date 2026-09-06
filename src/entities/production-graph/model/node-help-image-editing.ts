@@ -99,20 +99,22 @@ export const imageEditingNodeHelp = {
     capabilities: [
       'Предоставляет от 1 до 10 image-входов и экспортирует PNG, JPEG или WebP.',
       'Настраивает quality, scale 1/0.75/0.5/0.25 и transparent/white/black background.',
+      'Возвращает преобразованный первый image-вход через output image для продолжения dataflow.',
       'Исполняется на сервере как image.export.',
     ],
     execution: 'server',
     limitations: [
-      'Выходных портов нет.',
-      'Создание ноды не запускает download или export: требуется отдельное действие пользователя.',
+      'Первый подключённый image, обычно image-0, автоматически готовит преобразованный output для dataflow; Download и Save current to Library остаются отдельными действиями пользователя.',
       'В Studio один source с локальной history может раскрыться более чем в десять файлов; executable runtime обрабатывает до 10 scalar image bindings.',
+      'Downstream output image представляет только первый преобразованный подключённый image; batch остаётся доступен для download/runtime collection, но не имеет отдельного canvas collection-порта.',
       'quality применяется только к JPEG/WebP; PNG её игнорирует, а transparent background для JPEG заменяется белым.',
     ],
     portRules: [
-      'Динамические входы image-0..image-9 принимают image; выходов нет.',
+      'Динамические входы image-0..image-9 принимают image; фиксированный output image возвращает первый преобразованный подключённый image (обычно image-0).',
       'Для одного результата обычно подключают composition.image или generateImage.image к image-0.',
+      'Для публичного готового артефакта подключите exportImage.image к image-полю Pipeline Output.',
     ],
-    summary: 'Экспортирует одно или несколько изображений с настройками формата, качества, масштаба и фона.',
+    summary: 'Преобразует и экспортирует изображения, а первый готовый подключённый image возвращает дальше как финальный image artifact.',
   },
   banner: {
     aliases: ['banner', 'canvas banner', 'divider', 'баннер', 'разделитель', 'подложка'],

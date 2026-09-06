@@ -47,4 +47,5 @@ export type ExportImageBackground = 'transparent' | 'white' | 'black';
 export interface ExportImageNodeData extends BaseNodeData {
   imageInputCount?: number; format: ExportImageFormat; quality: string;
   scale: ExportImageScale; background: ExportImageBackground;
+  resultAssetId?: string; resultSignature?: string; sourceAssetId?: string;
 }

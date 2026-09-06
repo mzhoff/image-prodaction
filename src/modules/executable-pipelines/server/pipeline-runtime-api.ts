@@ -23,6 +23,7 @@ import {
   toPipelineRuntimeRun,
 } from './pipeline-runtime-run-service';
 import { canPipelineConsumerAccessRun } from './pipeline-runtime-access';
+import { isRuntimeProtocolConflict } from './runtime-protocol-conflict';
 
 const createRunBodySchema = z.object({
   input: z.record(z.string(), z.unknown()),
@@ -198,6 +199,7 @@ function containsAssetReference(value: PipelineValue, assetId: string): boolean 
 }
 
 function toPipelineRuntimeError(error: unknown) {
+  if (isRuntimeProtocolConflict(error)) return apiError('idempotency_protocol_conflict', 'Continue this operation through its original runtime connection.', 409);
   if (error instanceof PipelineApiKeyAuthenticationError) {
     const response = apiError('unauthorized', error.message, 401);
     response.headers.set('WWW-Authenticate', 'Bearer realm="pipeline-runtime"');

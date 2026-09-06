@@ -20,6 +20,7 @@ import {
   preserveCompositionLayerIdentityOnReconnect,
 } from './composition-connection-state';
 import { connectEdgeState } from './graph-connect-edge-state';
+import { invalidateExportImageResult } from './export-image-connection-state';
 import { reorderTelegramMedia } from './telegram-media-order';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
@@ -133,10 +134,17 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
           nodeId: targetNodeId,
           toPortId: targetPortId,
         });
+        const nextTargetNodes = invalidateExportImageResult(
+          keepCompositionResult ? nextNodes : invalidateCompositionResult(nextNodes, targetNodeId),
+          targetNodeId,
+        );
+        const detachedTargetNodeId = options?.detachedEdge?.targetNodeId;
         return {
           ...withHistory(state),
           edges: nextState.edges,
-          nodes: keepCompositionResult ? nextNodes : invalidateCompositionResult(nextNodes, targetNodeId),
+          nodes: detachedTargetNodeId && detachedTargetNodeId !== targetNodeId
+            ? invalidateExportImageResult(nextTargetNodes, detachedTargetNodeId)
+            : nextTargetNodes,
         };
       });
       return { ok: true };
@@ -152,10 +160,13 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
           return {
             ...withHistory(state),
             edges: removedEdges,
-            nodes: invalidateCompositionResult(state.nodes, edge.targetNodeId, {
-              clearLayerContent: !options?.preserveCompositionLayerContent,
-              targetPortId: edge.targetPortId,
-            }),
+            nodes: invalidateExportImageResult(
+              invalidateCompositionResult(state.nodes, edge.targetNodeId, {
+                clearLayerContent: !options?.preserveCompositionLayerContent,
+                targetPortId: edge.targetPortId,
+              }),
+              edge.targetNodeId,
+            ),
           };
         }
 
@@ -163,10 +174,13 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
         return {
           ...withHistory(state),
           edges: nextState.edges,
-          nodes: invalidateCompositionResult(nextState.nodes, edge.targetNodeId, {
-            clearLayerContent: !options?.preserveCompositionLayerContent,
-            targetPortId: edge.targetPortId,
-          }),
+          nodes: invalidateExportImageResult(
+            invalidateCompositionResult(nextState.nodes, edge.targetNodeId, {
+              clearLayerContent: !options?.preserveCompositionLayerContent,
+              targetPortId: edge.targetPortId,
+            }),
+            edge.targetNodeId,
+          ),
         };
       });
     },

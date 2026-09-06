@@ -15,6 +15,8 @@ export default defineConfig({
     './src/modules/chat-assistant/server/pipeline-action-schema.ts',
     './src/modules/chat-assistant/server/pipeline-update-schema.ts',
     './src/modules/executable-pipelines/adapters/postgres/pipeline-schema.ts',
+    './src/modules/executable-pipelines/adapters/postgres/runtime-schema.ts',
+    './src/modules/executable-pipelines/adapters/postgres/runtime-cost-schema.ts',
   ],
   out: './drizzle',
   dialect: 'postgresql',

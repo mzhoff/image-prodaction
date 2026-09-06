@@ -46,6 +46,7 @@ export async function createGenerationJob(
     idempotencyKey: normalizeRequiredText(input.idempotencyKey, 'Idempotency key', 255),
     maxAttempts: normalizeMaxAttempts(input.maxAttempts),
     metadata: normalizeGenerationMetadata(input.metadata),
+    ...input.runtimeAttribution,
   };
   const result = await dependencies.repository.createOrFind({
     id: dependencies.createId(),

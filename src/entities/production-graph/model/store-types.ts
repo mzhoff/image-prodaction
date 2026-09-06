@@ -19,7 +19,7 @@ export interface ProductionGraphState extends GraphProject {
   uiState: ProjectUiState;
   addSection: (rect: { x: number; y: number; width: number; height: number }) => string;
   addNode: (type: ProductionNodeType, position: GraphPoint) => string;
-  addNodeFromFavorite: (snapshot: FavoriteNodeSnapshot, position: GraphPoint) => string;
+  addNodeFromFavorite: (snapshot: FavoriteNodeSnapshot, position: GraphPoint, assets?: AssetRecord[]) => string;
   addAsset: (asset: AssetRecord) => void;
   assignAssetToNode: (nodeId: string, assetId: string) => void;
   assignBannerAssetToNode: (nodeId: string, asset: AssetRecord) => void;
@@ -53,6 +53,7 @@ export interface ProductionGraphState extends GraphProject {
   selectNodesInRect: (rect: { x: number; y: number; width: number; height: number }) => void;
   selectSection: (sectionId: string, additive?: boolean) => void;
   setSectionColor: (sectionId: string, color: string) => void;
+  setSectionCapabilityKey: (sectionId: string, capabilityKey: string) => ConnectResult;
   toggleSectionLock: (sectionId: string) => void;
   setNodeStatus: (nodeId: string, status: ProductionNode['status']) => void;
   pushHistory: () => void;

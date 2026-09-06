@@ -146,6 +146,8 @@ export interface PipelineRunJob {
   requestFingerprint: string;
   retryAvailableAt: Date | null;
   retryable: boolean | null;
+  /** A v2 run must never fall through the legacy source-application ownership rule. */
+  runtimeServiceClientId?: string | null;
   sourceApplication: string;
   startedAt: Date | null;
   status: PipelineRunStatus;

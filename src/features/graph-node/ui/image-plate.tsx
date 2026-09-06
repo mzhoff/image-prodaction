@@ -22,6 +22,7 @@ import {
   isAssetInLibrary,
   persistAssetToLibrary,
 } from '@/entities/production-graph/lib/persist-asset-to-library';
+import { ProTooltip } from '@/shared/ui/pro-tooltip';
 import { ImageViewer } from './image-viewer';
 import type { ImageViewerEditorPanel, MaskEditPayload } from './image-viewer-types';
 
@@ -133,69 +134,77 @@ export function ImagePlate({
         )}
         {url ? (
           <div className="image-plate-actions">
-            <button
-              type="button"
-              aria-label={saveError || (isAssetInLibrary(asset) ? 'Image is saved in Library' : 'Save image to Library')}
-              title={saveError || (isAssetInLibrary(asset) ? 'Saved in Library' : 'Save to Library')}
-              disabled={savingToLibrary || isAssetInLibrary(asset)}
-              onClick={(event) => {
-                event.stopPropagation();
-                void handleSaveToLibrary();
-              }}
+            <ProTooltip
+              label={saveError || (isAssetInLibrary(asset) ? 'Saved in Library' : 'Save to Library')}
+              side="bottom"
             >
-              {savingToLibrary
-                ? <Loader2 className="spin" size={15} />
-                : isAssetInLibrary(asset) ? <BookmarkCheck size={15} /> : <BookmarkPlus size={15} />}
-            </button>
-            <button
-              type="button"
-              aria-label="Download image"
-              title="Download"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleDownload();
-              }}
-            >
-              <Download size={15} />
-            </button>
-            <button
-              type="button"
-              aria-label="Open image"
-              title="Open"
-              onClick={(event) => {
-                event.stopPropagation();
-                setViewerOpen(true);
-              }}
-            >
-              <Maximize2 size={15} />
-            </button>
+              <button
+                type="button"
+                aria-label={saveError || (isAssetInLibrary(asset) ? 'Image is saved in Library' : 'Save image to Library')}
+                disabled={savingToLibrary || isAssetInLibrary(asset)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleSaveToLibrary();
+                }}
+              >
+                {savingToLibrary
+                  ? <Loader2 className="spin" size={15} />
+                  : isAssetInLibrary(asset) ? <BookmarkCheck size={15} /> : <BookmarkPlus size={15} />}
+              </button>
+            </ProTooltip>
+            <ProTooltip label="Download" side="bottom">
+              <button
+                type="button"
+                aria-label="Download image"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDownload();
+                }}
+              >
+                <Download size={15} />
+              </button>
+            </ProTooltip>
+            <ProTooltip label="Open" side="bottom">
+              <button
+                type="button"
+                aria-label="Open image"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setViewerOpen(true);
+                }}
+              >
+                <Maximize2 size={15} />
+              </button>
+            </ProTooltip>
           </div>
         ) : null}
         {hasHistory ? (
           <>
             <div className="image-plate-version-controls">
-              <button
-                type="button"
-                aria-label="Previous generated image"
-                title="Previous"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  showPrevious();
-                }}
-              >
-                <ChevronLeft size={15} />
-              </button>
-              <button
-                type="button"
-                aria-label="Next generated image"
-                title="Next"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  showNext();
-                }}
-              >
-                <ChevronRight size={15} />
-              </button>
+              <ProTooltip label="Previous">
+                <button
+                  type="button"
+                  aria-label="Previous generated image"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    showPrevious();
+                  }}
+                >
+                  <ChevronLeft size={15} />
+                </button>
+              </ProTooltip>
+              <ProTooltip label="Next">
+                <button
+                  type="button"
+                  aria-label="Next generated image"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    showNext();
+                  }}
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </ProTooltip>
             </div>
             <div className="image-plate-version-badge">{currentIndex + 1}/{historyAssetIds.length}</div>
           </>

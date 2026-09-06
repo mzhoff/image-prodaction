@@ -12,7 +12,8 @@ import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import type { useSectionDrawing } from './use-section-drawing';
 import type { CanvasTool } from './production-canvas-values';
 import { getDraggedFavoriteNodeId, getDraggedNodeType,
-  hasDraggedFavoriteNode, hasDraggedNodeType } from './production-canvas-values';
+  getDraggedNodeTemplateId, hasDraggedFavoriteNode, hasDraggedNodeTemplate,
+  hasDraggedNodeType } from './production-canvas-values';
 
 type CanvasNavigation = ReturnType<typeof useCanvasNavigation>;
 type BoxSelection = ReturnType<typeof useCanvasBoxSelection>;
@@ -25,6 +26,7 @@ interface CanvasInteractionOptions {
   closeContextMenu: () => void;
   createNode: (type: ProductionNodeType, position: GraphPoint) => string;
   createFavoriteNode: (favoriteId: string, position: GraphPoint) => string | null;
+  createTemplateNode: (templateId: string, position: GraphPoint) => Promise<string | null>;
   getFallbackPastePosition: () => GraphPoint;
   importImageFiles: (
     files: readonly File[],
@@ -41,7 +43,7 @@ interface CanvasInteractionOptions {
 
 export function useProductionCanvasInteractions(options: CanvasInteractionOptions) {
   const { boxSelection, canvas, canvasTool, closeContextMenu, createFavoriteNode, createNode,
-    getFallbackPastePosition, importImageFiles, lastPointerWorldRef, nodesById,
+    createTemplateNode, getFallbackPastePosition, importImageFiles, lastPointerWorldRef, nodesById,
     sectionDrawing, setCanvasTool, showToast,
     toggleCollapsedStateForSelectedNodes } = options;
 
@@ -85,10 +87,20 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
   const handleCanvasDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
     if (!hasDraggedNodeType(event.dataTransfer)
       && !hasDraggedFavoriteNode(event.dataTransfer)
+      && !hasDraggedNodeTemplate(event.dataTransfer)
       && !hasImageFileInDataTransfer(event.dataTransfer)) return;
     event.preventDefault(); event.dataTransfer.dropEffect = 'copy';
   };
   const handleCanvasDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    const templateId = getDraggedNodeTemplateId(event.dataTransfer);
+    if (templateId) {
+      event.preventDefault(); event.stopPropagation(); closeContextMenu();
+      void createTemplateNode(
+        templateId,
+        canvas.screenToWorld(event.nativeEvent) ?? getFallbackPastePosition(),
+      );
+      return;
+    }
     const favoriteId = getDraggedFavoriteNodeId(event.dataTransfer);
     if (favoriteId) {
       event.preventDefault(); event.stopPropagation(); closeContextMenu();

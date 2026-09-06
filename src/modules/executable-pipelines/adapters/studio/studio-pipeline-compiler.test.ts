@@ -395,6 +395,55 @@ test('explicit URL input compiles QR Code into a server image output', () => {
   });
 });
 
+test('explicit image output binds to the transformed Export artifact', () => {
+  const project = createTextProject();
+  project.nodes = [
+    node('pipeline-input', 'pipelineInput', 100, {
+      title: 'Pipeline Input',
+      fields: [{ id: 'brief-field', key: 'brief', kind: 'text', required: true }],
+    }),
+    node('image-generation', 'generateImage', 400, {
+      title: 'Generate Image',
+      model: 'google/gemini-2.5-flash-image',
+      prompt: '',
+      aspectRatio: '3:2',
+      size: '1K',
+    }),
+    node('image-export', 'exportImage', 700, {
+      title: 'Export WebP',
+      background: 'white',
+      format: 'webp',
+      quality: '80',
+      scale: '0.5',
+    }),
+    node('pipeline-output', 'pipelineOutput', 1000, {
+      title: 'Pipeline Output',
+      fields: [{ id: 'cover-field', key: 'cover', kind: 'image', required: true }],
+    }),
+  ];
+  project.edges = [
+    edge('pipeline-input', 'field:brief-field', 'image-generation', 'prompt'),
+    edge('image-generation', 'image', 'image-export', 'image-0'),
+    edge('image-export', 'image', 'pipeline-output', 'field:cover-field'),
+  ];
+
+  const compiled = compileStudioSection(project, 'section-main');
+
+  assert.deepEqual(compiled.compiledPlan.definition.nodes.map((item) => item.handlerType), [
+    'ai.image.generate',
+    'image.export',
+  ]);
+  assert.deepEqual(compiled.compiledPlan.definition.nodes[1]?.inputs, {
+    'image-0': { source: 'node-output', nodeId: 'image-generation', outputKey: 'image' },
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.outputs, {
+    cover: { nodeId: 'image-export', outputKey: 'image' },
+  });
+  assert.deepEqual(compiled.compiledPlan.definition.outputContracts, {
+    cover: { kind: 'image', required: true },
+  });
+});
+
 test('explicit mode requires exactly one input and one output boundary', () => {
   const project = createTextProject();
   project.nodes.push(node('pipeline-input', 'pipelineInput', 100, {
