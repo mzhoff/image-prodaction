@@ -665,6 +665,35 @@ test('legacy Library thumbnail is generated lazily once and then served from its
   assert.equal(content.asset.thumbnailUrl, `/api/assets/${assetId}/content?variant=thumbnail`);
 });
 
+test('legacy Library video poster is generated lazily and served as a stored thumbnail variant', async () => {
+  const thumbnailBytes = Buffer.from('video-poster-webp');
+  const repository = new MemoryAssetRepository();
+  repository.record = createRecord({
+    contentType: 'video/mp4',
+    mediaKind: 'video',
+    libraryVisible: true,
+    status: 'ready',
+  });
+  let posterCreations = 0;
+
+  const content = await getAssetContent('user-1', assetId, {
+    repository,
+    createId: () => '01900000-0000-7000-8000-000000000009',
+    createVideoThumbnail: async (bytes) => {
+      posterCreations += 1;
+      assert.deepEqual(Buffer.from(bytes), onePixelPng);
+      return createThumbnailImage(thumbnailBytes);
+    },
+    objectStore: createObjectStore({
+      get: async ({ key }) => ({ body: new Response(key.endsWith('.thumbnail.webp') ? thumbnailBytes : onePixelPng).body! }),
+    }),
+  }, 'thumbnail');
+
+  assert.equal(posterCreations, 1);
+  assert.equal(repository.variants[0]?.purpose, 'thumbnail');
+  assert.equal(content.asset.thumbnailUrl, `/api/assets/${assetId}/content?variant=thumbnail`);
+});
+
 test('delete is idempotent and orphan cleanup can be scheduled separately', async () => {
   const repository = new MemoryAssetRepository();
   repository.record = createRecord({ status: 'ready' });

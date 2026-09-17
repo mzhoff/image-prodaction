@@ -63,6 +63,7 @@ test('getDynamicInputSlotSpec resolves text concat and telegram publication spec
   assert.ok(getDynamicInputSlotSpec('telegramPublication'));
   assert.ok(getDynamicInputSlotSpec('exportImage'));
   assert.equal(getDynamicInputSlotSpec('composition')?.maxCount, 24);
+  assert.equal(getDynamicInputSlotSpec('imageToText')?.maxCount, 5);
   assert.equal(getDynamicInputSlotSpec('textPrompt'), undefined);
 });
 
@@ -73,6 +74,7 @@ test('getDynamicInputPortIndex parses known node port ids', () => {
   assert.equal(getDynamicInputPortIndex('telegramPublication', 'media-3'), 3);
   assert.equal(getDynamicInputPortIndex('exportImage', 'image-3'), 3);
   assert.equal(getDynamicInputPortIndex('exportImage', 'text-3'), -1);
+  assert.equal(getDynamicInputPortIndex('imageToText', 'image-2'), 2);
 });
 
 test('compactDynamicInputSlotEdges closes gaps without touching unrelated edges', () => {

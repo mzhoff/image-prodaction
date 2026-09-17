@@ -2,8 +2,8 @@ import { persistAuthorizedAudioAsset } from '@/entities/asset/server/audio-asset
 import { convertAudioBytes, inspectAudioBytes } from '@/shared/media/audio-processor';
 import { audioConvertOptionsSchema, MAX_AUDIO_OUTPUT_BYTES } from '@/shared/media/audio-contracts';
 import { transcribeAudio } from '@/modules/generation/server/audio-transcription';
-import { executeInternalOpenRouterCall } from '@/modules/generation';
-import { createSpeechProviderCall, speechOptionsSchema } from '@/modules/provider-connections/server/speech-provider-call';
+import { generateSpeech } from '@/modules/generation/server/speech-generation';
+import { longSpeechOptionsSchema } from '@/modules/provider-connections/server/speech-provider-call';
 import { getRuntimeGenerationAttribution } from './runtime-usage-attribution';
 import { readAudioArtifact, toAudioArtifact, resolveStoredArtifact, createAudioResultId } from './pipeline-audio-artifacts';
 import type { AudioHandlerDependencies } from './pipeline-audio-handlers';
@@ -39,10 +39,9 @@ export function createStoredAudioOperations(scope: PipelineHandlerScope): AudioH
       });
     },
     async generateAudio(input) {
-      const options = speechOptionsSchema.parse({ ...input.config, inputText: input.text });
-      const execution = await executeInternalOpenRouterCall({
-        ...createSpeechProviderCall(options, input.signal), actorUserId: scope.actorUserId,
-        request: new Request('http://pipeline-runtime.internal/speech', { signal: input.signal }),
+      const options = longSpeechOptionsSchema.parse({ ...input.config, inputText: input.text });
+      const execution = await generateSpeech({
+        options, signal: input.signal, actorUserId: scope.actorUserId,
         scope: {
           idempotencyKey: `pipeline:${input.context.runId}:node:${input.nodeId}`, documentId: scope.documentId,
           workspaceId: input.context.workspaceId,
@@ -58,6 +57,8 @@ export function createStoredAudioOperations(scope: PipelineHandlerScope): AudioH
         generationJobId: execution.job.id, modelId: options.model, provider: 'openrouter',
         originalName: execution.result.contentType === 'audio/wav' ? 'voice.wav' : 'voice.mp3',
         operation: 'generate_speech', origin: 'generated', userId: scope.actorUserId, workspaceId: input.context.workspaceId,
+        metadata: { pipelineRunId: input.context.runId, pipelineNodeId: input.nodeId,
+          speechChunkCount: execution.chunkCount, voice: options.voice, language: options.language },
       }, inspected);
       return toAudioArtifact(asset, input.context.runId);
     },

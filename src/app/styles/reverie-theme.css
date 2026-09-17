@@ -1,0 +1,91 @@
+/* Единственный источник палитры/геометрии — опубликованный профиль ui-tokens.
+   Эти aliases адаптируют публичный ChatModule 0.12, не копируя его реализацию. */
+:root,
+.image-production-chat[data-theme] {
+  --cm-color-page: var(--pui-semantic-surface-canvas);
+  --cm-color-surface: var(--pui-semantic-surface-primary);
+  --cm-color-surface-raised: var(--pui-semantic-surface-elevated);
+  --cm-color-surface-muted: var(--pui-semantic-surface-secondary);
+  --cm-color-text: var(--pui-semantic-text-primary);
+  --cm-color-text-muted: var(--pui-semantic-text-secondary);
+  --cm-color-text-subtle: var(--pui-semantic-text-muted);
+  --cm-color-border: var(--pui-semantic-border-default);
+  --cm-color-border-strong: var(--pui-semantic-border-focus);
+  --cm-color-accent: var(--pui-semantic-accent-default);
+  --cm-color-accent-contrast: var(--pui-semantic-text-on-accent);
+  --cm-color-info: var(--pui-semantic-status-info-foreground);
+  --cm-color-success: var(--pui-semantic-status-success-foreground);
+  --cm-color-warning: var(--pui-semantic-status-warning-foreground);
+  --cm-color-danger: var(--pui-semantic-status-danger-foreground);
+  --cm-font-family: var(--pui-font-family-sans);
+  --cm-radius-xs: var(--pui-radius-sm);
+  --cm-radius-sm: var(--pui-radius-sm);
+  --cm-radius-md: var(--pui-radius-md);
+  --cm-radius-lg: var(--pui-radius-lg);
+  --cm-radius-pill: var(--pui-radius-full);
+  --cm-shadow-popup: var(--pui-shadow-lg);
+  --cm-shadow-soft: var(--pui-shadow-sm);
+}
+
+/* SVG-cursors с жёстким чёрным stroke не видны на тёмном канвасе.
+   Системные курсоры адаптируются ОС и не требуют фильтровать контент. */
+html[data-theme='dark'] {
+  --cursor-mouse-pointer-2: default;
+  --cursor-move-horizontal: ew-resize;
+  --cursor-move-vertical: ns-resize;
+  --cursor-move-diagonal: nwse-resize;
+  --cursor-move-diagonal-2: nesw-resize;
+}
+
+.theme-control { width: auto; min-width: 144px; }
+.theme-control-option { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.theme-control-option svg { flex: 0 0 auto; }
+.theme-control-menu { min-width: max(180px, var(--radix-select-trigger-width)); border-radius: var(--pui-radius-popup); }
+.theme-control-menu .pui-select__item { padding-inline: 12px 36px; }
+.theme-control-menu .pui-select__item-indicator { inset-inline-start: auto; inset-inline-end: 12px; }
+.canvas-toolbar .canvas-theme-control { display: inline-flex; width: auto; min-width: 130px; height: 28px; padding-inline: 8px; font-size: 11px; }
+.workspace-sidebar-bottom > .theme-control { width: 100%; }
+.settings-section > .theme-control { align-self: flex-start; max-width: 220px; margin-bottom: 24px; }
+.production-node { border-radius: var(--pui-radius-card); }
+.production-node .primary-node-button { border-radius: var(--pui-radius-control); }
+/* Geometry belongs to the node layout. Inset fields use calc(100% - 32px)
+   plus margins; a higher-specificity width:100% here would overflow the card. */
+.primary-node-button .pui-button__icon { display: inline-flex; }
+.primary-node-button .pui-button__label { min-width: 0; }
+
+/* Поля кадра — медиаплоскость, а не инверсная кнопка. */
+.import-video-body video,
+.timeline-preview,
+.timeline-preview .timeline-preview-exact-frame,
+.timeline-row-preview img { background: #000; }
+.workspace-profile-menu, .context-menu, .brand-select-menu,
+.dark-select-menu, .model-select-menu, .assistant-shell { border-radius: var(--pui-radius-popup); }
+.auth-card, .settings-dialog, .settings-card, .workspace-project-card,
+.studio-folder-card, .studio-subject-card { border-radius: var(--pui-radius-card); }
+.auth-form input:not([type='checkbox']), .settings-form input:not([type='checkbox']),
+.studio-subject-form input:not([type='file']), .studio-subject-form textarea,
+.prompt-box { border-radius: var(--pui-radius-control); }
+.workspace-nav a, .workspace-nav button { font-size: var(--pui-font-size-body); }
+.workspace-window-head h1, .library-window-head h1,
+.settings-section h2 { font-size: var(--pui-font-size-h1); }
+.setting-row, .range-slider-label, .mini-select { font-size: var(--pui-font-size-label); }
+.auth-submit.pui-button { height: var(--pui-size-44); min-height: var(--pui-size-44); border-radius: var(--pui-radius-control); font-size: var(--pui-font-size-body); }
+
+/* Поиск — одно составное поле: focus ring принадлежит общей рамке с иконкой,
+   а не дублируется на внутреннем Input. Остальные поля сохраняют свой ring. */
+:is(.library-search, .library-project-search, .workspace-search) .pui-input {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:is(.library-search, .library-project-search, .workspace-search) .pui-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.workspace-search:focus-within { outline: 2px solid var(--pui-semantic-border-focus); outline-offset: 2px; }
+.auth-topline { gap: 12px; }
+
+@media (max-width: 600px) {
+  .canvas-toolbar { bottom: 80px; width: max-content; max-width: calc(100vw - 20px); gap: 2px; flex-wrap: wrap; justify-content: center; }
+  .canvas-toolbar button { width: 26px; }
+}

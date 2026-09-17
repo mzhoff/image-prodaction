@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   createGenerationJob,
   failGenerationJob,
@@ -23,7 +22,6 @@ import { createRuntimeOpenRouterAdapter } from '@/modules/provider-connections/s
 import { recordUsageEvent } from '@/modules/usage';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 import {
   markShortAiProviderDispatched,
@@ -45,11 +43,7 @@ export {
   type ShortAiScope,
 } from './short-ai-execution-core';
 
-export const shortAiScopeSchema = z.object({
-  documentId: z.string().refine(isUuidV7, 'documentId must be UUIDv7').optional(),
-  idempotencyKey: z.string().trim().min(1).max(255).optional(),
-  workspaceId: z.string().refine(isUuidV7, 'workspaceId must be UUIDv7'),
-});
+export { shortAiScopeSchema } from '@/modules/generation/server/short-ai-scope';
 
 export function executeShortOpenRouterChat<T>(
   input: Parameters<typeof executeShortOpenRouterChatCore<T>>[0],

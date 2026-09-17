@@ -1,6 +1,6 @@
 'use client';
 
-import { Maximize2, Plus } from 'lucide-react';
+import { Maximize2, Plus } from '@prodactionpro/ui-core/icons';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ProductionNode } from '@/entities/production-graph/model/types';

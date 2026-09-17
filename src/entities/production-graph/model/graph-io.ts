@@ -22,6 +22,7 @@ export {
 } from './graph-image-outputs';
 export { getIncomingSources } from './graph-io-sources';
 export { getNodeAudioAssetId, getFirstIncomingAudioAsset } from './graph-audio-io';
+export { getNodeVideoAssetId, getFirstIncomingVideoAsset } from './graph-video-io';
 export {
   getNodeLocationResult,
   getNodePublicationResult,

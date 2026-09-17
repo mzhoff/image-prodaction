@@ -1,8 +1,10 @@
 import {
   createPipelineTemplateExport,
   createProjectSnapshotExport,
+  normalizeDocumentSnapshot,
   normalizePortableProjectExport,
 } from './project-portability';
+import { createProjectExport } from './project-schema';
 import { createId } from '@/shared/lib/id';
 import { withHistory } from './graph-history';
 import { getSectionAndDescendantIds } from './graph-section-layout';
@@ -13,9 +15,14 @@ import type { GraphPoint, GraphProject, ProductionNodeData } from './types';
 
 export function createGraphPortabilityActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
-  'exportPipelineTemplate' | 'exportPipelineTemplateForSection' | 'exportProjectSnapshot' | 'importPipelineTemplateAt' | 'importPortableProject'
+  'exportDocumentSnapshot' | 'restoreDocumentSnapshot' | 'exportPipelineTemplate' | 'exportPipelineTemplateForSection' | 'exportProjectSnapshot' | 'importPipelineTemplateAt' | 'importPortableProject'
 > {
   return {
+    exportDocumentSnapshot: () => createProjectExport(getGraphProject(get()), get().uiState),
+    restoreDocumentSnapshot: (payload) => {
+      const restored = normalizeDocumentSnapshot(payload);
+      set({ ...restored.project, uiState: restored.uiState, historyPast: [], historyFuture: [] });
+    },
     exportProjectSnapshot: () => createProjectSnapshotExport(getGraphProject(get()), get().uiState),
     exportPipelineTemplate: () => createPipelineTemplateExport(getGraphProject(get()), get().uiState),
     exportPipelineTemplateForSection: (sectionId) => createPipelineTemplateExport(
@@ -182,10 +189,16 @@ function remapPipelineNodeData(
   delete next.activeImageAssetId;
   delete next.resultAssetId;
   delete next.resultAssetIds;
+  delete next.videoResultAssetId;
+  delete next.videoResultSignature;
   delete next.resultMetadata;
   delete next.sourceAssetId;
   delete next.sourceAspectRatio;
   delete next.maskDataUrl;
+  // Pipeline templates never carry reviewed media, jobs or cross-document resumptions.
+  delete next.analysis;
+  delete next.request;
+  delete next.activeShotIndex;
 
   return next as unknown as ProductionNodeData;
 }

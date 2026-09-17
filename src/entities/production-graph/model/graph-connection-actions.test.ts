@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 
 import type { GraphEdge, ProductionNode } from './types';
+import { getNodePorts, NODE_PORTS } from './node-definitions';
+import { normalizeProject } from './normalize-project';
 import { createEmptyProjectUiState } from './project-schema.ts';
 import { useProductionGraphStore } from './use-production-graph-store.ts';
 
@@ -216,6 +218,25 @@ function resetState(graph: { nodes: ProductionNode[]; edges?: GraphEdge[] }) {
 
 beforeEach(() => {
   resetState({ nodes: [textSourceA, textSourceB, textGenerationTarget] });
+});
+
+test('creating Extract from an image wire connects to the advertised port immediately and survives reload', () => {
+  resetState({ nodes: [imageSourceA, imageSourceB] });
+  const graph = useProductionGraphStore.getState();
+  const nodeId = graph.addNode('imageToText', { x: 400, y: 100 });
+  // Wire-create menus choose from the registry, while connect validates live ports.
+  const port = NODE_PORTS.imageToText.find((item) => item.side === 'input' && item.kind === 'image')!;
+  assert.equal(port.id, 'image-0');
+  const created = useProductionGraphStore.getState().nodes.find((node) => node.id === nodeId)!;
+  assert.deepEqual(NODE_PORTS.imageToText, getNodePorts(created));
+  assert.deepEqual(graph.connect(imageSourceA.id, 'image', nodeId, port.id), { ok: true });
+  const connected = useProductionGraphStore.getState().nodes.find((node) => node.id === nodeId)!;
+  assert.deepEqual(getNodePorts(connected).filter((item) => item.side === 'input').map((item) => item.id), ['image-0', 'image-1']);
+  assert.deepEqual(graph.connect(imageSourceB.id, 'image', nodeId, 'image-1'), { ok: true });
+  const saved = normalizeProject(useProductionGraphStore.getState());
+  assert.deepEqual(saved.edges.map((edge) => [edge.sourceNodeId, edge.targetNodeId, edge.targetPortId]), [
+    [imageSourceA.id, nodeId, 'image-0'], [imageSourceB.id, nodeId, 'image-1'],
+  ]);
 });
 
 test('single fixed target input rejects an additional edge', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronUp } from 'lucide-react';
+import { ChevronUp } from '@prodactionpro/ui-core/icons';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { cn } from '@/shared/lib/cn';

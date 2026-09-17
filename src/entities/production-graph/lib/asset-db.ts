@@ -1,13 +1,19 @@
 import type { AssetRecord } from '../model/types';
 import { readImageSize } from '@/shared/lib/file-to-image-size';
 import { createId } from '@/shared/lib/id';
-import { normalizeImageFileForStorage } from '@/shared/lib/normalize-image-file';
+import { isHeicImageFile, normalizeImageFileForStorage } from '@/shared/lib/normalize-image-file';
 import {
   deleteRemoteAsset,
   getActiveAssetScope,
   loadRemoteAssetBlob,
   uploadRemoteImageAsset,
+  type ActiveAssetScope,
 } from './remote-asset';
+
+export interface ImageUploadOptions {
+  scope?: ActiveAssetScope;
+  onStage?: (stage: 'converting' | 'uploading') => void;
+}
 
 const DB_NAME = 'reverie-image-production-assets';
 const DB_VERSION = 1;
@@ -96,8 +102,8 @@ export async function saveTransientImageAsset(file: File): Promise<AssetRecord> 
   });
 }
 
-export async function saveUploadedImageAsset(file: File): Promise<AssetRecord> {
-  return uploadDurableImageAsset(file, 'uploaded');
+export async function saveUploadedImageAsset(file: File, options?: ImageUploadOptions): Promise<AssetRecord> {
+  return uploadDurableImageAsset(file, 'uploaded', options);
 }
 
 export async function saveSavedImageAsset(file: File): Promise<AssetRecord> {
@@ -147,9 +153,12 @@ function defaultMimeType(kind: AssetRecord['kind']) {
   return 'image/png';
 }
 
-async function uploadDurableImageAsset(file: File, origin: 'uploaded' | 'saved') {
-  const normalizedFile = await normalizeImageFileForStorage(file);
-  const scope = getActiveAssetScope();
+async function uploadDurableImageAsset(file: File, origin: 'uploaded' | 'saved', options: ImageUploadOptions = {}) {
+  // Capture the document before HEIC conversion, which can outlive navigation.
+  const scope = options.scope ?? getActiveAssetScope();
   if (!scope) throw new Error('Document asset storage is not ready. Reload the document and try again.');
+  if (isHeicImageFile(file)) options.onStage?.('converting');
+  const normalizedFile = await normalizeImageFileForStorage(file);
+  options.onStage?.('uploading');
   return uploadRemoteImageAsset(normalizedFile, scope, origin);
 }

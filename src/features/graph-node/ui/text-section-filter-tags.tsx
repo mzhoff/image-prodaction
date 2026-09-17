@@ -9,6 +9,8 @@ import {
 import { cn } from '@/shared/lib/cn';
 
 interface TextSectionFilterTagsProps {
+  readOnly?: boolean;
+  textField?: string;
   className?: string;
   disabledFilterIds?: string[];
   onToggle?: (filterId: string) => void;
@@ -23,6 +25,8 @@ interface TextSectionDuplicateWarningsProps {
 }
 
 export function TextSectionFilterTags({
+  readOnly = false,
+  textField,
   className,
   disabledFilterIds = [],
   onToggle,
@@ -30,11 +34,20 @@ export function TextSectionFilterTags({
   text,
 }: TextSectionFilterTagsProps) {
   const filters = parseTextSectionFilters(text, parseOptions);
-  if (filters.length === 0) return null;
+  const plainEnd = filters[0]?.start ?? text?.length ?? 0;
+  const hasPlainText = Boolean(textField && text?.slice(0, plainEnd).trim());
+  if (filters.length === 0 && !hasPlainText) return null;
   const disabled = new Set(disabledFilterIds);
 
   return (
     <div className={cn('text-section-filter-tags', className)} aria-label="Text section filters">
+      {hasPlainText ? <button type="button" className="text-section-filter-tag"
+        data-node-interactive data-text-field={textField} data-text-fragment-handle
+        data-text-range-start={0} data-text-range-end={plainEnd}
+        data-text-readonly={readOnly || undefined}
+        aria-label="Перетащить свободный текст" title="Перетащи текст на канвас или в другое поле. Alt — копировать.">
+        TEXT
+      </button> : null}
       {filters.map((filter) => (
         <button
           type="button"
@@ -42,6 +55,12 @@ export function TextSectionFilterTags({
           aria-pressed={!disabled.has(filter.id)}
           key={`${filter.id}-${filter.start}`}
           data-node-interactive
+          data-text-fragment-handle={textField ? '' : undefined}
+          data-text-field={textField}
+          data-text-section-label={filter.label}
+          data-text-range-start={filter.start}
+          data-text-readonly={readOnly || undefined}
+          title={textField ? 'Перетащи блок на канвас или в текст. Alt — копировать.' : undefined}
           onClick={() => onToggle?.(filter.id)}
         >
           {filter.label}

@@ -1,5 +1,6 @@
 import { initialProject } from './initial-project';
 import { normalizeProject } from './normalize-project';
+import { clearCopiedNodeExecution } from './speech-request';
 import {
   PROJECT_SCHEMA_VERSION,
   createAssetManifest,
@@ -8,6 +9,7 @@ import {
   type AssetManifestItem,
   type PipelineTemplateExport,
   type PortableProjectExport,
+  type ProjectExport,
   type ProjectUiState,
 } from './project-schema';
 import type {
@@ -20,7 +22,7 @@ import type {
 } from './types';
 
 export function createProjectSnapshotExport(project: GraphProject, uiState: ProjectUiState) {
-  return createProjectExport(project, uiState);
+  return createProjectExport({ ...project, nodes: project.nodes.map(clearCopiedNodeExecution) }, uiState);
 }
 
 export function createPipelineTemplateExport(project: GraphProject, uiState: ProjectUiState, exportedAt = new Date().toISOString()): PipelineTemplateExport {
@@ -37,6 +39,18 @@ export function createPipelineTemplateExport(project: GraphProject, uiState: Pro
 }
 
 export function normalizePortableProjectExport(payload: unknown): PortableProjectExport {
+  return normalizeProjectTransfer(payload, false);
+}
+
+/** Restore this document, not a copied/imported graph: paid request identity must survive. */
+export function normalizeDocumentSnapshot(payload: unknown): ProjectExport {
+  if (!isRecord(payload) || payload.kind !== 'projectSnapshot') {
+    throw new Error('Для восстановления документа нужен project snapshot JSON.');
+  }
+  return normalizeProjectTransfer(payload, true) as ProjectExport;
+}
+
+function normalizeProjectTransfer(payload: unknown, preserveExecution: boolean): PortableProjectExport {
   if (!isRecord(payload)) {
     throw new Error('Файл не похож на Reverie project/template JSON.');
   }
@@ -49,7 +63,9 @@ export function normalizePortableProjectExport(payload: unknown): PortableProjec
     throw new Error('В JSON не найден project.');
   }
 
-  const project = normalizeProject({ ...initialProject, ...payload.project });
+  const normalizedProject = normalizeProject({ ...initialProject, ...payload.project });
+  const project = preserveExecution ? normalizedProject
+    : { ...normalizedProject, nodes: normalizedProject.nodes.map(clearCopiedNodeExecution) };
   const uiState = normalizeProjectUiState(
     isRecord(payload.uiState) ? payload.uiState : undefined,
     project,
@@ -108,6 +124,11 @@ function stripTemplateRuntimeNodeFields(node: ProductionNode): ProductionNode {
   delete data.result;
   delete data.resultAssetId;
   delete data.sourceNodeId;
+  if (node.type === 'timelineHandoff') {
+    delete data.analysis;
+    delete data.request;
+    delete data.activeShotIndex;
+  }
 
   return {
     ...node,
@@ -130,7 +151,23 @@ function toPipelineTemplateNodeData(node: ProductionNode): ProductionNodeData {
   delete data.audioAssetId;
   delete data.audioResultSignature;
   delete data.sourceAudioAssetId;
+  delete data.videoAudioAssetId;
+  delete data.videoOnlyAssetId;
+  delete data.videoResultAssetId;
+  delete data.videoResultSignature;
+  delete data.videoPreviewAssetId;
+  delete data.videoPreviewAudioTrackIndex;
+  delete data.videoDerivedSourceAssetId;
+  delete data.videoDerivedAudioTrackIndex;
+  delete data.videoAudioTrackIndex;
   delete data.lastRequest;
+  delete data.speechRequest;
+  delete data.videoRequest;
+  if (node.type === 'timelineHandoff') {
+    delete data.analysis;
+    delete data.request;
+    delete data.activeShotIndex;
+  }
   delete data.activeIndex;
   delete data.activeResultIndex;
   delete data.activeItemIndex;

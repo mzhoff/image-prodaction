@@ -1,7 +1,9 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Mail } from '@prodactionpro/ui-core/icons';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient } from '@/shared/auth/client';
@@ -75,7 +77,7 @@ export function ForgotPasswordPage() {
           <form className="auth-form" onSubmit={handleSubmit}>
             <label>
               <span>Email</span>
-              <input
+              <PuiInput
                 type="email"
                 name="email"
                 value={email}

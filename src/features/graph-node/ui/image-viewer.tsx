@@ -1,18 +1,17 @@
 'use client';
 
 import Image from 'next/image';
-import { Brush, ChevronLeft, ChevronRight, Eraser, Loader2, Mic, RotateCcw, WandSparkles, X } from 'lucide-react';
-import { useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { ChevronLeft, ChevronRight, X } from '@prodactionpro/ui-core/icons';
+import { MediaViewer } from '@prodactionpro/ui-media/client';
+import type { MediaImageProps, MediaViewerModule } from '@prodactionpro/ui-media';
+import type { ReactNode } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
-import { getImageViewerThumbnailWindow } from '@/features/graph-node/lib/image-viewer-thumbnail-window';
-import { cn } from '@/shared/lib/cn';
-import { DarkSelect } from '@/shared/ui/dark-select';
-import { RangeSlider } from '@/shared/ui/range-slider';
 import { SaveToLibraryButton } from '@/shared/ui/save-to-library-button';
-import { ImageMaskEditor } from './image-mask-editor';
-import { ImageViewerThumbnail } from './image-viewer-thumbnail';
+import { hasOpenFloatingContextMenu } from '@/shared/ui/floating-context-menu';
+import { useImageViewerItems } from '../model/use-image-viewer-items';
+import { createImageViewerPanelModule } from './image-viewer-panel-module';
 import type { ImageViewerEditorPanel, ImageViewerItem, MaskEditPayload } from './image-viewer-types';
-import { MAX_MASK_BRUSH_SIZE, MIN_MASK_BRUSH_SIZE, useImageViewerMaskModel } from './use-image-viewer-mask-model';
+import { useImageViewerMaskModule } from './use-image-viewer-mask-module';
 
 export type { ImageViewerItem } from './image-viewer-types';
 
@@ -25,6 +24,7 @@ interface ImageViewerProps {
   hasHistory: boolean;
   historyAssetIds: string[];
   items?: ImageViewerItem[];
+  thumbnailLayout?: 'strip' | 'dock';
   maskDataUrl?: string;
   onClose: () => void;
   onMaskChange?: (maskDataUrl: string | null) => void;
@@ -37,256 +37,46 @@ interface ImageViewerProps {
   sourceModel?: string;
   url: string;
   viewerPanel?: ImageViewerEditorPanel;
+  viewerMedia?: ReactNode;
 }
 
-export function ImageViewer({
-  asset,
-  assetId,
-  assetMetadata,
-  busy,
-  currentIndex,
-  hasHistory,
-  historyAssetIds,
-  items,
-  maskDataUrl,
-  onClose,
-  onMaskChange,
-  onMaskEdit,
-  onNext,
-  onPrevious,
-  onSelectVersion,
-  onSaveToLibrary,
-  savedToLibrary,
-  sourceModel,
-  url,
-  viewerPanel,
+/** Compatibility facade: canvas nodes and Library keep their existing product API. */
+export function ImageViewer({ asset, assetId, assetMetadata, busy, currentIndex, hasHistory, historyAssetIds,
+  items, thumbnailLayout = 'strip', maskDataUrl, onClose, onMaskChange, onMaskEdit, onNext, onPrevious,
+  onSelectVersion, onSaveToLibrary, savedToLibrary, sourceModel, url, viewerPanel, viewerMedia,
 }: ImageViewerProps) {
-  const maskModel = useImageViewerMaskModel({ asset, assetId, assetMetadata, maskDataUrl, onMaskChange, onMaskEdit, sourceModel });
-  const itemsById = useMemo(
-    () => new Map((items ?? []).map((item) => [item.id, item])),
-    [items],
-  );
-  const currentItem = assetId ? itemsById.get(assetId) : undefined;
-  const visibleThumbnails = useMemo(
-    () => getImageViewerThumbnailWindow(historyAssetIds, currentIndex),
-    [currentIndex, historyAssetIds],
-  );
-  const hasToolPanel = maskModel.canMaskEdit || Boolean(viewerPanel);
-  const customPanelOpen = Boolean(viewerPanel?.active);
-  const editorOpen = maskModel.maskOpen || customPanelOpen;
-  const width = asset?.width ?? currentItem?.width ?? 1200;
-  const height = asset?.height ?? currentItem?.height ?? 800;
-  const stageStyle = {
-    aspectRatio: `${width} / ${height}`,
-    '--image-viewer-aspect-ratio': width / height,
-    '--image-viewer-inverse-aspect-ratio': height / width,
-  } as CSSProperties;
-  const contentStyle = customPanelOpen && viewerPanel?.height
-    ? { '--image-viewer-panel-height': `${viewerPanel.height}px` } as CSSProperties
-    : undefined;
-  const closeOnEmptyPreviewArea = (event: ReactMouseEvent<HTMLElement>) => {
-    if (editorOpen) return;
-    if (event.button !== 0) return;
-    if (event.target !== event.currentTarget) return;
-    onClose();
-  };
+  const media = useImageViewerItems({ asset, assetId, currentIndex, historyAssetIds, items, url });
+  const currentItem = media.items.find((item) => item.id === media.selectedId);
+  const mask = useImageViewerMaskModule({ asset, assetId, assetMetadata, maskDataUrl, onMaskChange, onMaskEdit,
+    sourceModel, busy, width: asset?.width ?? currentItem?.width ?? 1200, height: asset?.height ?? currentItem?.height ?? 800 });
+  const panel = createImageViewerPanelModule(viewerPanel, viewerMedia);
+  const modules = [mask.module, panel].filter((module): module is MediaViewerModule => Boolean(module));
+  const imageSizeLabel = mask.imageSizeLabel ?? (currentItem?.width && currentItem.height ? `${currentItem.width} × ${currentItem.height}px` : undefined);
+  const hasMetadata = thumbnailLayout === 'dock' || modules.length > 0 || mask.sourceModelLabel || imageSizeLabel;
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('textarea,input,select,[contenteditable="true"]')) return;
-      if (hasHistory && event.key === 'ArrowLeft') {
-        event.preventDefault();
-        onPrevious();
-      }
-      if (hasHistory && event.key === 'ArrowRight') {
-        event.preventDefault();
-        onNext();
-      }
-    };
+  return <MediaViewer
+    items={hasHistory || thumbnailLayout === 'dock' ? media.items : media.items.filter((item) => item.id === media.selectedId)}
+    selectedId={media.selectedId}
+    onSelect={(id) => { const index = historyAssetIds.indexOf(id); if (index >= 0) onSelectVersion(index); }}
+    onNext={onNext} onPrevious={onPrevious} onClose={onClose}
+    layout={thumbnailLayout} label="Image viewer"
+    labels={{ close: 'Close image viewer', previous: 'Previous generated image', next: 'Next generated image',
+      variation: (index) => `Open generated image variation ${index + 1}` }}
+    modules={modules}
+    className={mask.maskOpen ? 'image-viewer-overlay-editing' : undefined}
+    contentClassName={mask.localMaskMode ? 'image-viewer-content-with-local-mask' : undefined}
+    isInteractionBlocked={hasOpenFloatingContextMenu}
+    renderImage={renderViewerImage}
+    icons={{ close: <X size={18} />, previous: <ChevronLeft size={24} />, next: <ChevronRight size={24} /> }}
+    metadata={hasMetadata ? <>
+      {mask.sourceModelLabel ? <span className="image-viewer-meta-model">{mask.sourceModelLabel}</span> : null}
+      {imageSizeLabel ? <span className="image-viewer-meta-size">{imageSizeLabel}</span> : null}
+    </> : undefined}
+    actions={assetId && onSaveToLibrary ? <SaveToLibraryButton assetId={assetId}
+      onSave={onSaveToLibrary} saved={savedToLibrary} disabled={busy} /> : undefined}
+  />;
+}
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasHistory, onClose, onNext, onPrevious]);
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
-    document.body.style.overflow = 'hidden';
-    document.body.style.overscrollBehavior = 'none';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscrollBehavior;
-    };
-  }, []);
-
-  return (
-    <div
-      className={cn('image-viewer-overlay', maskModel.maskOpen && 'image-viewer-overlay-editing')}
-      data-snapshot-exclude
-      data-node-interactive
-      role="dialog"
-      aria-modal="true"
-      aria-label="Image viewer"
-      onContextMenu={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-      onMouseDown={(event) => event.stopPropagation()}
-    >
-      <button type="button" className="image-viewer-backdrop" aria-label="Close image viewer" onClick={onClose} />
-      <div
-        className={cn(
-          'image-viewer-content',
-          hasToolPanel && 'image-viewer-content-with-tools',
-          hasHistory && 'image-viewer-content-with-history',
-          (maskModel.sourceModelLabel || maskModel.imageSizeLabel) && 'image-viewer-content-with-meta',
-          editorOpen && 'image-viewer-content-with-editor',
-          maskModel.localMaskMode && 'image-viewer-content-with-local-mask',
-        )}
-        style={contentStyle}
-        onMouseDown={closeOnEmptyPreviewArea}
-      >
-        <button type="button" className="image-viewer-close" aria-label="Close image viewer" onClick={onClose}>
-          <X size={18} />
-        </button>
-        {assetId && onSaveToLibrary ? (
-          <div className="image-viewer-save-to-library">
-            <SaveToLibraryButton
-              assetId={assetId}
-              onSave={onSaveToLibrary}
-              saved={savedToLibrary}
-            />
-          </div>
-        ) : null}
-        <div className="image-viewer-viewport" onMouseDown={closeOnEmptyPreviewArea}>
-          <div className="image-viewer-stage" style={stageStyle}>
-            <Image
-              src={url}
-              alt={asset?.name ?? currentItem?.name ?? 'Image preview'}
-              width={width}
-              height={height}
-              unoptimized
-              loading="eager"
-              decoding="async"
-              draggable={false}
-              className="image-viewer-media"
-            />
-            {maskModel.canMaskEdit ? (
-              <ImageMaskEditor
-                ref={maskModel.maskRef}
-                brushSize={maskModel.brushSize}
-                enabled={maskModel.maskOpen && !busy}
-                height={height}
-                initialMaskDataUrl={maskModel.maskDataUrl ?? null}
-                onMaskChange={maskModel.onMaskChange}
-                onPreviewToolChange={maskModel.setPreviewTool}
-                tool={maskModel.tool}
-                width={width}
-              />
-            ) : null}
-          </div>
-        </div>
-        {maskModel.sourceModelLabel || maskModel.imageSizeLabel ? (
-          <div className="image-viewer-meta">
-            {maskModel.sourceModelLabel ? <span className="image-viewer-meta-model">{maskModel.sourceModelLabel}</span> : null}
-            {maskModel.imageSizeLabel ? <span className="image-viewer-meta-size">{maskModel.imageSizeLabel}</span> : null}
-          </div>
-        ) : null}
-        {hasToolPanel ? (
-          <div className={cn('image-editor-panel', viewerPanel?.className)}>
-            <div className="image-editor-toolbar">
-              {maskModel.canMaskEdit ? (
-                <button type="button" className={cn('image-editor-button', maskModel.maskOpen && 'image-editor-button-active')} onClick={() => maskModel.setMaskOpen((open) => !open)}>
-                  <Brush size={15} />
-                  Mask
-                </button>
-              ) : null}
-              {maskModel.canMaskEdit && maskModel.maskOpen ? (
-                <div className="image-editor-mask-tools">
-                  <div className="image-editor-tool-pair">
-                    <button type="button" className={cn('image-editor-icon-button', maskModel.visibleTool === 'brush' && 'image-editor-button-active')} onClick={() => maskModel.setTool('brush')} aria-label="Brush">
-                      <Brush size={15} />
-                    </button>
-                    <button type="button" className={cn('image-editor-icon-button', maskModel.visibleTool === 'eraser' && 'image-editor-button-active')} onClick={() => maskModel.setTool('eraser')} aria-label="Eraser">
-                      <Eraser size={15} />
-                    </button>
-                  </div>
-                  <RangeSlider
-                    ariaLabel="Mask brush size"
-                    className="image-editor-size-slider"
-                    max={MAX_MASK_BRUSH_SIZE}
-                    min={MIN_MASK_BRUSH_SIZE}
-                    value={maskModel.brushSize}
-                    valueLabel={`${maskModel.brushSize}px`}
-                    onChange={maskModel.setBrushSize}
-                  />
-                  <button type="button" className="image-editor-icon-button" onClick={() => maskModel.maskRef.current?.clear()} aria-label="Clear mask">
-                    <RotateCcw size={15} />
-                  </button>
-                </div>
-              ) : null}
-              {viewerPanel?.toolbar ? <div className="image-editor-custom-toolbar">{viewerPanel.toolbar}</div> : null}
-            </div>
-            {maskModel.maskOpen && !maskModel.localMaskMode ? (
-              <div className="image-editor-input-area">
-                <textarea
-                  className="image-editor-prompt"
-                  value={maskModel.prompt}
-                  placeholder="Что необходимо изменить в выделенном фрагменте?"
-                  onChange={(event) => maskModel.setPrompt(event.target.value)}
-                />
-                <div className="image-editor-input-toolbar">
-                  <DarkSelect className="image-editor-model-button" value={maskModel.selectedEditModel} options={maskModel.modelOptions} onChange={maskModel.setEditModel} />
-                  <div className="image-editor-action-group">
-                    <button type="button" className="image-editor-mic-button" aria-label="Voice input">
-                      <Mic size={20} />
-                    </button>
-                    <button type="button" className="image-editor-submit" onClick={maskModel.handleSubmitEdit} disabled={busy}>
-                      {busy ? <Loader2 className="spin" size={16} /> : <WandSparkles size={16} />}
-                      ReGenerate
-                    </button>
-                  </div>
-                </div>
-                {maskModel.message ? <span className="image-editor-message">{maskModel.message}</span> : null}
-              </div>
-            ) : null}
-            {viewerPanel?.active ? (
-              <div className="image-editor-custom-panel">
-                {viewerPanel.body}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        {hasHistory ? (
-          <>
-            <button type="button" className="image-viewer-nav image-viewer-nav-prev" aria-label="Previous generated image" onClick={onPrevious}>
-              <ChevronLeft size={24} />
-            </button>
-            <button type="button" className="image-viewer-nav image-viewer-nav-next" aria-label="Next generated image" onClick={onNext}>
-              <ChevronRight size={24} />
-            </button>
-            <div className="image-viewer-thumbnail-strip" aria-label="Generated image variations">
-              {visibleThumbnails.map(({ assetId: historyAssetId, index }) => (
-                <ImageViewerThumbnail
-                  key={historyAssetId}
-                  active={index === currentIndex}
-                  assetId={historyAssetId}
-                  index={index}
-                  item={itemsById.get(historyAssetId)}
-                  onSelect={onSelectVersion}
-                />
-              ))}
-            </div>
-            <div className="image-viewer-version-badge">{currentIndex + 1}/{historyAssetIds.length}</div>
-          </>
-        ) : null}
-      </div>
-    </div>
-  );
+function renderViewerImage(props: MediaImageProps) {
+  return <Image {...props} alt={props.alt} unoptimized />;
 }

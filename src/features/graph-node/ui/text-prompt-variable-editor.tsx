@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus } from '@prodactionpro/ui-core/icons';
 import type { CSSProperties, ClipboardEvent, KeyboardEvent, WheelEvent } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -200,6 +200,7 @@ export function TextPromptVariableEditor({
       <div
         ref={editorRef}
         className="text-prompt-variable-content"
+        data-text-field="text"
         contentEditable
         data-canvas-wheel-scroll="true"
         data-placeholder={placeholder}

@@ -1,4 +1,5 @@
-import { getFilteredLayerText } from './layer-text-parser';
+import { getNodeTimelineDescriptions } from './graph-timeline-io';
+import { getFilteredExtractLayerText } from './extract-layer-parser';
 import { buildLocationPassportText } from './location-passport';
 import { getPortById, getTextSplitterItemPortIndex } from './node-definitions';
 import type { GraphIoContext, RoutedDataKind } from './graph-io-contracts';
@@ -29,6 +30,7 @@ export function getNodeTextResult(
   context?: GraphRoutingContext,
   visited = new Set<string>(),
 ): string {
+  if (node.type === 'timelineHandoff') return !sourcePortId || sourcePortId === 'descriptions' ? getNodeTimelineDescriptions(node, context) : '';
   if (node.type === 'speechToText') return (node.data as SpeechToTextNodeData).result || '';
   if (node.type === 'router') {
     const source = getRouterIncomingSource(node, context, visited);
@@ -36,7 +38,7 @@ export function getNodeTextResult(
   }
   if (node.type === 'imageToText') {
     const data = node.data as ImageToTextNodeData;
-    return getFilteredLayerText(data.result, data.disabledLayerIds);
+    return getFilteredExtractLayerText(data.result, data.disabledLayerIds);
   }
   if (node.type === 'textPrompt') {
     const data = node.data as TextPromptNodeData;

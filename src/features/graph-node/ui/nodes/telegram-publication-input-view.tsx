@@ -1,6 +1,6 @@
 'use client';
 
-import { SearchCheck, Type } from 'lucide-react';
+import { SearchCheck, Type } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { TELEGRAM_MAX_MEDIA_ITEMS } from '../../lib/telegram-media-layout';
 import type { useTelegramPublicationNodeModel } from '../../model/use-telegram-publication-node-model';

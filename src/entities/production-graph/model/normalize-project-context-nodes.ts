@@ -48,6 +48,7 @@ export function normalizeContextNode(node: ProductionNode): ProductionNode | nul
     const data = node.data as ProductionNodeData & {
       libraryImageAssetIds?: unknown;
       librarySubjectId?: unknown;
+      libraryRevision?: unknown;
       libraryUpdatedAt?: unknown;
       preserveStrength?: unknown;
       referenceModel?: unknown;
@@ -68,6 +69,7 @@ export function normalizeContextNode(node: ProductionNode): ProductionNode | nul
         ...data,
         libraryImageAssetIds: normalizeStringArray(data.libraryImageAssetIds),
         librarySubjectId: typeof data.librarySubjectId === 'string' ? data.librarySubjectId : undefined,
+        libraryRevision: typeof data.libraryRevision === 'number' && Number.isSafeInteger(data.libraryRevision) && data.libraryRevision > 0 ? data.libraryRevision : undefined,
         libraryUpdatedAt: typeof data.libraryUpdatedAt === 'string' ? data.libraryUpdatedAt : undefined,
         preserveStrength: normalizeSubjectPreserveStrength(data.preserveStrength),
         referenceModel: typeof data.referenceModel === 'string' ? data.referenceModel : 'google/gemini-2.5-flash-image',

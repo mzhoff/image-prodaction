@@ -1,4 +1,5 @@
 import type { ProductionLayerId } from './production-layers';
+import { getExtractAnalysisPreset, getExtractLayers, type ExtractAnalysisPresetId, type ExtractLayerId } from './extract-analysis-profiles';
 import { productionLayers } from './production-layers';
 import type { ExtractPresetId } from './types';
 
@@ -8,8 +9,6 @@ export interface ExtractPreset {
   prompt: string;
 }
 
-const allLayerIds = productionLayers.map((layer) => layer.id);
-const allLayerLabels = new Map(productionLayers.map((layer) => [layer.id, layer.label]));
 
 const baseExtractContract = `Ты senior art director и prompt engineer для AI image production.
 
@@ -36,6 +35,10 @@ const baseExtractContract = `Ты senior art director и prompt engineer для 
 - Если изображение является рекламным макетом, hero-блоком, продуктовой карточкой, баннером, обложкой или commercial poster, анализируй его как commercial / product / editorial layout.
 - Пиши на русском языке, но production-термины можно оставлять на английском.
 - Не возвращай разделы с исключениями, негативными ограничениями, routing, unselected layers или служебными объяснениями.`;
+
+export const singleExtractSystemPrompt = 'You are a senior art director, commercial image analyst, and prompt engineer for AI image production. Analyze the single reference image according to the user instruction. Return detailed, structured, production-ready notes that can be reused directly as an image generation prompt. Preserve visible text exactly, especially Cyrillic, when the Text layer is selected. Do not invent brand names, logos, or facts that are not visible.';
+
+export const multiExtractSystemPrompt = 'You are a senior art director and prompt engineer for AI image production working with a set of visual references. Analyze every supplied image first, then synthesize only the shared visual patterns across the set. Abstract away image-specific identities, objects, locations, poses, exact text, and accidental details unless they repeat as a meaningful pattern. When references differ, describe the result as a deliberate blend of compatible styles, lighting, composition, or visual language. Return one reusable, generation-ready description per requested layer that captures the common style and the useful range of variation. Distinguish direct visual observations from interpretation and uncertainty. Do not invent brand names, logos, or facts that are not visible.';
 
 const selectedLayerTasks: Record<ProductionLayerId, string> = {
   actors: `Извлеки слой Actors / Subjects.
@@ -82,38 +85,57 @@ Uncertainty:
 Не добавляй никаких других секций после выбранных слоев.
 Не добавляй exclusions, negative constraints, routing, summary или комментарии.`;
 
-export function normalizeExtractPresetSelection(input?: ExtractPresetId | ExtractPresetId[]) {
+export function normalizeExtractPresetSelection(input?: ExtractPresetId | ExtractPresetId[], analysisPreset: ExtractAnalysisPresetId = 'composition'): ExtractPresetId[] {
+  const allLayerIds = getExtractLayers(analysisPreset).map((layer) => layer.id);
   const raw = Array.isArray(input) ? input : input ? [input] : ['default'];
-  const valid = raw.filter((id): id is ExtractPresetId => id === 'default' || allLayerIds.includes(id as ProductionLayerId));
-  if (valid.length === 0 || valid.includes('default')) return ['default'] satisfies ExtractPresetId[];
-
+  const valid = raw.filter((id): id is ExtractPresetId => id === 'default' || allLayerIds.includes(id as ExtractLayerId));
+  if (valid.length === 0 || valid.includes('default')) return ['default'];
   const unique = Array.from(new Set(valid));
-  return allLayerIds.every((id) => unique.includes(id)) ? ['default'] satisfies ExtractPresetId[] : unique;
+  return allLayerIds.every((id) => unique.includes(id)) ? ['default'] : unique;
 }
 
-export function getSelectedExtractLayerIds(input?: ExtractPresetId | ExtractPresetId[]) {
-  const normalized = normalizeExtractPresetSelection(input);
-  return normalized.includes('default') ? allLayerIds : normalized.filter((id): id is ProductionLayerId => id !== 'default');
+export function getSelectedExtractLayerIds(input?: ExtractPresetId | ExtractPresetId[], analysisPreset: ExtractAnalysisPresetId = 'composition'): ExtractLayerId[] {
+  const normalized = normalizeExtractPresetSelection(input, analysisPreset);
+  return normalized.includes('default') ? getExtractLayers(analysisPreset).map((layer) => layer.id) : normalized.filter((id): id is ExtractLayerId => id !== 'default');
 }
 
-export function buildExtractPrompt(input?: ExtractPresetId | ExtractPresetId[]) {
-  const presetIds = normalizeExtractPresetSelection(input);
-  const selectedLayers = getSelectedExtractLayerIds(presetIds);
-  const unselectedLayers = allLayerIds.filter((id) => !selectedLayers.includes(id));
-  const layerTasks = selectedLayers.map((id) => `[${allLayerLabels.get(id)?.toUpperCase()}]\n${selectedLayerTasks[id]}`).join('\n\n');
+export function buildExtractPrompt(input?: ExtractPresetId | ExtractPresetId[], analysisPreset: ExtractAnalysisPresetId = 'composition') {
+  const profile = getExtractAnalysisPreset(analysisPreset);
+  const presetIds = normalizeExtractPresetSelection(input, profile.id);
+  const selectedLayers = getSelectedExtractLayerIds(presetIds, profile.id);
+  const unselectedLayers = profile.layers.map((layer) => layer.id).filter((id) => !selectedLayers.includes(id));
+  const labels = new Map(profile.layers.map((layer) => [layer.id, layer.label]));
+  const layerTasks = selectedLayers.map((id) => {
+    const task = profile.id === 'composition' ? selectedLayerTasks[id as ProductionLayerId] : profile.layers.find((layer) => layer.id === id)?.prompt;
+    return `[${labels.get(id)?.toUpperCase()}]\n${task}`;
+  }).join('\n\n');
 
   return {
+    analysisPreset: profile.id,
     presetIds,
     selectedLayers,
     unselectedLayers,
     systemPrompt: [
       baseExtractContract,
-      `selectedLayers: ${selectedLayers.map((id) => allLayerLabels.get(id)).join(', ')}`,
-      `unselectedLayers, которые нужно игнорировать и не выводить: ${unselectedLayers.map((id) => allLayerLabels.get(id)).join(', ') || 'none'}`,
+      ...(profile.id === 'composition' ? [] : [`Preset: ${profile.label}. ${profile.description}\n${profile.systemPrompt}`]),
+      `selectedLayers: ${selectedLayers.map((id) => labels.get(id)).join(', ')}`,
+      `unselectedLayers, которые нужно игнорировать и не выводить: ${unselectedLayers.map((id) => labels.get(id)).join(', ') || 'none'}`,
       `[SELECTED LAYER TASKS]\n${layerTasks}`,
       outputSchema,
+      `В качестве [LAYER_NAME] используй только точные заголовки: ${selectedLayers.map((id) => `[${labels.get(id)?.toUpperCase()}]`).join(', ')}. Каждый выбранный слой выведи один раз. Если его не видно, укажи это внутри его блока.`,
     ].join('\n\n'),
   };
+}
+
+export function getExtractSystemPrompt(analysisPreset?: ExtractAnalysisPresetId, multipleImages = false) {
+  return [
+    multipleImages ? multiExtractSystemPrompt : singleExtractSystemPrompt,
+    getExtractAnalysisPreset(analysisPreset).systemPrompt,
+  ].join('\n\n');
+}
+
+export function getExtractLayerOptions(analysisPreset?: ExtractAnalysisPresetId) {
+  return [{ value: 'default' as const, label: 'All Layers' }, ...getExtractLayers(analysisPreset).map((layer) => ({ value: layer.id, label: layer.label }))];
 }
 
 export const defaultExtractPrompt = buildExtractPrompt(['default']).systemPrompt;
@@ -137,9 +159,9 @@ export function getExtractPreset(id?: ExtractPresetId) {
   return extractPresets.find((preset) => preset.id === id) ?? extractPresets[0];
 }
 
-export function getExtractSelectionLabel(input?: ExtractPresetId | ExtractPresetId[]) {
-  const normalized = normalizeExtractPresetSelection(input);
+export function getExtractSelectionLabel(input?: ExtractPresetId | ExtractPresetId[], analysisPreset: ExtractAnalysisPresetId = 'composition') {
+  const normalized = normalizeExtractPresetSelection(input, analysisPreset);
   if (normalized.includes('default')) return 'All Layers';
-  if (normalized.length === 1) return allLayerLabels.get(normalized[0] as ProductionLayerId) ?? normalized[0];
+  if (normalized.length === 1) return getExtractLayers(analysisPreset).find((layer) => layer.id === normalized[0])?.label ?? normalized[0];
   return `${normalized.length} layers`;
 }

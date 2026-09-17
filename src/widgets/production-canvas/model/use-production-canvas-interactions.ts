@@ -5,8 +5,7 @@ import type { Dispatch, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEve
   RefObject, SetStateAction } from 'react';
 import type { GraphPoint, ProductionNode,
   ProductionNodeType } from '@/entities/production-graph/model/types';
-import { getImageFilesFromDataTransfer,
-  hasImageFileInDataTransfer } from '@/shared/lib/image-file';
+import { getImportMediaFiles, hasImportMediaFile } from '@/shared/lib/import-media-file';
 import type { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import type { useSectionDrawing } from './use-section-drawing';
@@ -88,7 +87,7 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
     if (!hasDraggedNodeType(event.dataTransfer)
       && !hasDraggedFavoriteNode(event.dataTransfer)
       && !hasDraggedNodeTemplate(event.dataTransfer)
-      && !hasImageFileInDataTransfer(event.dataTransfer)) return;
+      && !hasImportMediaFile(event.dataTransfer)) return;
     event.preventDefault(); event.dataTransfer.dropEffect = 'copy';
   };
   const handleCanvasDrop = (event: ReactDragEvent<HTMLDivElement>) => {
@@ -117,14 +116,13 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
         canvas.screenToWorld(event.nativeEvent) ?? getFallbackPastePosition());
       return;
     }
-    const imageFiles = getImageFilesFromDataTransfer(event.dataTransfer, 'dropped-image');
+    const imageFiles = getImportMediaFiles(event.dataTransfer);
     if (imageFiles.length === 0) return;
     event.preventDefault(); event.stopPropagation(); closeContextMenu();
     const dropPoint = canvas.screenToWorld(event.nativeEvent) ?? getFallbackPastePosition();
     const targetNodeId = getDropTargetImportNodeId(event, nodesById);
-    void importImageFiles(imageFiles, dropPoint, targetNodeId).then(() => {
-      if (imageFiles.length > 1) showToast(`${imageFiles.length} images imported.`);
-    });
+    void importImageFiles(imageFiles, dropPoint, targetNodeId)
+      .catch((error) => showToast(error instanceof Error ? error.message : 'File import failed.'));
   };
   const cursor = canvas.isPanning || sectionDrawing.isDrawingSection
     ? canvas.isPanning ? 'grabbing' : 'crosshair'

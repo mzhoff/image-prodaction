@@ -9,6 +9,8 @@ import { document, documentPreference } from '@/shared/db/schema/document';
 import { membership } from '@/shared/db/schema/workspace';
 import { createUuidV7 } from '@/shared/lib/id';
 import { requireWorkspaceMembership } from '@/entities/workspace/server/workspace-service';
+import { requireStudioFolder } from '@/entities/workspace/server/studio-folder-service';
+import { toDocumentDto } from './document-dto';
 import { validateDocumentSnapshot } from './document-validation';
 
 export class DocumentNotFoundError extends Error {
@@ -33,6 +35,8 @@ export async function listDocuments(userId: string) {
     id: document.id,
     workspaceId: document.workspaceId,
     name: document.name,
+    folderId: document.folderId,
+    librarySaved: document.librarySaved,
     status: document.status,
     snapshot: document.snapshot,
     thumbnailAssetId: document.thumbnailAssetId,
@@ -60,13 +64,15 @@ export async function listDocuments(userId: string) {
     .filter((project) => project.status === 'trash' || !isDisposableUntouchedDocument(project));
 }
 
-export async function createDocument(input: { name?: string; userId: string; workspaceId: string }) {
+export async function createDocument(input: { name?: string; userId: string; workspaceId: string; folderId?: string | null }) {
   await requireWorkspaceMembership(input.userId, input.workspaceId);
+  if (input.folderId) await requireStudioFolder(input.userId, input.workspaceId, input.folderId);
   const [created] = await getDb().insert(document).values({
     id: createUuidV7(),
     workspaceId: input.workspaceId,
     createdByUserId: input.userId,
     name: normalizeDocumentName(input.name),
+    folderId: input.folderId,
   }).returning();
   return toDocumentDto({ ...created, favorite: false });
 }
@@ -79,6 +85,8 @@ export async function getDocument(userId: string, documentId: string) {
 
 export async function updateDocumentMetadata(input: {
   favorite?: boolean;
+  folderId?: string | null;
+  librarySaved?: boolean;
   name?: string;
   status?: 'active' | 'trash';
   userId: string;
@@ -86,6 +94,11 @@ export async function updateDocumentMetadata(input: {
 }) {
   const current = await getDocument(input.userId, input.documentId);
   const patch: Partial<typeof document.$inferInsert> = {};
+  if (input.folderId !== undefined) {
+    if (input.folderId) await requireStudioFolder(input.userId, current.workspaceId, input.folderId);
+    patch.folderId = input.folderId;
+  }
+  if (input.librarySaved !== undefined) patch.librarySaved = input.librarySaved;
   if (input.name !== undefined) patch.name = normalizeDocumentName(input.name);
   if (input.status !== undefined) {
     patch.status = input.status;
@@ -137,11 +150,13 @@ export async function setDocumentThumbnail(input: {
   documentId: string;
   mode: 'auto' | 'manual';
   userId: string;
+  expectedRevision?: number;
 }) {
   const [current] = await selectAccessibleDocument(input.userId, input.documentId);
   if (!current) throw new DocumentNotFoundError();
 
-  if (input.mode === 'auto' && current.thumbnailMode === 'manual') {
+  if (input.mode === 'auto' && (current.thumbnailMode === 'manual'
+    || (input.expectedRevision !== undefined && current.revision !== input.expectedRevision))) {
     return {
       applied: false,
       previousAssetId: current.thumbnailAssetId,
@@ -151,6 +166,9 @@ export async function setDocumentThumbnail(input: {
 
   const conditions = [eq(document.id, input.documentId)];
   if (input.mode === 'auto') conditions.push(ne(document.thumbnailMode, 'manual'));
+  if (input.mode === 'auto' && input.expectedRevision !== undefined) {
+    conditions.push(eq(document.revision, input.expectedRevision));
+  }
   const [updated] = await getDb().update(document).set({
     thumbnailAssetId: input.assetId,
     thumbnailMode: input.mode,
@@ -204,6 +222,8 @@ export async function discardUntouchedDocument(userId: string, documentId: strin
     eq(document.status, 'active'),
     eq(document.name, DEFAULT_DOCUMENT_NAME),
     eq(document.hasEverHadContent, false),
+    eq(document.librarySaved, false),
+    isNull(document.folderId),
     eq(document.revision, current.revision),
     isNull(document.thumbnailAssetId),
     notExists(favoritePreference),
@@ -217,6 +237,8 @@ async function selectAccessibleDocument(userId: string, documentId: string) {
     id: document.id,
     workspaceId: document.workspaceId,
     name: document.name,
+    folderId: document.folderId,
+    librarySaved: document.librarySaved,
     status: document.status,
     snapshot: document.snapshot,
     thumbnailAssetId: document.thumbnailAssetId,
@@ -241,43 +263,6 @@ async function selectAccessibleDocument(userId: string, documentId: string) {
     .limit(1);
 }
 
-function toDocumentDto(row: {
-  createdAt: Date;
-  favorite: boolean | null;
-  hasEverHadContent: boolean;
-  id: string;
-  name: string;
-  revision: number;
-  schemaVersion: number;
-  snapshot: unknown | null;
-  status: 'active' | 'trash';
-  thumbnailAssetId: string | null;
-  thumbnailMode: 'auto' | 'manual';
-  thumbnailUpdatedAt: Date | null;
-  updatedAt: Date;
-  workspaceId: string;
-}) {
-  const snapshot = row.snapshot === null ? undefined : validateDocumentSnapshot(row.snapshot);
-  return {
-    id: row.id,
-    workspaceId: row.workspaceId,
-    name: row.name,
-    thumbnailUrl: row.thumbnailAssetId
-      ? `/api/assets/${row.thumbnailAssetId}/content?variant=thumbnail`
-      : '',
-    thumbnailMode: row.thumbnailMode,
-    thumbnailAvailable: Boolean(row.thumbnailAssetId),
-    hasEverHadContent: row.hasEverHadContent,
-    thumbnailUpdatedAt: row.thumbnailUpdatedAt?.toISOString(),
-    favorite: row.favorite ?? false,
-    status: row.status,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    revision: row.revision,
-    schemaVersion: row.schemaVersion,
-    snapshot,
-  };
-}
 
 function normalizeDocumentName(name?: string) {
   const value = name?.trim().replace(/\s+/g, ' ').slice(0, 120);

@@ -1,0 +1,37 @@
+/* REVERIE Figma 666:2426. Scale grows by 32 px for each additional canonical stop. */
+.aspect-ratio-menu {
+  position: fixed; z-index: 10020; box-sizing: border-box; padding: 16px 16px 12px;
+  border: .5px solid var(--pui-semantic-border-default); border-radius: 12px;
+  background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary);
+  isolation: isolate; max-height: calc(100dvh - 16px);
+}
+.aspect-ratio-menu::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 24px 54px -6px rgb(0 0 0 / 24%), 0 10px 22px -7px rgb(0 0 0 / 16%);
+  clip-path: inset(0 -80px -90px -80px);
+}
+.aspect-ratio-menu[data-placement='top']::before {
+  box-shadow: 0 -24px 54px -6px rgb(0 0 0 / 24%), 0 -10px 22px -7px rgb(0 0 0 / 16%);
+  clip-path: inset(-90px -80px 0 -80px);
+}
+.aspect-ratio-heading { position: relative; display: flex; justify-content: space-between; height: 35px; }
+.aspect-ratio-value { font-size: 21px; font-weight: 600; line-height: 25px; }
+.aspect-ratio-resolution { font-size: 10px; line-height: 12px; color: var(--pui-semantic-text-tertiary, #a6a6a6); text-align: right; }
+.aspect-ratio-preview-container { position: absolute; left: 50%; top: 0; transform: translateX(-50%); height: 35px; display: flex; align-items: center; justify-content: center; }
+.aspect-ratio-preview { height: 35px; box-sizing: border-box; flex-shrink: 0; border: 1px solid transparent; border-image: url('/aspect-ratio/preview.svg') 4 fill / 4px / 0 stretch; transition: width .2s ease; }
+.aspect-ratio-auto-preview { color: var(--pui-semantic-text-secondary); font-size: 12px; }
+.aspect-ratio-scroll { overflow-x: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.aspect-ratio-scale { min-width: 100%; }
+.aspect-ratio-slider { position: relative; height: 44px; outline: none; touch-action: none; cursor: pointer; }
+.aspect-ratio-track { position: absolute; top: 20px; height: 4px; left: 12px; right: 12px; border-radius: 999px; background: var(--pui-selection-control-track-default, #eeeeef); }
+.aspect-ratio-active-range { position: absolute; height: 4px; border-radius: 999px; background: var(--pui-semantic-text-primary); }
+.aspect-ratio-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; box-sizing: border-box; border: 2px solid var(--pui-semantic-text-primary); border-radius: 50%; background: var(--pui-semantic-surface-primary); }
+.aspect-ratio-slider:focus-visible .aspect-ratio-thumb { outline: 2px solid var(--pui-semantic-accent-foreground); outline-offset: 3px; }
+.aspect-ratio-labels { position: relative; height: 16px; margin: 0 12px; }
+.aspect-ratio-labels button { position: absolute; top: 0; transform: translateX(-50%); padding: 0 2px; height: 16px; border: 0; border-radius: 3px; background: transparent; color: var(--pui-semantic-text-secondary); font-family: inherit; font-size: 10px; font-weight: 400; line-height: 14px; white-space: nowrap; cursor: pointer; }
+.aspect-ratio-labels button[aria-pressed='true'] { color: var(--pui-semantic-text-primary); font-size: 12px; font-weight: 600; }
+.aspect-ratio-auto { display: block; margin-top: 8px; height: 20px; padding: 2px 8px; font: inherit; font-size: 10px; line-height: 14px; border: 0; border-radius: 5px; color: var(--pui-semantic-text-secondary); background: var(--pui-semantic-surface-secondary); }
+.aspect-ratio-auto[aria-pressed='true'] { color: var(--pui-semantic-text-primary); font-weight: 600; }
+.aspect-ratio-menu button:focus-visible { outline: 2px solid var(--pui-semantic-accent-foreground); outline-offset: 1px; }
+@media (max-width: 599px) { .aspect-ratio-heading { height: 71px; } .aspect-ratio-preview-container { top: 36px; } }
+@media (prefers-reduced-motion: reduce) { .aspect-ratio-preview { transition: none; } }

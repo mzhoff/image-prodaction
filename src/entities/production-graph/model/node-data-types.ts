@@ -1,4 +1,9 @@
 import type { AudioConvertNodeData, SpeechToTextNodeData } from './node-data-audio';
+import type { TimelineHandoffNodeData } from './node-data-timeline';
+import type { ReverieStoriesNodeData } from './node-data-stories';
+export * from './node-data-stories';
+import type { GenerateVideoNodeData } from './node-data-video';
+export * from './node-data-video';
 import type {
   CompositionNodeData,
   GenerateImageNodeData,
@@ -42,6 +47,7 @@ import type {
 
 export * from './node-data-image';
 export * from './node-data-audio';
+export * from './node-data-timeline';
 export * from './node-data-text';
 export * from './node-data-context';
 export * from './node-data-editing';
@@ -53,6 +59,9 @@ export type ProductionNodeData =
   | CompositionNodeData | GenerateImageNodeData | TextPromptNodeData
   | TextConcatNodeData | TextGenerationNodeData | TextToSpeechNodeData
   | AudioConvertNodeData | SpeechToTextNodeData
+  | TimelineHandoffNodeData
+  | ReverieStoriesNodeData
+  | GenerateVideoNodeData
   | TextFormatterNodeData | TextSplitterNodeData | IteratorNodeData | RouterNodeData
   | PipelineInputNodeData | PipelineOutputNodeData | StructuredOutputNodeData
   | SubjectBuilderNodeData | LocationBuilderNodeData | TelegramPublicationNodeData

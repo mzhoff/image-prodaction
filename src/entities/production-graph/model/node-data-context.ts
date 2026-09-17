@@ -8,6 +8,7 @@ export interface SubjectBuilderNodeData extends BaseNodeData {
   immutableTraits: string;
   libraryImageAssetIds?: string[];
   librarySubjectId?: string;
+  libraryRevision?: number;
   libraryUpdatedAt?: string;
   message?: string;
   mutableAttributes: string;

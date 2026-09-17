@@ -1,6 +1,7 @@
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { NodeCard } from '@/features/graph-node/ui/node-card';
+import { useEventCallback } from '@/shared/lib/use-event-callback';
 
 interface CanvasNodeLayerProps {
   collapsedGenerateComposingNodeIds: Set<string>;
@@ -23,6 +24,11 @@ export function CanvasNodeLayer({
   onStartDrag,
   selectedSet,
 }: CanvasNodeLayerProps) {
+  const drag = useEventCallback(onStartDrag);
+  const connect = useEventCallback(onStartConnection);
+  const context = useEventCallback(onNodeContextMenu);
+  const options = useEventCallback(onNodeOptionsMenu);
+  const composing = useEventCallback(onGenerateComposingOpenChange);
   return (
     <>
       {nodes.map((node) => (
@@ -30,12 +36,12 @@ export function CanvasNodeLayer({
           key={node.id}
           node={node}
           selected={selectedSet.has(node.id)}
-          onStartDrag={onStartDrag}
-          onStartConnection={onStartConnection}
-          onContextMenu={onNodeContextMenu}
-          onOptionsMenu={onNodeOptionsMenu}
+          onStartDrag={drag}
+          onStartConnection={connect}
+          onContextMenu={context}
+          onOptionsMenu={options}
           generateComposingOpen={!collapsedGenerateComposingNodeIds.has(node.id)}
-          onGenerateComposingOpenChange={(open) => onGenerateComposingOpenChange(node.id, open)}
+          onGenerateComposingOpenChange={composing}
         />
       ))}
     </>

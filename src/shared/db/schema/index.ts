@@ -1,6 +1,9 @@
 export * from './asset';
 export * from './auth';
 export * from './document';
+export * from './document-assistant-event';
+export * from './studio-folder';
+export * from './subject-profile';
 export * from './generation';
 export * from './favorite-node';
 export * from './node-template';
@@ -8,3 +11,4 @@ export * from './provider';
 export * from './usage';
 export * from './worker';
 export * from './workspace';
+export * from './account-model-preference';

@@ -14,6 +14,7 @@ import {
 import type { QueuedGenerateImagePayload } from './image-generation-contracts';
 import { toGenerationUsage } from './generation-usage-recorder';
 import { GenerationExecutionError } from './generation-worker';
+import { pickImageGenerationOptions } from '@/shared/media/image-generation-settings';
 
 export async function persistGeneratedImage(input: {
   job: GenerationJobDto;
@@ -45,6 +46,7 @@ export async function persistGeneratedImage(input: {
     libraryVisible: false,
     maxBytes: getMaxImageUploadBytes(),
     metadata: {
+      ...pickImageGenerationOptions(input.payload),
       aspectRatio: input.payload.aspectRatio,
       generationId: input.result.providerOperationId,
       responseModel: input.result.modelId,

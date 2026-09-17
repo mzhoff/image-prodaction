@@ -5,8 +5,11 @@ import type { MutableRefObject } from 'react';
 import type { GraphEdge, GraphPoint, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { getImageFileFromDataTransfer } from '@/shared/lib/image-file';
+import { readLibraryImageLink } from '@/entities/production-graph/lib/library-image-reference';
+import { createId } from '@/shared/lib/id';
 
 interface NodeClipboard {
+  marker: string;
   nodes: ProductionNode[];
   edges: GraphEdge[];
 }
@@ -14,6 +17,7 @@ interface NodeClipboard {
 interface UseCanvasClipboardParams {
   deleteSelected: () => void;
   importImageFile: (file: File, position?: GraphPoint, targetNodeId?: string) => Promise<void> | void;
+  importLibraryImage: (assetId: string) => Promise<boolean>;
   lastPointerWorldRef: MutableRefObject<GraphPoint>;
   pasteNodes: (nodes: ProductionNode[], edges: GraphEdge[], position: GraphPoint) => void;
   redo: () => void;
@@ -23,6 +27,7 @@ interface UseCanvasClipboardParams {
 export function useCanvasClipboard({
   deleteSelected,
   importImageFile,
+  importLibraryImage,
   lastPointerWorldRef,
   pasteNodes,
   redo,
@@ -36,26 +41,6 @@ export function useCanvasClipboard({
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
       if (isTyping) return;
       const isMod = event.metaKey || event.ctrlKey;
-
-      if (isMod && event.code === 'KeyC') {
-        const selected = new Set(useProductionGraphStore.getState().selectedNodeIds);
-        if (selected.size === 0) return;
-        event.preventDefault();
-        setClipboard({
-          nodes: useProductionGraphStore.getState().nodes.filter((node) => selected.has(node.id)),
-          edges: useProductionGraphStore.getState().edges.filter((edge) => (
-            selected.has(edge.sourceNodeId) && selected.has(edge.targetNodeId)
-          )),
-        });
-        return;
-      }
-
-      if (isMod && event.code === 'KeyV') {
-        if (!clipboard || clipboard.nodes.length === 0) return;
-        event.preventDefault();
-        pasteNodes(clipboard.nodes, clipboard.edges, lastPointerWorldRef.current);
-        return;
-      }
 
       if (isMod && event.code === 'KeyZ' && !event.shiftKey) {
         event.preventDefault();
@@ -77,7 +62,24 @@ export function useCanvasClipboard({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clipboard, deleteSelected, lastPointerWorldRef, pasteNodes, redo, undo]);
+  }, [deleteSelected, redo, undo]);
+
+  useEffect(() => {
+    const handleCopy = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input,textarea,[contenteditable="true"],dialog') || window.getSelection()?.toString()) return;
+      const graph = useProductionGraphStore.getState();
+      const selected = new Set(graph.selectedNodeIds);
+      if (!selected.size || !event.clipboardData) return;
+      const marker = `reverie:nodes:v1:${createId('clipboard')}`;
+      event.preventDefault();
+      event.clipboardData.setData('text/plain', marker);
+      setClipboard({ marker, nodes: graph.nodes.filter((node) => selected.has(node.id)),
+        edges: graph.edges.filter((edge) => selected.has(edge.sourceNodeId) && selected.has(edge.targetNodeId)) });
+    };
+    window.addEventListener('copy', handleCopy);
+    return () => window.removeEventListener('copy', handleCopy);
+  }, []);
 
   useEffect(() => {
     const handlePaste = (event: ClipboardEvent) => {
@@ -85,7 +87,16 @@ export function useCanvasClipboard({
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
       if (isTyping) return;
 
-      if (clipboard?.nodes.length) {
+      const text = event.clipboardData?.getData('text/plain') ?? '';
+      const assetId = readLibraryImageLink(text, window.location.origin);
+      if (assetId) {
+        event.preventDefault();
+        setClipboard(null);
+        void importLibraryImage(assetId);
+        return;
+      }
+
+      if (clipboard?.nodes.length && text === clipboard.marker) {
         event.preventDefault();
         pasteNodes(clipboard.nodes, clipboard.edges, lastPointerWorldRef.current);
         return;
@@ -103,5 +114,5 @@ export function useCanvasClipboard({
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [clipboard, importImageFile, lastPointerWorldRef, pasteNodes]);
+  }, [clipboard, importImageFile, importLibraryImage, lastPointerWorldRef, pasteNodes]);
 }

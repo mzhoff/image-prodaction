@@ -1,7 +1,9 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import Link from 'next/link';
-import { Check, Copy, ExternalLink, FlaskConical, Route, Search } from 'lucide-react';
+import { Check, Copy, ExternalLink, FlaskConical, Route, Search } from '@prodactionpro/ui-core/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ExecutablePipelineCatalogItem } from '@/modules/executable-pipelines/contracts/pipeline-catalog-contracts';
 import type { PipelineValueKind } from '@/modules/executable-pipelines/contracts/pipeline-contracts';
@@ -57,7 +59,7 @@ export function ExecutablePipelinesSection({ workspaceId }: ExecutablePipelinesS
           </div>
           <label className="workspace-search workspace-pipelines-search">
             <Search size={16} />
-            <input
+            <PuiInput
               aria-label="Search executable pipelines"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search pipelines"
@@ -220,6 +222,7 @@ function getBoundaryColorKind(kind: PipelineValueKind) {
 function getKindLabel(kind: PipelineValueKind) {
   const labels: Record<PipelineValueKind, string> = {
     audio: 'Audio',
+    video: 'Video',
     boolean: 'Boolean',
     image: 'Image',
     image_collection: 'Images',

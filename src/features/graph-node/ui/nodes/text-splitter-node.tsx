@@ -23,7 +23,7 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
 
   return (
     <>
-      <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} count={`${model.items.length}/30`} onCollapsedChange={setCollapsed} />} />
+      <NodeTitle title={node.data.title} nodeType={node.type} muted action={<TextNodeTitleActions collapsed={collapsed} count={`${model.activeItemCount}/30`} onCollapsedChange={setCollapsed} />} />
       <PortButton
         nodeId={node.id}
         portId="text"
@@ -78,14 +78,16 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
               <div className="text-split-empty-row">Connect text input to split it into output items.</div>
             ) : null}
             {model.items.map((item, index) => (
-              <div className="text-split-output-row" key={`${index}:${item.slice(0, 20)}`}>
-                <div className="text-split-item-box" title={item}>{item}</div>
+              <div className="text-split-output-row" key={`item-${index}`}>
+                <div className="text-split-item-box" data-empty={!item || undefined} title={item || 'Раздел отсутствует во входе. Связь сохранена; текст не передаётся.'}>
+                  {item || `${model.itemLabels[index] ?? `Item ${index + 1}`} — нет во входе`}
+                </div>
                 <PortButton
                   nodeId={node.id}
                   portId={`item-${index}`}
                   side="output"
                   kind="text"
-                  label={`Item ${index + 1}`}
+                  label={model.itemLabels[index] ?? `Item ${index + 1}`}
                   className="node-port-row"
                   onStartConnection={onStartConnection}
                 />

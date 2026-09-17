@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, ExternalLink, Loader2, Plus, Send, X } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Loader2, Plus, Send, X } from '@prodactionpro/ui-core/icons';
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { TelegramPreviewMediaItem } from '../model/use-telegram-publication-node-model';

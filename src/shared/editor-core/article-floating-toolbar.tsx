@@ -14,7 +14,7 @@ import type { TextFormatType } from 'lexical';
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Bold, Heading2, Heading3, Heading4, Italic, Link2, List,
-  ListOrdered, Quote, Strikethrough, Underline } from 'lucide-react';
+  ListOrdered, Quote, Strikethrough, Underline } from '@prodactionpro/ui-core/icons';
 import { cn } from '@/shared/lib/cn';
 import { normalizeEditorUrl } from './article-rich-text-state';
 

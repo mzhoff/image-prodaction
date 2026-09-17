@@ -11,7 +11,7 @@ import {
 import { ProviderCredentialConfigurationError } from '@/modules/provider-connections/server/credential-crypto-config';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
 const connectOpenRouterSchema = z.object({
@@ -20,7 +20,7 @@ const connectOpenRouterSchema = z.object({
 
 export async function getWorkspaceProviders(request: Request, workspaceId: string) {
   try {
-    if (!isUuidV7(workspaceId)) return invalidWorkspaceId();
+    if (!isUuid(workspaceId)) return invalidWorkspaceId();
     const session = await requireApiSession(request);
     const result = await listWorkspaceProviderConnections(session.user.id, workspaceId);
     return Response.json(result, {
@@ -33,7 +33,7 @@ export async function getWorkspaceProviders(request: Request, workspaceId: strin
 
 export async function connectWorkspaceOpenRouter(request: Request, workspaceId: string) {
   try {
-    if (!isUuidV7(workspaceId)) return invalidWorkspaceId();
+    if (!isUuid(workspaceId)) return invalidWorkspaceId();
     const contentLength = Number(request.headers.get('content-length'));
     if (Number.isFinite(contentLength) && contentLength > 4_096) {
       return apiError('provider_credential_too_large', 'Provider credential request is too large.', 413);
@@ -61,7 +61,7 @@ export async function connectWorkspaceOpenRouter(request: Request, workspaceId: 
 
 export async function validateWorkspaceOpenRouter(request: Request, workspaceId: string) {
   try {
-    if (!isUuidV7(workspaceId)) return invalidWorkspaceId();
+    if (!isUuid(workspaceId)) return invalidWorkspaceId();
     const session = await requireApiSession(request);
     const result = await validateStoredOpenRouterProvider(session.user.id, workspaceId);
     return Response.json(result, {
@@ -77,7 +77,7 @@ export async function disconnectWorkspaceOpenRouter(
   workspaceId: string,
 ) {
   try {
-    if (!isUuidV7(workspaceId)) return invalidWorkspaceId();
+    if (!isUuid(workspaceId)) return invalidWorkspaceId();
     const session = await requireApiSession(request);
     await disconnectOpenRouterProvider(session.user.id, workspaceId);
     return new Response(null, { status: 204 });
@@ -88,7 +88,7 @@ export async function disconnectWorkspaceOpenRouter(
 
 export async function getWorkspaceOpenRouterUsage(request: Request, workspaceId: string) {
   try {
-    if (!isUuidV7(workspaceId)) return invalidWorkspaceId();
+    if (!isUuid(workspaceId)) return invalidWorkspaceId();
     const session = await requireApiSession(request);
     const result = await getOpenRouterProviderUsage(session.user.id, workspaceId);
     return Response.json(result, {

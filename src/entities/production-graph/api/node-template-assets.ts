@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isUuidV7 } from '@/shared/lib/id';
 import { mapRemoteImageAsset } from '../lib/remote-asset';
 import { mapRemoteAudioAsset, remoteAudioAssetSchema } from '../lib/remote-audio-asset';
+import { mapRemoteVideoAsset, remoteVideoAssetSchema } from '../lib/remote-video-asset';
 import { filterNodeTemplateAssetIds, getNodeTemplateAssetIds, type NodeTemplateSnapshot } from '../model/node-template-preset';
 
 const metadataSchema = z.object({ asset: z.object({
@@ -9,6 +10,7 @@ const metadataSchema = z.object({ asset: z.object({
   originalName: z.string(), contentType: z.string(), createdAt: z.string(),
   width: z.number().nullable(), height: z.number().nullable(),
   audio: z.unknown().optional(),
+  video: z.unknown().optional(),
 }) });
 type FetchAsset = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -36,6 +38,7 @@ export async function hydrateNodeTemplateAssets(
       || asset.status !== 'ready') return null;
     if (asset.mediaKind === 'image') return mapRemoteImageAsset(asset);
     if (asset.mediaKind === 'audio') return mapRemoteAudioAsset(remoteAudioAssetSchema.parse(asset));
+    if (asset.mediaKind === 'video') return mapRemoteVideoAsset(remoteVideoAssetSchema.parse(asset));
     return null;
   }));
   const assets = candidates.filter((asset) => asset !== null);

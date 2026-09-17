@@ -86,19 +86,19 @@
   place-items: center;
   border: 0;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.82);
-  color: #fff;
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 82%, transparent);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .image-plate-actions button:disabled {
   cursor: default;
-  color: #b9efcf;
+  color: var(--pui-semantic-text-muted);
 }
 
 .image-plate-version-badge {
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 72%, transparent);
+  color: var(--pui-semantic-text-on-inverse);
   font-size: 12px;
   font-weight: 760;
   line-height: 14px;
@@ -123,16 +123,80 @@
   display: grid;
   height: 100%;
   place-items: center;
-  color: #c4c4bf;
+  color: var(--pui-semantic-text-muted);
 }
 
 .image-plate-loading::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.68) 45%, transparent 70%);
+  background: linear-gradient(100deg, transparent 0%, color-mix(in srgb, var(--pui-semantic-surface-primary) 68%, transparent) 45%, transparent 70%);
   transform: translateX(-100%);
   animation: image-shimmer 1.15s ease-in-out infinite;
+}
+
+.generation-waiting-experience {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--plate) 24%, transparent);
+  pointer-events: none;
+}
+
+.generation-waiting-lottie,
+.generation-waiting-lottie svg,
+.generation-waiting-tiles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.generation-waiting-lottie {
+  opacity: 0.92;
+}
+
+.generation-waiting-tiles {
+  display: block;
+}
+
+.generation-waiting-copy {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 20px);
+  padding: 7px 9px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 76%, transparent);
+  color: var(--pui-semantic-text-on-inverse);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generation-waiting-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--pui-semantic-dataflow-image);
+  animation: generation-waiting-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes generation-waiting-pulse {
+  to { opacity: 0.36; transform: scale(0.72); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generation-waiting-dot { animation: none; }
 }
 
 @keyframes image-shimmer {

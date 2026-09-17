@@ -29,8 +29,8 @@
   justify-content: center;
   border: 0;
   border-radius: 8px;
-  background: #f0f0f0;
-  color: #5c5f6c;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   font-weight: 760;
   line-height: 12px;
@@ -48,16 +48,16 @@
 
 .curves-channel-button:hover,
 .curves-reset-button:hover {
-  background: #e6e6e6;
+  background: var(--pui-semantic-surface-hover);
 }
 
 .curves-channel-button-active {
-  background: #111;
-  color: #fff;
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .curves-channel-button-active:hover {
-  background: #111;
+  background: var(--pui-semantic-surface-inverse);
 }
 
 .curves-channel-red.curves-channel-button-active {
@@ -210,8 +210,8 @@
   align-items: center;
   gap: 6px;
   border-radius: 8px;
-  background: #fff;
-  color: #5c5f6c;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-secondary);
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 700;

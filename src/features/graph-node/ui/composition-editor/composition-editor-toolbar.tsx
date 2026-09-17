@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Circle, Hand, MousePointer2, Redo2, Square, Star, Triangle, Type, Undo2 } from 'lucide-react';
+import { ChevronDown, Circle, Hand, MousePointer2, Redo2, Square, Star, Triangle, Type, Undo2 } from '@prodactionpro/ui-core/icons';
 import type { ReactNode } from 'react';
 import { ProTooltip } from '@/shared/ui/pro-tooltip';
 import type { CompositionEditorTool, CompositionShapeTool } from './composition-types';

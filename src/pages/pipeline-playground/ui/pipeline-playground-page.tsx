@@ -1,6 +1,8 @@
 'use client';
 
-import { CircleAlert, LoaderCircle, Play, PlugZap, RotateCcw } from 'lucide-react';
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
+import { CircleAlert, LoaderCircle, Play, PlugZap, RotateCcw } from '@prodactionpro/ui-core/icons';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import { usePipelinePlaygroundModel } from '../model/use-pipeline-playground-model';
@@ -47,7 +49,7 @@ function PipelineConnection({ model }: { model: Model }) {
       }}>
         <label>
           <span>Endpoint URL</span>
-          <input aria-describedby={model.connectionError ? 'playground-connection-error' : undefined}
+          <PuiInput aria-describedby={model.connectionError ? 'playground-connection-error' : undefined}
             onChange={(event) => model.changeEndpoint(event.target.value)}
             placeholder="http://localhost:3004/v1/pipelines/pln_…/runs" spellCheck={false}
             inputMode="url" type="text" value={model.endpoint} />

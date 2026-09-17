@@ -1,21 +1,13 @@
-import { createSpeechProviderCall, speechOptionsSchema } from '@/modules/provider-connections/server/speech-provider-call';
-import { executeShortOpenRouterCall, shortAiScopeSchema, toShortAiApiErrorResponse } from './short-ai-execution';
+import { requireApiSession } from '@/modules/authentication/server/auth-session';
+import { resolveOpenRouterCredential } from '@/modules/provider-connections/server/provider-connection-service';
+import { submitLongSpeech } from '@/modules/generation/server/speech-generation-submission';
+import { executeShortOpenRouterCall, toShortAiApiErrorResponse } from './short-ai-execution';
+import { createGenerateSpeechPost } from './generate-speech-handler';
 
 export const runtime = 'nodejs';
-const speechSchema = speechOptionsSchema.extend(shortAiScopeSchema.shape);
-
-export async function POST(request: Request) {
-  const parsed = speechSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 });
-  try {
-    const execution = await executeShortOpenRouterCall({
-      ...createSpeechProviderCall(parsed.data, request.signal), request, scope: parsed.data,
-    });
-    const headers = new Headers({
-      'Content-Type': execution.result.contentType, 'Cache-Control': 'no-store',
-      'X-Generation-Job-Id': execution.job.id,
-    });
-    if (execution.result.generationId) headers.set('X-Generation-Id', execution.result.generationId);
-    return new Response(new Uint8Array(execution.result.audioBody), { headers });
-  } catch (error) { return toShortAiApiErrorResponse(error); }
-}
+export const POST = createGenerateSpeechPost({
+  userId: async (request) => (await requireApiSession(request)).user.id,
+  authorizeProvider: async (userId, workspaceId) => { await resolveOpenRouterCredential(userId, workspaceId); },
+  submit: submitLongSpeech, execute: executeShortOpenRouterCall,
+  toErrorResponse: toShortAiApiErrorResponse,
+});

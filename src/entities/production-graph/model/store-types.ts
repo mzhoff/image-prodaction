@@ -1,4 +1,5 @@
 import type { FavoriteNodeSnapshot } from './favorite-node-preset';
+import type { TextFragmentSource, TextFragmentTarget } from './text-fragments';
 import type { AssetRecord, GraphEdge, GraphPoint, GraphProject, LocationRecord, PipelineContractField, PipelineSemanticContractSnapshot, ProductionNode, ProductionNodeData, ProductionNodeType, RunRecord, SubjectRecord } from './types';
 import type { PipelineTemplateExport, PortableProjectExport, ProjectExport, ProjectNodeUiState, ProjectSectionUiState, ProjectUiState, ProjectViewportState } from './project-schema';
 
@@ -14,6 +15,7 @@ export interface DeleteEdgeOptions {
 }
 
 export interface ProductionGraphState extends GraphProject {
+  dropTextFragment: (source: TextFragmentSource, target: TextFragmentTarget, copy: boolean) => ConnectResult;
   historyPast: GraphSnapshot[];
   historyFuture: GraphSnapshot[];
   uiState: ProjectUiState;
@@ -25,7 +27,7 @@ export interface ProductionGraphState extends GraphProject {
   assignBannerAssetToNode: (nodeId: string, asset: AssetRecord) => void;
   clearNodeGenerations: (nodeId: string) => void;
   duplicateNode: (nodeId: string) => void;
-  pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string) => void;
+  pasteImageAsset: (asset: AssetRecord, position: GraphPoint, targetNodeId?: string, newNodeId?: string) => void;
   renameNode: (nodeId: string, title: string) => void;
   resizeNode: (nodeId: string, size: Partial<ProductionNode['size']>) => void;
   resizeNodeFrame: (nodeId: string, frame: { position: GraphPoint; size: ProductionNode['size'] }) => void;
@@ -57,6 +59,7 @@ export interface ProductionGraphState extends GraphProject {
   toggleSectionLock: (sectionId: string) => void;
   setNodeStatus: (nodeId: string, status: ProductionNode['status']) => void;
   pushHistory: () => void;
+  runInHistoryBatch: (operation: () => void) => void;
   undo: () => void;
   redo: () => void;
   updateNodeData: (nodeId: string, data: Partial<ProductionNodeData>) => void;
@@ -74,6 +77,8 @@ export interface ProductionGraphState extends GraphProject {
   setProjectUiViewport: (viewport: ProjectViewportState) => void;
   setNodeUiState: (nodeId: string, nodeUiState: Partial<ProjectNodeUiState>) => void;
   setSectionUiState: (sectionId: string, sectionUiState: Partial<ProjectSectionUiState>) => void;
+  exportDocumentSnapshot: () => ProjectExport;
+  restoreDocumentSnapshot: (payload: unknown) => void;
   exportProjectSnapshot: () => ProjectExport;
   exportPipelineTemplate: () => PipelineTemplateExport;
   exportPipelineTemplateForSection: (sectionId: string) => PipelineTemplateExport;

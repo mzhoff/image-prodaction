@@ -1,14 +1,26 @@
-import { cloneSnapshot, pushFutureSnapshot, pushPastSnapshot, withHistory } from './graph-history';
+import { cloneSnapshot, getSnapshot, pushFutureSnapshot, pushPastSnapshot, withHistory } from './graph-history';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
 
 export function createGraphHistoryActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
-  'pushHistory' | 'redo' | 'undo'
+  'pushHistory' | 'redo' | 'runInHistoryBatch' | 'undo'
 > {
   return {
     pushHistory: () => {
       set((state) => withHistory(state));
+    },
+    runInHistoryBatch: (operation) => {
+      const stateBefore = get();
+      const snapshotBefore = getSnapshot(stateBefore);
+      const historyBefore = stateBefore.historyPast;
+
+      operation();
+
+      set({
+        historyPast: [...historyBefore.slice(-49), snapshotBefore],
+        historyFuture: [],
+      });
     },
     undo: () => {
       const state = get();

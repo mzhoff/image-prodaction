@@ -1,0 +1,1697 @@
+{
+  "reviewedAt": "2026-09-15",
+  "imageSource": "https://openrouter.ai/api/v1/images/models",
+  "videoSource": "https://openrouter.ai/api/v1/videos/models",
+  "images": [
+    {
+      "id": "openai/gpt-image-2.5-sunburst",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "openai/gpt-image-2.5-flare",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "microsoft/mai-image-2.6",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "azure"
+      ]
+    },
+    {
+      "id": "microsoft/mai-image-2.6-flash",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "azure"
+      ]
+    },
+    {
+      "id": "meta/muse-image",
+      "ratios": [],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": []
+    },
+    {
+      "id": "recraft/recraft-v4-styles-pro",
+      "ratios": [
+        "1:1",
+        "2:1",
+        "1:2",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "5:4",
+        "4:5",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4-styles-vector",
+      "ratios": [
+        "1:1",
+        "2:1",
+        "1:2",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "5:4",
+        "4:5",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "svg"
+      ],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4-styles-pro-vector",
+      "ratios": [
+        "1:1",
+        "2:1",
+        "1:2",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "5:4",
+        "4:5",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "svg"
+      ],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4-styles",
+      "ratios": [
+        "1:1",
+        "2:1",
+        "1:2",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "5:4",
+        "4:5",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "bytedance-seed/seedream-5-0-lite",
+      "ratios": [
+        "1:1",
+        "1:2",
+        "2:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "9:19.5",
+        "19.5:9",
+        "9:20",
+        "20:9",
+        "9:21",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "seed"
+      ]
+    },
+    {
+      "id": "bytedance-seed/seedream-5-0-pro",
+      "ratios": [
+        "1:1",
+        "1:2",
+        "2:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "9:19.5",
+        "19.5:9",
+        "9:20",
+        "20:9",
+        "9:21",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "seed"
+      ]
+    },
+    {
+      "id": "x-ai/grok-imagine-image-2.0",
+      "ratios": [
+        "1:1",
+        "3:4",
+        "4:3",
+        "9:16",
+        "16:9",
+        "2:3",
+        "3:2",
+        "9:19.5",
+        "19.5:9",
+        "9:20",
+        "20:9",
+        "1:2",
+        "2:1",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "xai"
+      ]
+    },
+    {
+      "id": "qwen/qwen-image-3-pro",
+      "ratios": [
+        "1:1",
+        "1:2",
+        "1:4",
+        "2:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:1",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9"
+      ],
+      "resolutions": [
+        "1K",
+        "2K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "alibaba"
+      ]
+    },
+    {
+      "id": "qwen/qwen-image-3",
+      "ratios": [
+        "1:1",
+        "1:2",
+        "1:4",
+        "2:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:1",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9"
+      ],
+      "resolutions": [
+        "1K",
+        "2K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "alibaba"
+      ]
+    },
+    {
+      "id": "microsoft/mai-image-2.5-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "azure"
+      ]
+    },
+    {
+      "id": "krea/krea-2-large",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:2",
+        "16:9",
+        "4:5",
+        "2:3",
+        "9:16"
+      ],
+      "resolutions": [
+        "1K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "krea"
+      ]
+    },
+    {
+      "id": "krea/krea-2-medium",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:2",
+        "16:9",
+        "4:5",
+        "2:3",
+        "9:16"
+      ],
+      "resolutions": [
+        "1K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "krea"
+      ]
+    },
+    {
+      "id": "krea/krea-2-medium-turbo",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:2",
+        "16:9",
+        "4:5",
+        "2:3",
+        "9:16"
+      ],
+      "resolutions": [
+        "1K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "krea"
+      ]
+    },
+    {
+      "id": "google/gemini-3.1-flash-lite-image",
+      "ratios": [
+        "1:1",
+        "1:4",
+        "1:8",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:1",
+        "4:3",
+        "4:5",
+        "5:4",
+        "8:1",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [
+        "1K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "google-vertex/global",
+        "google-ai-studio"
+      ]
+    },
+    {
+      "id": "openai/gpt-image-2",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "openai/gpt-image-1-mini",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "openai/gpt-image-1",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "google/gemini-3.1-flash-image",
+      "ratios": [
+        "1:1",
+        "1:4",
+        "1:8",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:1",
+        "4:3",
+        "4:5",
+        "5:4",
+        "8:1",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [
+        "512",
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "google-ai-studio",
+        "google-vertex/global"
+      ]
+    },
+    {
+      "id": "google/gemini-3-pro-image",
+      "ratios": [
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "google-ai-studio/global",
+        "google-vertex/global"
+      ]
+    },
+    {
+      "id": "sourceful/riverflow-v2.5-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [
+        "png",
+        "jpeg",
+        "webp"
+      ],
+      "providers": [
+        "sourceful"
+      ]
+    },
+    {
+      "id": "sourceful/riverflow-v2.5-fast",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K"
+      ],
+      "outputFormats": [
+        "jpeg"
+      ],
+      "providers": [
+        "sourceful"
+      ]
+    },
+    {
+      "id": "microsoft/mai-image-2.5",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "azure"
+      ]
+    },
+    {
+      "id": "x-ai/grok-imagine-image-quality",
+      "ratios": [
+        "1:1",
+        "3:4",
+        "4:3",
+        "9:16",
+        "16:9",
+        "2:3",
+        "3:2",
+        "9:19.5",
+        "19.5:9",
+        "9:20",
+        "20:9",
+        "1:2",
+        "2:1",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "xai"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4.1-pro-vector",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "svg"
+      ],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4.1-vector",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "svg"
+      ],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4.1-utility-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4.1-utility",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4.1-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4.1",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4-pro-vector",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "svg"
+      ],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4-vector",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "svg"
+      ],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v4",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "recraft/recraft-v3",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "recraft"
+      ]
+    },
+    {
+      "id": "openai/gpt-5.4-image-2",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "4:3",
+        "3:4",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "google/gemini-3.1-flash-image-preview",
+      "ratios": [
+        "1:1",
+        "1:4",
+        "1:8",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:1",
+        "4:3",
+        "4:5",
+        "5:4",
+        "8:1",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [
+        "512",
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "google-ai-studio"
+      ]
+    },
+    {
+      "id": "sourceful/riverflow-v2-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "sourceful"
+      ]
+    },
+    {
+      "id": "sourceful/riverflow-v2-fast",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "sourceful"
+      ]
+    },
+    {
+      "id": "black-forest-labs/flux.2-klein-4b",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "png",
+        "jpeg"
+      ],
+      "providers": [
+        "black-forest-labs"
+      ]
+    },
+    {
+      "id": "bytedance-seed/seedream-4.5",
+      "ratios": [
+        "1:1",
+        "1:2",
+        "2:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "9:19.5",
+        "19.5:9",
+        "9:20",
+        "20:9",
+        "9:21",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "seed"
+      ]
+    },
+    {
+      "id": "black-forest-labs/flux.2-max",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "png",
+        "jpeg"
+      ],
+      "providers": [
+        "black-forest-labs/us-3"
+      ]
+    },
+    {
+      "id": "black-forest-labs/flux.2-flex",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "png",
+        "jpeg"
+      ],
+      "providers": [
+        "black-forest-labs/us-3"
+      ]
+    },
+    {
+      "id": "black-forest-labs/flux.2-pro",
+      "ratios": [
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [
+        "png",
+        "jpeg"
+      ],
+      "providers": [
+        "black-forest-labs"
+      ]
+    },
+    {
+      "id": "google/gemini-3-pro-image-preview",
+      "ratios": [
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "outputFormats": [],
+      "providers": [
+        "google-ai-studio/global/flex",
+        "google-ai-studio/global"
+      ]
+    },
+    {
+      "id": "openai/gpt-5-image-mini",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "openai/gpt-5-image",
+      "ratios": [
+        "1:1",
+        "3:2",
+        "2:3",
+        "auto"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "google/gemini-2.5-flash-image",
+      "ratios": [
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [],
+      "outputFormats": [],
+      "providers": [
+        "google-ai-studio/priority",
+        "google-ai-studio/flex",
+        "google-ai-studio",
+        "google-vertex/global"
+      ]
+    }
+  ],
+  "videos": [
+    {
+      "id": "black-forest-labs/flux-video-edit",
+      "ratios": [],
+      "resolutions": [],
+      "sizes": []
+    },
+    {
+      "id": "minimax/hailuo-3-max",
+      "ratios": [
+        "21:9",
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4",
+        "9:16"
+      ],
+      "resolutions": [
+        "768p",
+        "480p"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "alibaba/wan-3.0-prime",
+      "ratios": [
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4",
+        "9:16"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "alibaba/wan-3.0",
+      "ratios": [
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4",
+        "9:16"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "heygen/avatar-iv",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "black-forest-labs/flux-video-upscale",
+      "ratios": [],
+      "resolutions": [],
+      "sizes": []
+    },
+    {
+      "id": "bytedance/seedance-2.0-mini",
+      "ratios": [
+        "1:1",
+        "3:4",
+        "9:16",
+        "4:3",
+        "16:9",
+        "21:9",
+        "9:21"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "sizes": [
+        "480x480",
+        "480x640",
+        "480x854",
+        "640x480",
+        "854x480",
+        "1120x480",
+        "720x720",
+        "720x960",
+        "720x1280",
+        "720x1680",
+        "960x720",
+        "1280x720",
+        "1680x720"
+      ]
+    },
+    {
+      "id": "bytedance/seedance-2.5",
+      "ratios": [
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4",
+        "9:16",
+        "21:9"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "sizes": [
+        "854x480",
+        "752x560",
+        "640x640",
+        "560x752",
+        "480x854",
+        "992x432",
+        "1280x720",
+        "1112x834",
+        "960x960",
+        "834x1112",
+        "720x1280",
+        "1470x630"
+      ]
+    },
+    {
+      "id": "black-forest-labs/flux-3-video",
+      "ratios": [
+        "21:9",
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "minimax/hailuo-3",
+      "ratios": [
+        "21:9",
+        "16:9",
+        "4:3",
+        "1:1",
+        "3:4",
+        "9:16"
+      ],
+      "resolutions": [
+        "2K"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "runway/aleph-2",
+      "ratios": [
+        "16:9",
+        "4:3",
+        "3:2",
+        "1:1",
+        "2:3",
+        "3:4",
+        "9:16",
+        "21:9"
+      ],
+      "resolutions": [],
+      "sizes": []
+    },
+    {
+      "id": "runway/gen-4.5",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280"
+      ]
+    },
+    {
+      "id": "x-ai/grok-imagine-video-1.5",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "sizes": []
+    },
+    {
+      "id": "alibaba/happyhorse-1.1",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "21:9",
+        "9:21"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "720x720",
+        "960x720",
+        "720x960",
+        "1680x720",
+        "720x1680",
+        "1920x1080",
+        "1080x1920",
+        "1080x1080",
+        "1440x1080",
+        "1080x1440",
+        "2520x1080",
+        "1080x2520"
+      ]
+    },
+    {
+      "id": "alibaba/happyhorse-1.0",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "21:9",
+        "9:21"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "720x720",
+        "960x720",
+        "720x960",
+        "1680x720",
+        "720x1680",
+        "1920x1080",
+        "1080x1920",
+        "1080x1080",
+        "1440x1080",
+        "1080x1440",
+        "2520x1080",
+        "1080x2520"
+      ]
+    },
+    {
+      "id": "x-ai/grok-imagine-video",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "sizes": [
+        "854x480",
+        "1280x720",
+        "480x854",
+        "720x1280",
+        "480x480",
+        "720x720",
+        "640x480",
+        "960x720",
+        "480x640",
+        "720x960",
+        "720x480",
+        "1080x720",
+        "480x720",
+        "720x1080"
+      ]
+    },
+    {
+      "id": "kwaivgi/kling-v3.0-pro",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "720x720"
+      ]
+    },
+    {
+      "id": "kwaivgi/kling-v3.0-std",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "720x720"
+      ]
+    },
+    {
+      "id": "google/veo-3.1-fast",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p",
+        "4K"
+      ],
+      "sizes": [
+        "1280x720",
+        "1080x1920",
+        "1920x1080",
+        "720x1280",
+        "3840x2160",
+        "2160x3840"
+      ]
+    },
+    {
+      "id": "google/veo-3.1-lite",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "1920x1080",
+        "1080x1920"
+      ]
+    },
+    {
+      "id": "kwaivgi/kling-video-o1",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "720x720"
+      ]
+    },
+    {
+      "id": "minimax/hailuo-2.3",
+      "ratios": [
+        "16:9"
+      ],
+      "resolutions": [
+        "1080p"
+      ],
+      "sizes": [
+        "1920x1080"
+      ]
+    },
+    {
+      "id": "bytedance/seedance-2.0",
+      "ratios": [
+        "1:1",
+        "3:4",
+        "9:16",
+        "4:3",
+        "16:9",
+        "21:9",
+        "9:21"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p",
+        "4K"
+      ],
+      "sizes": [
+        "480x480",
+        "480x640",
+        "480x854",
+        "640x480",
+        "854x480",
+        "1120x480",
+        "720x720",
+        "720x960",
+        "720x1280",
+        "720x1680",
+        "960x720",
+        "1280x720",
+        "1680x720",
+        "1080x1080",
+        "1080x1440",
+        "1080x1920",
+        "1440x1080",
+        "1920x1080",
+        "2520x1080",
+        "3840x2160",
+        "2160x3840",
+        "2160x2160",
+        "2880x2160",
+        "2160x2880",
+        "5040x2160"
+      ]
+    },
+    {
+      "id": "bytedance/seedance-2.0-fast",
+      "ratios": [
+        "1:1",
+        "3:4",
+        "9:16",
+        "4:3",
+        "16:9",
+        "21:9",
+        "9:21"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "sizes": [
+        "480x480",
+        "480x640",
+        "480x854",
+        "640x480",
+        "854x480",
+        "1120x480",
+        "720x720",
+        "720x960",
+        "720x1280",
+        "720x1680",
+        "960x720",
+        "1280x720",
+        "1680x720"
+      ]
+    },
+    {
+      "id": "alibaba/wan-2.7",
+      "ratios": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "1280x720",
+        "720x1280",
+        "1920x1080",
+        "1080x1920",
+        "720x720",
+        "1080x1080",
+        "960x720",
+        "720x960",
+        "1440x1080",
+        "1080x1440"
+      ]
+    },
+    {
+      "id": "alibaba/wan-2.6",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "1280x720",
+        "1080x1920",
+        "720x1280",
+        "1920x1080"
+      ]
+    },
+    {
+      "id": "bytedance/seedance-1-5-pro",
+      "ratios": [
+        "1:1",
+        "3:4",
+        "9:16",
+        "9:21",
+        "4:3",
+        "16:9",
+        "21:9"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "480x480",
+        "480x640",
+        "480x854",
+        "480x1120",
+        "640x480",
+        "720x720",
+        "720x960",
+        "720x1280",
+        "720x1680",
+        "854x480",
+        "960x720",
+        "1080x1080",
+        "1080x1440",
+        "1080x1920",
+        "1080x2520",
+        "1120x480",
+        "1280x720",
+        "1440x1080",
+        "1680x720",
+        "1920x1080",
+        "2520x1080"
+      ]
+    },
+    {
+      "id": "openai/sora-2-pro",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "sizes": [
+        "1280x720",
+        "1080x1920",
+        "1920x1080",
+        "720x1280"
+      ]
+    },
+    {
+      "id": "google/veo-3.1",
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p",
+        "4K"
+      ],
+      "sizes": [
+        "1280x720",
+        "1080x1920",
+        "1920x1080",
+        "720x1280",
+        "3840x2160",
+        "2160x3840"
+      ]
+    }
+  ]
+}

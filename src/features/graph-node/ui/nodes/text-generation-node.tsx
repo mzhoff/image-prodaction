@@ -1,13 +1,14 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Sparkles } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
 import { RangeSlider } from '@/shared/ui/range-slider';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { useTextGenerationNodeModel } from '../../model/use-text-workflow-node-models';
@@ -57,7 +58,7 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
       {!collapsed ? (
         <>
           <CollapsibleSection title="Settings" className="text-node-section text-node-settings-section">
-            <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
+            <ModelSettingRow modality="text" label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
             {model.supportsTemperature ? (
               <RangeSlider
                 label="Creativity"
@@ -79,7 +80,7 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
             dropTarget={{ nodeId: node.id, portId: 'text' }}
             sidePort={<PortButton nodeId={node.id} portId="text" side="input" kind="text" label="Prompt" className="node-port-section" onStartConnection={onStartConnection} />}
           >
-            <PromptBox value={model.data.instruction} onChange={model.handleInstructionChange} className="text-generation-prompt-box" />
+            <PromptBox textField="instruction" value={model.data.instruction} onChange={model.handleInstructionChange} className="text-generation-prompt-box" />
           </CollapsibleSection>
           <PrimaryActionButton
             className="text-generation-button"
@@ -104,6 +105,7 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
               />
             ) : null}
             <TextSectionFilterTags
+              textField="result"
               className="text-generation-filter-tags"
               disabledFilterIds={model.disabledResultFilterIds}
               onToggle={model.handleResultFilterToggle}
@@ -112,6 +114,7 @@ export function TextGenerationNode({ node, onStartConnection }: TextGenerationNo
             <div className="text-generation-result-port-anchor">
               <PortButton nodeId={node.id} portId="result" side="output" kind="text" label="Result" className="text-generation-result-output-port" onStartConnection={onStartConnection} />
               <TextSectionResultBox
+                textField="result"
                 ariaLabel="Text generation result"
                 value={model.history.activeText}
                 className="text-generation-result-box"

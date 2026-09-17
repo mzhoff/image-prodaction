@@ -1,0 +1,45 @@
+.timeline-editor-media { min-width: 0; width: 100%; }
+.timeline-editor-preview { position: relative; display: grid; width: 100%; aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; background: var(--pui-semantic-surface-inverse); isolation: isolate; }
+.timeline-editor-preview > video, .timeline-editor-preview > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.timeline-editor-preview > .timeline-editor-video-hidden { visibility: hidden; }
+.timeline-editor-preview > .timeline-editor-exact-frame { background: var(--pui-semantic-surface-inverse); }
+.timeline-editor-overlay-top, .timeline-editor-overlay-bottom { position: absolute; inset-inline: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px; z-index: 2; }
+.timeline-editor-overlay-top { top: 6px; }
+.timeline-editor-overlay-bottom { bottom: 6px; }
+.timeline-editor-overlay-actions { display: flex; gap: 5px; }
+.timeline-editor-preview .pui-icon-button { width: 26px; height: 26px; min-height: 26px; padding: 5px; border: 0; border-radius: 8px; background: rgb(255 255 255 / .48); color: white; backdrop-filter: blur(5px); }
+.timeline-editor-overlay-bottom output { min-width: 34px; padding: 5px 8px; border-radius: 8px; background: rgb(255 255 255 / .48); color: white; font: 500 12px/1 var(--pui-font-family-sans); font-variant-numeric: tabular-nums; backdrop-filter: blur(5px); }
+.timeline-editor-feedback { margin: 6px 0; font-size: 11px; line-height: 1.4; color: var(--pui-semantic-text-secondary); }
+.timeline-editor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 3px; margin: 8px 0 5px; min-width: 0; }
+.timeline-editor-toolbar .pui-icon-button { flex: 0 0 24px; width: 24px; height: 26px; min-height: 26px; padding: 4px; border: 0; border-radius: 8px; }
+.timeline-editor-toolbar .pui-icon-button > .pui-button__icon { width: 14px; height: 14px; }
+.timeline-editor-toolbar .pui-icon-button[data-appearance="ghost"] { background: var(--pui-semantic-surface-secondary); }
+.timeline-editor-toolbar .pui-icon-button[data-appearance="solid"] { background: var(--pui-semantic-surface-inverse); color: var(--pui-semantic-text-on-inverse); }
+.timeline-editor-toolbar img { display: block; width: 14px; height: 14px; }
+.timeline-editor-clock { display: flex; flex-direction: column; min-width: 63px; padding-inline: 3px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.timeline-editor-clock strong { color: var(--pui-semantic-text-secondary); font: 600 14px/1.1 var(--pui-font-family-sans); white-space: nowrap; }
+.timeline-editor-clock strong span, .timeline-editor-clock small { color: var(--pui-semantic-text-tertiary, var(--pui-semantic-text-secondary)); opacity: .55; }
+.timeline-editor-clock small { margin-top: 1px; font-size: 9px; }
+.timeline-editor-shot-range { margin: 9px 0 10px; text-align: center; font-size: 10px; color: var(--pui-semantic-text-secondary); font-variant-numeric: tabular-nums; }
+.timeline-editor-rail-wrap { margin-bottom: 10px; }
+.timeline-editor-rail { position: relative; height: 41px; margin-inline: 7px; }
+.timeline-editor-scrubber { position: absolute; inset: 0; width: 100%; height: 18px; margin: 0; padding: 0; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
+.timeline-editor-scrubber::-webkit-slider-runnable-track { height: 4px; border-radius: 10px; background: var(--pui-semantic-border-default); }
+.timeline-editor-scrubber::-moz-range-track { height: 4px; border-radius: 10px; background: var(--pui-semantic-border-default); }
+.timeline-editor-scrubber::-webkit-slider-thumb { width: 15px; height: 15px; margin-top: -5.5px; appearance: none; border: 2px solid var(--pui-semantic-text-primary); border-radius: 50%; background: var(--pui-semantic-surface-primary); }
+.timeline-editor-scrubber::-moz-range-thumb { width: 12px; height: 12px; border: 2px solid var(--pui-semantic-text-primary); border-radius: 50%; background: var(--pui-semantic-surface-primary); }
+.timeline-editor-markers { position: absolute; inset: 21px 0 0; pointer-events: none; }
+.timeline-editor-marker { position: absolute; top: 0; width: 16px; min-height: 18px; padding: 0; transform: translateX(-50%); border: 0; border-radius: 3px; background: var(--pui-semantic-dataflow-image, #3b82f6); color: white; font: 600 10px/18px var(--pui-font-family-sans); opacity: .35; cursor: ew-resize; touch-action: none; pointer-events: auto; }
+.timeline-editor-marker::before { content: ''; position: absolute; width: 7px; height: 7px; top: -3px; left: 4.5px; transform: rotate(45deg); background: inherit; border-radius: 1px; z-index: -1; }
+.timeline-editor-marker[data-active="true"], .timeline-editor-marker:hover, .timeline-editor-marker:focus-visible { opacity: 1; z-index: 2; }
+.timeline-editor-marker[aria-disabled="true"] { cursor: pointer; }
+.timeline-editor-frames-section { margin-inline: -16px; }
+.timeline-editor-frames { display: flex; gap: 6px; padding: 0 16px 10px; }
+.timeline-editor-frame { position: relative; width: calc((100% - 24px) / 5); min-width: 0; border-radius: 6px; }
+.timeline-editor-frame[data-active="true"] { outline: 2px solid var(--pui-semantic-dataflow-image, #3b82f6); outline-offset: 2px; }
+.timeline-editor-frame-select { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 0 3px; border: 0; border-radius: 6px; overflow: hidden; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-secondary); cursor: pointer; }
+.timeline-editor-frame-select img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.timeline-editor-frame-select span { font-size: 8px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.timeline-editor-frame .timeline-editor-frame-remove { position: absolute; top: 1px; right: 1px; width: 18px; height: 18px; min-height: 18px; padding: 3px; border: 0; border-radius: 5px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 90%, transparent); }
+.timeline-editor-media :focus-visible { outline: 2px solid var(--pui-semantic-border-focus); outline-offset: 2px; }
+[data-theme="dark"] .timeline-editor-toolbar img { filter: brightness(1.8); }

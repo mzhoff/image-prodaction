@@ -1,4 +1,6 @@
 import { getSpeechHistory } from '@/entities/production-graph/model/speech-result-history';
+import { getTextHistory } from '@/entities/production-graph/model/text-result-history';
+export { getTextHistory, updateTextResult } from '@/entities/production-graph/model/text-result-history';
 import type {
   TextConcatNodeData,
   TextConcatSeparator,
@@ -60,13 +62,6 @@ export function clampTextFormatterNodeWidth(value: unknown) {
     TEXT_FORMATTER_NODE_MIN_WIDTH, TEXT_FORMATTER_NODE_MAX_WIDTH);
 }
 
-export function getTextHistory(data: TextGenerationNodeData) {
-  const items = uniqueTexts([...(data.resultTexts ?? []), data.result]);
-  if (items.length === 0) return { activeIndex: -1, activeText: '', items };
-  const activeIndex = clampIndex(data.activeResultIndex ?? items.length - 1, items.length);
-  return { activeIndex, activeText: items[activeIndex] ?? '', items };
-}
-
 export { getSpeechHistory } from '@/entities/production-graph/model/speech-result-history';
 
 export function appendSpeechResult(
@@ -101,14 +96,6 @@ export function selectTextResult(data: TextGenerationNodeData, index: number): P
   if (items.length === 0) return { activeResultIndex: -1, result: '', resultTexts: [] };
   const activeIndex = clampIndex(index, items.length);
   return { activeResultIndex: activeIndex, result: items[activeIndex], resultTexts: items };
-}
-
-export function updateTextResult(data: TextGenerationNodeData, text: string): Partial<TextGenerationNodeData> {
-  const history = getTextHistory(data);
-  const activeIndex = history.activeIndex >= 0 ? history.activeIndex : 0;
-  const items = history.items.length > 0 ? [...history.items] : [''];
-  items[activeIndex] = text;
-  return { activeResultIndex: activeIndex, result: text, resultTexts: items };
 }
 
 export function clampTemperature(value: number) {

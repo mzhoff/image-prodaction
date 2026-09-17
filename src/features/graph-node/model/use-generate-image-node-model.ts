@@ -14,11 +14,16 @@ import {
   getGenerateInputKinds,
   getGenerateInputSummary,
 } from '../lib/generate-node-inputs';
-import { getSelectedModelId, modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
+import { modelSelectOptions, valueSelectOptions } from '../lib/node-select-options';
+import { pickImageGenerationOptions, type ImageGenerationOptions } from '@/shared/media/image-generation-settings';
+import { validateImageSettings } from '@/shared/api/image-model-capabilities';
 import {
   createGenerateImageMaskEditAction,
   shouldDiscardGenerationRequest,
 } from './generate-image-mask-edit-action';
+import type { GenerationWaitingPhase } from '@/features/generation-waiting/model/waiting-visuals';
+import { notifyAssistantNotice } from '@/features/assistant-pet/model/assistant-pet-notices';
+import { recordDocumentAssistantActivity } from '@/modules/chat-assistant/adapters/client/document-activity-client';
 
 interface UseGenerateImageNodeModelParams {
   composingOpen: boolean;
@@ -40,17 +45,20 @@ export function useGenerateImageNodeModel({
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const updateNodePrompt = useProductionGraphStore((state) => state.updateNodePrompt);
-  const { imageModels, loading } = useOpenRouterModels();
-  const selectedModel = getSelectedModelId(imageModels, data.model, DEFAULT_IMAGE_MODEL);
+  const catalog = useOpenRouterModels();
+  const { loading } = catalog;
+  const imageModels = catalog.generationModels ?? catalog.imageModels;
+  const selectedModel = data.model || DEFAULT_IMAGE_MODEL;
   const selectedImageModel = imageModels.find((model) => model.id === selectedModel);
   const aspectRatios = selectedImageModel?.aspectRatios?.length ? selectedImageModel.aspectRatios : MODEL_FALLBACK_ASPECT_RATIOS;
   const sizes = selectedImageModel?.sizes?.length ? selectedImageModel.sizes : MODEL_FALLBACK_SIZES;
-  const selectedAspectRatio = aspectRatios.includes(data.aspectRatio) ? data.aspectRatio : aspectRatios[0];
-  const selectedSize = sizes.includes(data.size) ? data.size : sizes[0];
-  const inputSummary = useMemo(() => getGenerateInputSummary(node.id, edges, nodes), [edges, node.id, nodes]);
+  const selectedAspectRatio = data.aspectRatio;
+  const selectedSize = data.size;
+  const inputSummary = useMemo(() => getGenerateInputSummary(node.id, edges, nodes, assets), [assets, edges, node.id, nodes]);
   const generationHistory = useMemo(() => getGenerationHistory(data), [data]);
   const [promptOpen, setPromptOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
+  const [generationWaitPhase, setGenerationWaitPhase] = useState<GenerationWaitingPhase>('submitting');
   const activeGenerationJobIdRef = useRef<string | null>(null);
   const pollingControllerRef = useRef<AbortController | null>(null);
   const generationPresentationRef = useRef({
@@ -80,12 +88,19 @@ export function useGenerateImageNodeModel({
     pollingControllerRef.current = controller;
     activeGenerationJobIdRef.current = jobId;
     setNodeStatus(node.id, 'running');
+    setGenerationWaitPhase('queued');
     updateNodeDataSilent(node.id, {
       message: 'Восстанавливаем незавершённую генерацию…',
     });
-    void requestGenerationJob(jobId, { signal: controller.signal }).then((result) => {
+    void requestGenerationJob(jobId, {
+      signal: controller.signal,
+      onJobUpdate(job) {
+        if (job.status === 'queued' || job.status === 'running') setGenerationWaitPhase(job.status);
+      },
+    }).then((result) => {
       const current = generationPresentationRef.current;
       const asset = result.asset;
+      setGenerationWaitPhase('saving');
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(current.data, asset.id),
@@ -101,6 +116,24 @@ export function useGenerateImageNodeModel({
         message: result.message,
       });
       setNodeStatus(node.id, 'success');
+      const scope = getActiveAssetScope();
+      notifyAssistantNotice({
+        id: `image-generated:${asset.id}`,
+        status: 'success',
+        title: 'Изображение готово',
+        subtitle: 'Ровер закончил задачу. Открой чат, чтобы найти источник.',
+        nodeId: node.id,
+      });
+      if (scope) {
+        void recordDocumentAssistantActivity({
+          documentId: scope.documentId,
+          workspaceId: scope.workspaceId,
+          kind: 'image-generated',
+          model: current.selectedModel,
+          assetId: asset.id,
+          nodeId: node.id,
+        }).catch(() => undefined);
+      }
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return;
       setNodeStatus(node.id, 'error');
@@ -149,6 +182,8 @@ export function useGenerateImageNodeModel({
     const nextSizes = nextModel?.sizes?.length ? nextModel.sizes : MODEL_FALLBACK_SIZES;
     updateNodeData(node.id, {
       model,
+      imageQuality: undefined, imageBackground: undefined, imageFormat: undefined,
+      imageCompression: undefined, imageSeed: undefined,
       aspectRatio: nextAspectRatios.includes(data.aspectRatio) ? data.aspectRatio : nextAspectRatios[0],
       size: nextSizes.includes(data.size) ? data.size : nextSizes[0],
     });
@@ -160,6 +195,7 @@ export function useGenerateImageNodeModel({
     pollingControllerRef.current = controller;
     try {
       setNodeStatus(node.id, 'running');
+      setGenerationWaitPhase('submitting');
       updateNodeDataSilent(node.id, { message: '' });
       const payload = await buildGeneratePayload(node.id, edges, nodes, assets);
       const prompt = [...payload.promptInputs, data.prompt ?? ''].filter((item) => item.trim()).join('\n\n');
@@ -168,11 +204,17 @@ export function useGenerateImageNodeModel({
       const requestPayload = {
         ...payload,
         ...scope,
+        ...pickImageGenerationOptions(data),
         model: selectedModel,
         aspectRatio: selectedAspectRatio,
         size: selectedSize,
         prompt,
       };
+      if (!selectedImageModel) throw new Error('Выбранная модель недоступна. Обновите каталог или выберите другую модель.');
+      if (selectedImageModel.imageCapabilities) {
+        const error = validateImageSettings(requestPayload, payload.referenceImages.length, selectedImageModel.imageCapabilities);
+        if (error) throw new Error(error);
+      }
       const fingerprint = await createRequestFingerprint(requestPayload);
       const idempotencyKey = data.generationRequest?.fingerprint === fingerprint
         ? data.generationRequest.idempotencyKey
@@ -186,13 +228,18 @@ export function useGenerateImageNodeModel({
           signal: controller.signal,
           onJobAccepted(jobId) {
             activeGenerationJobIdRef.current = jobId;
+            setGenerationWaitPhase('queued');
             updateNodeDataSilent(node.id, {
               generationRequest: { fingerprint, idempotencyKey, jobId },
             });
           },
+          onJobUpdate(job) {
+            if (job.status === 'queued' || job.status === 'running') setGenerationWaitPhase(job.status);
+          },
         },
       );
       const asset = result.asset;
+      setGenerationWaitPhase('saving');
       addAsset(asset);
       updateNodeData(node.id, {
         ...appendGenerationResult(data, asset.id),
@@ -211,6 +258,21 @@ export function useGenerateImageNodeModel({
         message: result.message,
       });
       setNodeStatus(node.id, 'success');
+      notifyAssistantNotice({
+        id: `image-generated:${asset.id}`,
+        status: 'success',
+        title: 'Изображение готово',
+        subtitle: 'Ровер закончил задачу. Открой чат, чтобы найти источник.',
+        nodeId: node.id,
+      });
+      void recordDocumentAssistantActivity({
+        documentId: scope.documentId,
+        workspaceId: scope.workspaceId,
+        kind: 'image-generated',
+        model: selectedModel,
+        assetId: asset.id,
+        nodeId: node.id,
+      }).catch(() => undefined);
     } catch (error) {
       if (controller.signal.aborted) return;
       setNodeStatus(node.id, 'error');
@@ -243,8 +305,10 @@ export function useGenerateImageNodeModel({
   return {
     allSectionsOpen,
     aspectRatioOptions: valueSelectOptions(aspectRatios),
+    catalogAspectRatios: imageModels.flatMap((model) => model.aspectRatios ?? []),
     data,
     generationHistory,
+    generationWaitPhase,
     handleGenerate,
     handleAspectRatioChange: (aspectRatio: string) => updateNodeData(node.id, { aspectRatio }),
     handleGenerationHistoryChange: (index: number) => updateNodeDataSilent(node.id, selectGenerationResult(data, index)),
@@ -254,7 +318,14 @@ export function useGenerateImageNodeModel({
     handleSizeChange: (size: string) => updateNodeData(node.id, { size }),
     inputSummary,
     loading,
-    modelOptions: modelSelectOptions(imageModels),
+    catalogError: catalog.imageCatalogError,
+    modelUnavailable: !selectedImageModel,
+    capabilities: selectedImageModel?.imageCapabilities,
+    handleImageSettingsChange: (settings: Partial<ImageGenerationOptions>) => updateNodeData(node.id, settings),
+    modelOptions: modelSelectOptions(selectedImageModel ? imageModels : [
+      { id: selectedModel, label: `${selectedModel} (недоступна)`, name: selectedModel, inputModalities: [], outputModalities: [], supportedParameters: [] },
+      ...imageModels,
+    ]),
     promptOpen,
     promptState: getGenerateInputKinds(node.id, 'prompt', edges, nodes),
     referenceState: getGenerateInputKinds(node.id, 'reference', edges, nodes),

@@ -33,3 +33,4 @@ export {
   type ShortAiRecoveryDependencies,
 } from './server/short-ai-recovery';
 export { executeInternalOpenRouterChat, executeInternalOpenRouterCall } from './server/internal-short-ai-execution';
+export { createProductionGenerationExecutor } from './server/production-generation-executor';

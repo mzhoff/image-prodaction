@@ -47,6 +47,8 @@ export const pipelineNodeHelp = {
       'Каждое top-level поле создаёт вход field:<field.id> с kind поля и label, равным field.key.',
       'Если потребителю нужен конкретный формат/quality/scale/background изображения, подключайте exportImage.image, а не исходный generateImage.image.',
       'Для готового аудиофайла подключайте textToSpeech.audio или audioConvert.audio к полю kind audio; потребитель скачивает объявленный результат через защищённый artifact route.',
+      'Для проверенной раскадровки подключайте timelineHandoff.timeline к полю kind json: весь immutable snapshot, а не выбранный в интерфейсе план; новый исходник требует новой проверки в Studio.',
+      'Для json-поля от Timeline Handoff canonical схема автоматически берётся из источника при публикации; не копируйте массивы планов в ручные вложенные fields.',
       'Выходных портов нет.',
     ],
     summary: 'Объявляет типизированные публичные результаты executable pipeline.',

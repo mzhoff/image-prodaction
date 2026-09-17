@@ -1,7 +1,7 @@
 .design-selection-card {
   display: grid;
   gap: 14px;
-  color: #20232b;
+  color: var(--pui-semantic-text-primary);
   font-size: 13px;
 }
 
@@ -24,13 +24,13 @@
 }
 
 .design-selection-intent {
-  color: #687080;
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   line-height: 1.4;
 }
 
 .design-selection-eyebrow {
-  color: #687080;
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .04em;
@@ -57,16 +57,16 @@
   gap: 8px;
   align-items: start;
   padding: 9px 10px;
-  border: 1px solid #dfe3e9;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 10px;
-  background: #fff;
+  background: var(--pui-semantic-surface-primary);
   cursor: pointer;
 }
 
 .design-selection-strategy input,
 .design-selection-element input {
   margin: 2px 0 0;
-  accent-color: #111;
+  accent-color: var(--pui-semantic-text-primary);
 }
 
 .design-selection-strategy span,
@@ -79,14 +79,14 @@
 .design-selection-strategy small,
 .design-selection-element small {
   overflow: hidden;
-  color: #687080;
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
 }
 
 .design-selection-element em {
-  color: #3d6c5b;
+  color: var(--pui-semantic-status-success-foreground);
   font-size: 10px;
   font-style: normal;
   font-weight: 700;
@@ -94,8 +94,8 @@
 }
 
 .design-selection-element[data-locked="true"] {
-  border-color: #bcd9ce;
-  background: #f3faf7;
+  border-color: var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-secondary);
   cursor: default;
 }
 
@@ -113,9 +113,9 @@
 .design-selection-custom input {
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid #dfe3e9;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 9px;
-  background: #fff;
+  background: var(--pui-semantic-surface-primary);
   font: inherit;
 }
 
@@ -123,9 +123,9 @@
 .design-selection-actions button {
   min-height: 34px;
   padding: 7px 10px;
-  border: 1px solid #d6dbe3;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 9px;
-  background: #fff;
+  background: var(--pui-semantic-surface-primary);
   color: inherit;
   font: inherit;
   font-weight: 650;
@@ -153,7 +153,7 @@
   align-items: center;
   padding: 4px 5px 4px 8px;
   border-radius: 999px;
-  background: #f0f2f5;
+  background: var(--pui-semantic-surface-secondary);
 }
 
 .design-selection-custom li button {
@@ -166,8 +166,8 @@
 .design-selection-reason {
   padding: 9px 10px;
   border-radius: 9px;
-  background: #f4f5f7;
-  color: #525966;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   line-height: 1.4;
 }
@@ -180,13 +180,13 @@
 
 .design-selection-actions .design-selection-continue {
   flex: 1 1 100%;
-  border-color: #111;
-  background: #111;
-  color: #fff;
+  border-color: var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .design-selection-card-submitted {
   gap: 4px;
   padding-left: 10px;
-  border-left: 3px solid #61ab8e;
+  border-left: 3px solid var(--pui-semantic-status-success-border);
 }

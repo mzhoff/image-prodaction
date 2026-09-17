@@ -1,19 +1,22 @@
 'use client';
 
-import { Upload } from 'lucide-react';
-import type { ChangeEvent } from 'react';
+import { Upload } from '@prodactionpro/ui-core/icons';
+import type { ChangeEvent, PointerEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { ImportImageNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { saveUploadedImageAsset } from '@/entities/production-graph/lib/asset-db';
-import { saveUploadedAudioAsset } from '@/entities/production-graph/lib/remote-audio-asset';
+import { saveImportedMediaAsset } from '@/entities/production-graph/lib/import-media-asset';
+import { getImportMediaKind } from '@/shared/lib/import-media-file';
 import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import { AudioPlayer } from '../audio-player';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
+import { ImportVideoBody } from './import-video-body';
 
-export function ImportImageNode({ node }: { node: ProductionNode }) {
+export function ImportImageNode({ node, onStartConnection }: { node: ProductionNode;
+  onStartConnection: (nodeId: string, portId: string, event: PointerEvent<HTMLButtonElement>) => void;
+}) {
   const data = node.data as ImportImageNodeData;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -29,15 +32,15 @@ export function ImportImageNode({ node }: { node: ProductionNode }) {
     if (!file) return;
     if (uploadGuard.current) return;
     const scope = getActiveAssetScope();
-    const audio = file.type.startsWith('audio/') || /\.(mp3|wav|flac|ogg|m4a|aac)$/i.test(file.name);
-    const nextKind = audio ? 'audio' : 'image';
+    const nextKind = getImportMediaKind(file);
+    if (!nextKind) { setError('Choose an image, audio, or MP4/MOV/WebM video file.'); return; }
     const state = useProductionGraphStore.getState();
     if ((data.mediaKind || 'image') !== nextKind && state.edges.some((edge) => edge.sourceNodeId === node.id)
       && !window.confirm('Changing media type removes incompatible connections. Continue?')) return;
     setUploading(true); setError('');
     const requestId = Symbol(); uploadGuard.current = requestId;
     try {
-      const asset = audio ? await saveUploadedAudioAsset(file, scope) : await saveUploadedImageAsset(file);
+      const asset = await saveImportedMediaAsset(file, scope);
       if (uploadGuard.current !== requestId || getActiveAssetScope()?.documentId !== scope?.documentId
         || getActiveAssetScope()?.workspaceId !== scope?.workspaceId) return;
       addAsset(asset);
@@ -49,12 +52,12 @@ export function ImportImageNode({ node }: { node: ProductionNode }) {
   return (
     <>
       <NodeTitle title={data.title} nodeType={node.type} muted />
-      {data.mediaKind === 'audio' ? <AudioPlayer assetId={data.assetId} /> : <ImagePlate assetId={data.assetId} adaptive />}
-      <input ref={fileInputRef} aria-label="Upload image or audio" type="file" accept="image/*,.heic,.heif,audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac" hidden onChange={handleUpload} />
+      {data.mediaKind === 'video' ? <ImportVideoBody node={node} onStartConnection={onStartConnection} />
+        : data.mediaKind === 'audio' ? <AudioPlayer assetId={data.assetId} /> : <ImagePlate assetId={data.assetId} adaptive />}
+      <input ref={fileInputRef} aria-label="Upload image, audio or video" type="file" accept="image/*,.heic,.heif,audio/*,.mp3,.wav,.flac,.ogg,.opus,.m4a,.aac,.mp4,.mov,.webm" hidden onChange={handleUpload} />
       <PrimaryActionButton disabled={uploading} icon={<Upload size={16} />} onClick={() => fileInputRef.current?.click()}>
-        {uploading ? 'Uploading…' : 'Upload image or audio'}
+        {uploading ? 'Uploading…' : 'Upload image, audio or video'}
       </PrimaryActionButton>
-      <div className="node-note node-note-compact">Audio: up to 50 MiB / 30 minutes.</div>
       {error ? <div className="node-note" role="alert">{error}</div> : null}
     </>
   );

@@ -1,17 +1,24 @@
 'use client';
 
-import { Loader2, Maximize2, Minimize2, Sparkles } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Sparkles } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useGenerateImageNodeModel } from '../../model/use-generate-image-node-model';
 import { generateReferenceRows } from '../../lib/generate-node-inputs';
 import { ImagePlate } from '../image-plate';
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
+import { GenerationWaitingExperience } from '@/features/generation-waiting/ui/generation-waiting-experience';
+import { InputConnectionBadge } from '../input-connection-badge';
+import { ImageModelLogo } from '../image-model-logo';
+import { ImageGenerationSettings } from '../image-generation-settings';
+import { AspectRatioSelector } from '@/features/aspect-ratio-selector/ui/aspect-ratio-selector';
+import { getImageOutputResolution } from '@/shared/media/output-resolution/image-output-resolution';
 
 interface GenerateImageNodeProps {
   node: ProductionNode;
@@ -59,6 +66,14 @@ export function GenerateImageNode({
         assetMetadata={model.data.resultMetadata}
         aspectRatio={model.selectedAspectRatio}
         loading={node.status === 'running'}
+        renderLoadingOverlay={({ previewUrl }) => (
+          <GenerationWaitingExperience
+            kind="image"
+            phase={model.generationWaitPhase}
+            previousImageUrl={previewUrl}
+            seed={model.data.generationRequest?.jobId ?? model.data.generationRequest?.idempotencyKey ?? node.id}
+          />
+        )}
         onActiveIndexChange={model.handleGenerationHistoryChange}
         onMaskEdit={model.handleMaskEdit}
         sourceModel={model.data.model}
@@ -66,7 +81,7 @@ export function GenerateImageNode({
       <PrimaryActionButton
         icon={node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}
         onClick={model.handleGenerate}
-        disabled={node.status === 'running' || model.loading}
+        disabled={node.status === 'running' || model.loading || model.modelUnavailable}
       >
         Generate
       </PrimaryActionButton>
@@ -77,12 +92,21 @@ export function GenerateImageNode({
         dropTarget={{ nodeId: node.id, portId: 'prompt' }}
         sidePort={<PortButton nodeId={node.id} portId="prompt" side="input" kind="text" label="Prompt" connectionState={model.promptState} className="node-port-section" onStartConnection={onStartConnection} />}
       >
-        <PromptBox value={model.data.prompt} onChange={model.handlePromptChange} />
+        <PromptBox textField="prompt" value={model.data.prompt} onChange={model.handlePromptChange} />
       </CollapsibleSection>
       <CollapsibleSection title="Settings" open={model.settingsOpen} onOpenChange={model.setSettingsOpen}>
-        <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
-        <SettingRow label="Aspect Ratio" value={model.selectedAspectRatio} options={model.aspectRatioOptions} onChange={model.handleAspectRatioChange} />
-        <SettingRow label="Size" value={model.selectedSize} options={model.sizeOptions} onChange={model.handleSizeChange} />
+        <ModelSettingRow modality="image" label="Model" ariaLabel="Image model" value={model.selectedModel}
+          options={model.modelOptions.map((option) => ({ ...option, icon: <ImageModelLogo modelId={option.value} /> }))}
+          onChange={model.handleModelChange} wide />
+        {(!model.capabilities || model.capabilities.parameters.aspect_ratio) && <AspectRatioSelector key={model.selectedModel}
+          value={model.selectedAspectRatio} availableRatios={model.aspectRatioOptions.map((option) => option.value)}
+          catalogRatios={model.catalogAspectRatios} onChange={model.handleAspectRatioChange}
+          disabled={node.locked || node.status === 'running' || model.loading || model.modelUnavailable}
+          getResolution={(ratio) => getImageOutputResolution(model.selectedModel, ratio, model.selectedSize)} />}
+        {(!model.capabilities || model.capabilities.parameters.resolution) && <SettingRow label="Size" value={model.selectedSize} options={model.sizeOptions} onChange={model.handleSizeChange} />}
+        {model.capabilities && <ImageGenerationSettings capabilities={model.capabilities} value={model.data} onChange={model.handleImageSettingsChange} />}
+        {model.catalogError && <div className="node-note node-note-compact">{model.catalogError}</div>}
+        {model.modelUnavailable && !model.loading && <div className="node-note node-note-compact">Выбранная модель недоступна. Обновите каталог или выберите другую модель.</div>}
       </CollapsibleSection>
       <CollapsibleSection
         title="Reference"
@@ -105,7 +129,7 @@ export function GenerateImageNode({
           >
             <PortButton nodeId={node.id} portId={row.id} side="input" kind="reference" label={row.label} connectionState={state} className="node-port-row" onStartConnection={onStartConnection} />
             <span>{row.label}</span>
-            <span className={`input-pill ${state === 'empty' ? 'input-pill-empty' : 'input-pill-connected'}`}>{model.inputSummary[row.id]}</span>
+            <InputConnectionBadge status={model.inputSummary[row.id]} />
           </div>
           );
         })}

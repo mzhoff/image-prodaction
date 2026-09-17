@@ -1,6 +1,6 @@
 'use client';
 
-import { BookmarkPlus, Download, Loader2 } from 'lucide-react';
+import { BookmarkPlus, Download, Loader2 } from '@prodactionpro/ui-core/icons';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
@@ -21,13 +21,17 @@ export function ExportImageNode({ node }: { node: ProductionNode }) {
     <>
       <NodeTitle title={node.data.title} nodeType={node.type} muted />
       <ImagePlate
-        assetId={model.outputAssetId}
-        loading={node.status === 'running'}
+        assetIds={model.previewAssetIds}
+        activeIndex={model.activeIndex}
+        onActiveIndexChange={model.handleActiveIndexChange}
+        navigationLabels={{ previous: 'Previous export image', next: 'Next export image' }}
+        loading={model.previewLoading}
+        outputPending={model.previewPending}
       />
       {model.sourceCount > 0 ? (
         <div className="export-batch-summary">
           <span>{model.sourceCount > 1
-            ? `Output · first of ${model.sourceCount} source images`
+            ? `Preview · ${model.activeIndex + 1} of ${model.sourceCount} source images`
             : 'Converted output'}</span>
           {model.activeSourceItem?.sourceLabel ? <strong>{model.activeSourceItem.sourceLabel}</strong> : null}
         </div>

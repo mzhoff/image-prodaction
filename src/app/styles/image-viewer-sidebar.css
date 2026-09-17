@@ -1,0 +1,87 @@
+/* Color tools use horizontal space; mask/prompt tools keep their bottom lane. */
+.image-viewer-content.image-viewer-content-with-sidebar {
+  --image-viewer-sidebar-width: clamp(280px, 22vw, 340px);
+  --image-viewer-side-gutter: calc(var(--image-viewer-sidebar-width) + 44px);
+  --image-viewer-inline-padding: calc(2 * var(--image-viewer-side-gutter));
+  --image-viewer-image-width: min(calc(100vw - var(--image-viewer-inline-padding)), calc(var(--image-viewer-available-height) * var(--image-viewer-source-aspect)));
+  padding-inline: var(--image-viewer-side-gutter);
+}
+
+.image-viewer-content.image-viewer-content-without-bottom-panel {
+  --image-viewer-panel-height: 0px;
+}
+
+.image-editor-sidebar {
+  position: absolute;
+  top: 84px;
+  left: calc(50% + var(--image-viewer-image-width) / 2 + 20px);
+  box-sizing: border-box;
+  display: flex;
+  width: var(--image-viewer-sidebar-width);
+  max-height: calc(100dvh - 108px);
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(30, 30, 30, 0.96);
+  color: #fff;
+  padding: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: #777 transparent;
+}
+
+.image-editor-sidebar > * { flex-shrink: 0; }
+.image-editor-sidebar-heading { display: flex; align-items: center; }
+.image-editor-sidebar .curves-viewer-toolbar-label { background: transparent; color: #fff; padding: 0; }
+.image-editor-sidebar .curves-editor-viewer .curves-graph { max-height: none; }
+.image-editor-sidebar .range-slider-label { color: #dedfe1; }
+.image-editor-sidebar .range-slider-row { padding: 0; }
+.image-editor-sidebar .adjustment-slider-list { gap: 18px; }
+.image-editor-sidebar .adjustment-reset-button { background: #ededed; color: #333; }
+
+.adjustment-viewer-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Keep the image centered on wide screens; borrow the left gutter on laptops. */
+@media (min-width: 761px) and (max-width: 1200px) {
+  .image-viewer-content.image-viewer-content-with-sidebar {
+    --image-viewer-inline-padding: calc(var(--image-viewer-side-gutter) + 24px);
+    padding-left: 24px;
+  }
+  .image-viewer-content-with-sidebar .image-editor-sidebar {
+    left: calc(24px + (100vw - var(--image-viewer-inline-padding)) / 2 + var(--image-viewer-image-width) / 2 + 20px);
+  }
+}
+
+/* A phone cannot fit two useful columns. Reserve a scrollable tools tray,
+   without covering the image, the mask tools or the close button. */
+@media (max-width: 760px) {
+  .image-viewer-content.image-viewer-content-with-sidebar {
+    --image-viewer-sidebar-height: min(36dvh, 300px);
+    --image-viewer-block-padding: calc(100px + var(--image-viewer-sidebar-height));
+    --image-viewer-inline-padding: 24px;
+    padding: 76px 12px calc(24px + var(--image-viewer-sidebar-height));
+  }
+
+  .image-viewer-content-with-sidebar .image-editor-sidebar {
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    height: var(--image-viewer-sidebar-height);
+    max-height: none;
+  }
+
+  .image-viewer-content-with-sidebar.image-viewer-content-with-local-mask:has(.image-editor-mask-tools) {
+    --image-viewer-panel-height: 112px;
+  }
+}

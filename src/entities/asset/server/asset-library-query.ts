@@ -1,6 +1,7 @@
-import { and, eq, ilike, inArray, lt, or, type SQL } from 'drizzle-orm';
+import { and, eq, ilike, inArray, lt, or, sql, type SQL } from 'drizzle-orm';
 import type { AssetLibraryFilters } from './asset-repository-contracts';
 import { asset } from '@/shared/db/schema/asset';
+import { document } from '@/shared/db/schema/document';
 
 export function createLibraryConditions(input: AssetLibraryFilters): SQL[] {
   const conditions: SQL[] = [
@@ -13,6 +14,9 @@ export function createLibraryConditions(input: AssetLibraryFilters): SQL[] {
   if (input.providers?.length) conditions.push(inArray(asset.provider, input.providers));
   if (input.modelIds?.length) conditions.push(inArray(asset.modelId, input.modelIds));
   if (input.documentIds?.length) conditions.push(inArray(asset.documentId, input.documentIds));
+  if (input.folderId) conditions.push(sql`exists (select 1 from ${document}
+    where ${document.id} = ${asset.documentId} and ${document.workspaceId} = ${input.workspaceId}
+    and ${document.folderId} = ${input.folderId} and ${document.status} = 'active')`);
   if (input.search) {
     const pattern = `%${input.search}%`;
     const searchCondition = or(

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
+import { getExtractSystemPrompt } from '@/entities/production-graph/model/extract-presets';
 import {
   executeShortOpenRouterChat,
   getProviderText,
@@ -11,9 +12,10 @@ export const runtime = 'nodejs';
 
 const analyzeImageSchema = z.object({
   ...shortAiScopeSchema.shape,
+  analysisPreset: z.enum(['composition', 'graphics', 'character', 'location']).default('composition'),
   model: z.string().min(1).default(DEFAULT_ANALYSIS_MODEL),
   prompt: z.string().min(1),
-  imageDataUrl: z.string().min(1),
+  imageDataUrls: z.array(z.string().min(1)).min(1).max(5),
 });
 
 export async function POST(request: Request) {
@@ -35,14 +37,14 @@ export async function POST(request: Request) {
           role: 'system',
           parts: [{
             modality: 'text',
-            text: 'You are a senior art director, commercial image analyst, and prompt engineer for AI image production. Follow the user instruction exactly. Return detailed, structured, production-ready notes that can be reused directly as an image generation prompt. Preserve visible text exactly, especially Cyrillic. Do not invent brand names or logos.',
+            text: getExtractSystemPrompt(parsed.data.analysisPreset, parsed.data.imageDataUrls.length > 1),
           }],
         },
         {
           role: 'user',
           parts: [
             { modality: 'text', text: parsed.data.prompt },
-            { modality: 'image', url: parsed.data.imageDataUrl },
+            ...parsed.data.imageDataUrls.map((url) => ({ modality: 'image' as const, url })),
           ],
         },
         ],

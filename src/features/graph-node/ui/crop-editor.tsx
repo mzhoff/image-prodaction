@@ -16,6 +16,8 @@ interface CropEditorProps {
   onCropChange: (crop: CropRect) => void;
   onCropDragStart?: () => void;
   url?: string;
+  emptyText?: string;
+  sourceLabel?: string;
 }
 
 interface DragState {
@@ -36,6 +38,8 @@ export function CropEditor({
   onCropChange,
   onCropDragStart,
   url,
+  emptyText = 'Connect image',
+  sourceLabel = 'Crop source',
 }: CropEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -102,7 +106,7 @@ export function CropEditor({
         <>
           <img
             src={url}
-            alt="Crop source"
+            alt={sourceLabel}
             className="crop-editor-image"
             draggable={false}
           />
@@ -131,7 +135,7 @@ export function CropEditor({
           </div>
         </>
       ) : (
-        <div className="crop-editor-empty">Connect image</div>
+        <div className="crop-editor-empty">{emptyText}</div>
       )}
     </div>
   );

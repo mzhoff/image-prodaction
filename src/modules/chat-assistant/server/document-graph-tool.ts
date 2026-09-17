@@ -60,6 +60,9 @@ function readConfigurableSettings(
     const value = data[field];
     if (typeof value === 'string') entries.push([field, value.slice(0, 4_000)]);
     if (typeof value === 'number' && Number.isFinite(value)) entries.push([field, value]);
+    if (field === 'presets' && Array.isArray(value)) {
+      entries.push([field, value.filter((item) => typeof item === 'string').slice(0, 32)]);
+    }
     if (field === 'variables' && Array.isArray(value)) {
       entries.push([field, value.slice(0, 10).flatMap((variable) => (
         isRecord(variable)

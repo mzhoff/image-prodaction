@@ -2,13 +2,13 @@ import { z } from 'zod';
 import { uploadAudioAsset } from '@/entities/asset/server/audio-asset-service';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { apiError } from '@/shared/api/api-error';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { readAuthServerConfig } from '@/shared/auth/config';
 import { AudioProcessingError, MAX_AUDIO_BYTES } from '@/shared/media/audio-contracts';
 import { readAudioMultipart, withAudioUploadLimit } from '@/shared/media/audio-upload-request';
 import { toAssetApiErrorResponse } from './error-response';
 
-const fieldsSchema = z.object({ workspaceId: z.string().refine(isUuidV7), documentId: z.string().refine(isUuidV7).nullable(), origin: z.enum(['uploaded', 'saved']) });
+const fieldsSchema = z.object({ workspaceId: z.string().refine(isUuid), documentId: z.string().refine(isUuid).nullable(), origin: z.enum(['uploaded', 'saved']) });
 export async function postAssetAudio(request: Request) {
   try {
     const origin = request.headers.get('origin');

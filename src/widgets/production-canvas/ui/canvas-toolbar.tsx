@@ -1,8 +1,9 @@
 'use client';
 
-import { Download, Frame, Maximize2, MousePointer2, Redo2, Trash2, Undo2, Upload } from 'lucide-react';
+import { Download, Frame, Maximize2, MousePointer2, Redo2, Trash2, Undo2, Upload } from '@prodactionpro/ui-core/icons';
 import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
+import { ThemeControl } from '@/shared/ui/theme-control';
 import { ProTooltip } from '@/shared/ui/pro-tooltip';
 
 type CanvasTool = 'select' | 'section';
@@ -11,6 +12,7 @@ interface CanvasToolbarProps {
   activeTool: CanvasTool;
   canRedo: boolean;
   canUndo: boolean;
+  zoom: number;
   onDeleteSelected: () => void;
   onExportProject: () => void;
   onImportProject: (file: File) => void;
@@ -24,6 +26,7 @@ export function CanvasToolbar({
   activeTool,
   canRedo,
   canUndo,
+  zoom,
   onDeleteSelected,
   onExportProject,
   onImportProject,
@@ -76,7 +79,13 @@ export function CanvasToolbar({
           <Maximize2 size={16} />
         </button>
       </ProTooltip>
+      <ProTooltip label="Canvas zoom">
+        <output className="canvas-toolbar-zoom" aria-label="Canvas zoom" aria-live="off">
+          {Math.round(zoom * 100)}%
+        </output>
+      </ProTooltip>
       <span className="canvas-toolbar-separator" aria-hidden="true" />
+      <ThemeControl className="canvas-theme-control" />
       <ProTooltip label="Export document">
         <button type="button" aria-label="Export document" onClick={onExportProject}>
           <Download size={16} />

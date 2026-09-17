@@ -28,6 +28,11 @@
 `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` и `OPENROUTER_SITE_URL`.
 Database, auth secret, S3 secret и provider keys публичными не являются.
 
+Политика browser-сессий и миграция cookie: [auth-sessions.md](auth-sessions.md).
+Не менять `BETTER_AUTH_SECRET` при обычной пересборке. Префикс cookies
+`image-production` должен оставаться отдельным от Content Hub и других приложений,
+в том числе когда они работают на одном хосте через разные порты.
+
 ## Rollback
 
 - приложение можно откатить на предыдущий immutable image;

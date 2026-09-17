@@ -8,6 +8,8 @@ import { getDb } from '@/shared/db/client';
 import { createUuidV7 } from '@/shared/lib/id';
 import { CHAT_ASSISTANT_PRODUCT_ID } from '../contracts/assistant-config';
 import { chatDocumentConversation } from './document-conversation-schema';
+import { getChatConversationInfrastructure } from './conversation-infrastructure';
+import { ensureCanonicalActivityConversation } from './document-activity-chat-adapter';
 
 interface DocumentConversationPrincipal {
   productId: string;
@@ -69,11 +71,21 @@ export async function bindDocumentConversation(
     documentId,
     userId: principal.userId,
     workspaceId,
-  }).onConflictDoUpdate({
+  }).onConflictDoNothing({
     target: [chatDocumentConversation.documentId, chatDocumentConversation.userId],
-    set: { conversationId, updatedAt: new Date(), workspaceId },
   });
-  return conversationId;
+  const canonicalId = await findDocumentConversation(principal, documentId);
+  if (!canonicalId) throw new DocumentConversationAccessError();
+  return canonicalId;
+}
+
+export async function ensureDocumentConversation(principal: DocumentConversationPrincipal, documentId: string) {
+  await requireDocumentScope(principal, documentId);
+  return ensureCanonicalActivityConversation({
+    principal, documentId, store: getChatConversationInfrastructure().store,
+    findBound: () => findDocumentConversation(principal, documentId),
+    bind: (conversationId) => bindDocumentConversation(principal, documentId, conversationId),
+  });
 }
 
 async function requireDocumentScope(principal: DocumentConversationPrincipal, documentId: string) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, QrCode } from 'lucide-react';
+import { Loader2, QrCode } from '@prodactionpro/ui-core/icons';
 import type { QrCodeContentMode } from '@/shared/qr-code';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { DarkSelect } from '@/shared/ui/dark-select';

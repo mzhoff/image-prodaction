@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, BadgeCheck } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BadgeCheck } from '@prodactionpro/ui-core/icons';
 import { AuthShell } from './auth-shell';
 
 export function VerifyEmailPage({ error, verified }: { error?: string; verified: boolean }) {

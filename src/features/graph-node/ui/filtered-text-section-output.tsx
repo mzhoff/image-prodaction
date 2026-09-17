@@ -6,6 +6,7 @@ import { TextSectionDuplicateWarnings, TextSectionFilterTags } from './text-sect
 import { TextSectionResultBox } from './text-section-result-box';
 
 interface FilteredTextSectionOutputProps {
+  textField?: string;
   ariaLabel?: string;
   boxClassName?: string;
   disabledFilterIds?: string[];
@@ -18,6 +19,7 @@ interface FilteredTextSectionOutputProps {
 }
 
 export function FilteredTextSectionOutput({
+  textField,
   ariaLabel,
   boxClassName,
   disabledFilterIds = [],
@@ -33,12 +35,15 @@ export function FilteredTextSectionOutput({
   return (
     <>
       <TextSectionFilterTags
+        textField={textField}
+        readOnly={readOnly}
         className={tagsClassName}
         disabledFilterIds={disabledFilterIds}
         onToggle={onToggle}
         text={value}
       />
       <TextSectionResultBox
+        textField={textField}
         ariaLabel={ariaLabel}
         className={boxClassName}
         disabledFilterIds={disabledFilterIds}

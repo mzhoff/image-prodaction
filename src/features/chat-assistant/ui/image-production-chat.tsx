@@ -4,6 +4,7 @@ import {
   type ChatContextSelectors,
   type ChatAttachment,
   type ChatModelOption,
+  type ChatMessage,
   type ToolLifecycleEvent,
 } from '@prodactionpro/chat-domain';
 import {
@@ -17,11 +18,14 @@ import {
   useCreateChatRuntime,
 } from '@prodactionpro/chat-runtime-react';
 import { ChatModuleShell } from '@prodactionpro/chat-ui';
+import { useTheme } from '@prodactionpro/ui-core/theme';
 import { useEffect, useMemo } from 'react';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
 import { bindDocumentConversation } from '@/modules/chat-assistant/adapters/client/document-conversation-client';
 import { PIPELINE_BUILD_TOOL, PIPELINE_UPDATE_TOOL } from '@/modules/chat-assistant/contracts/image-production-tools';
 import { prepareChatMessagesForPresentation } from '../model/chat-message-presentation';
+import { getDocumentActivityActionNode, mergeDocumentActivityMessages } from '../model/document-activity-messages';
+import { useDocumentActivity } from '../model/use-document-activity';
 import { useDocumentConversation } from '../model/use-document-conversation';
 import { useChatAssistantConfig } from '../model/use-chat-assistant-config';
 import { useRegisterHostedChatLauncher } from '../model/chat-launcher-host';
@@ -41,9 +45,21 @@ import {
   VISUAL_OPTIONS,
 } from './image-production-chat-options';
 
+const EMPTY_CHAT_WELCOME: ChatMessage = {
+  id: 'image-production-welcome:ru:v2',
+  role: 'assistant',
+  createdAt: new Date().toISOString(),
+  blocks: [{
+    type: 'markdown',
+    content: 'Расскажи, что хочешь создать. Я быстро подготовлю рабочий черновик пайплайна; перед изменением холста ты увидишь одно подтверждение.',
+  }],
+  metadata: { animate: false },
+};
+
 interface ImageProductionChatProps {
   context: ChatContextSelectors;
   onPipelineChanged?: () => void;
+  onFocusNode?: (nodeId: string) => void;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId?: string;
 }
@@ -51,6 +67,7 @@ export type AssistantAttachmentDropTarget = ChatAttachmentDropTarget;
 export function ImageProductionChat({
   context,
   onPipelineChanged,
+  onFocusNode,
   registerAttachmentDropTarget,
   workspaceId,
 }: ImageProductionChatProps) {
@@ -75,6 +92,7 @@ export function ImageProductionChat({
       context={context}
       documentId={context.document?.id}
       model={state.value.model}
+      onFocusNode={onFocusNode}
       onPipelineChanged={onPipelineChanged}
       registerAttachmentDropTarget={registerAttachmentDropTarget}
       workspaceId={workspaceId}
@@ -86,6 +104,7 @@ function ConfiguredChatSession(props: {
   context: ChatContextSelectors;
   documentId?: string;
   model: string;
+  onFocusNode?: (nodeId: string) => void;
   onPipelineChanged?: () => void;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
@@ -95,7 +114,7 @@ function ConfiguredChatSession(props: {
   if (state.phase === 'error') {
     return <AssistantNotice action={reload} actionLabel="Повторить">{state.message}</AssistantNotice>;
   }
-  return <ConfiguredChat {...props} initialConversationId={state.conversationId} />;
+  return <ConfiguredChat {...props} initialConversationId={state.conversationId} onFocusNode={props.onFocusNode} />;
 }
 
 function ConfiguredChat({
@@ -104,6 +123,7 @@ function ConfiguredChat({
   initialConversationId,
   model,
   onPipelineChanged,
+  onFocusNode,
   registerAttachmentDropTarget,
   workspaceId,
 }: {
@@ -112,6 +132,7 @@ function ConfiguredChat({
   initialConversationId?: string;
   model: string;
   onPipelineChanged?: () => void;
+  onFocusNode?: (nodeId: string) => void;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
@@ -120,6 +141,8 @@ function ConfiguredChat({
   const runtime = useCreateChatRuntime({
     context: stableContext,
     initialState: {
+      conversationId: initialConversationId,
+      phase: initialConversationId ? 'loading' : 'idle',
       selectedMode: 'product-copilot',
       selectedModel: model,
     },
@@ -130,14 +153,7 @@ function ConfiguredChat({
       }
     },
     transport,
-    welcomeMessage: initialConversationId ? false : {
-      id: 'image-production-welcome:ru:v2',
-      locale: 'ru',
-      blocks: [{
-        type: 'markdown',
-        content: 'Расскажи, что хочешь создать. Я быстро подготовлю рабочий черновик пайплайна; перед изменением холста ты увидишь одно подтверждение.',
-      }],
-    },
+    welcomeMessage: false,
   });
   useEffect(() => {
     if (!initialConversationId) return;
@@ -147,6 +163,7 @@ function ConfiguredChat({
     <ChatRuntimeProvider runtime={runtime}>
       <ChatContent
         model={model}
+        onFocusNode={onFocusNode}
         documentId={documentId}
         registerAttachmentDropTarget={registerAttachmentDropTarget}
         workspaceId={workspaceId}
@@ -155,14 +172,18 @@ function ConfiguredChat({
   );
 }
 
-function ChatContent({ documentId, model, registerAttachmentDropTarget, workspaceId }: {
+function ChatContent({ documentId, model, onFocusNode, registerAttachmentDropTarget, workspaceId }: {
   documentId?: string;
   model: string;
+  onFocusNode?: (nodeId: string) => void;
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
   const runtime = useChatRuntime();
+  const { resolvedTheme } = useTheme();
+  const appearance = useMemo(() => ({ ...APPEARANCE, visualProfile: `product-${resolvedTheme}` }), [resolvedTheme]);
   const state = useChatRuntimeState();
+  const documentActivity = useDocumentActivity(documentId, workspaceId);
   const actions = useChatRuntimeActions();
   const transport = useMemo(() => createImageProductionChatClient(workspaceId), [workspaceId]);
   const attachmentController = useChatAttachments({
@@ -195,13 +216,22 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
       documentId,
       signal: controller.signal,
       workspaceId,
+    }).then((conversationId) => {
+      if (controller.signal.aborted || conversationId === state.conversationId) return;
+      const current = runtime.getSnapshot();
+      // A document has one durable conversation, even when opened in multiple tabs.
+      if (current.phase === 'idle') void runtime.loadConversation(conversationId).catch(() => undefined);
     }).catch(() => undefined);
     return () => controller.abort();
-  }, [documentId, state.conversationId, workspaceId]);
+  }, [documentId, runtime, state.conversationId, workspaceId]);
   const isTyping = ['loading', 'submitting', 'streaming'].includes(state.phase);
+  const messages = useMemo(
+    () => mergeDocumentActivityMessages(state.messages, documentActivity, state.conversationId),
+    [documentActivity, state.conversationId, state.messages],
+  );
   const presentedMessages = useMemo(
-    () => prepareChatMessagesForPresentation(state.messages),
-    [state.messages],
+    () => prepareChatMessagesForPresentation(messages.length || state.phase !== 'idle' ? messages : [EMPTY_CHAT_WELCOME]),
+    [messages, state.phase],
   );
   const modelOption: ChatModelOption = {
     id: model,
@@ -239,7 +269,7 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
         activity={state.activity}
         allModelOptions={[modelOption]}
         allowedModelIdsByMode={createAllowedModels(model)}
-        appearance={APPEARANCE}
+        appearance={appearance}
         attachmentPresentation={{
           composerPreview: 'thumbnails',
           dragAndDrop: 'custom-zone',
@@ -267,6 +297,10 @@ function ChatContent({ documentId, model, registerAttachmentDropTarget, workspac
         modeOptions={MODE_OPTIONS}
         modelOptions={[]}
         onAddFiles={(files) => { void attachmentController.addFiles(files); }}
+        onAction={(selection) => {
+          const nodeId = getDocumentActivityActionNode(selection, messages);
+          if (nodeId) onFocusNode?.(nodeId);
+        }}
         onAppearanceChange={() => undefined}
         onCancel={actions.cancel}
         onConfirmToolCall={(id) => { void actions.confirmToolCall(id); }}

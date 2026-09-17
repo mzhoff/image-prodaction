@@ -1,0 +1,6 @@
+.import-video-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.import-video-body video { display: block; width: 100%; max-height: 360px; background: var(--pui-semantic-surface-inverse); border-radius: 10px; }
+.import-video-output-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; font-size: 12px; }
+.import-video-output-row > span { min-width: 0; }
+.import-video-output-row small { color: var(--pui-semantic-text-secondary); }
+.import-video-output-row .node-port-section { top: 50%; right: -43px; }

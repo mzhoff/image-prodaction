@@ -35,6 +35,7 @@ export function useProductionCanvasStore() {
   const pasteImageAsset = useProductionGraphStore((state) => state.pasteImageAsset);
   const pasteNodes = useProductionGraphStore((state) => state.pasteNodes);
   const pushHistory = useProductionGraphStore((state) => state.pushHistory);
+  const runInHistoryBatch = useProductionGraphStore((state) => state.runInHistoryBatch);
   const redo = useProductionGraphStore((state) => state.redo);
   const resetProject = useProductionGraphStore((state) => state.resetProject);
   const selectNode = useProductionGraphStore((state) => state.selectNode);
@@ -87,6 +88,7 @@ export function useProductionCanvasStore() {
     pasteImageAsset,
     pasteNodes,
     pushHistory,
+    runInHistoryBatch,
     redo,
     resetProject,
     renameSection,
@@ -137,6 +139,7 @@ export function useProductionCanvasStore() {
     pasteImageAsset,
     pasteNodes,
     pushHistory,
+    runInHistoryBatch,
     redo,
     resetProject,
     renameSection,

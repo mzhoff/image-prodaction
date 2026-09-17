@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import {
   createGenerationJob,
   getGenerationJob,
@@ -55,7 +55,8 @@ export async function submitGenerationJob<TPayload>(
 
 export async function cancelGenerationJob(userId: string, jobId: string) {
   const accessible = await getGenerationJob(userId, jobId);
-  if (['succeeded', 'failed', 'canceled'].includes(accessible.status)) {
+  if (accessible.status === 'succeeded' || accessible.status === 'canceled'
+    || (accessible.status === 'failed' && !accessible.error?.retryable)) {
     return accessible;
   }
   const now = new Date();
@@ -65,11 +66,13 @@ export async function cancelGenerationJob(userId: string, jobId: string) {
     leaseExpiresAt: null,
     retryAvailableAt: null,
     retryable: false,
+    errorCode: 'generation_canceled',
+    errorMessage: 'Generation was canceled by the user.',
     finishedAt: now,
     updatedAt: now,
   }).where(and(
     eq(generationJob.id, jobId),
-    eq(generationJob.status, 'queued'),
+    or(eq(generationJob.status, 'queued'), and(eq(generationJob.status, 'failed'), eq(generationJob.retryable, true))),
   )).returning({ id: generationJob.id });
   if (!canceledQueuedJob) {
     await getDb().update(generationJob).set({

@@ -1,7 +1,19 @@
 import type { PipelineNodeOperationManifest } from '../contracts/pipeline-node-operation-manifest';
 
 export const PRODUCTION_PIPELINE_NODE_MANIFEST = [
+  operation({ handlerType: 'stories.assemble',
+    inputs: { title: 'text?', subtitle: 'text?', text: 'text?', image: 'image?', video: 'video?', poster: 'image?', poll: 'json?', document: 'json?', 'document-*': 'json?' },
+    outputs: { story: 'json' }, deterministic: true }),
+  operation({ handlerType: 'ai.video.generate',
+    inputs: { prompt: 'text?', 'first-frame': 'image?', 'last-frame': 'image?', 'reference-1': 'image?', 'reference-2': 'image?', 'reference-3': 'image?' },
+    inputCollections: { 'first-frame': 'image_collection', 'last-frame': 'image_collection', 'reference-1': 'image_collection', 'reference-2': 'image_collection', 'reference-3': 'image_collection' },
+    outputs: { video: 'video' }, paid: true, sideEffect: 'storage-write', timeoutMs: 3_000_000 }),
+  operation({ handlerType: 'timeline.handoff', inputs: { video: 'video' }, outputs: { timeline: 'json', frames: 'image_collection', descriptions: 'text', videoResult: 'video' }, deterministic: true }),
   operation({ handlerType: 'asset.reference', inputs: {}, outputs: { asset: 'any' }, deterministic: true }),
+  operation({ handlerType: 'video.import', inputs: {}, outputs: { original: 'video', video: 'video', audio: 'audio' },
+    deterministic: true, sideEffect: 'storage-write', timeoutMs: 600_000 }),
+  operation({ handlerType: 'video.crop', inputs: { video: 'video' }, outputs: { videoResult: 'video' },
+    deterministic: true, sideEffect: 'storage-write', timeoutMs: 600_000 }),
   operation({ handlerType: 'audio.convert', inputs: { source: 'audio' }, outputs: { audio: 'audio' },
     deterministic: true, sideEffect: 'storage-write', timeoutMs: 180_000 }),
   operation({ handlerType: 'ai.audio.transcribe', inputs: { audio: 'audio' }, outputs: { text: 'text' },

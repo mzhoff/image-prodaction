@@ -1,12 +1,15 @@
 import type { AssetRecord, LibraryAssetRecord } from './asset-repository';
 import { AssetNotFoundError, type AssetDto, type LibraryAssetDto } from './asset-service-contracts';
 import { audioMetadataSchema } from '@/shared/media/audio-contracts';
+import { videoMetadataSchema } from '@/shared/media/video-contracts';
 
 export function toAssetDto(record: AssetRecord, hasThumbnail = false): AssetDto {
   if (record.status === 'deleted') throw new AssetNotFoundError();
   const audio = record.mediaKind === 'audio' ? audioMetadataSchema.safeParse(record.metadata?.audio) : null;
+  const video = record.mediaKind === 'video' ? videoMetadataSchema.safeParse(record.metadata?.video) : null;
   return {
     ...(audio?.success ? { audio: audio.data } : {}),
+    ...(video?.success ? { video: video.data } : {}),
     id: record.id,
     workspaceId: record.workspaceId,
     documentId: record.documentId,
@@ -36,8 +39,8 @@ export function toAssetDto(record: AssetRecord, hasThumbnail = false): AssetDto 
 
 export function toLibraryAssetDto(record: LibraryAssetRecord): LibraryAssetDto {
   return {
-    // Older Library records are upgraded lazily on the first thumbnail request.
-    ...toAssetDto(record, record.mediaKind === 'image'),
+    // Older image and video records are upgraded lazily on the first thumbnail request.
+    ...toAssetDto(record, record.mediaKind === 'image' || record.mediaKind === 'video'),
     document: record.documentId && record.documentName && record.documentStatus
       ? { id: record.documentId, name: record.documentName, status: record.documentStatus }
       : null,

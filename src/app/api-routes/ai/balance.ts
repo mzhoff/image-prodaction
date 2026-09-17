@@ -1,7 +1,7 @@
 import { getOpenRouterProviderUsage } from '@/modules/provider-connections/server/provider-connection-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toShortAiApiErrorResponse } from './short-ai-execution';
 
 export const runtime = 'nodejs';
@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export async function GET(request: Request) {
   try {
     const workspaceId = new URL(request.url).searchParams.get('workspaceId');
-    if (!isUuidV7(workspaceId)) {
+    if (!isUuid(workspaceId)) {
       return apiError('invalid_workspace_id', 'Invalid workspace id.', 400);
     }
     const session = await requireApiSession(request);

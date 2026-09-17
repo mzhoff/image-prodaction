@@ -1,8 +1,9 @@
 import type { GenerateLayerInputs, GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
 import type { ProviderResult } from '@/modules/provider-connections';
+import type { ImageGenerationOptions } from '@/shared/media/image-generation-settings';
 
-export interface QueuedGenerateImagePayload {
+export interface QueuedGenerateImagePayload extends ImageGenerationOptions {
   aspectRatio: string;
   documentId: string;
   inputs: GenerateLayerInputs;

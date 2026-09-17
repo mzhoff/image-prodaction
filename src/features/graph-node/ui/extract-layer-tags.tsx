@@ -1,22 +1,23 @@
 'use client';
 
-import { productionLayerTextSectionParseOptions } from '@/entities/production-graph/model/layer-text-parser';
-import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
+import { extractLayerTextSectionParseOptions } from '@/entities/production-graph/model/extract-layer-parser';
+import type { ExtractLayerId } from '@/entities/production-graph/model/extract-analysis-profiles';
 import { TextSectionFilterTags } from './text-section-filter-tags';
 
 interface ExtractLayerTagsProps {
-  disabledLayerIds?: ProductionLayerId[];
-  onToggle?: (layerId: ProductionLayerId) => void;
+  disabledLayerIds?: ExtractLayerId[];
+  onToggle?: (layerId: ExtractLayerId) => void;
   text?: string;
 }
 
 export function ExtractLayerTags({ disabledLayerIds = [], onToggle, text }: ExtractLayerTagsProps) {
   return (
     <TextSectionFilterTags
+      textField="result"
       className="extract-layer-tags"
       disabledFilterIds={disabledLayerIds}
-      onToggle={(filterId) => onToggle?.(filterId as ProductionLayerId)}
-      parseOptions={productionLayerTextSectionParseOptions}
+      onToggle={(filterId) => onToggle?.(filterId as ExtractLayerId)}
+      parseOptions={extractLayerTextSectionParseOptions}
       text={text}
     />
   );

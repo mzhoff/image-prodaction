@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { optimizeReferenceImage } from '@/shared/media/reference-image-optimizer';
 import { getAssetContent, type AssetDto } from '@/entities/asset/server/asset-service';
 import type { PipelineArtifactReference } from '../contracts/pipeline-contracts';
 
@@ -6,12 +7,14 @@ export async function readPipelineImageDataUrl(
   actorUserId: string,
   workspaceId: string,
   artifact: PipelineArtifactReference,
+  preparation: 'legacy' | 'lossless' = 'legacy',
 ) {
   const content = await getAssetContent(actorUserId, artifact.assetId);
   if (content.asset.workspaceId !== workspaceId || content.asset.mediaKind !== 'image') {
     throw new Error('Image artifact does not belong to the pipeline workspace.');
   }
   const bytes = new Uint8Array(await new Response(content.object.body).arrayBuffer());
+  if (preparation === 'lossless') return optimizeReferenceImage(toDataUrl(bytes, content.contentType));
   return prepareServerImageDataUrl(bytes, content.contentType);
 }
 

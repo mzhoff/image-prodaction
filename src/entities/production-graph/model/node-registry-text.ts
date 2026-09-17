@@ -129,6 +129,7 @@ export const textNodeDefinitions = {
       delimiter: '*',
       activeItemIndex: 0,
       items: [],
+      itemKeys: [],
       result: '',
       sourceText: '',
     }),

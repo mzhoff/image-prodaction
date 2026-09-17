@@ -119,6 +119,10 @@ export function getOpenRouterSpeechCapabilities(model: string): OpenRouterSpeech
   return speechCapabilitiesByModel[model] ?? defaultSpeechCapabilities;
 }
 
+export function getConfiguredSpeechModels(): string[] {
+  return Object.keys(speechCapabilitiesByModel);
+}
+
 export function getSafeSpeechResponseFormat(model: string, format?: TextToSpeechResponseFormat) {
   const capabilities = getOpenRouterSpeechCapabilities(model);
   return capabilities.formats.includes(format ?? 'mp3') ? format ?? capabilities.formats[0] : capabilities.formats[0];

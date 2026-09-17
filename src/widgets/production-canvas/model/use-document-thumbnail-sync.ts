@@ -3,131 +3,75 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { uploadDocumentThumbnail } from '@/entities/document/api/document-api';
+import { DOCUMENT_PREVIEW_UPDATED } from '@/entities/document/api/document-exit-tasks';
+import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { collectCanvasOverview, renderCanvasOverview } from '../lib/canvas-overview';
 import { captureCanvasSnapshot } from '../lib/canvas-snapshot';
 
 type ThumbnailMode = 'auto' | 'manual';
-const AUTO_CAPTURE_WARMUP_MS = 6_000;
-
 interface UseDocumentThumbnailSyncOptions {
   canvasRef: RefObject<HTMLDivElement | null>;
   projectId?: string;
-  saveSequence: number;
+  prepareExit: () => Promise<number>;
   serverMode: ThumbnailMode;
   workspaceId?: string;
 }
 
 export function useDocumentThumbnailSync({
-  canvasRef,
-  projectId,
-  saveSequence,
-  serverMode,
-  workspaceId,
+  canvasRef, projectId, prepareExit, serverMode, workspaceId,
 }: UseDocumentThumbnailSyncOptions) {
   const [mode, setMode] = useState<ThumbnailMode>(serverMode);
   const [manualCapturePending, setManualCapturePending] = useState(false);
   const mountedRef = useRef(true);
-  const modeRef = useRef<ThumbnailMode>(serverMode);
   const manualIntentRef = useRef(serverMode === 'manual');
-  const autoQueuedRef = useRef(false);
-  const autoCaptureReadyRef = useRef(false);
-  const queueRef = useRef<Promise<void>>(Promise.resolve());
-  const lastSaveSequenceRef = useRef(saveSequence);
-
+  const exitStartedRef = useRef(false);
   useEffect(() => {
     mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
+    exitStartedRef.current = false;
+    return () => { mountedRef.current = false; };
+  }, [projectId]);
   useEffect(() => {
-    modeRef.current = serverMode;
     manualIntentRef.current = serverMode === 'manual';
     setMode(serverMode);
   }, [projectId, serverMode]);
 
-  useEffect(() => {
-    autoCaptureReadyRef.current = false;
-    lastSaveSequenceRef.current = -1;
-    if (!projectId) return undefined;
-
-    const timeoutId = window.setTimeout(() => {
-      autoCaptureReadyRef.current = true;
-    }, AUTO_CAPTURE_WARMUP_MS);
-    return () => window.clearTimeout(timeoutId);
-  }, [projectId]);
-
-  const performCapture = useCallback(async (nextMode: ThumbnailMode) => {
-    if (!projectId || !workspaceId) throw new Error('Document storage is not ready yet.');
-    if (nextMode === 'auto' && (modeRef.current === 'manual' || manualIntentRef.current)) return;
-    const canvas = canvasRef.current;
-    if (!canvas) throw new Error('Canvas is not ready yet.');
-
-    const file = await captureCanvasSnapshot(canvas);
-    const project = await uploadDocumentThumbnail(projectId, file, nextMode);
-    modeRef.current = project.thumbnailMode;
-    manualIntentRef.current = project.thumbnailMode === 'manual';
-    if (mountedRef.current) setMode(project.thumbnailMode);
-  }, [canvasRef, projectId, workspaceId]);
-
-  const enqueueCapture = useCallback((nextMode: ThumbnailMode) => {
-    if (nextMode === 'auto') {
-      if (autoQueuedRef.current || modeRef.current === 'manual' || manualIntentRef.current) {
-        return Promise.resolve();
-      }
-      autoQueuedRef.current = true;
-    } else {
-      manualIntentRef.current = true;
-    }
-
-    const capture = queueRef.current
-      .catch(() => undefined)
-      .then(() => performCapture(nextMode));
-    queueRef.current = capture.catch(() => undefined);
-
-    return capture.finally(() => {
-      if (nextMode === 'auto') autoQueuedRef.current = false;
-      if (nextMode === 'manual' && modeRef.current !== 'manual') manualIntentRef.current = false;
-    });
-  }, [performCapture]);
-
-  useEffect(() => {
-    if (saveSequence === lastSaveSequenceRef.current) return;
-    lastSaveSequenceRef.current = saveSequence;
-    if (!autoCaptureReadyRef.current) return;
-    const cancelIdleCapture = scheduleIdleCapture(() => {
-      void enqueueCapture('auto').catch((error: unknown) => {
-        console.warn('Automatic document snapshot failed', {
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-          projectId,
-        });
-      });
-    });
-    return cancelIdleCapture;
-  }, [enqueueCapture, projectId, saveSequence]);
-
   const createManualSnapshot = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!projectId || !workspaceId || !canvas) throw new Error('Document storage is not ready yet.');
+    manualIntentRef.current = true;
     setManualCapturePending(true);
     try {
-      await enqueueCapture('manual');
+      const file = await captureCanvasSnapshot(canvas);
+      const project = await uploadDocumentThumbnail(projectId, file, 'manual');
+      if (mountedRef.current) setMode(project.thumbnailMode);
+    } catch (error) {
+      manualIntentRef.current = mode === 'manual';
+      throw error;
     } finally {
       if (mountedRef.current) setManualCapturePending(false);
     }
-  }, [enqueueCapture]);
+  }, [canvasRef, mode, projectId, workspaceId]);
 
-  return {
-    createManualSnapshot,
-    manualCapturePending,
-    thumbnailMode: mode,
-  };
-}
+  const prepareDocumentExit = useCallback(() => {
+    if (exitStartedRef.current || !projectId || !workspaceId) return;
+    exitStartedRef.current = true;
+    // Freeze a small scene before React removes the editor. All image decoding,
+    // drawing and compression happen in a worker, not via a DOM screenshot.
+    const canvas = canvasRef.current;
+    const scene = canvas && !manualIntentRef.current && mode !== 'manual'
+      ? collectCanvasOverview(useProductionGraphStore.getState(), canvas) : undefined;
+    const saved = prepareExit();
+    const preview = scene?.cards.length ? renderCanvasOverview(scene) : Promise.resolve(undefined);
+    void Promise.all([saved, preview]).then(async ([revision, file]) => {
+      if (file) await uploadDocumentThumbnail(projectId, file, 'auto', revision);
+      window.dispatchEvent(new Event(DOCUMENT_PREVIEW_UPDATED));
+    }).catch((error: unknown) => {
+      // Recovery storage retains unsaved edits. A failed overview never blocks Back.
+      console.warn('Background document exit failed', {
+        projectId, errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+    });
+  }, [canvasRef, mode, prepareExit, projectId, workspaceId]);
 
-function scheduleIdleCapture(callback: () => void) {
-  if ('requestIdleCallback' in window) {
-    const idleId = window.requestIdleCallback(callback, { timeout: 4_000 });
-    return () => window.cancelIdleCallback(idleId);
-  }
-
-  const timeoutId = setTimeout(callback, 1_500);
-  return () => clearTimeout(timeoutId);
+  return { createManualSnapshot, prepareDocumentExit, manualCapturePending, thumbnailMode: mode };
 }

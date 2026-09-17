@@ -1,6 +1,6 @@
 'use client';
 
-import { Folder, ImageIcon, Square, Type } from 'lucide-react';
+import { Folder, ImageIcon, Square, Type } from '@prodactionpro/ui-core/icons';
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { CompositionLayerTreeDragItem, CompositionLayerTreeDropTarget, CompositionLayerTreeItem, CompositionLayerView } from '../../model/use-composition-node-model';

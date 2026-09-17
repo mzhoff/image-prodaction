@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, ClipboardCopy, Send } from 'lucide-react';
+import { CalendarDays, ClipboardCopy, Send } from '@prodactionpro/ui-core/icons';
 import { useCallback, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { toTelegramHtmlForClipboard, toTelegramPlainTextForClipboard } from '../../lib/telegram-html';
 import type { useTelegramPublicationNodeModel } from '../../model/use-telegram-publication-node-model';

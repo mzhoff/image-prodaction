@@ -15,6 +15,13 @@ test('accepts the current project snapshot envelope', () => {
   assert.equal(validateDocumentSnapshot(validSnapshot).kind, 'projectSnapshot');
 });
 
+test('server rejects malformed persisted Timeline Handoff while accepting an empty configured node', () => {
+  const node = { id: 'timeline', type: 'timelineHandoff', data: { title: 'Timeline', threshold: 10 } };
+  assert.doesNotThrow(() => validateDocumentSnapshot({ ...validSnapshot, project: { nodes: [node], edges: [] } }));
+  assert.throws(() => validateDocumentSnapshot({ ...validSnapshot, project: { nodes: [{ ...node, data: { ...node.data, analysis: { shots: [] } } }], edges: [] } }),
+    (error: unknown) => error instanceof DocumentValidationError && error.code === 'invalid_timeline_analysis');
+});
+
 test('rejects an unsupported snapshot version and oversized graph collections', () => {
   assert.throws(
     () => validateDocumentSnapshot({ ...validSnapshot, schemaVersion: 999 }),

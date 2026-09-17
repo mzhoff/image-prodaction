@@ -1,32 +1,23 @@
 'use client';
 
 import Link from 'next/link';
+import { ThemeControl } from '@/shared/ui/theme-control';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  GalleryVerticalEnd,
   FlaskConical,
-  Images,
   PanelLeftClose,
   PanelLeftOpen,
-  Route,
-  Trash2,
-} from 'lucide-react';
+} from '@prodactionpro/ui-core/icons';
 import { signOut, useSession } from '@/shared/auth/client';
 import { BrandSelect } from '@/shared/ui/brand-select';
-import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
+import { AssistantPetLauncher } from '@/features/assistant-pet/ui/assistant-pet-launcher';
 import { ReverieLogo } from '@/shared/ui/reverie-logo';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { useWorkspaceProjects } from '../model/use-workspace-projects';
 import { WorkspaceShellContext } from './workspace-shell-context';
-
-const navItems = [
-  { href: '/', icon: GalleryVerticalEnd, id: 'my-files', label: 'My Files' },
-  { href: '/library', icon: Images, id: 'library', label: 'Library' },
-  { href: '/pipelines', icon: Route, id: 'pipelines', label: 'Pipelines' },
-  { href: '/trash', icon: Trash2, id: 'trash', label: 'Trash' },
-] as const;
+import { WorkspaceNavigation } from './workspace-navigation';
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -48,10 +39,10 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           ? 'pipelines'
           : 'my-files';
   const workspaceOptions = useMemo(() => (
-    workspace.activeWorkspace
-      ? [{ value: workspace.activeWorkspace.id, label: workspace.activeWorkspace.name }]
+    workspace.workspaces.length
+      ? workspace.workspaces.map((item) => ({ value: item.id, label: item.name }))
       : [{ value: '', label: 'Workspace загружается…' }]
-  ), [workspace.activeWorkspace]);
+  ), [workspace.workspaces]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -93,24 +84,19 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 {sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
               </button>
             </div>
-            <nav className="workspace-nav" aria-label="Studio">
-              {navItems.map((item) => (
-                <Link
-                  className={`workspace-nav-item ${activeNav === item.id ? 'workspace-nav-item-active' : ''}`}
-                  href={item.href}
-                  key={item.id}
-                  aria-current={activeNav === item.id ? 'page' : undefined}
-                  aria-label={sidebarCollapsed ? item.label : undefined}
-                  title={sidebarCollapsed ? item.label : undefined}
-                >
-                  <item.icon size={16} />
-                  <span>{item.label}</span>
-                </Link>
-              ))}
-            </nav>
+            {!sidebarCollapsed ? <BrandSelect
+              className="workspace-sidebar-workspace-select"
+              disabled={!workspace.activeWorkspace}
+              label="Workspace"
+              value={workspace.activeWorkspace?.id ?? ''}
+              options={workspaceOptions}
+              onChange={workspace.selectWorkspace}
+            /> : null}
+            <WorkspaceNavigation collapsed={sidebarCollapsed} />
           </div>
 
           <div className="workspace-sidebar-bottom">
+            {!sidebarCollapsed ? <ThemeControl /> : null}
             <Link
               aria-current={activeNav === 'playground' ? 'page' : undefined}
               className={`workspace-playground-link ${activeNav === 'playground' ? 'workspace-playground-link-active' : ''}`}
@@ -156,14 +142,6 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                   >
                     Workspace settings
                   </Link>
-                  <BrandSelect
-                    className="workspace-menu-brand-select"
-                    disabled={!workspace.activeWorkspace}
-                    label="Workspace"
-                    value={workspace.activeWorkspace?.id ?? ''}
-                    options={workspaceOptions}
-                    onChange={() => undefined}
-                  />
                   <div className="workspace-credit-panel">
                     <span>AI generation credits</span>
                     <strong>Usage tracking enabled</strong>
@@ -190,7 +168,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         <section className="workspace-window" aria-label="Workspace">
           {children}
         </section>
-        <AssistantFloatingButton
+        <AssistantPetLauncher
           className={`assistant-floating-button-fixed ${assistantOpen ? 'assistant-floating-button-hidden' : ''}`}
           onClick={() => setAssistantOpen(true)}
         />

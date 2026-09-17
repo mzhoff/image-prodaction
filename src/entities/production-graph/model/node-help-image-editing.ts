@@ -2,19 +2,25 @@ import type { ProductionNodeHelpMap } from './node-help-types';
 
 export const imageEditingNodeHelp = {
   cropImage: {
-    aliases: ['crop', 'crop image', 'framing', 'кадрирование', 'обрезка', 'кроп'],
+    aliases: ['crop', 'crop image', 'crop video', 'framing', 'кадрирование', 'обрезка', 'кроп', 'обрезка видео'],
     availability: 'addable',
     capabilities: [
-      'Интерактивно кадрирует изображение по рамке, preset aspect ratio или pixel dimensions.',
-      'Поддерживает блокировку пропорций, reset и сохраняет derived image asset.',
+      'Кадрирует изображение или видео по рамке, preset aspect ratio (например 9:16) или pixel dimensions.',
+      'Поддерживает блокировку пропорций и reset. Видео обрабатывается кнопкой «Обрезать видео»; изменение рамки не запускает обработку на каждом движении.',
+      'Сохраняет отдельный derived asset. Видео-кроп выполняется на сервере также в опубликованном Pipeline; image-кроп остаётся в канвасе.',
     ],
-    execution: 'canvas-only',
+    execution: 'server',
     limitations: [
-      'Требует одно исходное изображение.',
-      'Выполняет raster crop, но не generative outpaint; server runtime descriptor отсутствует.',
+      'Требует ровно один источник: изображение либо видео. Новый вход другого типа заменяет предыдущий; неоднозначный граф с обоими входами не выполняется.',
+      'Обрезает пространство кадра, не длительность. Не выполняет generative outpaint; исходный файл сохраняется.',
+      'После смены видео или рамки прежний videoResult недоступен до применения обработки. Image-вариант не исполняется в server runtime.',
     ],
-    portRules: ['Вход image принимает image; выход result возвращает обрезанный image.'],
-    summary: 'Кадрирует одно входное изображение по рамке, aspect ratio или pixel dimensions.',
+    portRules: [
+      'Вход image принимает image; выход result возвращает обрезанный image. Вход video принимает video; выход videoResult возвращает обрезанный video.',
+      'Пример: generateVideo.video -> cropImage.video, затем cropImage.videoResult -> reverieStories.video. Video можно подключить через Router и другие Crop.',
+      'Настройки MCP: title, aspectRatio, crop:{x,y,width,height} — нормализованная рамка 0..1 внутри кадра. Фиксированный aspectRatio вписывает рамку в формат с сохранением начала; Custom сохраняет точную рамку. Данные результата не являются настройками.',
+    ],
+    summary: 'Кадрирует одно изображение или видео по рамке и формату, сохраняя исходный файл.',
   },
   adjustment: {
     aliases: ['adjustments', 'image adjustments', 'exposure contrast', 'коррекция изображения', 'настройки изображения', 'экспозиция'],
@@ -22,6 +28,7 @@ export const imageEditingNodeHelp = {
     capabilities: [
       'Регулирует exposure, gamma, contrast, saturation, temperature, tint, highlights и shadows.',
       'Показывает live preview, поддерживает reset и создаёт derived image asset.',
+      'Открывается кликом по изображению или кнопкой Open image: в полном окне ползунки находятся справа, на узком экране — в прокручиваемой панели снизу. Настройки общие с нодой.',
     ],
     execution: 'canvas-only',
     limitations: [
@@ -37,6 +44,7 @@ export const imageEditingNodeHelp = {
     capabilities: [
       'Редактирует master и цветовые каналы draggable-точками на кривой.',
       'Показывает histogram, поддерживает opacity, optional mask и reset.',
+      'В полном окне кривые находятся справа от изображения и не уменьшают его доступную высоту; инструменты маски остаются снизу. На узком экране цветокоррекция переносится в прокручиваемую нижнюю панель.',
     ],
     execution: 'canvas-only',
     limitations: [
@@ -66,6 +74,7 @@ export const imageEditingNodeHelp = {
     aliases: ['refine', 'enhance', 'image cleanup', 'upscale detail', 'улучшение изображения', 'очистка изображения', 'детализация'],
     availability: 'addable',
     capabilities: [
+      'Поле instruction в Studio принимает текстовый фрагмент за бейдж над полем с добавлением снизу; выделение можно перенести на канвас, Alt копирует. Перенос текста не запускает обработку изображения.',
       'Generative refine улучшает, очищает или детализирует изображение по instruction.',
       'Поддерживает mode, preserve strength, model, size и историю результатов.',
       'Хранит метаданные исходника, aspect ratio и output.',
@@ -100,6 +109,9 @@ export const imageEditingNodeHelp = {
       'Предоставляет от 1 до 10 image-входов и экспортирует PNG, JPEG или WebP.',
       'Настраивает quality, scale 1/0.75/0.5/0.25 и transparent/white/black background.',
       'Возвращает преобразованный первый image-вход через output image для продолжения dataflow.',
+      'В Studio показывает все подключённые изображения и варианты через стрелки на hover, со счётчиком текущего файла; просмотр учитывает настройки экспорта.',
+      'Download ZIP выгружает весь набор; Download image и Save current to Library работают с выбранным в просмотре изображением.',
+      'Основная кнопка Download/Download ZIP называет архив и скачиваемые файлы по текущему title Export-ноды, добавляя дату-время UTC, новый ID скачивания и порядковый номер файла. Переименование учитывается со следующего скачивания.',
       'Исполняется на сервере как image.export.',
     ],
     execution: 'server',
@@ -107,6 +119,8 @@ export const imageEditingNodeHelp = {
       'Первый подключённый image, обычно image-0, автоматически готовит преобразованный output для dataflow; Download и Save current to Library остаются отдельными действиями пользователя.',
       'В Studio один source с локальной history может раскрыться более чем в десять файлов; executable runtime обрабатывает до 10 scalar image bindings.',
       'Downstream output image представляет только первый преобразованный подключённый image; batch остаётся доступен для download/runtime collection, но не имеет отдельного canvas collection-порта.',
+      'Перелистывание — локальное состояние просмотра Studio: не меняет выход image, соединения, историю Undo или серверное исполнение и не является MCP setting.',
+      'Имена скачивания относятся только к основной кнопке Studio: не переименовывают исходники в Library, output-артефакты или файлы серверного runtime. Недопустимые символы title заменяются, слишком длинные названия сокращаются.',
       'quality применяется только к JPEG/WebP; PNG её игнорирует, а transparent background для JPEG заменяется белым.',
     ],
     portRules: [

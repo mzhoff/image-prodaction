@@ -1,3 +1,6 @@
+import { mergeExtractNodeSettings } from './pipeline-extract-settings';
+import { imageGenerationOptionsSchema } from '@/shared/media/image-generation-settings';
+import type { ImageToTextNodeData } from '@/entities/production-graph/model/types';
 import { canConnectPorts } from '@/entities/production-graph/model/node-definitions';
 import { createDefaultNode } from '@/entities/production-graph/model/create-default-node';
 import type {
@@ -48,7 +51,7 @@ export function preparePipelineUpdate(input: PipelineUpdateInput, currentProject
     const node = currentById.get(update.nodeId);
     if (!node) throw new Error(`Existing node ${update.nodeId} was not found.`);
     const settings = sanitizePipelineNodeSettings(node.type, update.settings, update.nodeId, warnings);
-    node.data = { ...node.data, ...settings } as ProductionNodeData;
+    node.data = mergePipelineNodeSettings(node, settings);
     settingsByNodeId.set(node.id, settings);
   }
 
@@ -174,7 +177,7 @@ export function applyPipelineUpdatePatch(project: GraphProject, patch: PreparedP
       ...project.nodes.map((node) => ({
         ...node,
         ...(updates.has(node.id)
-          ? { data: { ...node.data, ...updates.get(node.id) } as ProductionNodeData }
+          ? { data: mergePipelineNodeSettings(node, updates.get(node.id)!) }
           : {}),
         ...(moves.has(node.id) ? { position: { ...moves.get(node.id)! } } : {}),
       })),
@@ -183,6 +186,31 @@ export function applyPipelineUpdatePatch(project: GraphProject, patch: PreparedP
     selectedNodeIds: patch.addedNodes.map((node) => node.id),
     selectedSectionIds: [],
   };
+}
+
+/** A format-only edit must not keep a rectangle derived for the previous format.
+ * Apply this after patch transport as well: JSON does not preserve undefined fields. */
+function mergePipelineNodeSettings(node: ProductionNode, settings: Record<string, unknown>): ProductionNodeData {
+  if (node.type === 'imageToText') return mergeExtractNodeSettings(node.data as ImageToTextNodeData, settings);
+  const data = { ...node.data, ...settings } as Record<string, unknown>;
+  if (node.type === 'generateImage' && typeof settings.model === 'string'
+    && settings.model !== (node.data as { model: string }).model) {
+    for (const field of Object.keys(imageGenerationOptionsSchema.shape)) {
+      if (!Object.hasOwn(settings, field)) delete data[field];
+    }
+  }
+  if (node.type === 'cropImage') {
+    const previous = node.data as { aspectRatio?: string; crop?: unknown };
+    const ratioChanged = typeof settings.aspectRatio === 'string' && settings.aspectRatio !== previous.aspectRatio;
+    const cropChanged = Object.hasOwn(settings, 'crop') && JSON.stringify(settings.crop) !== JSON.stringify(previous.crop);
+    if (ratioChanged || cropChanged) {
+      for (const key of ['resultAssetId', 'videoResultAssetId', 'videoResultSignature']) delete data[key];
+    }
+    if (ratioChanged && !Object.hasOwn(settings, 'crop')) {
+      for (const key of ['crop', 'sourceAssetId', 'sourceAspectRatio', 'cropStateVersion']) delete data[key];
+    }
+  }
+  return data as unknown as ProductionNodeData;
 }
 
 function appendUniqueAssets(current: AssetRecord[], added: AssetRecord[]) {
@@ -194,7 +222,7 @@ function createNewNodes(input: PipelineUpdateInput, warnings: string[]) {
   const nodes = input.nodes.map((spec) => {
     const node = createDefaultNode(spec.type, { x: 0, y: 0 });
     const settings = sanitizePipelineNodeSettings(spec.type, spec.settings, spec.key, warnings);
-    return { ...node, data: { ...node.data, ...settings } as ProductionNodeData };
+    return { ...node, data: mergePipelineNodeSettings(node, settings) };
   });
   return new Map(input.nodes.map((node, index) => [node.key, nodes[index]]));
 }
@@ -256,7 +284,8 @@ function readSafeNodeSettings(node: ProductionNode): Record<string, string | num
   const entries: Array<[string, string | number]> = [];
   for (const field of PIPELINE_NODE_CONFIGURABLE_FIELDS[node.type]) {
     const value = node.data[field as keyof ProductionNodeData];
-    if (field === 'variables' && Array.isArray(value)) entries.push([field, value.length]);
+    if (field === 'presets' && Array.isArray(value)) entries.push([field, value.join(', ')]);
+    else if (field === 'variables' && Array.isArray(value)) entries.push([field, value.length]);
     else if (typeof value === 'string' || typeof value === 'number') entries.push([field, value]);
   }
   return Object.fromEntries(entries);

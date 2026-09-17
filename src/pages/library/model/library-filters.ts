@@ -1,6 +1,7 @@
 import type { LibraryFilters } from './types';
 
 export const emptyLibraryFilters: LibraryFilters = {
+  folderId: '',
   origin: '',
   mediaKind: '',
   modelId: '',
@@ -10,6 +11,7 @@ export const emptyLibraryFilters: LibraryFilters = {
 
 export function readLibraryFilters(searchParams: URLSearchParams): LibraryFilters {
   return {
+    folderId: searchParams.get('folderId')?.trim() ?? '',
     origin: searchParams.get('origin')?.trim() ?? '',
     mediaKind: searchParams.get('mediaKind')?.trim() ?? '',
     modelId: searchParams.get('modelId')?.trim() ?? '',
@@ -20,6 +22,7 @@ export function readLibraryFilters(searchParams: URLSearchParams): LibraryFilter
 
 export function writeLibraryFilters(filters: LibraryFilters) {
   const params = new URLSearchParams();
+  setIfPresent(params, 'folderId', filters.folderId ?? '');
   setIfPresent(params, 'origin', filters.origin);
   setIfPresent(params, 'mediaKind', filters.mediaKind);
   setIfPresent(params, 'modelId', filters.modelId);

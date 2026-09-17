@@ -3,6 +3,9 @@ import test from 'node:test';
 import { initialProject } from '@/entities/production-graph/model/initial-project';
 import { applyPipelineBuildPatch, parsePipelineBuildInput, preparePipelineBuild } from './pipeline-build';
 import { sanitizePipelineNodeSettings } from './pipeline-node-settings';
+import { MAX_SPEECH_TEXT_CHARACTERS } from '@/shared/media/speech-text';
+import { createPipelineSettingsSchema } from '../contracts/pipeline-node-tool-schema';
+import { pipelineContractFieldsSchema } from './pipeline-contract-field-schema';
 
 test('audio settings stay typed and image/audio formats cannot cross node boundaries', () => {
   const warnings: string[] = [];
@@ -56,4 +59,45 @@ test('assistant prepares an audio Input -> transcription -> Voice -> convert -> 
   const applied = applyPipelineBuildPatch(structuredClone(initialProject), prepared.patch);
   assert.equal(applied.nodes.length, 5);
   assert.ok(applied.nodes.every((node) => node.status === 'idle'));
+});
+
+test('Voice authoring accepts 30000 characters like the server, rejects overflow, and cannot forge recovery requests', () => {
+  assert.equal(MAX_SPEECH_TEXT_CHARACTERS, 30_000);
+  const text = 'Т'.repeat(MAX_SPEECH_TEXT_CHARACTERS);
+  assert.deepEqual(sanitizePipelineNodeSettings('textToSpeech', { localText: text }), { localText: text });
+  const warnings: string[] = [];
+  assert.deepEqual(sanitizePipelineNodeSettings('textToSpeech', { localText: `${text}Т`, speechRequest: {
+    idempotencyKey: 'forged', jobId: 'foreign', fingerprint: 'forged',
+  } }, 'voice', warnings), {});
+  assert.equal(warnings.length, 2);
+  const schema = createPipelineSettingsSchema() as { properties: { localText: { anyOf: Array<{ maxLength?: number }> } } };
+  assert.equal(schema.properties.localText.anyOf[0]?.maxLength, MAX_SPEECH_TEXT_CHARACTERS);
+});
+
+test('Import audio stream selection is bounded and does not grant file ownership or authored derived results', () => {
+  assert.deepEqual(sanitizePipelineNodeSettings('importImage', {
+    videoAudioTrackIndex: 2, mediaKind: 'video', assetId: 'foreign-source',
+    videoAudioAssetId: 'forged-audio', videoOnlyAssetId: 'forged-video', videoPreviewAssetId: 'forged-preview',
+    videoDerivedSourceAssetId: 'foreign-source', videoDerivedAudioTrackIndex: 2, videoPreviewAudioTrackIndex: 2,
+  }), { videoAudioTrackIndex: 2 });
+  for (const index of [-1, 32, 1.5, '0:v:0', 'https://example.com/video.mp4']) {
+    assert.deepEqual(sanitizePipelineNodeSettings('importImage', { videoAudioTrackIndex: index }), {});
+  }
+  assert.deepEqual(sanitizePipelineNodeSettings('speechToText', { videoAudioTrackIndex: 1 }), {});
+  const schema = createPipelineSettingsSchema() as { properties: { videoAudioTrackIndex: { anyOf: Array<Record<string, unknown>> } } };
+  assert.deepEqual(Object.fromEntries(Object.entries(schema.properties.videoAudioTrackIndex.anyOf[0]!).filter(([key]) => key !== 'description')),
+    { type: 'integer', minimum: 0, maximum: 31 });
+});
+
+test('assistant boundary contracts expose scalar video fields in both canonical validator and public tool schema', () => {
+  const fields = [{ id: 'clip', key: 'clip', kind: 'video' as const, required: true }];
+  assert.deepEqual(pipelineContractFieldsSchema.parse(fields), fields);
+  for (const type of ['pipelineInput', 'pipelineOutput'] as const) {
+    assert.deepEqual(sanitizePipelineNodeSettings(type, { fields }), { fields });
+  }
+  const schema = createPipelineSettingsSchema() as { properties: { fields: { anyOf: Array<{
+    items?: { properties?: { kind?: { enum?: string[] } } };
+  }> } } };
+  assert.ok(schema.properties.fields.anyOf[0]?.items?.properties?.kind?.enum?.includes('video'));
+  assert.deepEqual(sanitizePipelineNodeSettings('pipelineOutput', { fields: [{ ...fields[0], kind: 'video_collection' }] }), {});
 });

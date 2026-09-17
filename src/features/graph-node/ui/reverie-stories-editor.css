@@ -1,0 +1,92 @@
+.reverie-stories-editor-dialog {
+  box-sizing: border-box;
+  width: calc(100vw - 24px);
+  max-width: none;
+  height: calc(100dvh - 24px);
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--pui-semantic-border-default);
+  border-radius: 14px;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-primary);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--pui-semantic-shadow-color) 24%, transparent);
+}
+
+.reverie-stories-editor-dialog::backdrop {
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 18%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.reverie-stories-editor-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.reverie-stories-editor-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.reverie-stories-editor-workspace > .pui-stories-editor-shell {
+  min-height: 0;
+}
+
+.reverie-stories-editor-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-primary);
+}
+
+.reverie-stories-editor-notes {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  color: var(--pui-semantic-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reverie-stories-editor-notes p {
+  margin: 0;
+}
+
+.reverie-stories-editor-notes .reverie-stories-editor-error {
+  color: var(--pui-semantic-status-danger-foreground);
+}
+
+.reverie-stories-editor-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 700px) {
+  .reverie-stories-editor-dialog {
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .reverie-stories-editor-footer {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .reverie-stories-editor-actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
+}

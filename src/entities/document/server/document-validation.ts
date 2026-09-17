@@ -2,6 +2,7 @@ import { PROJECT_SCHEMA_VERSION } from '@/entities/production-graph/model/projec
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 import { PRODUCTION_NODE_TYPES } from '@/entities/production-graph/model/node-registry';
 import { validatePipelineContractFields } from '@/entities/production-graph/model/pipeline-contract-fields';
+import { timelineAnalysisSchema } from '@/shared/media/timeline-contracts';
 
 export const MAX_DOCUMENT_SNAPSHOT_BYTES = 5 * 1024 * 1024;
 
@@ -55,6 +56,9 @@ function validateGraphNodes(nodes: unknown[]) {
       || !supportedTypes.has(String(node.type))
       || !isRecord(node.data)) {
       throw new DocumentValidationError('invalid_snapshot', `Document node ${index} has an unsupported structure.`);
+    }
+    if (node.type === 'timelineHandoff' && node.data.analysis !== undefined && !timelineAnalysisSchema.safeParse(node.data.analysis).success) {
+      throw new DocumentValidationError('invalid_timeline_analysis', `Document node ${index} has an invalid timeline analysis.`);
     }
     if (node.type !== 'pipelineInput' && node.type !== 'pipelineOutput' && node.type !== 'structuredOutput') continue;
     const fieldErrors = validatePipelineContractFields(node.data.fields);

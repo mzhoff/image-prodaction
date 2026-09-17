@@ -1,6 +1,6 @@
 'use client';
 
-import { Layers } from 'lucide-react';
+import { Layers } from '@prodactionpro/ui-core/icons';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useMemo, useRef, useState } from 'react';
 import type { CompositionLayerStyle } from '@/entities/production-graph/model/types';

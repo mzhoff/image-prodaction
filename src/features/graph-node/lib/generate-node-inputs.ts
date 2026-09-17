@@ -3,7 +3,7 @@ import type { ProductionLayerId } from '@/entities/production-graph/model/produc
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { GenerateReferenceImage, GenerateReferenceSlot } from '@/entities/production-graph/model/generate-prompt-builder';
 import { getLayerSectionText } from '@/entities/production-graph/model/layer-text-parser';
-import { getIncomingImageInputs, getIncomingTextInputs, getNodeImageAssetId, getNodeLocationResult, getNodeSubjectResult, getNodeTextResult } from '@/entities/production-graph/model/graph-io';
+import { getIncomingImageInputs, getIncomingTextInputs, getNodeImageAssetId, getNodeTextResult } from '@/entities/production-graph/model/graph-io';
 import { buildLocationPassportText } from '@/entities/production-graph/model/location-passport';
 import { buildSubjectPassportText } from '@/entities/production-graph/model/subject-passport';
 import type {
@@ -15,44 +15,19 @@ import type {
 } from '@/entities/production-graph/model/types';
 import { MAX_GENERATE_IMAGE_REFERENCES } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
-import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
+import { prepareGenerationReferenceForServer } from '@/shared/lib/image-data-url';
+import { getInputConnectionStatus } from './input-connection-status';
 
 export const generateInputRows = productionLayers;
 export const generateReferenceRows = productionLayers;
 export type GenerateInputId = ProductionLayerId;
 export type GenerateInputKind = 'empty' | 'text' | 'image' | 'subject' | 'location' | 'mixed';
 
-export function getGenerateInputSummary(targetNodeId: string, edges: GraphEdge[], nodes: ProductionNode[]) {
-  const summary = Object.fromEntries(generateReferenceRows.map((row) => [row.id, 'Empty'])) as Record<GenerateInputId, string>;
-
-  for (const row of generateReferenceRows) {
-    const incoming = edges.filter((edge) => edge.targetNodeId === targetNodeId && edge.targetPortId === row.id);
-    if (incoming.length === 0) continue;
-
-    let textCount = 0;
-    let imageCount = 0;
-    let subjectCount = 0;
-    let locationCount = 0;
-    for (const edge of incoming) {
-      const sourceNode = nodes.find((node) => node.id === edge.sourceNodeId);
-      if (!sourceNode) continue;
-      const sourcePort = getPortById(sourceNode, edge.sourcePortId);
-      if (sourcePort?.kind === 'subject' && getNodeSubjectResult(sourceNode)) subjectCount += 1;
-      if (sourcePort?.kind === 'location' && getNodeLocationResult(sourceNode)) locationCount += 1;
-      if (getNodeTextResult(sourceNode, edge.sourcePortId)) textCount += 1;
-      if (getNodeImageAssetId(sourceNode)) imageCount += 1;
-    }
-
-    const parts = [
-      subjectCount > 0 ? `${subjectCount} subject` : '',
-      locationCount > 0 ? `${locationCount} location` : '',
-      textCount > 0 ? `${textCount} text` : '',
-      imageCount > 0 ? `${imageCount} image` : '',
-    ].filter(Boolean);
-    summary[row.id] = parts.join(' + ') || `${incoming.length} input`;
-  }
-
-  return summary;
+export function getGenerateInputSummary(targetNodeId: string, edges: GraphEdge[], nodes: ProductionNode[], assets: AssetRecord[]) {
+  return Object.fromEntries(generateReferenceRows.map((row) => [
+    row.id,
+    getInputConnectionStatus(targetNodeId, row.id, { assets, edges, nodes }),
+  ])) as Record<GenerateInputId, ReturnType<typeof getInputConnectionStatus>>;
 }
 
 export function getGenerateInputKinds(targetNodeId: string, portId: string, edges: GraphEdge[], nodes: ProductionNode[]): GenerateInputKind {
@@ -178,7 +153,7 @@ export async function buildGeneratePayload(
     const blob = await loadAssetBlob(asset);
     if (!blob) throw new Error('Не удалось прочитать image reference из локального хранилища.');
     referenceImages.push({
-      dataUrl: await prepareImageForOpenRouter(blob),
+      dataUrl: await prepareGenerationReferenceForServer(blob),
       sourceAssetId: draft.assetId,
       sourceNodeTypes: Array.from(draft.sourceNodeTypes),
       slots: Array.from(draft.slots),

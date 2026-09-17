@@ -4,11 +4,12 @@ import { DEFAULT_SPEECH_MODEL } from '@/shared/api/openrouter-models';
 import { getOpenRouterSpeechCapabilities, getOpenRouterSpeechResponseFormat, getSafeSpeechResponseFormat, getSafeSpeechVoice } from '@/shared/api/openrouter-speech-capabilities';
 import { readBoundedBytes } from '@/shared/media/bounded-bytes';
 import { wrapSpeechPcmAsWav } from '@/shared/media/speech-wave';
+import { MAX_SPEECH_REQUEST_CHARACTERS, MAX_SPEECH_TEXT_CHARACTERS } from '@/shared/media/speech-text';
 import { EMPTY_PROVIDER_USAGE, type ProviderAdapter } from '../contracts/provider-contracts';
 import { ProviderAdapterError } from '../core/provider-errors';
 
 export const speechOptionsSchema = z.object({
-  inputText: z.string().trim().min(1).max(5000),
+  inputText: z.string().trim().min(1).max(MAX_SPEECH_REQUEST_CHARACTERS),
   language: z.enum(['auto', 'ru', 'en', 'de', 'es', 'zh']).default('auto'),
   model: z.string().min(1).max(200).default(DEFAULT_SPEECH_MODEL),
   responseFormat: z.enum(['mp3', 'pcm']).default('mp3'),
@@ -17,6 +18,7 @@ export const speechOptionsSchema = z.object({
   voice: z.string().min(1).max(100).default('Eve'),
 });
 export type SpeechOptions = z.infer<typeof speechOptionsSchema>;
+export const longSpeechOptionsSchema = speechOptionsSchema.extend({ inputText: z.string().trim().min(1).max(MAX_SPEECH_TEXT_CHARACTERS) });
 export interface SpeechResult { audioBody: Uint8Array; contentType: string; generationId: string | null }
 const MAX_SPEECH_BYTES = 20 * 1024 * 1024; // Base64 checkpoint stays below the existing 32 MiB envelope.
 const speechCheckpointSchema = z.object({

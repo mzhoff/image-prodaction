@@ -1,10 +1,10 @@
 'use client';
 
-import { Loader2, MapPin, Sparkles } from 'lucide-react';
+import { Loader2, MapPin, Sparkles } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
 import { SettingRow } from '@/shared/ui/setting-row';
 import {
   locationPreserveStrengthOptions,
@@ -70,7 +70,7 @@ export function LocationBuilderNode({ node, onStartConnection }: LocationBuilder
               />
             </div>
             <div className="subject-node-field-label">Description</div>
-            <PromptBox value={model.data.description} onChange={model.handleDescriptionChange} className="subject-node-prompt-box" placeholder="Description" />
+            <PromptBox textField="description" value={model.data.description} onChange={model.handleDescriptionChange} className="subject-node-prompt-box" placeholder="Description" />
             <button type="button" className="secondary-node-button subject-node-library-button" onClick={model.handlePublishLocation} data-node-interactive>
               {model.data.libraryLocationId ? 'Update Library' : 'Publish Location'}
             </button>
@@ -114,14 +114,14 @@ export function LocationBuilderNode({ node, onStartConnection }: LocationBuilder
             </div>
           </CollapsibleSection>
           <CollapsibleSection title="Passport" className="text-node-section subject-node-result-section">
-            <PromptBox value={model.result} readonly className="subject-node-result-box" />
+            <PromptBox textField="result" value={model.result} readonly className="subject-node-result-box" />
           </CollapsibleSection>
           <CollapsibleSection title="Constraints" className="text-node-section subject-node-constraints-section" defaultOpen={false}>
-            <PromptBox value={model.data.spatialLayout} onChange={model.handleSpatialLayoutChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Spatial layout: geometry, scale, foreground, midground, background" />
-            <PromptBox value={model.data.atmosphere} onChange={model.handleAtmosphereChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Atmosphere, surfaces, weather, material language, environmental cues" />
-            <PromptBox value={model.data.mutableAttributes} onChange={model.handleMutableAttributesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Can change: camera, time, weather, dressing, actors, action, style" />
-            <PromptBox value={model.data.negativeConstraints} onChange={model.handleNegativeConstraintsChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Must not appear or must not be changed" />
-            <PromptBox value={model.data.notes} onChange={model.handleNotesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Additional passport notes" />
+            <PromptBox textField="spatialLayout" value={model.data.spatialLayout} onChange={model.handleSpatialLayoutChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Spatial layout: geometry, scale, foreground, midground, background" />
+            <PromptBox textField="atmosphere" value={model.data.atmosphere} onChange={model.handleAtmosphereChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Atmosphere, surfaces, weather, material language, environmental cues" />
+            <PromptBox textField="mutableAttributes" value={model.data.mutableAttributes} onChange={model.handleMutableAttributesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Can change: camera, time, weather, dressing, actors, action, style" />
+            <PromptBox textField="negativeConstraints" value={model.data.negativeConstraints} onChange={model.handleNegativeConstraintsChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Must not appear or must not be changed" />
+            <PromptBox textField="notes" value={model.data.notes} onChange={model.handleNotesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Additional passport notes" />
           </CollapsibleSection>
           {model.data.message ? <div className="node-note node-note-compact subject-node-message">{model.data.message}</div> : null}
         </>

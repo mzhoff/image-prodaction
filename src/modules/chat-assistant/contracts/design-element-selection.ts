@@ -85,7 +85,8 @@ export const designElementSelectionTool: AgentToolDefinition = {
     'Analyze the attached reference first and pass the concrete visible design elements, using stable semantic ids and roles. Include an approximate normalized referenceFrame whenever the element bounds are visible.',
     'Call this tool only after the user intent is known. If it is not known, ask one simple human question first: whether they want to change only text and QR, or also separate visual parts such as the background and hero.',
     'Omit baseImageStrategy and textStrategy unless the user explicitly requested a more editable approach. Product defaults intentionally keep the first draft simple: one combined generated image for hero/background/decor, text embedded in that image, and a functional QR as a separate image.',
-    'After this read tool completes, wait for the structured user selection rendered by the product. Do not prepare pipeline_build or pipeline_update until that follow-up selection arrives.',
+    'After this read tool completes, wait for the user selection rendered by the product, unless the user has already explicitly stated the choices in conversation. Then prepare pipeline_build or pipeline_update without asking the same question again.',
+    'A selectedAction.payload with kind=design-element-selection is that submitted choice: use it immediately, never ask for the same form again. If this tool returns action=design-elements-selected, continue directly to one pipeline proposal using the returned choices.',
   ].join(' '),
   riskLevel: 'read',
   inputSchema: {

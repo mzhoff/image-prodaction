@@ -6,9 +6,11 @@ import type {
 } from './asset-repository';
 import type { AssetObjectStore } from '@/shared/storage/s3-assets';
 import type { AudioMetadata } from '@/shared/media/audio-contracts';
+import type { VideoMetadata } from '@/shared/media/video-contracts';
 
 export interface AssetDto {
   audio?: AudioMetadata;
+  video?: VideoMetadata;
   byteSize: number;
   checksumSha256: string;
   contentType: string;
@@ -56,6 +58,7 @@ export interface UploadImageAssetInput {
 }
 
 export interface ListLibraryAssetsInput {
+  folderId?: string;
   cursor?: string | null;
   documentIds?: string[];
   limit?: number;
@@ -89,6 +92,7 @@ export interface ThumbnailImage {
 export interface AssetStorageDependencies {
   createId?(): string;
   createThumbnail?(bytes: Uint8Array): Promise<ThumbnailImage>;
+  createVideoThumbnail?(bytes: Uint8Array, signal?: AbortSignal): Promise<ThumbnailImage>;
   objectStore: AssetObjectStore;
   repository: AssetRepository;
 }

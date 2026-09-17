@@ -13,6 +13,8 @@ export {
 } from './asset-library-service';
 export { uploadImageAsset } from './asset-upload-service';
 export { uploadAudioAsset, readWorkspaceAudioAsset, type UploadAudioAssetInput, type AudioAssetDto } from './audio-asset-service';
+export { uploadVideoAsset, readWorkspaceVideoAsset, getWorkspaceVideoAsset, type UploadVideoAssetInput, type VideoAssetDto } from './video-asset-service';
+export { deriveWorkspaceVideoAsset } from './video-derivation-service';
 export { toAssetDto } from './asset-dto';
 export { getMaxImageUploadBytes } from './asset-storage-support';
 export {

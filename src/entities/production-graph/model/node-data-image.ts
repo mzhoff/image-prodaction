@@ -1,13 +1,29 @@
 import type { ProductionLayerId } from './production-layers';
+import type { ImageGenerationOptions } from '@/shared/media/image-generation-settings';
+import type { ExtractAnalysisPresetId, ExtractLayerId } from './extract-analysis-profiles';
+export type { ExtractAnalysisPresetId, ExtractLayerId } from './extract-analysis-profiles';
 
 export type PresetRole = ProductionLayerId;
-export type ExtractPresetId = 'default' | ProductionLayerId;
+// Legacy preset/presets fields describe Layers; analysisPreset selects the task.
+export type ExtractPresetId = 'default' | ExtractLayerId;
 
 export interface BaseNodeData { title: string; prompt?: string }
-export interface ImportImageNodeData extends BaseNodeData { assetId?: string; mediaKind?: 'image' | 'audio' }
+export interface ImportImageNodeData extends BaseNodeData {
+  assetId?: string;
+  mediaKind?: 'image' | 'audio' | 'video';
+  videoAudioTrackIndex?: number;
+  videoAudioAssetId?: string;
+  videoOnlyAssetId?: string;
+  videoPreviewAssetId?: string;
+  videoPreviewAudioTrackIndex?: number;
+  videoDerivedSourceAssetId?: string;
+  videoDerivedAudioTrackIndex?: number;
+}
 
 export interface ImageToTextNodeData extends BaseNodeData {
-  disabledLayerIds?: ProductionLayerId[];
+  analysisPreset?: ExtractAnalysisPresetId;
+  analysisPresetDrafts?: Partial<Record<ExtractAnalysisPresetId, { presets: ExtractPresetId[]; prompt: string }>>;
+  disabledLayerIds?: ExtractLayerId[];
   message?: string;
   model?: string;
   preset?: ExtractPresetId;
@@ -128,7 +144,7 @@ export interface CompositionNodeData extends BaseNodeData {
   size?: string;
 }
 
-export interface GenerateImageNodeData extends BaseNodeData {
+export interface GenerateImageNodeData extends BaseNodeData, ImageGenerationOptions {
   model: string;
   aspectRatio: string;
   size: string;

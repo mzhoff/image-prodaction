@@ -100,7 +100,13 @@ export function hasSameIdempotencyFingerprint(
     && record.modelId === input.modelId
     && record.operation === input.operation
     && record.maxAttempts === input.maxAttempts
-    && stableJson(record.metadata) === stableJson(input.metadata);
+    && stableJson(requestMetadata(record.operation, record.metadata)) === stableJson(requestMetadata(input.operation, input.metadata));
+}
+
+function requestMetadata(operation: string, metadata: Record<string, unknown> | null) {
+  if (operation !== 'timeline_analyze' || !metadata) return metadata;
+  // Only this server-owned observation is mutable. Settings and requestHash remain exact.
+  return Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== 'timelineProgress'));
 }
 
 function normalizeNullableTokenCount(value: number | null | undefined, label: string) {

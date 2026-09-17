@@ -11,6 +11,7 @@ import { readEmailDeliveryConfig } from '@/shared/email/config';
 import { dispatchAuthEmail } from '@/shared/email/dispatch';
 import { createSmtpEmailService } from '@/shared/email/service';
 import { termsAcceptanceAdditionalFields } from '@/shared/auth/terms-policy';
+import { authSessionPolicy } from '@/shared/auth/session-policy';
 import { ensurePersonalWorkspaceForUser } from './workspace-bootstrap';
 
 let authPromise: ReturnType<typeof createAuth> | undefined;
@@ -34,6 +35,7 @@ async function createAuth() {
     : undefined;
 
   return betterAuth({
+    ...authSessionPolicy,
     baseURL: config.baseURL,
     secret: config.secret,
     database: drizzleAdapter(getDb(), {

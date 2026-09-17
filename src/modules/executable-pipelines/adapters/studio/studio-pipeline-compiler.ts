@@ -20,6 +20,7 @@ import {
 } from './studio-graph-resolution';
 import { compileExplicitStudioSection } from './studio-explicit-pipeline-compiler';
 import { createRuntimeNodeDefinition } from './studio-runtime-node-definition';
+import { expandStoriesBoundary } from './studio-stories-boundary';
 
 export interface CompiledStudioPipeline {
   compiledPlan: ReturnType<typeof compilePipelineDefinition>;
@@ -38,18 +39,20 @@ export function compileStudioSection(
   const section = project.sections.find((item) => item.id === sectionId);
   if (!section) throw invalidPipeline('Секция не найдена в текущем документе.');
   const nodeIdSet = new Set(getNodeIdsInsideSectionTree(sectionId, project.sections, project.nodes));
-  const nodes = project.nodes.filter((node) => nodeIdSet.has(node.id));
+  let nodes = project.nodes.filter((node) => nodeIdSet.has(node.id));
   if (nodes.length === 0) throw invalidPipeline('В секции нет нод для публикации.');
   if (project.edges.some((edge) => nodeIdSet.has(edge.sourceNodeId) !== nodeIdSet.has(edge.targetNodeId))) {
     throw invalidPipeline('Секция связана с нодами за её пределами. Перемести весь исполняемый граф внутрь секции.');
   }
-  const edges = project.edges.filter((edge) => nodeIdSet.has(edge.sourceNodeId) && nodeIdSet.has(edge.targetNodeId));
+  let edges = project.edges.filter((edge) => nodeIdSet.has(edge.sourceNodeId) && nodeIdSet.has(edge.targetNodeId));
+  const expanded = expandStoriesBoundary(nodes, edges);
+  nodes = expanded.nodes; edges = expanded.edges;
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const incomingByNode = groupEdges(edges, 'targetNodeId');
   const outgoingByNode = groupEdges(edges, 'sourceNodeId');
   const hasExplicitBoundary = nodes.some((node) => EXPLICIT_BOUNDARY_TYPES.has(node.type));
   if (hasExplicitBoundary) {
-    return compileExplicitStudioSection({
+    const result = compileExplicitStudioSection({
       edges,
       incomingByNode,
       nodeById,
@@ -57,6 +60,13 @@ export function compileStudioSection(
       options,
       section,
     });
+    if (expanded.syntheticBoundaryId && expanded.story) {
+      result.sourceMetadata.capabilityKey ??= 'content.generate-stories';
+      result.sourceMetadata.outputs = result.sourceMetadata.outputs.map((boundary) => boundary.nodeId === expanded.syntheticBoundaryId
+        ? { ...boundary, nodeId: expanded.story!.id, portId: 'story' } : boundary);
+      result.sourceMetadata.nodeCount -= 1;
+    }
+    return result;
   }
   const boundary = createInputBoundaries(nodes, incomingByNode);
   const runtimeNodes = nodes.filter((node) => (
@@ -69,6 +79,7 @@ export function compileStudioSection(
     incomingByNode,
     node,
     nodeById,
+    outputPortIds: outgoingByNode.get(node.id)?.map((edge) => edge.sourcePortId) ?? ['original'],
     runtimeNodeIdSet,
   }));
   const output = createOutputBoundaries(nodes, outgoingByNode, incomingByNode, nodeById, runtimeNodeIdSet);
@@ -106,6 +117,7 @@ function createInputBoundaries(
   const inputNameByNodeId = new Map<string, string>();
   const inputs: Record<string, { kind: PipelineValueKind; required: boolean; description: string }> = {};
   const boundaries = nodes.filter((node) => BOUNDARY_INPUT_TYPES.has(node.type)
+    && !(node.type === 'importImage' && 'mediaKind' in node.data && node.data.mediaKind === 'video')
     && (incomingByNode.get(node.id)?.length ?? 0) === 0).map((node) => {
     const port = getNodePorts(node).find((candidate) => candidate.side === 'output');
     if (!port || (port.kind !== 'text' && port.kind !== 'image' && port.kind !== 'audio')) {

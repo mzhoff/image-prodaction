@@ -11,7 +11,7 @@ import {
   Minimize2,
   Settings2,
   X,
-} from 'lucide-react';
+} from '@prodactionpro/ui-core/icons';
 import {
   useCallback,
   useEffect,
@@ -27,6 +27,7 @@ import {
 import { ChatLauncherHostProvider } from '@/features/chat-assistant/model/chat-launcher-host';
 import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
+import { AssistantLauncherSettings } from '@/features/assistant-pet/ui/assistant-launcher-settings';
 
 interface AssistantShellProps {
   open: boolean;
@@ -36,6 +37,7 @@ interface AssistantShellProps {
   onOpen?: () => void;
   onPipelineChanged?: () => void;
   onClose: () => void;
+  onFocusNode?: (nodeId: string) => void;
   registerChatLauncher?: (launcher: ChatLauncher) => () => void;
   route?: string;
   selectionIds?: string[];
@@ -57,6 +59,7 @@ export function AssistantShell({
   documentId,
   documentRevision,
   onClose,
+  onFocusNode,
   onOpen,
   onPipelineChanged,
   registerChatLauncher,
@@ -219,6 +222,7 @@ export function AssistantShell({
                   </span>
                   {activeView === 'feedback' ? <Check size={15} /> : null}
                 </button>
+                <AssistantLauncherSettings />
               </div>
             ) : null}
           </div>
@@ -241,6 +245,7 @@ export function AssistantShell({
           <ImageProductionChat
             context={chatContext}
             onPipelineChanged={onPipelineChanged}
+            onFocusNode={onFocusNode}
             registerAttachmentDropTarget={setAttachmentDropTarget}
             workspaceId={workspaceId}
           />

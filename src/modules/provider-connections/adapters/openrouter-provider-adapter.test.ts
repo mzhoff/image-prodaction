@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import sharp from 'sharp';
 import {
   ProviderAdapterError,
   ProviderHttpError,
@@ -18,6 +19,51 @@ import {
 } from '../testing/openrouter-fixtures';
 
 const explicitApiKey = 'sk-or-v1-explicit-test-key';
+
+test('Gemini generation optimises reference copies before validating final request size', async () => {
+  const source = await sharp({ create: { width: 2400, height: 1800, channels: 4, background: 'blue' } })
+    .png({ compressionLevel: 0 }).toBuffer();
+  const request: ProviderExecuteRequest = {
+    expectedOutputModalities: ['image'], modelId: 'google/gemini-3.1-flash-image-preview', operation: 'generate_image',
+    messages: [{ role: 'user', parts: [{ modality: 'text', text: 'Keep the reference.' }, { modality: 'image', mediaType: 'image/png', data: source.toString('base64') }] }],
+  };
+  assert.ok(JSON.stringify(request).length > 20_000_000);
+  const original = JSON.stringify(request);
+  let calls = 0;
+  const adapter = createOpenRouterProviderAdapter({ fetch: async (_url, init) => {
+    calls++;
+    const body = String(init?.body);
+    assert.ok(Buffer.byteLength(body) < 20_000_000);
+    const payload = JSON.parse(body);
+    assert.equal(payload.messages[0].content[0].text, 'Keep the reference.');
+    const url = payload.messages[0].content[1].image_url.url as string;
+    assert.match(url, /^data:image\/webp;base64,/);
+    const received = Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
+    assert.equal((await sharp(received).ensureAlpha().raw().toBuffer()).equals(await sharp(source).ensureAlpha().raw().toBuffer()), true);
+    return jsonResponse(openRouterMultimodalResultFixture);
+  } });
+  await adapter.execute(request, { credential: explicitApiKey });
+  assert.equal(calls, 1);
+  assert.equal(JSON.stringify(request), original);
+});
+
+test('oversized inline Gemini request fails permanently before network dispatch', async () => {
+  let calls = 0;
+  const adapter = createOpenRouterProviderAdapter({ fetch: async () => { calls++; return jsonResponse(openRouterMultimodalResultFixture); } });
+  const request: ProviderExecuteRequest = {
+    expectedOutputModalities: ['image'], modelId: 'google/gemini-3.1-flash-image-preview', operation: 'generate_image',
+    messages: [{ role: 'user', parts: [{ modality: 'image', mediaType: 'image/webp', data: 'A'.repeat(20_000_000) }] }],
+  };
+  await assert.rejects(adapter.execute(request, { credential: explicitApiKey }), error => {
+    assert.ok(error instanceof ProviderAdapterError);
+    assert.equal(error.descriptor.classification, 'permanent');
+    assert.equal(error.descriptor.code, 'invalid_request');
+    assert.match(error.message, /20 МБ/);
+    assert.equal(error.message.includes(explicitApiKey), false);
+    return true;
+  });
+  assert.equal(calls, 0);
+});
 const executeRequest: ProviderExecuteRequest = {
   expectedOutputModalities: ['text', 'image', 'audio'],
   messages: [{

@@ -1,6 +1,12 @@
 import type { PipelineNodeHandlerRegistry } from '../contracts/pipeline-contracts';
 import { createAudioPipelineHandlers, type AudioHandlerDependencies } from './pipeline-audio-handlers';
 import { createStoredAudioOperations } from './pipeline-audio-operations';
+import { createVideoPipelineHandlers, type VideoHandlerDependencies } from './pipeline-video-handlers';
+import { createStoredVideoOperations } from './pipeline-video-operations';
+import { createTimelineHandoffHandler } from './pipeline-timeline-handler';
+import { createStoriesHandler } from './pipeline-stories-handler';
+import { createVideoGenerationHandler } from './pipeline-video-generation-handler';
+import type { TimelineAssetReader } from './pipeline-timeline-assets';
 import {
   createAiPipelineHandlers,
   createOpenRouterTextGenerator,
@@ -30,6 +36,8 @@ export function createProductionPipelineHandlerRegistry(
   scope: PipelineHandlerScope,
   dependencies: {
     audio?: Partial<AudioHandlerDependencies>;
+    video?: Partial<VideoHandlerDependencies>;
+    readTimelineAssets?: TimelineAssetReader;
     analyzeImage?: PipelineImageAnalyzer;
     exportImage?: PipelineImageExporter;
     generateImage?: PipelineImageGenerator;
@@ -39,7 +47,11 @@ export function createProductionPipelineHandlerRegistry(
   } = {},
 ): PipelineNodeHandlerRegistry {
   const handlers = [
+    createStoriesHandler(),
+    createVideoGenerationHandler(scope),
+    createTimelineHandoffHandler(dependencies.readTimelineAssets),
     ...createAudioPipelineHandlers({ ...createStoredAudioOperations(scope), ...dependencies.audio }),
+    ...createVideoPipelineHandlers({ ...createStoredVideoOperations(scope), ...dependencies.video }),
     ...createDeterministicTextHandlers(),
     ...createAiPipelineHandlers({
       analyzeImage: dependencies.analyzeImage ?? createOpenRouterImageAnalyzer(scope),

@@ -1,5 +1,7 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import { useEffect, useState, type FormEvent } from 'react';
 import type { RuntimeV2Credential } from '@/modules/executable-pipelines/contracts/runtime-v2-contracts';
 import { runtimeConnectionsApi } from '../api/runtime-connections-api';
@@ -90,9 +92,9 @@ export function RuntimeCredentials({ model }: { model: RuntimeConnectionsModel }
       </ul>
       {model.canManage && model.details?.client.enabled && !model.issuedCredential ? (
         <form className="settings-form" onSubmit={(event) => void issue(event)}>
-          <label><span>Название нового ключа</span><input required maxLength={120} value={label} disabled={model.mutation || activeCount >= 2}
+          <label><span>Название нового ключа</span><PuiInput required maxLength={120} value={label} disabled={model.mutation || activeCount >= 2}
             onChange={(event) => setLabel(event.target.value)} /></label>
-          <label><span>Срок действия (необязательно)</span><input type="datetime-local" value={expires} disabled={model.mutation || activeCount >= 2}
+          <label><span>Срок действия (необязательно)</span><PuiInput type="datetime-local" value={expires} disabled={model.mutation || activeCount >= 2}
             onChange={(event) => setExpires(event.target.value)} /></label>
           {activeCount >= 2 ? <p className={styles.muted}>Два ключа уже активны. После проверки нового подключения отзовите старый.</p> : null}
           <button className="settings-primary-button" type="submit" disabled={model.mutation || activeCount >= 2}>

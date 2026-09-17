@@ -3,7 +3,7 @@
   width: min(calc(100vw - 700px), calc((100vh - 84px) * var(--composition-ratio, 1)));
   max-width: calc(100vw - 700px);
   max-height: calc(100vh - 84px);
-  box-shadow: 0 22px 70px rgba(17, 24, 39, 0.12);
+  box-shadow: 0 22px 70px color-mix(in srgb, var(--pui-semantic-shadow-color) 12%, transparent);
 }
 
 .composition-canvas-fullscreen::after {
@@ -20,7 +20,7 @@
 }
 
 .composition-preview-interactive {
-  outline: 1px solid rgba(17, 17, 17, 0.12);
+  outline: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 12%, transparent);
   outline-offset: 0;
 }
 
@@ -40,25 +40,25 @@
   place-items: center;
   border: 0;
   border-radius: 8px;
-  background: #f3f3f3;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-editor-inspector .composition-layer-controls,
 .composition-editor-inspector .composition-number-control,
 .composition-editor-inspector .composition-color-control,
 .composition-editor-inspector .composition-control-row {
-  color: #777;
+  color: var(--pui-semantic-text-secondary);
 }
 
 .composition-editor-inspector .composition-layer-controls > strong,
 .composition-align-panel strong {
-  color: #111;
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-editor-inspector .composition-number-control input {
-  background: #f3f3f3;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-preview-layer {
@@ -82,7 +82,7 @@
   position: absolute;
   z-index: 60;
   border: 1px solid var(--composition-frame-accent);
-  background: rgba(47, 91, 255, 0.16);
+  background: color-mix(in srgb, var(--pui-semantic-accent-soft) 16%, transparent);
   pointer-events: none;
 }
 
@@ -117,11 +117,11 @@
   height: 10px;
   border: 2px solid var(--composition-frame-accent);
   border-radius: 2px;
-  background: #fff;
+  background: var(--pui-semantic-surface-primary);
   box-shadow:
-    0 0 0 1px #fff,
-    0 0 0 2px rgba(13, 20, 38, 0.55),
-    0 2px 5px rgba(13, 20, 38, 0.18);
+    0 0 0 1px var(--pui-semantic-shadow-color),
+    0 0 0 2px color-mix(in srgb, var(--pui-semantic-shadow-color) 55%, transparent),
+    0 2px 5px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
 }
 
 .composition-resize-handle-nw {
@@ -192,11 +192,11 @@
 .composition-hover-frame {
   position: absolute;
   z-index: 55;
-  border: 1px solid rgba(47, 91, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-focus) 92%, transparent);
   background: transparent;
   box-shadow:
     0 0 0 1px var(--composition-frame-light),
-    0 0 0 2px rgba(13, 20, 38, 0.48),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.76);
+    0 0 0 2px color-mix(in srgb, var(--pui-semantic-shadow-color) 48%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--pui-semantic-shadow-color) 76%, transparent);
   pointer-events: none;
 }

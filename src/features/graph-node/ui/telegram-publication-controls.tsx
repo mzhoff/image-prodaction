@@ -1,4 +1,4 @@
-import { ChevronUp } from 'lucide-react';
+import { ChevronUp } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import type { PublicationValidationReport } from '@/entities/production-graph/model/publication';
 import { TELEGRAM_MAX_MEDIA_ITEMS } from '../lib/telegram-media-layout';

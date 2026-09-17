@@ -11,7 +11,7 @@ import {
 } from '@/entities/document/server/document-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from '../assets/error-response';
 
 const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
@@ -19,7 +19,7 @@ const thumbnailModeSchema = z.enum(['auto', 'manual']);
 
 export async function postProjectThumbnail(request: Request, projectId: string) {
   try {
-    if (!isUuidV7(projectId)) return apiError('invalid_project_id', 'Invalid project id.', 400);
+    if (!isUuid(projectId)) return apiError('invalid_project_id', 'Invalid project id.', 400);
     const session = await requireApiSession(request);
     const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
     if (!contentType.startsWith('multipart/form-data')) {
@@ -39,9 +39,16 @@ export async function postProjectThumbnail(request: Request, projectId: string) 
     if (file.size > maxBytes) return apiError('file_too_large', 'The snapshot exceeds the upload limit.', 413);
     const parsedMode = thumbnailModeSchema.safeParse(formData.get('mode'));
     if (!parsedMode.success) return apiError('invalid_thumbnail_mode', 'Snapshot mode must be auto or manual.', 400);
+    const revisionField = formData.get('expectedRevision');
+    const parsedRevision = z.coerce.number().int().nonnegative().safeParse(revisionField);
+    if (revisionField !== null && !parsedRevision.success) {
+      return apiError('invalid_revision', 'Snapshot revision must be a non-negative integer.', 400);
+    }
+    const expectedRevision = revisionField !== null && parsedRevision.success ? parsedRevision.data : undefined;
 
     const current = await getDocument(session.user.id, projectId);
-    if (parsedMode.data === 'auto' && current.thumbnailMode === 'manual') {
+    if (parsedMode.data === 'auto' && (current.thumbnailMode === 'manual'
+      || (expectedRevision !== undefined && current.revision !== expectedRevision))) {
       return Response.json({ project: current }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
@@ -64,6 +71,7 @@ export async function postProjectThumbnail(request: Request, projectId: string) 
         assetId: asset.id,
         documentId: projectId,
         mode: parsedMode.data,
+        expectedRevision,
         userId: session.user.id,
       });
     } catch (error) {

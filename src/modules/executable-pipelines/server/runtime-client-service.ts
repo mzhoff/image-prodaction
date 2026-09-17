@@ -6,6 +6,9 @@ import { runtimeV2ClientSchema, runtimeV2CreateClientSchema, runtimeV2Credential
 import { RuntimeV2Error } from '../contracts/runtime-v2-errors';
 import { generateRuntimeClientToken, hashRuntimeClientToken, parseRuntimeClientToken } from '../core/runtime-v2-credentials';
 import { requireRuntimeAdmin, requireRuntimeClient, writeRuntimeAudit, type RuntimeManagementActor, type RuntimeSessionActor } from './runtime-client-auth';
+import { installContentHubPreset } from './content-hub-preset-service';
+import type { ContentHubPresetEntry } from '@/entities/production-graph/model/content-hub-starter-preset';
+import { isCanonicalContentHubWorkspace } from '../core/content-hub-workspace';
 
 export function toRuntimeClient(row: typeof runtimeServiceClient.$inferSelect) {
   return runtimeV2ClientSchema.parse({ id: row.id, workspaceId: row.workspaceId, displayName: row.displayName,
@@ -24,19 +27,25 @@ export async function listRuntimeClients(actor: RuntimeSessionActor) {
 export async function getRuntimeClient(actor: RuntimeManagementActor, clientId: string) {
   return toRuntimeClient(await requireRuntimeClient(actor, clientId));
 }
-export async function createRuntimeClient(actor: RuntimeSessionActor, body: unknown) {
+export async function createRuntimeClient(actor: RuntimeSessionActor, body: unknown, presetCopies?: ContentHubPresetEntry[]) {
   const data = runtimeV2CreateClientSchema.parse(body);
-  return getDb().transaction(async (tx) => {
+  if (!isCanonicalContentHubWorkspace(actor.workspaceId, data)) {
+    throw new RuntimeV2Error('invalid_request', 'Content Hub must connect the same canonical Workspace in both products.', 409);
+  }
+  const client = await getDb().transaction(async (tx) => {
     await requireRuntimeAdmin(actor, tx);
     const [row] = await tx.insert(runtimeServiceClient).values({ id: createUuidV7(), workspaceId: actor.workspaceId, createdByUserId: actor.userId, ...data }).onConflictDoNothing().returning();
     if (!row) throw new RuntimeV2Error('connection_exists', 'This application workspace is already connected.', 409);
     await writeRuntimeAudit(tx, actor, { serviceClientId: row.id, action: 'client.created', after: { scopes: row.scopes } });
     return toRuntimeClient(row);
   });
+  if (data.sourceApplication === 'content-hub') await installContentHubPreset(actor, client.id, presetCopies);
+  return client;
 }
 export async function setRuntimeClientEnabled(actor: RuntimeSessionActor, clientId: string, enabled: boolean) {
   return getDb().transaction(async (tx) => {
     const previous = await requireRuntimeClient(actor, clientId, tx);
+    if (enabled && !isCanonicalContentHubWorkspace(actor.workspaceId, previous)) throw new RuntimeV2Error('invalid_request', 'Migrate this Content Hub connection to its canonical Workspace before enabling it.', 409);
     const [row] = await tx.update(runtimeServiceClient).set({ enabled }).where(eq(runtimeServiceClient.id, clientId)).returning();
     await writeRuntimeAudit(tx, actor, { serviceClientId: clientId, action: enabled ? 'client.enabled' : 'client.disabled', before: { enabled: previous.enabled }, after: { enabled } });
     return toRuntimeClient(row!);
@@ -49,6 +58,9 @@ export async function listRuntimeCredentials(actor: RuntimeSessionActor, clientI
 /** Issue is also rotation: at most two non-expired keys overlap, never automatically revoke. */
 export async function issueRuntimeCredential(actor: RuntimeSessionActor, clientId: string, body: unknown) {
   const data = runtimeV2IssueCredentialSchema.parse(body);
+  const connection = await requireRuntimeClient(actor, clientId);
+  // Resume a partially completed installation before exposing a consumer key.
+  if (connection.sourceApplication === 'content-hub' && connection.externalWorkspaceRef === actor.workspaceId) await installContentHubPreset(actor, clientId);
   const expiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
   if (expiresAt && expiresAt <= new Date()) throw new RuntimeV2Error('invalid_expiry', 'Expiry must be in the future.');
   return getDb().transaction(async (tx) => {

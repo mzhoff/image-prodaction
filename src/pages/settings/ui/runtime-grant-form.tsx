@@ -1,5 +1,7 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import { useEffect, useState, type FormEvent } from 'react';
 import type { RuntimeV2Version } from '@/modules/executable-pipelines/contracts/runtime-v2-descriptor-contracts';
 import { runtimeConnectionsApi } from '../api/runtime-connections-api';
@@ -70,7 +72,7 @@ export function RuntimeGrantForm({ model, onCreated }: { model: RuntimeConnectio
       </label>
       {model.catalog.length === 0 ? <p className={styles.callout}>Сначала опубликуйте исполняемый pipeline в конструкторе этого Workspace.</p> : null}
       <div className={styles.referenceRow}>
-        <label><span>Или вставьте ссылку / publicId</span><input value={reference} maxLength={2048}
+        <label><span>Или вставьте ссылку / publicId</span><PuiInput value={reference} maxLength={2048}
           disabled={model.mutation} onChange={(event) => setReference(event.target.value)} /></label>
         <button className="settings-quiet-button" type="button" disabled={model.mutation || !reference.trim()} onClick={resolveReference}>Найти</button>
       </div>
@@ -89,7 +91,7 @@ export function RuntimeGrantForm({ model, onCreated }: { model: RuntimeConnectio
           : <p className={styles.callout}>В этой версии не задано назначение (capability) или не зафиксирован формат данных. В конструкторе нажмите правой кнопкой по секции → Integration capability, задайте назначение и выберите Publish executable version. Для первой публикации — Make executable. Старые версии остаются неизменными.</p>
       ) : null}
       <label><span>Максимальная стоимость одного запуска, USD</span>
-        <input inputMode="decimal" pattern="(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,8})?" placeholder="Не задана" value={cap}
+        <PuiInput inputMode="decimal" pattern="(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,8})?" placeholder="Не задана" value={cap}
           disabled={model.mutation} onChange={(event) => setCap(event.target.value)} />
         <small>Используйте точку, например 0.05. Более строгий лимит вызывающего приложения тоже учитывается.</small></label>
       <label className={styles.selectLabel}><span>Контроль расходов</span>

@@ -6,6 +6,7 @@ import { AssetClientError, getActiveAssetScope, type ActiveAssetScope, type Dura
 export const remoteAudioAssetSchema = z.object({
   id: z.string().min(1), originalName: z.string(), contentType: z.string(), createdAt: z.string(),
   audio: audioMetadataSchema,
+  byteSize: z.number().int().nonnegative().optional(),
 });
 export function mapRemoteAudioAsset(asset: z.infer<typeof remoteAudioAssetSchema>): AssetRecord {
   return { id: asset.id, kind: 'audio', name: asset.originalName, mimeType: asset.contentType,

@@ -1,6 +1,6 @@
 'use client';
 
-import { Eraser, Paintbrush, Redo2, RotateCcw, Undo2, X } from 'lucide-react';
+import { Eraser, Paintbrush, Redo2, RotateCcw, Undo2, X } from '@prodactionpro/ui-core/icons';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { useSketchNodeModel } from '../model/use-sketch-node-model';

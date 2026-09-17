@@ -8,7 +8,7 @@
   display: grid;
   gap: 8px;
   border-radius: 8px;
-  background: #f7f7f7;
+  background: var(--pui-semantic-surface-secondary);
   padding: 8px;
 }
 
@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
@@ -27,15 +27,15 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px dashed #c9c9c9;
+  border: 1px dashed var(--pui-semantic-border-default);
   border-radius: 7px;
   background: transparent;
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
 
 .composition-add-effect-button:hover {
-  border-color: #8e8e8e;
-  color: #111;
+  border-color: var(--pui-semantic-border-default);
+  color: var(--pui-semantic-text-primary);
 }

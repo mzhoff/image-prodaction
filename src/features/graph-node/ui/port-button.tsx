@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getNodeImageAssetId, getNodeLocationResult, getNodePublicationResult, getNodeSubjectResult, getNodeTextResult, getRouterDataKind } from '@/entities/production-graph/model/graph-io';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import { getNodeAudioAssetId } from '@/entities/production-graph/model/graph-audio-io';
+import { getNodeVideoAssetId } from '@/entities/production-graph/model/graph-video-io';
+import { getNodeTimelineResult } from '@/entities/production-graph/model/graph-timeline-io';
 import type { PortKind, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
@@ -36,6 +38,7 @@ export function PortButton({
   connectionState,
   onStartConnection,
 }: PortButtonProps) {
+  const portRef = useRef<HTMLButtonElement | null>(null);
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
   const visualState = useMemo(() => getPortVisualState({
@@ -48,8 +51,26 @@ export function PortButton({
     side,
   }), [connectionState, edges, kind, nodeId, nodes, portId, side]);
 
+  useLayoutEffect(() => {
+    const port = portRef.current;
+    const card = port?.closest<HTMLElement>('article.production-node');
+    if (!port || !card) return;
+
+    const cardRect = card.getBoundingClientRect();
+    const portRect = port.getBoundingClientRect();
+    const scale = card.offsetWidth > 0 ? cardRect.width / card.offsetWidth : 1;
+    if (!Number.isFinite(scale) || scale <= 0) return;
+
+    const currentShift = Number.parseFloat(port.style.getPropertyValue('--port-edge-shift')) || 0;
+    const currentCenter = (portRect.left + portRect.right) / 2;
+    const targetCenter = side === 'input' ? cardRect.left : cardRect.right;
+    const nextShift = currentShift + (targetCenter - currentCenter) / scale;
+    port.style.setProperty('--port-edge-shift', `${nextShift}px`);
+  }, [className, nodeId, portId, side, style]);
+
   return (
     <button
+      ref={portRef}
       type="button"
       className={cn(
         'node-port',
@@ -124,7 +145,7 @@ function getPortVisualState({
             ? Boolean(getNodePublicationResult(currentNode, { edges, nodes }))
             : routedKind === 'text'
               ? Boolean(getNodeTextResult(currentNode, undefined, { edges, nodes }))
-              : connected;
+              : routedKind === 'video' ? Boolean(getNodeVideoAssetId(currentNode, portId, { edges, nodes })) : connected;
     return { connected, dataKind: routedKind, hasData: hasRoutedData };
   }
   const firstSourceEdge = side === 'input' ? connectedEdges[0] : undefined;
@@ -137,7 +158,7 @@ function getPortVisualState({
     ? anyInputDataKind ?? 'empty'
     : side === 'input'
     ? fallbackDataKind
-    : fallbackDataKind === 'audio' ? 'audio' : firstSourcePort?.kind === 'subject' || (!firstSourcePort && fallbackDataKind === 'subject') ? 'subject'
+    : fallbackDataKind === 'video' ? 'video' : fallbackDataKind === 'audio' ? 'audio' : firstSourcePort?.kind === 'subject' || (!firstSourcePort && fallbackDataKind === 'subject') ? 'subject'
       : firstSourcePort?.kind === 'location' || (!firstSourcePort && fallbackDataKind === 'location') ? 'location'
         : firstSourcePort?.kind === 'publication' || (!firstSourcePort && fallbackDataKind === 'publication') ? 'publication'
           : firstSourcePort?.kind === 'image' || (!firstSourcePort && fallbackDataKind === 'image') ? 'image'
@@ -151,10 +172,12 @@ function getPortVisualState({
     const sourcePort = getNodePorts(sourceNode).find((port) => port.id === edge.sourcePortId);
     if (sourcePort?.kind === 'image') return Boolean(getNodeImageAssetId(sourceNode, { assets: [], edges, nodes }));
     if (sourcePort?.kind === 'audio') return sourceNode.type === 'pipelineInput' || Boolean(getNodeAudioAssetId(sourceNode, { edges, nodes }));
+    if (sourcePort?.kind === 'video') return sourceNode.type === 'pipelineInput' || Boolean(getNodeVideoAssetId(sourceNode, edge.sourcePortId, { edges, nodes }));
     if (sourcePort?.kind === 'subject') return Boolean(getNodeSubjectResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'location') return Boolean(getNodeLocationResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'publication') return Boolean(getNodePublicationResult(sourceNode, { edges, nodes }));
     if (sourcePort?.kind === 'json' || sourcePort?.kind === 'number' || sourcePort?.kind === 'boolean') {
+      if (sourceNode.type === 'timelineHandoff') return Boolean(getNodeTimelineResult(sourceNode, { edges, nodes }));
       return sourceNode.type === 'structuredOutput'
         && Boolean((sourceNode.data as { result?: unknown }).result);
     }
@@ -165,7 +188,7 @@ function getPortVisualState({
       if (nextKind === 'location') return Boolean(getNodeLocationResult(sourceNode, { edges, nodes }));
       if (nextKind === 'publication') return Boolean(getNodePublicationResult(sourceNode, { edges, nodes }));
       if (nextKind === 'audio') return Boolean(getNodeAudioAssetId(sourceNode, { edges, nodes }));
-      if (nextKind === 'video') return true;
+      if (nextKind === 'video') return Boolean(getNodeVideoAssetId(sourceNode, edge.sourcePortId, { edges, nodes }));
     }
     return Boolean(getNodeTextResult(sourceNode, edge.sourcePortId, { edges, nodes }));
   });

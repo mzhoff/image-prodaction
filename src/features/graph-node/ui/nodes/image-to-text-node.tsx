@@ -1,12 +1,12 @@
 'use client';
 
-import { Loader2, Maximize2, Minimize2, Play } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Play } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ExtractPresetId, ProductionNode } from '@/entities/production-graph/model/types';
-import { extractPresetOptions } from '@/entities/production-graph/model/extract-presets';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { DarkMultiSelect } from '@/shared/ui/dark-multi-select';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { getExtractNodeCollapseLayout } from '../../lib/collapsed-node-layout';
 import { useExtractNodeModel } from '../../model/use-extract-node-model';
@@ -72,20 +72,31 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
       {collapseLayout.bodyVisible ? (
         <>
           <CollapsibleSection title="Settings" open={model.settingsOpen} onOpenChange={model.setSettingsOpen}>
+            <SettingRow
+              label="Preset"
+              ariaLabel="Extract preset"
+              value={model.selectedAnalysisPreset}
+              options={model.analysisPresetOptions}
+              onChange={model.handleAnalysisPresetChange}
+              disabled={node.status === 'running'}
+              wide
+            />
             <div className="setting-row">
-              <span>Preset</span>
+              <span>Layers</span>
               <DarkMultiSelect
+                ariaLabel="Extract layers"
                 value={model.selectedPresets}
                 label={model.selectedPresetLabel}
-                options={extractPresetOptions}
+                options={model.layerOptions}
                 onChange={(presetIds) => model.handlePresetChange(presetIds as ExtractPresetId[])}
+                disabled={node.status === 'running'}
                 wide
               />
             </div>
-            <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
+            <ModelSettingRow modality="text" label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} disabled={node.status === 'running'} wide />
           </CollapsibleSection>
           <CollapsibleSection title="Prompt" open={model.promptOpen} onOpenChange={model.setPromptOpen}>
-            <PromptBox value={model.data.prompt} onChange={model.handlePromptChange} />
+            <PromptBox textField="prompt" value={model.data.prompt} onChange={model.handlePromptChange} />
           </CollapsibleSection>
           <button type="button" className="secondary-node-button" onClick={model.handleAnalyze} disabled={node.status === 'running' || model.loading}>
             {node.status === 'running' ? <Loader2 className="spin" size={15} /> : <Play size={15} />}
@@ -103,7 +114,7 @@ export function ImageToTextNode({ node, onStartConnection }: ImageToTextNodeProp
               {useRichExtractResultEditor ? (
                 <ExtractResultBox value={model.data.result} disabledLayerIds={model.disabledLayerIds} onChange={model.handleResultChange} />
               ) : (
-                <PromptBox value={model.data.result} onChange={model.handleResultChange} />
+                <PromptBox textField="result" value={model.data.result} onChange={model.handleResultChange} />
               )}
             </div>
           </CollapsibleSection>

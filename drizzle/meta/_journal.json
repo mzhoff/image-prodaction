@@ -190,6 +190,34 @@
       "when": 1788671640777,
       "tag": "0026_bright_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789018031956,
+      "tag": "0027_sturdy_blue_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789071739619,
+      "tag": "0028_content_hub_project_folder",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789176000000,
+      "tag": "0029_document_assistant_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1789430400000,
+      "tag": "0030_account_model_preferences",
+      "breakpoints": true
     }
   ]
 }

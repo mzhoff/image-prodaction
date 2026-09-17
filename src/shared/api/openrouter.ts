@@ -1,3 +1,5 @@
+import { getGeminiInlineRequestSizeError } from './image-request-limits';
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=all';
 const OPENROUTER_SPEECH_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=speech';
@@ -76,6 +78,12 @@ export async function sendOpenRouterChat({
   temperature?: number;
 }) {
   assertExplicitApiKey(apiKey);
+  const body = JSON.stringify(removeUndefined({
+    model, messages, modalities, image_config: imageConfig, max_tokens: maxTokens,
+    reasoning, temperature, stream: false, usage: { include: true },
+  }));
+  const sizeError = getGeminiInlineRequestSizeError(model, body);
+  if (sizeError) throw new OpenRouterRequestError(sizeError, 413, 'upstream_error');
   const response = await fetchOpenRouter(OPENROUTER_URL, {
     method: 'POST',
     headers: {
@@ -84,17 +92,7 @@ export async function sendOpenRouterChat({
       'HTTP-Referer': process.env.OPENROUTER_SITE_URL ?? 'http://localhost:3000',
       'X-Title': process.env.OPENROUTER_APP_NAME ?? 'Reverie Image Production Pipeline',
     },
-    body: JSON.stringify(removeUndefined({
-      model,
-      messages,
-      modalities,
-      image_config: imageConfig,
-      max_tokens: maxTokens,
-      reasoning,
-      temperature,
-      stream: false,
-      usage: { include: true },
-    })),
+    body,
   }, 'OpenRouter generation request');
 
   if (!response.ok) {

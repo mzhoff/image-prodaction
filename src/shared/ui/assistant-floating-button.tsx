@@ -1,6 +1,7 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { Sparkles } from '@prodactionpro/ui-core/icons';
+import { IconButton } from '@prodactionpro/ui-core/icon-button';
 
 interface AssistantFloatingButtonProps {
   className?: string;
@@ -9,14 +10,16 @@ interface AssistantFloatingButtonProps {
 
 export function AssistantFloatingButton({ className = '', onClick }: AssistantFloatingButtonProps) {
   return (
-    <button
+    <IconButton
       type="button"
+      intent="neutral"
+      appearance="solid"
+      size="xl"
+      icon={<Sparkles size={28} />}
       className={`assistant-floating-button ${className}`}
       data-snapshot-exclude
       aria-label="Open assistant"
       onClick={onClick}
-    >
-      <Sparkles size={28} />
-    </button>
+    />
   );
 }

@@ -2,6 +2,7 @@
 
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { ReactNode } from 'react';
+import { memo, useCallback } from 'react';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import { getPortTop } from '@/entities/production-graph/model/node-port-layout';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
@@ -39,6 +40,9 @@ import { TextSplitterNode } from './nodes/text-splitter-node';
 import { TextToSpeechNode } from './nodes/text-to-speech-node';
 import { PortButton } from './port-button';
 import { NodeTitleNodeIdProvider } from './node-title';
+import { TimelineHandoffNode } from './timeline-handoff-node';
+import { GenerateVideoNode } from './nodes/generate-video-node';
+import { ReverieStoriesNode } from './nodes/reverie-stories-node';
 
 interface NodeCardProps {
   node: ProductionNode;
@@ -48,19 +52,22 @@ interface NodeCardProps {
   onContextMenu: (node: ProductionNode, event: ReactMouseEvent) => void;
   onOptionsMenu: (node: ProductionNode, event: ReactMouseEvent<HTMLButtonElement>) => void;
   generateComposingOpen?: boolean;
-  onGenerateComposingOpenChange?: (open: boolean) => void;
+  onGenerateComposingOpenChange?: (nodeId: string, open: boolean) => void;
 }
 
 type NodeRenderer = (props: NodeCardProps) => ReactNode;
 
 const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
-  importImage: ({ node }) => <ImportImageNode node={node} />,
+  importImage: ({ node, onStartConnection }) => <ImportImageNode node={node} onStartConnection={onStartConnection} />,
   textPrompt: ({ node, onStartConnection }) => <TextPromptNode node={node} onStartConnection={onStartConnection} />,
   textConcat: ({ node, onStartConnection }) => <TextConcatNode node={node} onStartConnection={onStartConnection} />,
   textGeneration: ({ node, onStartConnection }) => <TextGenerationNode node={node} onStartConnection={onStartConnection} />,
   textToSpeech: ({ node, onStartConnection }) => <TextToSpeechNode node={node} onStartConnection={onStartConnection} />,
   speechToText: ({ node, onStartConnection }) => <AudioNode node={node} onStartConnection={onStartConnection} />,
   audioConvert: ({ node, onStartConnection }) => <AudioNode node={node} onStartConnection={onStartConnection} />,
+  timelineHandoff: ({ node, onStartConnection }) => <TimelineHandoffNode node={node} onStartConnection={onStartConnection} />,
+  reverieStories: ({ node, onStartConnection }) => <ReverieStoriesNode node={node} onStartConnection={onStartConnection} />,
+  generateVideo: ({ node, onStartConnection }) => <GenerateVideoNode node={node} onStartConnection={onStartConnection} />,
   textFormatter: ({ node, onStartConnection }) => <TextFormatterNode node={node} onStartConnection={onStartConnection} />,
   textSplitter: ({ node, onStartConnection }) => <TextSplitterNode node={node} onStartConnection={onStartConnection} />,
   pipelineInput: ({ node, onStartConnection }) => <PipelineInputNode node={node} onStartConnection={onStartConnection} />,
@@ -86,7 +93,7 @@ const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
     <GenerateImageNode
       node={node}
       composingOpen={generateComposingOpen}
-      onComposingOpenChange={onGenerateComposingOpenChange ?? (() => undefined)}
+      onComposingOpenChange={(open) => onGenerateComposingOpenChange?.(node.id, open)}
       onStartConnection={onStartConnection}
     />
   ),
@@ -95,7 +102,7 @@ const nodeRenderers: Record<ProductionNodeType, NodeRenderer> = {
   preview: ({ node }) => <PreviewNode node={node} />,
 };
 
-export function NodeCard({
+export const NodeCard = memo(function NodeCard({
   node,
   selected,
   onStartDrag,
@@ -105,10 +112,12 @@ export function NodeCard({
   generateComposingOpen = true,
   onGenerateComposingOpenChange,
 }: NodeCardProps) {
+  const openOptions = useCallback((event: ReactMouseEvent<HTMLButtonElement>) => onOptionsMenu(node, event), [node, onOptionsMenu]);
   const ports = getNodePorts(node);
   const renderNode = nodeRenderers[node.type];
   const visiblePorts = ports.filter((port) => {
-    if (node.type === 'speechToText' || node.type === 'audioConvert') return false;
+    if (node.type === 'generateVideo') return false;
+    if (node.type === 'speechToText' || node.type === 'audioConvert' || node.type === 'timelineHandoff' || node.type === 'reverieStories') return false;
     if (node.type === 'generateImage' && port.side === 'input') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
     if (node.type === 'textPrompt') return false;
@@ -122,7 +131,8 @@ export function NodeCard({
       className={cn(
         'production-node',
         `production-node-${node.type}`,
-        (node.type === 'speechToText' || node.type === 'audioConvert') && 'production-node-text-workflow',
+        node.type === 'generateVideo' && 'production-node-text-workflow',
+        (node.type === 'speechToText' || node.type === 'audioConvert' || node.type === 'timelineHandoff') && 'production-node-text-workflow',
         (node.type === 'textPrompt' || node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput' || node.type === 'iterator') && 'production-node-text-workflow',
         (node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput') && 'production-node-pipeline-contract',
         node.type === 'iterator' && 'production-node-iterator-workflow',
@@ -141,7 +151,7 @@ export function NodeCard({
       onPointerDown={(event) => onStartDrag(node, event)}
       onContextMenu={(event) => onContextMenu(node, event)}
     >
-      {visiblePorts.map((port) => {
+      {visiblePorts.filter(() => !(node.type === 'importImage' && 'mediaKind' in node.data && node.data.mediaKind === 'video')).map((port) => {
         const sideIndex = ports.filter((item) => item.side === port.side).findIndex((item) => item.id === port.id);
         return (
           <PortButton
@@ -156,7 +166,7 @@ export function NodeCard({
           />
         );
       })}
-      <NodeTitleNodeIdProvider nodeId={node.id} onOpenOptionsMenu={(event) => onOptionsMenu(node, event)}>
+      <NodeTitleNodeIdProvider nodeId={node.id} onOpenOptionsMenu={openOptions}>
         {renderNode({
           node,
           selected,
@@ -170,4 +180,4 @@ export function NodeCard({
       </NodeTitleNodeIdProvider>
     </article>
   );
-}
+});

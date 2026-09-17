@@ -5,6 +5,8 @@ import {
 import type { ProviderImageOutput, ProviderMessagePart } from '@/modules/provider-connections';
 import type { QueuedGenerateImagePayload } from './image-generation-contracts';
 import { GenerationExecutionError } from './generation-worker';
+import { PREFERRED_IMAGE_MODEL_IDS } from '@/shared/api/openrouter-models';
+import { pickImageGenerationOptions } from '@/shared/media/image-generation-settings';
 
 export function createProviderRequest(payload: QueuedGenerateImagePayload) {
   const prompt = composeGenerationPrompt({
@@ -28,7 +30,11 @@ export function createProviderRequest(payload: QueuedGenerateImagePayload) {
     messages: [{ role: 'user' as const, parts }],
     modelId: payload.model,
     operation: 'generate_image',
-    parameters: { image: { aspectRatio: payload.aspectRatio, size: payload.size } },
+    parameters: { image: {
+      ...pickImageGenerationOptions(payload),
+      ...(PREFERRED_IMAGE_MODEL_IDS.includes(payload.model) ? {} : { api: 'images' as const }),
+      aspectRatio: payload.aspectRatio, size: payload.size,
+    } },
   };
 }
 

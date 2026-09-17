@@ -73,6 +73,14 @@ export function inferPipelineOutputKind(
   outputKey: string,
 ): PipelineValueKind {
   const handlerType = plan.definition.nodes.find((node) => node.id === nodeId)?.handlerType;
+  if (handlerType === 'timeline.handoff') {
+    if (outputKey === 'frames') return 'image_collection';
+    if (outputKey === 'descriptions') return 'text';
+    if (outputKey === 'videoResult') return 'video';
+    return 'json';
+  }
+  if (handlerType === 'video.import') return outputKey === 'audio' ? 'audio' : 'video';
+  if (handlerType === 'ai.video.generate' || handlerType === 'video.crop') return 'video';
   if (handlerType === 'ai.image.generate') return 'image';
   if (handlerType === 'image.export') {
     return outputKey === 'images' ? 'image_collection' : 'image';

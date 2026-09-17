@@ -9,6 +9,8 @@ export interface PipelineNodeOperationManifest {
   handlerType: string;
   handlerVersion: string;
   inputs: Record<string, PipelineNodeManifestValueKind | `${PipelineNodeManifestValueKind}?`>;
+  /** Explicit collections accepted in place of a corresponding singular input. */
+  inputCollections?: Record<string, 'image_collection' | 'text_collection'>;
   outputs: Record<string, PipelineNodeManifestValueKind>;
   paid: boolean;
   retry: 'never' | 'pipeline';

@@ -1,15 +1,18 @@
 'use client';
 
 import { ClipboardCopy, Copy, Download, HelpCircle, Layers3, LayoutTemplate, Link2, Lock, Palette, Pencil,
-  Maximize2, PlayCircle, RotateCcw, Star, Trash2, Unlock, Upload } from 'lucide-react';
+  Maximize2, PlayCircle, RotateCcw, Star, Trash2, Unlock, Upload } from '@prodactionpro/ui-core/icons';
 import { useCallback } from 'react';
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react';
 import type { useFavoriteNodePresets } from '@/entities/production-graph/api/use-favorite-node-presets';
 import type { useNodeTemplatePresets } from '@/entities/production-graph/api/use-node-template-presets';
 import { getNodeCurrentImageAssetId,
   getNodeImageAssetIds } from '@/entities/production-graph/model/graph-io';
+import { getRenderedNodeSize } from '@/entities/production-graph/model/graph-store-dom';
+import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import type { GraphSection, ProductionNode,
   ProductionNodeType } from '@/entities/production-graph/model/types';
+import { NodeIcon } from '@/entities/production-graph/ui/node-icon';
 import { getSystemPipelinePresets } from '@/entities/production-graph/model/system-pipeline-presets';
 import { getNodeAskAiLaunchNotice,
   type NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
@@ -18,8 +21,9 @@ import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import type { useContextMenu } from '@/shared/ui/use-context-menu';
 import type { useStudioPipelinePublications } from '@/modules/executable-pipelines/adapters/studio/use-studio-pipeline-publications';
-import { addNodeMenuGroups,
+import { addNodeMenu, addNodeMenuGroups,
   createAddNodeContextMenuActions } from '../lib/add-node-menu';
+import { getBatchConnectionPlan, type BatchConnectionDirection } from '../lib/batch-connect-create';
 import type { useProductionCanvasStore } from './use-production-canvas-store';
 import { hasClearableGenerationData } from './production-canvas-values';
 
@@ -131,6 +135,71 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
   ], [canvas, createNode, graph, importPipelineTemplateAt, showToast]);
 
   const getNodeMenuActions = useCallback((node: ProductionNode): ContextMenuAction[] => {
+    const selectedNodesInGraph = graph.nodes.filter((item) => graph.selectedSet.has(item.id));
+    // The menu is built in the same event as selectNode. Use the clicked node
+    // immediately when React has not committed the new selection yet.
+    const selectedNodes = graph.selectedSet.has(node.id) ? selectedNodesInGraph : [node];
+    const hasSelection = selectedNodes.length > 0;
+    const extractLimit = 5;
+    const selectedImageSources = selectedNodes.filter((item) => getNodePorts(item).some((port) => port.side === 'output' && port.kind === 'image'));
+    const sendToExtractReason = selectedImageSources.length > extractLimit
+      ? `Extract принимает не больше ${extractLimit} изображений за один анализ. Выделено: ${selectedImageSources.length}.`
+      : undefined;
+    const createExtractForSelection = () => {
+      const position = {
+        x: Math.max(...selectedImageSources.map((item) => item.position.x + item.size.width), node.position.x + node.size.width) + 80,
+        y: Math.min(...selectedImageSources.map((item) => item.position.y), node.position.y),
+      };
+      graph.runInHistoryBatch(() => {
+        const extractId = createNode('imageToText', position);
+        selectedImageSources.slice(0, extractLimit).forEach((source, index) => {
+          const output = getNodePorts(source).find((port) => port.side === 'output' && port.kind === 'image');
+          if (output) graph.connect(source.id, output.id, extractId, `image-${index}`);
+        });
+        const sourceColumnWidth = Math.max(...selectedImageSources.map((source) => source.size.width), 260);
+        selectedImageSources.slice(0, extractLimit).forEach((source, index) => {
+          graph.moveNode(source.id, {
+            x: position.x - sourceColumnWidth - 100,
+            y: position.y + index * 350,
+          });
+        });
+        graph.moveNode(extractId, {
+          x: position.x,
+          y: position.y + Math.max(0, (Math.min(selectedImageSources.length, extractLimit) - 1) * 175),
+        });
+      });
+      showToast(`Extract создан и подключён к ${Math.min(selectedImageSources.length, extractLimit)} изображениям.`);
+    };
+    const addConnectedNodes = (type: ProductionNodeType, direction: BatchConnectionDirection) => {
+      const plan = getBatchConnectionPlan(selectedNodes, type, direction, graph.edges, graph.nodes);
+      if (!plan) return;
+      const pairs: Array<{ source: ProductionNode; target: ProductionNode }> = [];
+      graph.runInHistoryBatch(() => {
+        plan.forEach(({ selectedNode, newNode, sourcePortId, targetPortId }) => {
+          const id = createNode(type, newNode.position);
+          // Pipeline field IDs in the plan must also be the live port IDs.
+          if (newNode.type === 'pipelineInput' || newNode.type === 'pipelineOutput') {
+            graph.updateNodeDataSilent(id, newNode.data);
+          }
+          const created = { ...newNode, id };
+          const source = direction === 'output' ? selectedNode : created;
+          const target = direction === 'output' ? created : selectedNode;
+          pairs.push({ source, target });
+          graph.connect(source.id, sourcePortId, target.id, targetPortId);
+        });
+        arrangeNodePairs(graph, pairs, direction);
+      });
+      showToast(`${plan.length} нод добавлено ${direction === 'output' ? 'на выход' : 'на вход'} выделенных.`);
+    };
+    const getConnectedNodeActions = (direction: BatchConnectionDirection): ContextMenuAction[] => (
+      addNodeMenu.filter(({ type }) => getBatchConnectionPlan(selectedNodes, type, direction, graph.edges, graph.nodes))
+        .map(({ type, label, icon }) => ({
+          id: `add-${direction}-${type}`, label, icon,
+          onSelect: () => addConnectedNodes(type, direction),
+        }))
+    );
+    const addToOutputActions = getConnectedNodeActions('output');
+    const addToInputActions = getConnectedNodeActions('input');
     const matchingFavorite = favoriteNodes.findMatchingFavorite(node);
     const matchingTemplate = nodeTemplates.findMatchingTemplate(node);
     const assetIds = getNodeImageAssetIds(node);
@@ -207,10 +276,15 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     const visibleBaseActions = node.type === 'banner'
       ? baseActions.filter((action) => action.id !== 'rename-node')
       : baseActions;
-    return [...visibleBaseActions, ...imageActions, ...generationActions,
+    const batchActions: ContextMenuAction[] = hasSelection ? [
+      { id: 'add-node-to-output', kind: 'submenu', label: 'Add to output', icon: <Upload size={14} />, disabled: addToOutputActions.length === 0, disabledReason: 'Для всех выделенных нод нет общей совместимой ноды для выхода.', actions: addToOutputActions },
+      { id: 'add-node-to-input', kind: 'submenu', label: 'Add to input', icon: <Download size={14} />, disabled: addToInputActions.length === 0, disabledReason: 'Для всех выделенных нод нет общей совместимой ноды для входа.', actions: addToInputActions },
+      { id: 'send-selection-to-extract', label: 'Send to Extract', icon: <NodeIcon nodeType="imageToText" size={14} />, disabled: selectedImageSources.length === 0 || Boolean(sendToExtractReason), disabledReason: sendToExtractReason ?? 'Выдели хотя бы одно изображение.', onSelect: createExtractForSelection },
+    ] : [];
+    return [...visibleBaseActions, ...batchActions, ...imageActions, ...generationActions,
       { id: 'delete-node', label: 'Delete', icon: <Trash2 size={14} />,
         destructive: true, separatorBefore: true, onSelect: graph.deleteSelected }];
-  }, [copyAssetToClipboard, downloadAssets, favoriteNodes, graph, nodeTemplates,
+  }, [copyAssetToClipboard, createNode, downloadAssets, favoriteNodes, graph, nodeTemplates,
     onAskAiNode, openImageViewer, showToast]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {
@@ -218,8 +292,9 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     closeContextMenu(); contextMenu.openContextMenu(event, getCanvasMenuActions(point));
   }, [canvas, closeContextMenu, contextMenu, getCanvasMenuActions]);
   const openNodeMenuAt = useCallback((node: ProductionNode, x: number, y: number) => {
-    graph.selectNode(node.id); closeContextMenu();
-    contextMenu.openContextMenuAt(x, y, getNodeMenuActions(node), 244);
+    if (!graph.selectedSet.has(node.id)) graph.selectNode(node.id);
+    closeContextMenu();
+    contextMenu.openContextMenuAt(x, y, getNodeMenuActions(node), 280);
   }, [closeContextMenu, contextMenu, getNodeMenuActions, graph]);
   const openNodeMenu = useCallback((node: ProductionNode, event: ReactMouseEvent) => {
     event.preventDefault(); event.stopPropagation();
@@ -236,4 +311,19 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     contextMenu.openContextMenu(event, getSectionMenuActions(section), 260);
   }, [closeContextMenu, contextMenu, getSectionMenuActions, graph]);
   return { openCanvasMenu, openNodeMenu, openNodeOptionsMenu, openSectionMenu };
+}
+
+
+function arrangeNodePairs(graph: GraphModel, pairs: Array<{ source: ProductionNode; target: ProductionNode }>, direction: BatchConnectionDirection) {
+  if (pairs.length === 0) return;
+  const sizes = pairs.map(({ source, target }) => ({ source: getRenderedNodeSize(source), target: getRenderedNodeSize(target) }));
+  const sourceWidth = Math.max(...sizes.map(({ source }) => source.width));
+  const baseX = Math.min(...pairs.map(({ source, target }) => direction === 'output'
+    ? source.position.x : target.position.x - sourceWidth - 100));
+  const baseY = Math.min(...pairs.map(({ source, target }) => direction === 'output' ? source.position.y : target.position.y));
+  const rowHeight = Math.max(...sizes.map(({ source, target }) => Math.max(source.height, target.height))) + 48;
+  pairs.forEach(({ source, target }, index) => {
+    graph.moveNode(source.id, { x: baseX, y: baseY + index * rowHeight });
+    graph.moveNode(target.id, { x: baseX + sourceWidth + 100, y: baseY + index * rowHeight });
+  });
 }

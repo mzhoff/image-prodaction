@@ -1,3 +1,5 @@
+import { normalizeExtractAnalysisPreset } from '@/entities/production-graph/model/extract-analysis-profiles';
+import { getExtractSystemPrompt } from '@/entities/production-graph/model/extract-presets';
 import type { ProviderResult } from '@/modules/provider-connections';
 import { executeInternalOpenRouterChat } from '@/modules/generation';
 import { getRuntimeGenerationAttribution } from './runtime-usage-attribution';
@@ -33,7 +35,7 @@ export function createOpenRouterImageAnalyzer(
             role: 'system',
             parts: [{
               modality: 'text',
-              text: 'You are a senior art director, commercial image analyst, and prompt engineer for AI image production. Follow the user instruction exactly. Return detailed, structured, production-ready notes that can be reused directly as an image generation prompt. Preserve visible text exactly, especially Cyrillic. Do not invent brand names or logos.',
+              text: getExtractSystemPrompt(normalizeExtractAnalysisPreset(input.config.analysisPreset)),
             }],
           },
           {

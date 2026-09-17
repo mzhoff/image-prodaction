@@ -3,6 +3,14 @@ import test from 'node:test';
 import type { GraphProject, ProductionNode } from '@/entities/production-graph/model/types';
 import { compileStudioSection } from './studio-pipeline-compiler.ts';
 
+test('text bubble presentation does not alter compiled runtime behavior', () => {
+  const project = createTextProject();
+  const before = compileStudioSection(project, 'section-main');
+  project.nodes = project.nodes.map((item) => item.type === 'textPrompt'
+    ? { ...item, data: { ...item.data, presentation: 'bubble' } } as ProductionNode : item);
+  assert.deepEqual(compileStudioSection(project, 'section-main'), before);
+});
+
 test('infers a text prompt root as input and a text result leaf as output', () => {
   const compiled = compileStudioSection(createTextProject(), 'section-main');
 

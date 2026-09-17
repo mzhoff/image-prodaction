@@ -6,10 +6,10 @@ import {
 } from '@/modules/executable-pipelines/server/pipeline-publication-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
-const documentIdSchema = z.string().refine(isUuidV7);
+const documentIdSchema = z.string().refine(isUuid);
 const publishBodySchema = z.object({
   sectionId: z.string().trim().min(1).max(200),
   snapshot: z.unknown(),

@@ -30,6 +30,7 @@ browser after it is saved.
 ## Documentation
 
 - [Local setup](./docs/local-setup.md)
+- [Private package access via Keychain](./docs/private-packages.md)
 - [Repository structure](./docs/repository-structure.md)
 - [OpenRouter node flow](./docs/openrouter-node-flow.md)
 - [MVP plan](./docs/mvp-plan.md)
@@ -40,6 +41,7 @@ browser after it is saved.
 - [Coding standards](./docs/coding-standards.md)
 - [Workflow contracts](./docs/workflow-contracts.md)
 - [Workspace AI execution architecture](./docs/workspace-ai-execution-architecture.md)
+- [Workspace Usage dashboard and measurement contract](./docs/usage-dashboard.md)
 - [Workspace AI execution implementation plan](./docs/workspace-ai-execution-implementation-plan.md)
 - [Executable Pipelines architecture](./docs/executable-pipelines-architecture.md)
 - [ChatModule dependency management](./docs/chatmodule-dependency-management.md)

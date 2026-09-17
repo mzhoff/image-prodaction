@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from '@prodactionpro/ui-core/icons';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
@@ -188,7 +188,7 @@ function PublicationInputMediaCell({
   onRemove: (edgeId?: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
 }) {
-  const url = useAssetUrl(item?.assetId);
+  const url = useAssetUrl(item?.assetId, 'thumbnail');
 
   return (
     <div

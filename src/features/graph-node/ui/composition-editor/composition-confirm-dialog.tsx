@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { X } from '@prodactionpro/ui-core/icons';
 import { useEffect } from 'react';
 
 export function CompositionConfirmDialog({

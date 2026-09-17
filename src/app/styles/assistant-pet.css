@@ -1,0 +1,151 @@
+.assistant-pet-slot,
+.assistant-launcher-slot {
+  position: absolute;
+  z-index: 35;
+  right: 20px;
+  bottom: 16px;
+}
+
+.assistant-pet-slot-fixed,
+.assistant-launcher-slot-fixed {
+  position: fixed;
+  z-index: 80;
+}
+
+.assistant-pet-launcher {
+  display: grid;
+  width: 96px;
+  height: 96px;
+  place-items: center;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  padding: 0;
+  filter: drop-shadow(0 14px 20px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent));
+  transition: filter 180ms ease, opacity 160ms ease, transform 220ms ease;
+}
+
+.assistant-pet-launcher-canvas {
+  width: 152px;
+  height: 152px;
+}
+
+.assistant-pet-slot-canvas {
+  right: 12px;
+  bottom: 4px;
+}
+
+.assistant-pet-launcher:hover,
+.assistant-pet-launcher:focus-visible {
+  filter: drop-shadow(0 18px 24px color-mix(in srgb, var(--pui-semantic-shadow-color) 23%, transparent));
+  outline: none;
+  transform: translateY(-5px) rotate(-2deg) scale(1.04);
+}
+
+.assistant-pet-launcher:focus-visible::after {
+  position: absolute;
+  inset: 3px;
+  border: 2px solid var(--pui-semantic-border-focus);
+  border-radius: 22px;
+  content: '';
+}
+
+.assistant-pet-image,
+.rover-vector,
+.assistant-pet-lottie,
+.assistant-pet-lottie svg {
+  width: 100%;
+  height: 100%;
+}
+
+.assistant-pet-image {
+  display: block;
+  object-fit: contain;
+  object-position: center bottom;
+  animation: assistant-pet-idle 3.4s ease-in-out infinite;
+}
+
+.rover-vector {
+  display: block;
+  overflow: visible;
+  animation: assistant-pet-idle 3.4s ease-in-out infinite;
+}
+
+.rover-vector .rover-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rover-blink 5.4s ease-in-out infinite;
+}
+
+.rover-vector .rover-eye-right { animation-delay: 70ms; }
+.rover-vector .rover-core { animation: rover-core 2.6s ease-in-out infinite; }
+.rover-vector .rover-arm-wave { transform-box: fill-box; transform-origin: 90% 25%; }
+
+.assistant-pet-launcher:hover .rover-vector,
+.assistant-pet-launcher:focus-visible .rover-vector { animation: assistant-pet-hello 720ms cubic-bezier(.2, .8, .2, 1) both; }
+.assistant-pet-launcher:hover .rover-arm-wave,
+.assistant-pet-launcher:focus-visible .rover-arm-wave { animation: rover-wave 840ms ease-in-out both; }
+
+.assistant-pet-launcher:hover .assistant-pet-image,
+.assistant-pet-launcher:focus-visible .assistant-pet-image {
+  animation: assistant-pet-hello 720ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.assistant-notice {
+  position: absolute;
+  right: 58px;
+  bottom: 56px;
+  display: flex;
+  width: max-content;
+  max-width: min(310px, calc(100vw - 128px));
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 20%, transparent);
+  border-radius: 14px 14px 4px 14px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 92%, transparent);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
+  color: var(--pui-semantic-text-primary);
+  padding: 10px 12px;
+  backdrop-filter: blur(14px);
+}
+
+.assistant-notice > span { display: grid; gap: 2px; }
+.assistant-notice strong { font-size: 12px; line-height: 16px; }
+.assistant-notice small { color: var(--pui-semantic-text-secondary); font-size: 11px; line-height: 14px; }
+.assistant-notice-warning { border-color: color-mix(in srgb, var(--pui-semantic-status-warning-foreground) 42%, var(--pui-semantic-border-default)); }
+.assistant-notice-error { border-color: color-mix(in srgb, var(--pui-semantic-status-danger-foreground) 42%, var(--pui-semantic-border-default)); }
+.assistant-notice-icon { flex: 0 0 auto; color: var(--pui-semantic-accent-foreground); }
+
+.assistant-pet-slot .assistant-floating-button,
+.assistant-launcher-slot .assistant-floating-button { position: static; }
+
+.assistant-launcher-settings { display: grid; gap: 4px; padding: 4px 0; }
+.assistant-launcher-settings > strong { padding: 0 10px 4px; color: var(--pui-semantic-text-secondary); font-size: 11px; }
+.assistant-launcher-settings button { display: flex; width: 100%; align-items: center; gap: 9px; border: 0; background: transparent; color: inherit; padding: 8px 10px; text-align: left; }
+.assistant-launcher-settings button:hover { background: var(--pui-semantic-surface-secondary); }
+.assistant-launcher-settings button > span { display: grid; flex: 1; gap: 1px; }
+.assistant-launcher-settings b { font-size: 12px; }
+.assistant-launcher-settings small { color: var(--pui-semantic-text-secondary); font-size: 10px; line-height: 13px; }
+
+@keyframes assistant-pet-idle { 0%, 100% { transform: translateY(1px); } 50% { transform: translateY(-2px); } }
+@keyframes assistant-pet-hello { 0% { transform: translateY(1px) rotate(0); } 45% { transform: translateY(-6px) rotate(-5deg) scale(1.05); } 75% { transform: translateY(-2px) rotate(3deg); } 100% { transform: translateY(0) rotate(0); } }
+@keyframes rover-blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.08); } }
+@keyframes rover-core { 0%, 100% { opacity: .66; } 50% { opacity: 1; } }
+@keyframes rover-wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 50% { transform: rotate(10deg); } 75% { transform: rotate(-7deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-pet-launcher,
+  .assistant-pet-launcher:hover,
+  .assistant-pet-launcher:focus-visible,
+  .assistant-pet-image,
+  .rover-vector,
+  .rover-vector .rover-eye,
+  .rover-vector .rover-core,
+  .rover-vector .rover-arm-wave { animation: none; transition: none; transform: none; }
+}
+
+@media (max-width: 640px) {
+  .assistant-pet-slot,
+  .assistant-launcher-slot { right: 12px; bottom: 10px; }
+  .assistant-pet-launcher, .assistant-pet-launcher-canvas { width: 72px; height: 72px; }
+}

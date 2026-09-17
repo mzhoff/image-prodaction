@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Cable, PlugZap, Shield, UserRound, X } from 'lucide-react';
+import { Cable, PlugZap, Shield, UserRound, X } from '@prodactionpro/ui-core/icons';
 import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { SettingsSection } from '../model/settings-section';

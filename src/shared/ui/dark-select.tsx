@@ -1,13 +1,14 @@
 'use client';
 
-import { Check, ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown } from '@prodactionpro/ui-core/icons';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/shared/lib/cn';
 
 export interface DarkSelectOption {
   value: string;
   label: string;
+  icon?: ReactNode;
 }
 
 interface DarkSelectProps {
@@ -68,10 +69,12 @@ export function DarkSelect({ value, options, onChange, className, wide, ariaLabe
         ref={triggerRef}
         type="button"
         className={cn('mini-select', wide && 'mini-select-wide', className)}
+        data-node-interactive
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
         disabled={disabled}
+        onPointerDown={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
@@ -83,17 +86,27 @@ export function DarkSelect({ value, options, onChange, className, wide, ariaLabe
           openMenu();
         }}
       >
-        {selected?.label ?? value}
+        <span className="dark-select-option-content">
+          {selected?.icon}
+          <span className="mini-select-label" title={selected?.label ?? value}>{selected?.label ?? value}</span>
+        </span>
         <ChevronDown size={13} />
       </button>
       {open && anchor && !disabled ? createPortal(
         <>
-          <div className="dark-select-backdrop" onClick={() => setOpen(false)} />
+          <div
+            className="dark-select-backdrop"
+            data-node-interactive
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setOpen(false)}
+          />
           <div
             className="dark-select-menu"
+            data-node-interactive
             role="listbox"
             aria-label={ariaLabel}
             style={{ bottom: anchor.bottom, top: anchor.top, left: anchor.left, minWidth: anchor.width }}
+            onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
@@ -111,7 +124,10 @@ export function DarkSelect({ value, options, onChange, className, wide, ariaLabe
                     setOpen(false);
                   }}
                 >
-                  <span>{option.label}</span>
+                  <span className="dark-select-option-content">
+                    {option.icon}
+                    <span>{option.label}</span>
+                  </span>
                   {isSelected ? <Check size={14} /> : null}
                 </button>
               );

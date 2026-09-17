@@ -1,11 +1,12 @@
 'use client';
 
-import { RotateCcw } from 'lucide-react';
+import { SlidersHorizontal } from '@prodactionpro/ui-core/icons';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { RangeSlider } from '@/shared/ui/range-slider';
-import { adjustmentControls, useAdjustmentNodeModel } from '../../model/use-adjustment-node-model';
+import { useAdjustmentNodeModel } from '../../model/use-adjustment-node-model';
+import { AdjustmentControls, AdjustmentResetButton } from '../adjustment-controls';
 import { AdjustmentPreview } from '../adjustment-preview';
+import { ImagePlate } from '../image-plate';
 import { NodeTitle } from '../node-title';
 
 export function AdjustmentNode({ node }: { node: ProductionNode }) {
@@ -13,37 +14,23 @@ export function AdjustmentNode({ node }: { node: ProductionNode }) {
   const sourceRatio = model.sourceAsset?.width && model.sourceAsset.height
     ? `${model.sourceAsset.width}:${model.sourceAsset.height}`
     : undefined;
+  const controls = <AdjustmentControls values={model.values} onChange={model.handleAdjustmentChange}
+    onReset={model.handleAdjustmentReset} onInteractionStart={model.handleAdjustmentStart} />;
 
   return (
     <>
       <NodeTitle title={node.data.title} nodeType={node.type} muted />
-      <AdjustmentPreview assetId={model.sourceAsset?.id} aspectRatio={sourceRatio} values={model.values} />
-      <button
-        type="button"
-        className="adjustment-reset-button"
-        onClick={model.handleReset}
-        data-node-interactive
-      >
-        <RotateCcw size={15} />
-        <span>Reset</span>
-      </button>
+      <ImagePlate assetId={model.displayAsset?.id} aspectRatio={sourceRatio} outputPending={model.outputPending}
+        previewMedia={model.sourceAsset ? <AdjustmentPreview assetId={model.sourceAsset.id} aspectRatio={sourceRatio} values={model.values} /> : undefined}
+        viewerMedia={<AdjustmentPreview assetId={model.sourceAsset?.id} aspectRatio={sourceRatio} values={model.values} variant="viewer" />}
+        viewerPanel={{ active: true, placement: 'right', label: 'Adjustments', className: 'image-editor-panel-adjustment',
+          toolbar: <span className="curves-viewer-toolbar-label"><SlidersHorizontal size={15} />Adjustments</span>,
+          body: <>{controls}<AdjustmentResetButton onReset={model.handleReset} />
+            {model.message ? <div className="node-note" role="alert">{model.message}</div> : null}</>,
+        }} />
+      <AdjustmentResetButton onReset={model.handleReset} />
       <CollapsibleSection title="Settings">
-        <div className="adjustment-slider-list">
-          {adjustmentControls.map((control) => (
-            <RangeSlider
-              key={control.id}
-              label={control.label}
-              max={control.max}
-              min={control.min}
-              step={control.step}
-              fillMode="center"
-              value={model.values[control.id]}
-              onChange={(value) => model.handleAdjustmentChange(control.id, value)}
-              onReset={() => model.handleAdjustmentReset(control.id)}
-              onInteractionStart={model.handleAdjustmentStart}
-            />
-          ))}
-        </div>
+        {controls}
       </CollapsibleSection>
     </>
   );

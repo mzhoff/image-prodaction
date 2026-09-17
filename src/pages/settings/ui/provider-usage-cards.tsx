@@ -1,4 +1,4 @@
-import { Activity, CircleDollarSign } from 'lucide-react';
+import { Activity, CircleDollarSign } from '@prodactionpro/ui-core/icons';
 import type {
   OpenRouterKeyUsage,
   ProviderConnectionDto,

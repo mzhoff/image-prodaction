@@ -1,6 +1,6 @@
 'use client';
 
-import { RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { RotateCcw, SlidersHorizontal } from '@prodactionpro/ui-core/icons';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { useCurvesNodeModel } from '../../model/use-curves-node-model';
@@ -36,9 +36,10 @@ export function CurvesNode({ node }: { node: ProductionNode }) {
         onMaskChange={model.handleMaskChange}
         viewerPanel={{
           active: true,
+          placement: 'right',
+          label: 'Curves',
           body: <CurvesEditor {...editorProps} variant="viewer" />,
           className: 'image-editor-panel-curves',
-          height: 362,
           toolbar: (
             <span className="curves-viewer-toolbar-label">
               <SlidersHorizontal size={15} />

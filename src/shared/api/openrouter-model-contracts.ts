@@ -1,3 +1,5 @@
+import type { ImageModelCapabilities } from './image-model-capabilities';
+
 export interface OpenRouterRawModel {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface OpenRouterModelOption {
   supportedParameters: string[];
   aspectRatios?: string[];
   sizes?: string[];
+  imageCapabilities?: ImageModelCapabilities;
 }
 
 export interface OpenRouterSpeechModelOption extends OpenRouterModelOption {
@@ -36,6 +39,8 @@ export interface OpenRouterSpeechModelOption extends OpenRouterModelOption {
 export interface OpenRouterModelCatalog {
   analysisModels: OpenRouterModelOption[];
   imageModels: OpenRouterModelOption[];
+  generationModels?: OpenRouterModelOption[];
+  imageCatalogError?: string;
   speechModels: OpenRouterSpeechModelOption[];
   source: 'openrouter' | 'fallback';
   updatedAt: string;

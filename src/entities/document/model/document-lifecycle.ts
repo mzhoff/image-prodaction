@@ -3,6 +3,8 @@ import type { ProjectExport } from '@/entities/production-graph/model/project-sc
 export const DEFAULT_DOCUMENT_NAME = 'Untitled Pipeline';
 
 interface UntouchedDocumentState {
+  folderId?: string | null;
+  librarySaved?: boolean;
   favorite: boolean;
   hasEverHadContent: boolean;
   name: string;
@@ -25,6 +27,8 @@ export function documentSnapshotHasContent(snapshot: ProjectExport) {
 
 export function isDisposableUntouchedDocument(document: UntouchedDocumentState) {
   return document.status === 'active'
+    && !document.folderId
+    && !document.librarySaved
     && document.name === DEFAULT_DOCUMENT_NAME
     && document.favorite === false
     && document.hasEverHadContent === false

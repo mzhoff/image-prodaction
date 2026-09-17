@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
-import { TEXT_SPLITTER_MAX_ITEMS } from '@/entities/production-graph/model/node-definitions';
+import { getTextSplitterItemPortIndex, TEXT_SPLITTER_MAX_ITEMS } from '@/entities/production-graph/model/node-definitions';
 import { splitProductionText } from '@/entities/production-graph/model/text-splitter';
+import { getTextSplitterSlotLabel, reconcileTextSplitterSlots } from '@/entities/production-graph/model/text-splitter-slots';
 import type { ProductionNode, TextSplitterMode, TextSplitterNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { valueSelectOptions } from '../lib/node-select-options';
@@ -24,9 +25,12 @@ export function useTextSplitterNodeModel(node: ProductionNode) {
     () => splitProductionText(sourceText, data.mode, data.delimiter),
     [data.delimiter, data.mode, sourceText],
   );
-  const visibleItems = items.slice(0, TEXT_SPLITTER_MAX_ITEMS);
-  const message = items.length > TEXT_SPLITTER_MAX_ITEMS
-    ? `Text Split produced ${items.length} fragments. Limit is ${TEXT_SPLITTER_MAX_ITEMS}; use another splitter node for the remaining text.`
+  const slots = useMemo(() => reconcileTextSplitterSlots(items, data, edges
+    .filter((edge) => edge.sourceNodeId === node.id)
+    .map((edge) => getTextSplitterItemPortIndex(edge.sourcePortId))), [items, data, edges, node.id]);
+  const visibleItems = slots.items;
+  const message = slots.overflowCount > 0
+    ? `Не помещается фрагментов: ${slots.overflowCount}. Лимит — ${TEXT_SPLITTER_MAX_ITEMS} выходов, включая сохранённые связи. Используйте ещё один Splitter.`
     : '';
   const activeItemIndex = clampIndex(data.activeItemIndex ?? 0, visibleItems.length);
   const result = visibleItems[activeItemIndex] ?? '';
@@ -34,14 +38,15 @@ export function useTextSplitterNodeModel(node: ProductionNode) {
   useEffect(() => {
     const isCurrent = data.sourceText === sourceText
       && arraysEqual(data.items ?? [], visibleItems)
+      && arraysEqual(data.itemKeys ?? [], slots.itemKeys)
       && data.result === result
       && data.activeItemIndex === activeItemIndex
       && data.message === message;
-    if (!isCurrent) updateNodeDataSilent(node.id, { activeItemIndex, items: visibleItems, message, result, sourceText });
-  }, [activeItemIndex, data.activeItemIndex, data.items, data.message, data.result, data.sourceText, message, node.id, result, sourceText, updateNodeDataSilent, visibleItems]);
+    if (!isCurrent) updateNodeDataSilent(node.id, { activeItemIndex, items: visibleItems, itemKeys: slots.itemKeys, message, result, sourceText });
+  }, [activeItemIndex, data.activeItemIndex, data.items, data.itemKeys, data.message, data.result, data.sourceText, message, node.id, result, slots.itemKeys, sourceText, updateNodeDataSilent, visibleItems]);
 
   const handleCreateTextNodes = useCallback(() => {
-    visibleItems.slice(0, 12).forEach((item, index) => {
+    visibleItems.filter(Boolean).slice(0, 12).forEach((item, index) => {
       const nodeId = addNode('textPrompt', {
         x: node.position.x + 430,
         y: node.position.y + index * 260,
@@ -60,6 +65,8 @@ export function useTextSplitterNodeModel(node: ProductionNode) {
     handleSplitRuleChange: (delimiter: string) => updateNodeData(node.id, { delimiter, mode: 'delimiter' }),
     itemOptions: valueSelectOptions(visibleItems.map((_, index) => String(index))),
     items: visibleItems,
+    itemLabels: slots.itemKeys.map(getTextSplitterSlotLabel),
+    activeItemCount: visibleItems.filter(Boolean).length,
     message,
     modeOptions: textSplitterModeOptions,
     result,

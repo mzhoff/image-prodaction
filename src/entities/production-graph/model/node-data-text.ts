@@ -8,6 +8,8 @@ import type { BaseNodeData } from './node-data-image';
 export type TextPromptVariableDisplayMode = 'source-value' | 'value' | 'source';
 export interface TextPromptVariable { id: string; alias: string }
 export interface TextPromptNodeData extends BaseNodeData {
+  /** Legacy bubble values are accepted on import and displayed as ordinary cards. */
+  presentation?: 'card' | 'bubble';
   disabledResultFilterIds?: string[]; result?: string; sourceCount?: number;
   text: string; textareaHeight?: number; variableDisplayMode?: TextPromptVariableDisplayMode;
   variables?: TextPromptVariable[];
@@ -40,6 +42,10 @@ export interface TextToSpeechNodeData extends BaseNodeData {
   resultAssetId?: string; resultAssetIds?: string[];
   resultMetadata?: Record<string, TextToSpeechResultMetadata>; seed?: number;
   sourceText?: string; speed?: number; temperature?: number; topP?: number; voice: string;
+  speechRequest?: {
+    idempotencyKey: string; fingerprint: string; jobId?: string;
+    metadata: Pick<TextToSpeechResultMetadata, 'language' | 'model' | 'voice'>;
+  };
 }
 
 export interface RouterNodeData extends BaseNodeData { inputLabel?: string; outputLabel?: string }
@@ -49,6 +55,8 @@ export interface TextFormatterNodeData extends BaseNodeData {
 }
 export type TextSplitterMode = 'newline' | 'paragraph' | 'numbered-list' | 'delimiter';
 export interface TextSplitterNodeData extends BaseNodeData {
+  /** Persisted identities for item-N slots; missing sections keep empty outputs. */
+  itemKeys?: string[];
   activeItemIndex?: number; delimiter: string; items?: string[]; message?: string;
   mode: TextSplitterMode; result?: string; sourceText?: string;
 }

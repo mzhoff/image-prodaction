@@ -1,0 +1,79 @@
+.reverie-stories-node-settings {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 0 16px 12px;
+}
+
+.reverie-stories-node-settings .setting-row {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.reverie-stories-node-section {
+  min-width: 0;
+  padding: 0 16px 8px;
+}
+
+.reverie-stories-node-field {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.reverie-stories-node-input {
+  min-height: 62px;
+}
+
+.reverie-stories-node-input-body {
+  min-height: 92px;
+}
+
+.reverie-stories-node-input:focus-visible,
+.reverie-stories-node-settings .secondary-node-button:focus-visible,
+.reverie-stories-node-actions button:focus-visible {
+  outline: 2px solid var(--pui-semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.reverie-stories-node-input[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 1px var(--pui-semantic-status-danger-foreground);
+}
+
+.reverie-stories-node-field-hint {
+  color: var(--pui-semantic-text-muted);
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 15px;
+  text-align: right;
+}
+
+.reverie-stories-node-hint {
+  min-width: 0;
+  margin: 0;
+  color: var(--pui-semantic-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+.reverie-stories-node-error {
+  color: var(--pui-semantic-status-danger-foreground);
+}
+
+.reverie-stories-node-actions {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.reverie-stories-node-collapsed-port {
+  position: relative;
+  min-height: 24px;
+  padding: 4px 16px;
+  color: var(--pui-semantic-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}

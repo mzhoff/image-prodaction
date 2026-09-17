@@ -16,3 +16,6 @@
 @import "./node-card/qr-code-node.css";
 @import "./node-card/shared-node-actions.css";
 @import "./node-card/banner-node.css";
+@import './node-card/import-video.css';
+@import './node-card/timeline.css';
+@import './node-card/text-fragment.css';

@@ -7,13 +7,21 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS dependencies
 COPY package.json package-lock.json ./
 RUN --mount=type=secret,id=npm_token \
+  --mount=type=bind,target=/package-context,readonly \
   set -eu; \
+  if [ -d /package-context/.local-packages ]; then \
+    mkdir -p .local-packages; \
+    for archive in /package-context/.local-packages/*.tgz; do \
+      [ ! -f "$archive" ] || cp "$archive" .local-packages/; \
+    done; \
+  fi; \
   npm_config_path=/tmp/npmrc; \
   export NPM_CONFIG_USERCONFIG="$npm_config_path"; \
   trap 'rm -f "$npm_config_path"' EXIT; \
   npm config set @prodactionpro:registry https://npm.pkg.github.com; \
   if [ -s /run/secrets/npm_token ]; then \
-    npm config set //npm.pkg.github.com/:_authToken "$(cat /run/secrets/npm_token)"; \
+    export PRODACTION_PACKAGES_READ_TOKEN="$(cat /run/secrets/npm_token)"; \
+    npm config set //npm.pkg.github.com/:_authToken '${PRODACTION_PACKAGES_READ_TOKEN}'; \
   fi; \
   npm ci
 

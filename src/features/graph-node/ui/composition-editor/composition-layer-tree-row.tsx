@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronRight, Eye, EyeOff, Link2, Lock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Link2, Lock } from '@prodactionpro/ui-core/icons';
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { CompositionLayerTreeDragItem } from '../../model/use-composition-node-model';

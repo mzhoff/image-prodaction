@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Scissors } from 'lucide-react';
+import { Loader2, Scissors } from '@prodactionpro/ui-core/icons';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';

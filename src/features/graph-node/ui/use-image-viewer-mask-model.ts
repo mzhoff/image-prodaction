@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
-import { DEFAULT_IMAGE_MODEL, PREFERRED_IMAGE_MODEL_IDS, getImageModelConfig } from '@/shared/api/openrouter-models';
+import { DEFAULT_IMAGE_MODEL, getImageModelConfig } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { modelSelectOptions } from '../lib/node-select-options';
 import type { ImageMaskEditorHandle, MaskTool } from './image-mask-editor';
@@ -10,6 +10,11 @@ import type { MaskEditPayload } from './image-viewer-types';
 
 export const MIN_MASK_BRUSH_SIZE = 8;
 export const MAX_MASK_BRUSH_SIZE = 120;
+
+/** Keep the edit model aligned with the exact model recorded on this result. */
+export function getEditDefaultModel(sourceModelId?: string) {
+  return sourceModelId ?? DEFAULT_IMAGE_MODEL;
+}
 
 interface UseImageViewerMaskModelParams {
   asset?: AssetRecord;
@@ -34,9 +39,7 @@ export function useImageViewerMaskModel({
   const localMaskMode = Boolean(onMaskChange && !onMaskEdit);
   const activeMetadata = assetId ? assetMetadata?.[assetId] : undefined;
   const sourceModelId = activeMetadata?.model ?? sourceModel;
-  const editDefaultModel = sourceModelId && PREFERRED_IMAGE_MODEL_IDS.includes(sourceModelId)
-    ? sourceModelId
-    : DEFAULT_IMAGE_MODEL;
+  const editDefaultModel = getEditDefaultModel(sourceModelId);
   const [brushSize, setBrushSize] = useState(16);
   const [editModel, setEditModel] = useState(editDefaultModel);
   const [maskOpen, setMaskOpen] = useState(false);

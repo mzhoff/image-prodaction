@@ -1,14 +1,16 @@
 'use client';
 
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { createGraphConnectionActions } from './graph-connection-actions';
 import { createGraphFavoriteNodeActions } from './graph-favorite-node-actions';
 import { createGraphHistoryActions } from './graph-history-actions';
 import { createGraphLocationActions } from './graph-location-actions';
 import { createGraphNodeActions } from './graph-node-actions';
+import { createGraphTextFragmentActions } from './graph-text-fragment-actions';
 import { createGraphPipelineContractActions } from './graph-pipeline-contract-actions';
-import { createGraphPersistStorage, createPersistedGraphState, GRAPH_PERSIST_STORAGE_KEY } from './graph-persistence';
+import { GRAPH_PERSIST_STORAGE_KEY } from './graph-persistence';
+import { createGraphStateStorage, selectPersistedGraphState } from './graph-state-storage';
 import { createGraphPortabilityActions } from './graph-portability-actions';
 import { createGraphSectionActions } from './graph-section-actions';
 import { createGraphSelectionActions } from './graph-selection-actions';
@@ -30,6 +32,7 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       historyFuture: [],
       uiState: createEmptyProjectUiState(),
       ...createGraphNodeActions(set),
+      ...createGraphTextFragmentActions(set),
       ...createGraphPipelineContractActions(set),
       ...createGraphFavoriteNodeActions(set),
       ...createGraphSectionActions(set, get),
@@ -43,8 +46,8 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
     }),
     {
       name: GRAPH_PERSIST_STORAGE_KEY,
-      storage: createJSONStorage(createGraphPersistStorage),
-      partialize: createPersistedGraphState,
+      storage: createGraphStateStorage(),
+      partialize: selectPersistedGraphState,
       merge: (persisted, current) => {
         const persistedState = persisted as Partial<ProductionGraphState & GraphProject>;
         const project = normalizeProject({ ...initialProject, ...persistedState });

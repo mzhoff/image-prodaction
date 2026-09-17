@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronDown, Ellipsis, Images, Maximize2, PanelsTopLeft, Send } from 'lucide-react';
+import { ChevronDown, Ellipsis, Images, Maximize2, PanelsTopLeft } from '@prodactionpro/ui-core/icons';
+import { NodeIcon } from '@/entities/production-graph/ui/node-icon';
 import type { ReactNode } from 'react';
 import {
   useEffect,
@@ -18,7 +19,7 @@ interface PublicationFormatOption {
 }
 
 const TELEGRAM_FORMAT_OPTIONS: PublicationFormatOption[] = [
-  { id: 'telegram-post', label: 'Post', icon: <Send size={14} /> },
+  { id: 'telegram-post', label: 'Post', icon: <NodeIcon nodeType="telegramPublication" size={14} /> },
   { id: 'telegram-media-album', label: 'Media album', icon: <Images size={14} />, disabled: true },
   { id: 'telegram-story', label: 'Story', icon: <PanelsTopLeft size={14} />, disabled: true },
 ];
@@ -66,7 +67,7 @@ export function TelegramPublicationHeader({
   return (
     <div className="publication-node-header" data-node-drag-handle>
       <span className="publication-platform-icon" aria-hidden="true">
-        <TelegramLogoIcon size={14} />
+        <NodeIcon nodeType="telegramPublication" size={14} />
       </span>
       <div className="publication-node-header-main">
         {editingTitle ? (
@@ -150,23 +151,6 @@ export function PublicationTabs({
         Result
       </button>
     </div>
-  );
-}
-
-function TelegramLogoIcon({ size }: { size: number }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      focusable="false"
-    >
-      <path
-        fill="currentColor"
-        d="M21.7 3.7 3.2 10.8c-1 .4-1 1.8.1 2.1l4.7 1.5 1.8 5.3c.3.9 1.5 1.1 2.1.4l2.6-2.7 4.8 3.5c.8.6 1.9.1 2.1-.9l3-14.6c.2-1.1-.8-2-1.8-1.7Zm-4.5 4.5-7.8 7.1-.4 3.1-1-3.7 9.2-6.5Z"
-      />
-    </svg>
   );
 }
 

@@ -7,6 +7,7 @@ export interface CropRect { x: number; y: number; width: number; height: number 
 export interface CropImageNodeData extends BaseNodeData {
   aspectRatio: string; crop?: CropRect; cropStateVersion?: number; locked: boolean;
   resultAssetId?: string; message?: string; sourceAspectRatio?: number; sourceAssetId?: string;
+  videoResultAssetId?: string; videoResultSignature?: string;
 }
 export interface RemoveBackgroundNodeData extends BaseNodeData { resultAssetId?: string; message?: string }
 export interface AdjustmentNodeData extends BaseNodeData {

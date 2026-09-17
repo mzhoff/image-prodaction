@@ -1,6 +1,8 @@
 'use client';
 
-import { KeyRound, Laptop, LogOut, ShieldCheck, Smartphone } from 'lucide-react';
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
+import { KeyRound, Laptop, LogOut, ShieldCheck, Smartphone } from '@prodactionpro/ui-core/icons';
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient, useSession } from '@/shared/auth/client';
@@ -147,7 +149,7 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
         <form className="settings-form" onSubmit={changePassword}>
           <label>
             <span>Текущий пароль</span>
-            <input
+            <PuiInput
               type="password"
               name="current-password"
               value={currentPassword}
@@ -162,7 +164,7 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
           <div className="settings-form-row">
             <label>
               <span>Новый пароль</span>
-              <input
+              <PuiInput
                 type="password"
                 name="new-password"
                 value={newPassword}
@@ -176,7 +178,7 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
             </label>
             <label>
               <span>Повторите пароль</span>
-              <input
+              <PuiInput
                 type="password"
                 name="password-confirmation"
                 value={confirmation}

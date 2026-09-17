@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from '@prodactionpro/ui-core/icons';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
 import type { ProductionNode, ReferenceComposerNodeData } from '@/entities/production-graph/model/types';
 import { MODEL_FALLBACK_ASPECT_RATIOS, MODEL_FALLBACK_SIZES } from '@/shared/api/openrouter-models';
@@ -8,6 +8,7 @@ import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PromptBox } from '@/shared/ui/prompt-box';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { modelSelectOptions, valueSelectOptions } from '../../lib/node-select-options';
 import { ImagePlate } from '../image-plate';
@@ -26,7 +27,7 @@ export function ReferenceComposerNode({ node }: { node: ProductionNode }) {
       <NodeTitle title={data.title} nodeType={node.type} muted />
       <ImagePlate compact />
       <CollapsibleSection title="Settings">
-        <SettingRow
+        <ModelSettingRow modality="image"
           label="Model"
           value={data.model ?? 'google/gemini-2.5-flash-image'}
           options={modelOptions}

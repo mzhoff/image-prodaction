@@ -20,6 +20,7 @@ export interface LibraryAssetItem {
   operation: string | null;
   width: number | null;
   height: number | null;
+  byteSize?: number | null;
   createdAt: string;
   contentUrl: string;
   thumbnailUrl?: string | null;
@@ -45,6 +46,7 @@ export interface LibraryAssetsResponse {
 }
 
 export interface LibraryFilters {
+  folderId?: string;
   origin: string;
   mediaKind: string;
   modelId: string;

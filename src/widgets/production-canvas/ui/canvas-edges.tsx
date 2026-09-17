@@ -1,4 +1,5 @@
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
+import type { RefObject } from 'react';
 import { getRouterDataKind } from '@/entities/production-graph/model/graph-io';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
 import { getBezierPath, getEdgePath, type PortPointLookup } from '../lib/edge-path';
@@ -8,6 +9,7 @@ import type { ConnectionDraft } from '../model/use-connection-draft';
 interface CanvasEdgesProps {
   collapsedGenerateComposingNodeIds: Set<string>;
   connectionDraft: ConnectionDraft | null;
+  draftPathRef?: RefObject<SVGPathElement | null>;
   edges: GraphEdge[];
   measuredPortPoints: PortPointLookup;
   nodesById: Map<string, ProductionNode>;
@@ -17,6 +19,7 @@ interface CanvasEdgesProps {
 export function CanvasEdges({
   collapsedGenerateComposingNodeIds,
   connectionDraft,
+  draftPathRef,
   edges,
   measuredPortPoints,
   nodesById,
@@ -33,6 +36,7 @@ export function CanvasEdges({
         return (
           <path
             key={edge.id}
+            data-edge-id={edge.id}
             d={path}
             fill="none"
             stroke={stroke}
@@ -45,6 +49,7 @@ export function CanvasEdges({
       })}
       {connectionDraft ? (
         <path
+          ref={draftPathRef}
           d={getDraftPath(connectionDraft)}
           fill="none"
           stroke={getEdgeStroke(getDraftKind(connectionDraft, nodesById, edges))}
@@ -108,15 +113,6 @@ function getEdgeKindClass(kind: string) {
 }
 
 function getEdgeStroke(kind: string) {
-  if (kind === 'image') return '#052cd9';
-  if (kind === 'subject') return '#7c3aed';
-  if (kind === 'location') return '#0f766e';
-  if (kind === 'publication') return '#2aabee';
-  if (kind === 'video') return '#f97316';
-  if (kind === 'audio') return '#c026d3';
-  if (kind === 'json') return '#8b5cf6';
-  if (kind === 'number') return '#d97706';
-  if (kind === 'boolean') return '#db2777';
-  if (kind === 'empty') return '#9ca3af';
-  return '#16a34a';
+  const role = ['image', 'subject', 'location', 'publication', 'video', 'audio', 'json', 'number', 'boolean', 'empty'].includes(kind) ? kind : 'text';
+  return `var(--pui-semantic-dataflow-${role})`;
 }

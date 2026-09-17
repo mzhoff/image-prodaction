@@ -1,4 +1,5 @@
 import type { GraphProject, ProductionNode } from '@/entities/production-graph/model/types';
+import { compactPipelineLevels } from './pipeline-layout-compact';
 
 const CANVAS_MIN = 80;
 const CANVAS_MAX = 3_920;
@@ -55,9 +56,44 @@ export function positionPipelineBuildNodes(input: {
   const bounds = getNodeBounds(positioned);
   if (bounds.left < CANVAS_MIN || bounds.top < CANVAS_MIN
     || bounds.right > CANVAS_MAX || bounds.bottom > CANVAS_MAX) {
-    throw new Error('Prepared pipeline does not fit inside the canvas bounds.');
+    const compact = findCompactPlacement(input, levels, direction, columnGap, rowGap);
+    if (!compact) throw new Error('Prepared pipeline does not fit inside the canvas bounds.');
+    input.warnings?.push('Для большого графа использована компактная расстановка: все ноды и связи сохранены.');
+    return compact;
   }
   return positioned;
+}
+
+function findCompactPlacement(
+  input: Parameters<typeof positionPipelineBuildNodes>[0], levels: Map<string, number>,
+  direction: 'horizontal' | 'vertical', columnGap: number, rowGap: number,
+) {
+  // Keep the readable level layout first. Wrap tall/wide tiers only when the
+  // normal layout exceeds the real 4000px Studio world, never shrink cards.
+  const existing = input.currentProject.nodes;
+  const candidateCoordinates = (values: number[]) => [...new Set(values)]
+    .filter((value) => Number.isFinite(value) && value >= CANVAS_MIN && value < CANVAS_MAX).slice(0, 64);
+  const xs = candidateCoordinates([240, CANVAS_MIN, ...existing.map((node) => node.position.x + node.size.width + 48)]);
+  const ys = candidateCoordinates([240, CANVAS_MIN, ...existing.map((node) => node.position.y + node.size.height + 48)]);
+  for (const gap of [Math.min(rowGap, 80), 32]) {
+    for (const extent of [3_680, 3_840, 3_200, 2_400, 1_800, 1_200]) {
+      const nodes = compactPipelineLevels(input.nodes, input.input.nodes, levels, direction, extent, Math.min(columnGap, 80), gap);
+      const bounds = getNodeBounds(nodes);
+      for (const x of xs) {
+        for (const y of ys) {
+          if (x < CANVAS_MIN || y < CANVAS_MIN || x + bounds.right > CANVAS_MAX || y + bounds.bottom > CANVAS_MAX) continue;
+          // Reject an occupied group rectangle before testing individual cards.
+          // Candidate count is bounded even in a document with thousands of nodes.
+          if (existing.some((node) => x < node.position.x + node.size.width + 32
+            && x + bounds.right + 32 > node.position.x && y < node.position.y + node.size.height + 32
+            && y + bounds.bottom + 32 > node.position.y)) continue;
+          const positioned = positionAtOrigin(nodes, { x, y });
+          if (!overlapsExistingNodes(positioned, existing)) return positioned;
+        }
+      }
+    }
+  }
+  return undefined;
 }
 
 function positionAtOrigin(nodes: ProductionNode[], origin: { x: number; y: number }) {

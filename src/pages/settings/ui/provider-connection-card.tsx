@@ -11,7 +11,7 @@ import {
   RefreshCcw,
   ShieldCheck,
   Unplug,
-} from 'lucide-react';
+} from '@prodactionpro/ui-core/icons';
 import type { ProviderConnectionDto } from '../api/workspace-ai-api';
 import type { ProviderSettingsModel } from '../model/use-provider-settings-model';
 import { formatDateTime, roleLabel } from '../model/provider-settings-values';

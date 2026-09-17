@@ -6,6 +6,7 @@ interface BaseContextMenuAction {
   icon?: ReactNode;
   shortcut?: string;
   disabled?: boolean;
+  disabledReason?: string;
   destructive?: boolean;
   separatorBefore?: boolean;
 }

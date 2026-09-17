@@ -1,6 +1,8 @@
-import type { CompositionNodeData, GraphPort, PipelineContractField, PipelineContractFieldKind, PipelineInputNodeData, PipelineOutputNodeData, ProductionNode, ProductionNodeType, StructuredOutputNodeData, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
+import type { CompositionNodeData, GenerateVideoNodeData, GraphPort, PipelineContractField, PipelineContractFieldKind, PipelineInputNodeData, PipelineOutputNodeData, ProductionNode, ProductionNodeType, StructuredOutputNodeData, TelegramPublicationNodeData, TextConcatNodeData, TextPromptNodeData, TextSplitterNodeData } from './types';
+import { getTextSplitterSlotLabel, TEXT_SPLITTER_MAX_ITEMS } from './text-splitter-slots';
 import { getPipelineFieldPortId } from './pipeline-contract-fields';
 import { NODE_DEFINITIONS } from './node-registry';
+import { getImportMediaPorts } from './import-media-ports';
 export { isNodeCollapsible } from './node-registry';
 
 export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
@@ -11,6 +13,9 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   textToSpeech: NODE_DEFINITIONS.textToSpeech.ports,
   speechToText: NODE_DEFINITIONS.speechToText.ports,
   audioConvert: NODE_DEFINITIONS.audioConvert.ports,
+  timelineHandoff: NODE_DEFINITIONS.timelineHandoff.ports,
+  reverieStories: NODE_DEFINITIONS.reverieStories.ports,
+  generateVideo: NODE_DEFINITIONS.generateVideo.ports,
   textFormatter: NODE_DEFINITIONS.textFormatter.ports,
   textSplitter: NODE_DEFINITIONS.textSplitter.ports,
   pipelineInput: NODE_DEFINITIONS.pipelineInput.ports,
@@ -38,19 +43,35 @@ export const NODE_PORTS: Record<ProductionNodeType, GraphPort[]> = {
   preview: NODE_DEFINITIONS.preview.ports,
 };
 export function getNodePorts(node: ProductionNode) {
-  if (node.type === 'importImage' && 'mediaKind' in node.data && node.data.mediaKind === 'audio') {
-    return [{ id: 'image', label: 'Audio', kind: 'audio', side: 'output' }] satisfies GraphPort[];
-  }
+  if (node.type === 'importImage') return getImportMediaPorts(node.data) ?? NODE_PORTS.importImage;
+  if (node.type === 'generateVideo') return getGenerateVideoPorts(node);
   if (node.type === 'textPrompt') return getTextPromptPorts(node);
+  if (node.type === 'imageToText') return getImageToTextPorts(node);
   if (node.type === 'textConcat') return getTextConcatPorts(node);
   if (node.type === 'textSplitter') return getTextSplitterPorts(node);
   if (node.type === 'pipelineInput') return getPipelineInputPorts(node);
   if (node.type === 'pipelineOutput') return getPipelineOutputPorts(node);
+  if (node.type === 'reverieStories') {
+    const sequence = (node.data as import('./node-data-stories').ReverieStoriesNodeData).storyMode === 'sequence';
+    return NODE_PORTS.reverieStories.filter((port) => sequence
+      ? port.id === 'story' || port.id.startsWith('document')
+      : !port.id.startsWith('document-'));
+  }
   if (node.type === 'structuredOutput') return getStructuredOutputPorts(node);
   if (node.type === 'telegramPublication') return getTelegramPublicationPorts(node);
   if (node.type === 'composition') return getCompositionPorts(node);
   if (node.type === 'exportImage') return getExportImagePorts(node);
   return NODE_PORTS[node.type];
+}
+
+function getGenerateVideoPorts(node: ProductionNode): GraphPort[] {
+  const mode = (node.data as GenerateVideoNodeData).mode;
+  return NODE_PORTS.generateVideo.filter((port) => {
+    if (port.id === 'prompt' || port.id === 'video') return true;
+    if (mode === 'frames') return port.id === 'first-frame' || port.id === 'last-frame';
+    if (mode === 'references') return port.id.startsWith('reference-');
+    return false;
+  });
 }
 export function pipelineFieldKindToPortKind(kind: PipelineContractFieldKind): GraphPort['kind'] {
   return kind;
@@ -115,8 +136,10 @@ export const TEXT_PROMPT_VARIABLE_PORT_PREFIX = 'variable-';
 export const TELEGRAM_MEDIA_MAX_INPUTS = 10;
 export const TELEGRAM_MEDIA_MIN_INPUTS = 1;
 export const TELEGRAM_MEDIA_PORT_PREFIX = 'media-';
-export const TEXT_SPLITTER_MAX_ITEMS = 30;
+export { TEXT_SPLITTER_MAX_ITEMS } from './text-splitter-slots';
 export const TEXT_SPLITTER_PORT_PREFIX = 'item-';
+export const IMAGE_TO_TEXT_MAX_INPUTS = 5;
+export const IMAGE_TO_TEXT_PORT_PREFIX = 'image-';
 
 export function getTextConcatInputPortId(index: number) {
   return `${TEXT_CONCAT_PORT_PREFIX}${index}`;
@@ -191,6 +214,21 @@ export function getTextConcatInputCount(node: ProductionNode) {
   return Math.max(TEXT_CONCAT_MIN_INPUTS, Math.floor(Number(data.inputCount) || TEXT_CONCAT_MIN_INPUTS));
 }
 
+export function getImageToTextInputPortId(index: number) {
+  return `${IMAGE_TO_TEXT_PORT_PREFIX}${index}`;
+}
+
+export function getImageToTextInputPortIndex(portId: string) {
+  if (!portId.startsWith(IMAGE_TO_TEXT_PORT_PREFIX)) return -1;
+  const index = Number(portId.slice(IMAGE_TO_TEXT_PORT_PREFIX.length));
+  return Number.isInteger(index) && index >= 0 ? index : -1;
+}
+
+export function getImageToTextInputCount(node: ProductionNode) {
+  const data = node.data as { imageInputCount?: number };
+  return Math.max(1, Math.min(IMAGE_TO_TEXT_MAX_INPUTS, Math.floor(Number(data.imageInputCount) || 1)));
+}
+
 export function getTextPromptVariables(node: ProductionNode) {
   const data = node.data as TextPromptNodeData;
   const variables = Array.isArray(data.variables) ? data.variables : [];
@@ -227,6 +265,15 @@ function getTextConcatPorts(node: ProductionNode): GraphPort[] {
       side: 'input' as const,
     })),
     { id: 'result', label: 'Result', kind: 'text', side: 'output' },
+  ];
+}
+
+function getImageToTextPorts(node: ProductionNode): GraphPort[] {
+  return [
+    ...Array.from({ length: getImageToTextInputCount(node) }, (_, index) => ({
+      id: getImageToTextInputPortId(index), label: `Image ${index + 1}`, kind: 'image' as const, side: 'input' as const,
+    })),
+    { id: 'result', label: 'Result', kind: 'text' as const, side: 'output' as const },
   ];
 }
 
@@ -285,13 +332,13 @@ function getExportImagePorts(node: ProductionNode): GraphPort[] {
 
 function getTextSplitterPorts(node: ProductionNode): GraphPort[] {
   const data = node.data as TextSplitterNodeData;
-  const itemCount = Math.min((data.items ?? []).length, TEXT_SPLITTER_MAX_ITEMS);
+  const itemCount = Math.min(Math.max(data.items?.length ?? 0, data.itemKeys?.length ?? 0), TEXT_SPLITTER_MAX_ITEMS);
   return [
     { id: 'text', label: 'Text', kind: 'text', side: 'input' },
     { id: 'items', label: 'Items', kind: 'text', side: 'output' },
     ...Array.from({ length: itemCount }, (_, index) => ({
       id: getTextSplitterItemPortId(index),
-      label: `Item ${index + 1}`,
+      label: getTextSplitterSlotLabel(data.itemKeys?.[index], index),
       kind: 'text' as const,
       side: 'output' as const,
     })),

@@ -38,6 +38,8 @@ test('a document with graph content is never classified as untouched', () => {
 });
 
 test('rename, favorite, thumbnail and trash status preserve an empty document', () => {
+  assert.equal(isDisposableUntouchedDocument({ ...untouched, folderId: 'folder' }), false);
+  assert.equal(isDisposableUntouchedDocument({ ...untouched, librarySaved: true }), false);
   assert.equal(isDisposableUntouchedDocument(untouched), true);
   assert.equal(isDisposableUntouchedDocument({ ...untouched, name: 'My draft' }), false);
   assert.equal(isDisposableUntouchedDocument({ ...untouched, favorite: true }), false);

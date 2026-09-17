@@ -1,0 +1,22 @@
+.process-indicator { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid color-mix(in srgb, var(--pui-semantic-text-on-inverse) 12%, transparent); border-radius: 14px; background: var(--pui-semantic-surface-inverse); color: var(--pui-semantic-text-on-inverse); padding: 14px 16px; font: inherit; font-size: 12px; line-height: 1.45; }
+.process-indicator-header { display: flex; align-items: center; gap: 12px; }
+.process-indicator-icon { display: flex; flex: 0 0 20px; }
+.process-indicator-copy { flex: 1; min-width: 0; }
+.process-indicator-title { font-size: 13px; font-weight: 650; }
+.process-indicator-description { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .75; }
+.process-indicator-count { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.process-indicator-close { display: grid; flex: none; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 6px; padding: 0; background: transparent; color: inherit; cursor: pointer; }
+.process-indicator-close:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.process-indicator-close:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.process-indicator progress { display: block; width: 100%; height: 4px; margin-top: 12px; border: 0; border-radius: 2px; overflow: hidden; appearance: none; background: color-mix(in srgb, currentColor 18%, transparent); color: inherit; }
+.process-indicator progress::-webkit-progress-bar { background: color-mix(in srgb, var(--pui-semantic-text-on-inverse) 18%, transparent); }
+.process-indicator progress::-webkit-progress-value { background: var(--pui-semantic-text-on-inverse); border-radius: 2px; transition: width 160ms ease; }
+.process-indicator progress::-moz-progress-bar { background: var(--pui-semantic-text-on-inverse); border-radius: 2px; }
+.process-indicator progress:indeterminate { background: linear-gradient(90deg, transparent, currentColor, transparent); background-size: 200% 100%; animation: process-indeterminate 1.5s linear infinite; }
+.process-indicator p { margin: 9px 0 0; opacity: .8; overflow-wrap: anywhere; }
+.process-indicator-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.process-indicator-actions button { border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; font: inherit; padding: 4px 8px; cursor: pointer; }
+.process-indicator-spinner { animation: process-spin 1s linear infinite; }
+@keyframes process-spin { to { transform: rotate(360deg); } }
+@keyframes process-indeterminate { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .process-indicator-spinner, .process-indicator progress:indeterminate { animation: none; } .process-indicator progress::-webkit-progress-value { transition: none; } }

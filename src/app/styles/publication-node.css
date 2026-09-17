@@ -36,8 +36,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 999px;
-  background: #18181b;
-  color: #fff;
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .publication-platform-icon svg {
@@ -51,7 +51,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #18181b;
+  color: var(--pui-semantic-text-primary);
   font-size: 14px;
   font-weight: 650;
   line-height: normal;
@@ -66,7 +66,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #18181b;
+  color: var(--pui-semantic-text-primary);
   padding: 0;
   font: inherit;
   outline: none;
@@ -89,7 +89,7 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #c0c0c0;
+  color: var(--pui-semantic-text-muted);
   padding: 3px 7px;
   font-family: inherit;
   font-size: 14px;
@@ -101,8 +101,8 @@
 
 .publication-format-trigger:hover,
 .publication-format-menu-open .publication-format-trigger {
-  background: #f3f4f6;
-  color: #777;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
 }
 
 .publication-format-trigger span {
@@ -140,11 +140,11 @@
   display: grid;
   width: 188px;
   gap: 0;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 8%, transparent);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 96%, transparent);
   padding: 6px;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -158,7 +158,7 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #202020;
+  color: var(--pui-semantic-text-primary);
   padding: 5px 8px;
   font-family: inherit;
   font-size: 13px;
@@ -169,7 +169,7 @@
 
 .publication-format-option:hover:not(:disabled),
 .publication-format-option-active {
-  background: #eef4ff;
+  background: var(--pui-semantic-surface-secondary);
 }
 
 .publication-format-option:disabled {
@@ -178,7 +178,7 @@
 }
 
 .publication-format-option-icon {
-  color: #4b5563;
+  color: var(--pui-semantic-text-secondary);
 }
 
 .publication-format-option:disabled .publication-format-option-icon {
@@ -193,13 +193,13 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #c0c0c0;
+  color: var(--pui-semantic-text-muted);
   padding: 0;
 }
 
 .publication-node-header-action:hover {
-  background: #f1f1ef;
-  color: #777;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
 }
 
 .publication-result-port-layer {
@@ -215,7 +215,7 @@
 
 .node-port-input.publication-result-rail-port {
   left: -27px;
-  --port-transform: translateY(-50%);
+  --port-translate-y: -50%;
 }
 
 .node-port-input.publication-section-header-port,
@@ -223,7 +223,7 @@
 .node-port-input.publication-action-input-port,
 .node-port-input.publication-media-slot-port {
   left: -43px;
-  --port-transform: translateY(-50%);
+  --port-translate-y: -50%;
 }
 
 .node-port-input.publication-section-header-port,
@@ -257,8 +257,8 @@
 }
 
 .publication-node-platform-badge {
-  background: #e6f4ff;
-  color: #1578b6;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
 }
 
 .publication-node-status {
@@ -267,23 +267,23 @@
 
 .publication-node-status-draft,
 .publication-node-status-empty {
-  background: #f2f2f2;
-  color: #8a8a86;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-muted);
 }
 
 .publication-node-status-ready {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-success-foreground);
 }
 
 .publication-node-status-warning {
-  background: #fff7d6;
-  color: #9a6b00;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-status-warning-foreground);
 }
 
 .publication-node-status-error {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-danger-foreground);
 }
 
 .publication-node-tabs {
@@ -292,7 +292,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  border-bottom: 1px solid #e6e6e6;
+  border-bottom: 1px solid var(--pui-semantic-border-default);
   padding: 4px 16px 8px;
 }
 
@@ -303,8 +303,8 @@
   justify-content: center;
   border: 0;
   border-radius: 8px;
-  background: #fff;
-  color: #6b7280;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-secondary);
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 650;
@@ -313,8 +313,8 @@
 
 .publication-node-tab-active {
   border-radius: 6px;
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .publication-node-panel {
@@ -354,7 +354,7 @@
 .publication-input-section-header > span:first-of-type {
   min-width: 0;
   flex: 1 1 auto;
-  color: #000;
+  color: var(--pui-semantic-text-primary);
   font-size: 14px;
   font-weight: 650;
   line-height: normal;
@@ -365,8 +365,8 @@
   min-height: 22px;
   align-items: center;
   border-radius: 8px;
-  background: #eef2ff;
-  color: #3050d7;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 720;
@@ -382,7 +382,7 @@
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: #000;
+  color: var(--pui-semantic-text-primary);
   padding: 0;
 }
 
@@ -405,7 +405,7 @@
   gap: 4px;
   overflow: hidden;
   border-radius: 12px;
-  background: #cdcdcd;
+  background: var(--pui-semantic-surface-hover);
 }
 
 .publication-input-media-cell {
@@ -417,7 +417,7 @@
   place-items: center;
   border: 0;
   border-radius: 4px;
-  background: #cdcdcd;
+  background: var(--pui-semantic-surface-hover);
   padding: 0;
   cursor: grab;
 }
@@ -445,8 +445,8 @@
   place-items: center;
   border: 0;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.64);
-  color: #fff;
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 64%, transparent);
+  color: var(--pui-semantic-text-on-inverse);
   opacity: 0;
   padding: 0;
   pointer-events: none;
@@ -454,7 +454,7 @@
 }
 
 .publication-input-media-remove:hover {
-  background: rgba(0, 0, 0, 0.78);
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 78%, transparent);
 }
 
 .publication-input-media-cell:hover .publication-input-media-remove,
@@ -471,7 +471,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  background: #cdcdcd;
+  background: var(--pui-semantic-surface-hover);
 }
 
 .telegram-message-editor-shell {
@@ -479,14 +479,14 @@
   min-height: var(--telegram-editor-min-height, 348px);
   overflow: auto;
   border-radius: 10px;
-  background: #f5f5f5;
+  background: var(--pui-semantic-surface-secondary);
 }
 
 .telegram-message-editor {
   min-height: var(--telegram-editor-min-height, 348px);
   outline: none;
   padding: 10px;
-  color: #000;
+  color: var(--pui-semantic-text-primary);
   font-size: 13px;
   font-weight: 400;
   line-height: normal;
@@ -508,7 +508,7 @@
   top: 10px;
   left: 10px;
   pointer-events: none;
-  color: #8a8a86;
+  color: var(--pui-semantic-text-muted);
   font-size: 13px;
   line-height: normal;
 }
@@ -536,15 +536,15 @@
 
 .telegram-message-editor-code {
   border-radius: 4px;
-  background: #f1f1ef;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
   padding: 1px 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
 }
 
 .telegram-message-editor [style*="--telegram-link"] {
-  color: #1f6bc0;
+  color: var(--pui-semantic-accent-foreground);
   font-weight: 500;
   text-decoration: underline;
   text-decoration-thickness: 0.055em;
@@ -553,13 +553,13 @@
 
 .telegram-message-editor [style*="--telegram-spoiler"] {
   border-radius: 4px;
-  background: #202020;
+  background: var(--pui-semantic-surface-inverse);
   color: transparent;
   padding: 0 3px;
 }
 
 .telegram-message-editor [style*="--telegram-spoiler"]:hover {
-  color: #fff;
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .telegram-message-editor [style*="--telegram-over-limit"] {
@@ -570,9 +570,9 @@
 .telegram-message-editor-paragraph:has([style*="--telegram-quote"]) {
   display: block;
   overflow: hidden;
-  border-left: 3px solid #369d19;
+  border-left: 3px solid var(--pui-semantic-status-success-border);
   border-radius: 4px;
-  background: #eaf5e7;
+  background: var(--pui-semantic-surface-secondary);
   padding: 4px 7px;
   font-size: 12px;
   font-weight: 500;
@@ -594,10 +594,10 @@
   display: grid;
   width: 278px;
   gap: 1px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 8%, transparent);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 96%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
   padding: 6px;
   backdrop-filter: blur(14px);
 }
@@ -611,7 +611,7 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #202020;
+  color: var(--pui-semantic-text-primary);
   padding: 5px 8px;
   font-family: inherit;
   font-size: 13px;
@@ -621,11 +621,11 @@
 }
 
 .telegram-editor-context-menu-item:hover {
-  background: #eef4ff;
+  background: var(--pui-semantic-surface-secondary);
 }
 
 .telegram-editor-context-menu-item:disabled {
-  color: #b5b5b0;
+  color: var(--pui-semantic-text-muted);
   cursor: default;
 }
 
@@ -635,7 +635,7 @@
 
 .telegram-editor-context-menu-prefix {
   min-width: 24px;
-  color: #333;
+  color: var(--pui-semantic-text-primary);
   font-size: 11px;
   font-weight: 760;
   letter-spacing: 0;
@@ -646,7 +646,7 @@
 }
 
 .telegram-editor-context-menu-item kbd {
-  color: #b3b3b3;
+  color: var(--pui-semantic-text-muted);
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
@@ -655,7 +655,7 @@
 .telegram-editor-context-menu-separator {
   height: 1px;
   margin: 4px 6px;
-  background: #e6e6e6;
+  background: var(--pui-semantic-surface-hover);
 }
 
 .telegram-editor-link-popover {
@@ -664,16 +664,16 @@
   display: grid;
   width: 292px;
   gap: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 8%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 98%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
   padding: 10px;
   backdrop-filter: blur(14px);
 }
 
 .telegram-editor-link-popover label {
-  color: #202020;
+  color: var(--pui-semantic-text-primary);
   font-size: 12px;
   font-weight: 650;
   line-height: 14px;
@@ -682,10 +682,10 @@
 .telegram-editor-link-popover input {
   width: 100%;
   min-height: 34px;
-  border: 1px solid #d8d8d8;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 8px;
-  background: #fff;
-  color: #111;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-primary);
   font-family: inherit;
   font-size: 13px;
   line-height: 16px;
@@ -694,8 +694,8 @@
 }
 
 .telegram-editor-link-popover input:focus {
-  border-color: #1f6bc0;
-  box-shadow: 0 0 0 2px rgba(31, 107, 192, 0.12);
+  border-color: var(--pui-semantic-border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pui-semantic-accent-default) 12%, transparent);
 }
 
 .telegram-editor-link-actions {
@@ -708,8 +708,8 @@
   min-height: 30px;
   border: 0;
   border-radius: 8px;
-  background: #f1f1ef;
-  color: #333;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
   font-family: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -718,8 +718,8 @@
 }
 
 .telegram-editor-link-actions button[type="submit"] {
-  background: #111;
-  color: #fff;
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .publication-node-action-row {
@@ -729,10 +729,11 @@
 }
 
 .publication-node-input-panel .publication-node-action-button {
-  min-height: 40px;
-  border-color: rgba(0, 0, 0, 0.43);
+  height: 44px;
+  min-height: 44px;
+  border-color: color-mix(in srgb, var(--pui-semantic-border-default) 43%, transparent);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 780;
 }
 
@@ -746,7 +747,7 @@
   justify-content: center;
   overflow: hidden;
   border-radius: 13px;
-  background: #8b8b8b;
+  background: var(--pui-semantic-surface-hover);
   padding: 12px;
 }
 
@@ -762,8 +763,8 @@
   flex-direction: column;
   overflow: hidden;
   border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+  background: var(--pui-semantic-surface-primary);
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--pui-semantic-shadow-color) 8%, transparent);
 }
 
 .telegram-message-bubble-media {
@@ -776,7 +777,7 @@
   gap: 4px;
   overflow: hidden;
   border-radius: 12px 12px 4px 4px;
-  background: #d7d7d7;
+  background: var(--pui-semantic-surface-hover);
 }
 
 .telegram-media-cell {
@@ -788,8 +789,8 @@
   place-items: center;
   border: 0;
   border-radius: 4px;
-  background: #cdcdcd;
-  color: #f5f5f5;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-text-muted);
   padding: 0;
   cursor: grab;
 }
@@ -828,7 +829,7 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  color: #f7f7f7;
+  color: var(--pui-semantic-text-muted);
 }
 
 .telegram-media-extra {
@@ -848,7 +849,7 @@
   gap: 0;
   min-width: 0;
   padding: 10px 12px 12px;
-  color: #000;
+  color: var(--pui-semantic-text-primary);
   font-size: 13px;
   font-weight: 400;
   line-height: normal;
@@ -873,7 +874,7 @@
 
 .telegram-message-paragraph a,
 .telegram-message-quote a {
-  color: #1f6bc0;
+  color: var(--pui-semantic-accent-foreground);
   font-weight: 500;
   text-decoration: underline;
   text-decoration-thickness: 0.055em;
@@ -881,16 +882,16 @@
 }
 
 .telegram-message-hashtag {
-  color: #1f6bc0;
+  color: var(--pui-semantic-accent-foreground);
   font-weight: 500;
 }
 
 .telegram-message-quote {
   display: block;
   overflow: hidden;
-  border-left: 3px solid #369d19;
+  border-left: 3px solid var(--pui-semantic-status-success-border);
   border-radius: 4px;
-  background: #eaf5e7;
+  background: var(--pui-semantic-surface-secondary);
   padding: 4px 7px;
   font-size: 12px;
   font-weight: 500;
@@ -900,9 +901,9 @@
 .telegram-message-inline-quote {
   display: block;
   overflow: hidden;
-  border-left: 3px solid #369d19;
+  border-left: 3px solid var(--pui-semantic-status-success-border);
   border-radius: 4px;
-  background: #eaf5e7;
+  background: var(--pui-semantic-surface-secondary);
   padding: 4px 7px;
   font-size: 12px;
   font-weight: 500;
@@ -916,27 +917,27 @@
 
 .telegram-message-spoiler {
   border-radius: 4px;
-  background: #202020;
+  background: var(--pui-semantic-surface-inverse);
   color: transparent;
   padding: 0 3px;
 }
 
 .telegram-message-spoiler:hover {
-  color: #fff;
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .telegram-message-paragraph code,
 .telegram-message-quote code {
   border-radius: 4px;
-  background: #f1f1ef;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
   padding: 1px 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
 }
 
 .telegram-message-empty {
-  color: #a1a1aa;
+  color: var(--pui-semantic-text-muted);
   font-size: 13px;
   line-height: 18px;
 }
@@ -948,7 +949,8 @@
 }
 
 .publication-node-action-button {
-  min-height: 40px;
+  height: 44px;
+  min-height: 44px;
 }
 
 .publication-node-validation {
@@ -958,7 +960,7 @@
 
 .telegram-copy-status {
   margin: 0 16px 0;
-  color: #6b7280;
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   line-height: 15px;
 }
@@ -978,8 +980,8 @@
   justify-content: center;
   overflow: hidden;
   border-radius: 8px;
-  background: #f2f2f2;
-  color: #606060;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   padding: 4px 6px;
   font-size: 11px;
   font-weight: 720;
@@ -989,8 +991,8 @@
 }
 
 .publication-node-metric-warning {
-  background: #fff2c2;
-  color: #7a5600;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-status-warning-foreground);
 }
 
 .publication-node-issues {
@@ -1001,21 +1003,21 @@
 
 .publication-node-issue {
   border-radius: 8px;
-  background: #f5f5f5;
-  color: #666;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   padding: 8px 9px;
   font-size: 11px;
   line-height: 14px;
 }
 
 .publication-node-issue-warning {
-  background: #fff7d6;
-  color: #7a5600;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-status-warning-foreground);
 }
 
 .publication-node-issue-error {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-danger-foreground);
 }
 
 .telegram-publication-modal-backdrop {
@@ -1027,7 +1029,7 @@
   justify-items: center;
   padding: 16px;
   overflow-y: auto;
-  background: rgba(10, 10, 10, 0.3);
+  background: color-mix(in srgb, var(--pui-semantic-shadow-color) 30%, transparent);
   backdrop-filter: blur(15px);
   overscroll-behavior: none;
 }
@@ -1039,10 +1041,10 @@
   width: min(680px, calc(100vw - 32px));
   max-height: min(86dvh, 680px);
   gap: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.09);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 9%, transparent);
   border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 26px 62px rgba(0, 0, 0, 0.2);
+  background: var(--pui-semantic-surface-primary);
+  box-shadow: 0 26px 62px color-mix(in srgb, var(--pui-semantic-shadow-color) 20%, transparent);
   padding: 14px 14px 12px;
 }
 
@@ -1056,7 +1058,7 @@
 
 .telegram-publication-modal-title {
   margin: 0;
-  color: #111;
+  color: var(--pui-semantic-text-primary);
   font-size: 14px;
   font-weight: 760;
   line-height: 16px;
@@ -1070,13 +1072,13 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #4b5563;
+  color: var(--pui-semantic-text-secondary);
   padding: 0;
 }
 
 .telegram-publication-modal-close:hover {
-  background: #f3f4f6;
-  color: #0f172a;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .telegram-publication-modal-body {
@@ -1086,7 +1088,7 @@
 
 .telegram-publication-modal-description {
   margin: 0;
-  color: #41414b;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   line-height: 16px;
 }
@@ -1106,20 +1108,20 @@
   align-items: center;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: #f8f8f8;
-  color: #111827;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
   padding: 8px 10px;
   text-align: left;
 }
 
 .telegram-publication-channel-item-active {
-  border-color: #1f6bc0;
-  background: #ecf2ff;
-  color: #0f2d6d;
+  border-color: var(--pui-semantic-border-focus);
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
 }
 
 .telegram-publication-channel-item:hover {
-  background: #f0f4ff;
+  background: var(--pui-semantic-surface-secondary);
 }
 
 .telegram-publication-channel-item-main {
@@ -1139,14 +1141,14 @@
 }
 
 .telegram-publication-channel-item-subtitle {
-  color: #6b7280;
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   font-weight: 500;
   line-height: 13px;
 }
 
 .telegram-publication-channel-item-warning {
-  color: #b45309;
+  color: var(--pui-semantic-status-warning-foreground);
   font-size: 11px;
   font-weight: 650;
 }
@@ -1154,7 +1156,7 @@
 .telegram-publication-form-row {
   display: grid;
   gap: 7px;
-  color: #262626;
+  color: var(--pui-semantic-text-primary);
   font-size: 12px;
   font-weight: 650;
   line-height: 14px;
@@ -1162,10 +1164,10 @@
 
 .telegram-publication-channel-input {
   min-height: 40px;
-  border: 1px solid #dadadf;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 10px;
-  background: #fff;
-  color: #111;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-primary);
   padding: 10px;
   font-family: inherit;
   font-size: 13px;
@@ -1174,8 +1176,8 @@
 }
 
 .telegram-publication-channel-input:focus {
-  border-color: #1f6bc0;
-  box-shadow: 0 0 0 2px rgba(31, 107, 192, 0.14);
+  border-color: var(--pui-semantic-border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pui-semantic-accent-default) 14%, transparent);
 }
 
 .telegram-publication-primary-button,
@@ -1198,14 +1200,14 @@
 }
 
 .telegram-publication-primary-button {
-  background: #000;
-  color: #fff;
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .telegram-publication-secondary-button {
-  border: 1px solid #e4e4e1;
-  background: #fff;
-  color: #111;
+  border: 1px solid var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .telegram-publication-primary-button:disabled,
@@ -1236,30 +1238,30 @@
 }
 
 .telegram-publication-modal-status-info {
-  border: 1px solid #cfe5fb;
-  background: #edf6ff;
-  color: #1e4f8f;
+  border: 1px solid var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
 }
 
 .telegram-publication-modal-status-success {
-  border: 1px solid #bfecce;
-  background: #eafcf1;
-  color: #0c6b36;
+  border: 1px solid var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-success-foreground);
 }
 
 .telegram-publication-modal-status-warning {
-  border: 1px solid #fde68a;
-  background: #fefce8;
-  color: #92400e;
+  border: 1px solid var(--pui-semantic-border-focus);
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-warning-foreground);
 }
 
 .telegram-publication-modal-status-error {
-  border: 1px solid #fecaca;
-  background: #fee2e2;
-  color: #b91c1c;
+  border: 1px solid var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-danger-foreground);
 }
 
 .publication-node-issue-info {
-  background: #e6f4ff;
-  color: #1578b6;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
 }

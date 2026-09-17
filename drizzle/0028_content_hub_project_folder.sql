@@ -1,0 +1,2 @@
+ALTER TABLE "studio_folder" ADD COLUMN "system_key" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "studio_folder_workspace_system_key_unique" ON "studio_folder" USING btree ("workspace_id","system_key");

@@ -8,7 +8,8 @@ import {
   cancelGenerationJob,
   submitGenerationJob,
 } from '@/modules/generation/server/generation-submission-service';
-import { getImageModelConfig, PREFERRED_IMAGE_MODEL_IDS } from '@/shared/api/openrouter-models';
+import { imageGenerationOptionsSchema, pickImageGenerationOptions } from '@/shared/media/image-generation-settings';
+import { ImageModelValidationError, openRouterImageCatalog } from '@/modules/provider-connections/adapters/openrouter-image-catalog';
 import { PipelineNodeHandlerError } from '../contracts/pipeline-errors';
 import { readPipelineImageDataUrl, toPipelineImageArtifact } from './pipeline-image-artifacts';
 import type { PipelineImageGenerator, PipelineImageOperationScope } from './pipeline-image-contracts';
@@ -24,7 +25,14 @@ export function createQueuedImageGenerator(
     const model = requireString(input.config.model, 'Model');
     const aspectRatio = requireString(input.config.aspectRatio, 'Aspect ratio');
     const size = requireString(input.config.size, 'Image size');
-    validateImageGenerationConfig(model, aspectRatio, size, input.nodeId);
+    const options = imageGenerationOptionsSchema.safeParse(pickImageGenerationOptions(input.config));
+    if (!options.success) throw handlerError('Invalid image generation settings.', input.nodeId);
+    try {
+      await openRouterImageCatalog.resolve(model, { ...options.data, aspectRatio, size }, Math.min(4, input.imageInputs.length));
+    } catch (error) {
+      if (error instanceof ImageModelValidationError) throw handlerError(error.message, input.nodeId);
+      throw new PipelineNodeHandlerError({ message: 'Каталог изображений OpenRouter временно недоступен.', nodeId: input.nodeId, retryable: true });
+    }
     const inputs = createEmptyLayerInputs();
     const promptInputs: string[] = [];
     for (const entry of input.textInputs) {
@@ -35,11 +43,12 @@ export function createQueuedImageGenerator(
       else promptInputs.push(text);
     }
     const referenceImages = await Promise.all(input.imageInputs.slice(0, 4).map(async (entry) => ({
-      dataUrl: await readPipelineImageDataUrl(scope.actorUserId, input.context.workspaceId, entry.artifact),
+      dataUrl: await readPipelineImageDataUrl(scope.actorUserId, input.context.workspaceId, entry.artifact, 'lossless'),
       sourceAssetId: entry.artifact.assetId,
       slots: [readReferenceSlot(entry.inputKey)],
     })));
     const payload: QueuedGenerateImagePayload = {
+      ...options.data,
       aspectRatio,
       documentId: scope.documentId,
       inputs,
@@ -126,16 +135,6 @@ async function waitForGenerationJob(input: {
     }
     await waitWithSignal(500, input.signal);
     job = await getGenerationJob(input.actorUserId, job.id);
-  }
-}
-
-function validateImageGenerationConfig(model: string, aspectRatio: string, size: string, nodeId: string) {
-  if (!PREFERRED_IMAGE_MODEL_IDS.includes(model)) {
-    throw handlerError(`Model ${model} is not available for image generation.`, nodeId);
-  }
-  const config = getImageModelConfig(model);
-  if (!config.aspectRatios.includes(aspectRatio) || !config.sizes.includes(size)) {
-    throw handlerError('Aspect ratio or size is unavailable for the selected image model.', nodeId);
   }
 }
 

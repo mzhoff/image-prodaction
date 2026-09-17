@@ -1,6 +1,6 @@
 'use client';
 
-import { BookmarkCheck, Loader2 } from 'lucide-react';
+import { BookmarkCheck, Loader2 } from '@prodactionpro/ui-core/icons';
 import { useEffect, useState } from 'react';
 import { cn } from '@/shared/lib/cn';
 

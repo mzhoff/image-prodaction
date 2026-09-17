@@ -2,12 +2,14 @@ import {
   COMPOSITION_LAYER_MAX_INPUTS,
   getCompositionLayerPortId,
   getExportImageInputPortId,
+  getImageToTextInputPortId,
+  IMAGE_TO_TEXT_MAX_INPUTS,
   getTelegramMediaInputPortId,
   getTextConcatInputPortId,
 } from './node-definitions';
 import type { ProductionNode, GraphEdge } from './types';
 
-export type DynamicInputSlotNodeType = 'textConcat' | 'telegramPublication' | 'exportImage' | 'composition';
+export type DynamicInputSlotNodeType = 'textConcat' | 'telegramPublication' | 'exportImage' | 'composition' | 'imageToText';
 
 export interface DynamicInputSlotSpec {
   nodeType: DynamicInputSlotNodeType;
@@ -20,6 +22,14 @@ export interface DynamicInputSlotSpec {
 }
 
 const DYNAMIC_INPUT_SLOT_SPECS: ReadonlyArray<DynamicInputSlotSpec> = [
+  {
+    nodeType: 'imageToText',
+    portPrefix: 'image-',
+    getPortId: getImageToTextInputPortId,
+    minCount: 1,
+    maxCount: IMAGE_TO_TEXT_MAX_INPUTS,
+    countField: 'imageInputCount',
+  },
   {
     nodeType: 'textConcat',
     portPrefix: 'text-',
@@ -66,7 +76,7 @@ function getPortIndexFromPrefix(portId: string, prefix: string) {
 }
 
 export function getDynamicInputSlotSpec(nodeType: string) {
-  if (nodeType !== 'textConcat' && nodeType !== 'telegramPublication' && nodeType !== 'exportImage' && nodeType !== 'composition') return undefined;
+  if (nodeType !== 'textConcat' && nodeType !== 'telegramPublication' && nodeType !== 'exportImage' && nodeType !== 'composition' && nodeType !== 'imageToText') return undefined;
   return PORT_PREFIX_BY_NODE_TYPE.get(nodeType);
 }
 

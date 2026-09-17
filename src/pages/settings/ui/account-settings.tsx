@@ -1,6 +1,11 @@
 'use client';
 
-import { BadgeCheck, MailWarning, Save } from 'lucide-react';
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
+import { ModelPreferencesSettings } from '@/features/model-selector/ui/model-preferences-settings';
+import { ThemeControl } from '@/shared/ui/theme-control';
+
+import { BadgeCheck, MailWarning, Save } from '@prodactionpro/ui-core/icons';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient, useSession } from '@/shared/auth/client';
@@ -80,10 +85,11 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
         </div>
       </header>
 
+      <ThemeControl />
       <form className="settings-form" onSubmit={handleSubmit}>
         <label>
           <span>Имя и фамилия</span>
-          <input
+          <PuiInput
             type="text"
             name="name"
             value={name}
@@ -100,7 +106,7 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
         </label>
         <label>
           <span>Email</span>
-          <input
+          <PuiInput
             type="email"
             value={session?.user.email ?? ''}
             autoComplete="email"
@@ -145,6 +151,7 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
           </button>
         </div>
       </form>
+      <ModelPreferencesSettings />
     </section>
   );
 }

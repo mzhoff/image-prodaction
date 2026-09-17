@@ -8,14 +8,26 @@ export function getAudioConvertResultSignature(sourceId: string, data: AudioConv
   return JSON.stringify([sourceId, data.format, data.bitrateKbps ?? null, data.sampleRateHz ?? null, data.channels ?? null]);
 }
 
-export function getNodeAudioAssetId(node?: ProductionNode, context?: Pick<GraphIoContext, 'nodes' | 'edges'>, visited = new Set<string>()): string | undefined {
+type AudioGraphContext = Pick<GraphIoContext, 'nodes' | 'edges'> & Partial<Pick<GraphIoContext, 'assets'>>;
+
+export function getNodeAudioAssetId(node?: ProductionNode, context?: AudioGraphContext, visited = new Set<string>()): string | undefined {
   if (!node) return undefined;
   if (node.type === 'router') {
     const source = getRouterIncomingSource(node, context, visited);
+    if (source && source.sourceNode.type !== 'router' && getPortById(source.sourceNode, source.sourcePortId)?.kind !== 'audio') return undefined;
     return source ? getNodeAudioAssetId(source.sourceNode, context, visited) : undefined;
   }
   if (node.type === 'importImage') {
     const data = node.data as ImportImageNodeData;
+    if (data.mediaKind === 'video') {
+      const tracks = context?.assets?.find((asset) => asset.id === data.assetId)?.video?.audioTracks;
+      const selectedTrack = data.videoAudioTrackIndex ?? (tracks
+        ? tracks.find((track) => track.isDefault)?.index ?? tracks[0]?.index
+        : data.videoDerivedAudioTrackIndex);
+      return data.assetId && data.videoDerivedSourceAssetId === data.assetId
+        && data.videoDerivedAudioTrackIndex === selectedTrack
+        ? data.videoAudioAssetId : undefined;
+    }
     return data.mediaKind === 'audio' ? data.assetId : undefined;
   }
   if (node.type === 'textToSpeech') {

@@ -1,3 +1,5 @@
+import { mergeExtractNodeSettings } from './pipeline-extract-settings';
+import type { ImageToTextNodeData } from '@/entities/production-graph/model/types';
 import { z } from 'zod';
 import { DEFAULT_DOCUMENT_NAME } from '@/entities/document/model/document-lifecycle';
 import { canConnectPorts } from '@/entities/production-graph/model/node-definitions';
@@ -91,7 +93,9 @@ export function preparePipelineBuild(
     const safeSettings = sanitizePipelineNodeSettings(spec.type, spec.settings, spec.key, warnings);
     const configured = {
       ...node,
-      data: { ...node.data, ...safeSettings } as ProductionNodeData,
+      data: spec.type === 'imageToText'
+        ? mergeExtractNodeSettings(node.data as ImageToTextNodeData, safeSettings)
+        : { ...node.data, ...safeSettings } as ProductionNodeData,
     } satisfies ProductionNode;
     nodeByKey.set(spec.key, configured);
     safeSettingsByKey.set(spec.key, toSafePreviewSettings(safeSettings));

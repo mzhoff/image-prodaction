@@ -2,6 +2,22 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildImageProductionSystemPrompt } from './system-prompt.ts';
 
+test('optional layout examples cannot create QR requirements and known briefs must populate real settings', () => {
+  const prompt = buildImageProductionSystemPrompt({
+    mode: 'product-copilot', principal: { productId: 'image-production', userId: 'user-1' },
+  });
+  assert.match(prompt, /Если QR не запрошен.*не добавляй его.*не спрашивай/u);
+  assert.match(prompt, /Ранее выдуманный самим ассистентом QR не является требованием пользователя/u);
+  assert.match(prompt, /Только когда QR входит в задачу/u);
+  assert.doesNotMatch(prompt, /Даже при простом default QR всегда/u);
+  assert.match(prompt, /textPrompt\.settings\.text целиком или без потери требований/u);
+  assert.match(prompt, /textGeneration\.settings\.instruction.*не settings\.prompt/u);
+  assert.match(prompt, /generateImage\.settings\.aspectRatio="16:9"/u);
+  assert.match(prompt, /Не вставляй @brief или @nodeKey в generateImage\.prompt/u);
+  assert.match(prompt, /не обрезай молча/u);
+  assert.match(prompt, /не заявляй, что они подключены/u);
+});
+
 test('prepares one safe UI proposal without a textual confirmation loop', () => {
   const prompt = buildImageProductionSystemPrompt({
     mode: 'product-copilot',
@@ -76,8 +92,13 @@ test('prepares one safe UI proposal without a textual confirmation loop', () => 
   assert.match(prompt, /Не передавай documentName/u);
   assert.match(prompt, /speechToText\.audio -> speechToText\.text/u);
   assert.match(prompt, /audioConvert\.source -> audioConvert\.audio/u);
-  assert.match(prompt, /не меняй mediaKind.*не выдумывай assetId/u);
-  assert.match(prompt, /sourceAttachmentIndex переносит только image attachment/u);
+  assert.match(prompt, /не меняй mediaKind.*не выдумывай assetId/iu);
+  assert.match(prompt, /sourceAttachmentIndex переносит только изображение из чата/u);
+  assert.match(prompt, /original \(видео со звуком\).*video \(видео без звука\).*audio \(выбранная дорожка\)/u);
+  assert.match(prompt, /videoAudioTrackIndex выбирай только из метаданных файла, не угадывай/u);
+  assert.match(prompt, /Import не имеет входа; внешний Input video не подключается к ней/u);
+  assert.match(prompt, /Voice озвучивает до 30000 символов и 30 минут.*свыше 5000 символов.*один MP3/u);
+  assert.match(prompt, /при восстановлении используй прежний запрос.*не запускай повторную платную генерацию/u);
   assert.match(prompt, /Не обещай разметку говорящих.*тайм-коды слов/u);
   assert.match(prompt, /pipeline\.asset\.write/u);
   assert.match(prompt, /длинная запись означает несколько оплачиваемых вызовов/u);

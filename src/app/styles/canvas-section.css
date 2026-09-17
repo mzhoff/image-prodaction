@@ -12,14 +12,14 @@
   position: absolute;
   box-sizing: border-box;
   --section-accent: #d9d9d9;
-  border: 1px solid color-mix(in srgb, var(--section-accent) 70%, #111);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 70%, var(--pui-semantic-border-default));
   border-radius: 4px;
   background: color-mix(in srgb, var(--section-accent) 34%, transparent);
   cursor: var(--cursor-mouse-pointer-2);
 }
 
 .canvas-section-selected {
-  border: 2px solid color-mix(in srgb, var(--section-accent) 72%, #111);
+  border: 2px solid color-mix(in srgb, var(--section-accent) 72%, var(--pui-semantic-border-default));
   background: color-mix(in srgb, var(--section-accent) 48%, transparent);
 }
 
@@ -32,7 +32,7 @@
   position: absolute;
   inset: 8px;
   pointer-events: none;
-  border: 1px dashed color-mix(in srgb, var(--section-accent) 68%, #111);
+  border: 1px dashed color-mix(in srgb, var(--section-accent) 68%, var(--pui-semantic-border-default));
   border-radius: 3px;
   opacity: 0.7;
 }
@@ -64,17 +64,17 @@ html.canvas-section-resizing-diagonal-2 * {
   box-sizing: border-box;
   width: max-content;
   min-width: 136px;
-  border: 1px solid color-mix(in srgb, var(--section-accent) 58%, #666);
+  border: 1px solid color-mix(in srgb, var(--section-accent) 58%, var(--pui-semantic-border-default));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--section-accent) 78%, #fff);
-  color: #222;
+  background: color-mix(in srgb, var(--section-accent) 78%, var(--pui-semantic-surface-primary));
+  color: var(--pui-semantic-text-primary);
   cursor: var(--cursor-mouse-pointer-2);
   padding: 13px 18px;
   font-size: 28px;
   font-weight: 700;
   line-height: 32px;
   white-space: nowrap;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--pui-semantic-shadow-color) 45%, transparent) inset;
 }
 
 .canvas-section-badge-title {
@@ -88,8 +88,8 @@ html.canvas-section-resizing-diagonal-2 * {
   align-items: center;
   gap: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #075985;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 78%, transparent);
+  color: var(--pui-semantic-accent-foreground);
   padding: 5px 8px;
   font-size: 13px;
   font-weight: 760;
@@ -97,14 +97,14 @@ html.canvas-section-resizing-diagonal-2 * {
 }
 
 .canvas-section-selected .canvas-section-executable-status {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 18%, transparent);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .canvas-section-selected .canvas-section-badge {
-  border-color: color-mix(in srgb, var(--section-accent) 62%, #111);
-  background: color-mix(in srgb, var(--section-accent) 62%, #111);
-  color: #fff;
+  border-color: color-mix(in srgb, var(--section-accent) 62%, var(--pui-semantic-border-default));
+  background: color-mix(in srgb, var(--section-accent) 62%, var(--pui-semantic-surface-inverse));
+  color: var(--pui-semantic-text-on-inverse);
   font-weight: 560;
   box-shadow: none;
 }
@@ -112,14 +112,14 @@ html.canvas-section-resizing-diagonal-2 * {
 .canvas-section-locked .canvas-section-badge::after {
   content: "Locked";
   margin-left: 10px;
-  color: rgba(34, 34, 34, 0.58);
+  color: color-mix(in srgb, var(--pui-semantic-text-primary) 58%, transparent);
   font-size: 14px;
   font-weight: 680;
   line-height: 16px;
 }
 
 .canvas-section-selected.canvas-section-locked .canvas-section-badge::after {
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--pui-semantic-text-on-inverse) 72%, transparent);
 }
 
 .canvas-section-badge input {

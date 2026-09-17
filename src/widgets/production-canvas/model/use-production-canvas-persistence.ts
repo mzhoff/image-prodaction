@@ -17,6 +17,8 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
   projectId?: string;
 }) {
   const didInitialFitRef = useRef(false);
+  const exportDocumentSnapshot = useProductionGraphStore((state) => state.exportDocumentSnapshot);
+  const restoreDocumentSnapshot = useProductionGraphStore((state) => state.restoreDocumentSnapshot);
   const subscribeToProjectChanges = useCallback((
     listener: (change?: { thumbnailRelevant?: boolean }) => void,
   ) => useProductionGraphStore.subscribe((state, previous) => {
@@ -32,8 +34,8 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
     }
   }), []);
   const documentSync = useDocumentBackendSync({
-    exportSnapshot: graph.exportProjectSnapshot,
-    importSnapshot: graph.importPortableProject,
+    exportSnapshot: exportDocumentSnapshot,
+    importSnapshot: restoreDocumentSnapshot,
     projectId,
     resetProject: graph.resetProject,
     subscribeToProjectChanges,
@@ -41,7 +43,7 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
   const documentThumbnail = useDocumentThumbnailSync({
     canvasRef: canvas.containerRef,
     projectId,
-    saveSequence: documentSync.saveSequence,
+    prepareExit: documentSync.prepareExit,
     serverMode: documentSync.thumbnailMode,
     workspaceId: documentSync.workspaceId,
   });
@@ -51,6 +53,7 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
   });
   const documentPhase = documentSync.syncState.phase;
   const zoomToBounds = canvas.zoomToBounds;
+  const setProjectUiViewport = graph.setProjectUiViewport;
 
   useEffect(() => {
     if (documentPhase === 'loading') {
@@ -72,9 +75,9 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
     graph.sections.length, projectId, zoomToBounds]);
   useEffect(() => {
     const viewport = { x: canvas.pan.x, y: canvas.pan.y, zoom: canvas.zoom };
-    const timeoutId = window.setTimeout(() => graph.setProjectUiViewport(viewport), 150);
+    const timeoutId = window.setTimeout(() => setProjectUiViewport(viewport), 150);
     return () => window.clearTimeout(timeoutId);
-  }, [canvas.pan.x, canvas.pan.y, canvas.zoom, graph]);
+  }, [canvas.pan.x, canvas.pan.y, canvas.zoom, setProjectUiViewport]);
 
   return { documentSync, documentThumbnail, studioPipelines };
 }

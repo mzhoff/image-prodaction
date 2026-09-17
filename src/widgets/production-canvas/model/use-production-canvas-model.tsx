@@ -3,13 +3,18 @@
 import { useCallback, useRef, useState } from 'react';
 import { getTextPromptVariablePortIndex, getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
+import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { getActiveAssetScopeSnapshot } from '@/entities/production-graph/lib/remote-asset';
+import { loadVideoModels } from '@/shared/api/video-model-catalog';
 import type { NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
 import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
 import { preparePipelineConnectCreate } from '../lib/prepare-pipeline-connect-create';
+import { getVideoConnectCreateMode, prepareVideoConnectCreate } from '../lib/prepare-video-connect-create';
 import { useCanvasClipboard } from './use-canvas-clipboard';
+import { useCanvasLibraryImport } from './use-canvas-library-import';
 import { useCanvasImageImport } from './use-canvas-image-import';
 import { useCanvasImageViewer } from './use-canvas-image-viewer';
 import { useCanvasFavoriteNodes } from './use-canvas-favorite-nodes';
@@ -77,7 +82,14 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     }) ?? lastPointerWorldRef.current;
   }, [canvas]);
 
-  const { importImageFile, importImageFiles } = useCanvasImageImport({ getFallbackPastePosition, pasteImageAsset: graph.pasteImageAsset });
+  const { importImageFile, importImageFiles, importProgressStore } = useCanvasImageImport({ getFallbackPastePosition, pasteImageAsset: graph.pasteImageAsset, showToast });
+  const importLibraryImage = useCanvasLibraryImport({
+    projectId,
+    ready: ['saved', 'dirty', 'saving', 'recovery'].includes(documentSync.syncState.phase),
+    documentStatus: documentSync.documentStatus,
+    getPosition: getFallbackPastePosition,
+    showToast,
+  });
   const {
     exportSectionPipelineTemplate,
     exportProjectSnapshot,
@@ -93,6 +105,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
   useCanvasClipboard({
     deleteSelected: graph.deleteSelected,
     importImageFile,
+    importLibraryImage,
     lastPointerWorldRef,
     pasteNodes: graph.pasteNodes,
     redo: graph.redo,
@@ -100,6 +113,8 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
   });
 
   const startNodeDrag = useNodeDrag({
+    measuredPortPoints,
+    collapsedGenerateComposingNodeIds,
     closeContextMenu: contextMenu.closeContextMenu,
     moveNode: graph.moveNode,
     moveSelectedNodesBy: graph.moveSelectedNodesBy,
@@ -143,8 +158,29 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     }
 
     setPendingConnectionMenu(drop);
-    contextMenu.openContextMenuAt(drop.screenPoint.x, drop.screenPoint.y, createConnectMenuActions(options, (option) => {
+    contextMenu.openContextMenuAt(drop.screenPoint.x, drop.screenPoint.y, createConnectMenuActions(options, async (option) => {
+      let videoPreparation: ReturnType<typeof prepareVideoConnectCreate> | undefined;
+      if (drop.direction === 'from-output' && option.type === 'generateVideo' && drop.sourceNodeId && drop.sourcePortId) {
+        const before = useProductionGraphStore.getState();
+        const scope = getActiveAssetScopeSnapshot();
+        const mode = getVideoConnectCreateMode(drop.sourceNodeId, drop.sourcePortId, before);
+        if (mode) {
+          try {
+            showToast('Подбираем видеомодель для подключения…');
+            videoPreparation = prepareVideoConnectCreate(mode, await loadVideoModels());
+            const latest = useProductionGraphStore.getState();
+            if (getActiveAssetScopeSnapshot() !== scope || getVideoConnectCreateMode(drop.sourceNodeId, drop.sourcePortId, latest) !== mode) {
+              throw new Error('Источник изменился. Протяните подключение ещё раз.');
+            }
+          } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Не удалось подготовить подключение к видео.');
+            setPendingConnectionMenu(null);
+            return;
+          }
+        }
+      }
       const nodeId = createNode(option.type, drop.worldPoint);
+      if (videoPreparation) graph.updateNodeDataSilent(nodeId, videoPreparation.data);
       if (drop.direction === 'from-output' && option.type === 'textPrompt' && option.targetPortId) {
         const variableIndex = getTextPromptVariablePortIndex(option.targetPortId);
         graph.updateNodeDataSilent(nodeId, {
@@ -154,7 +190,8 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
           }],
         });
       }
-      const { sourcePortId, targetPortId } = preparePipelineConnectCreate(nodeId, option);
+      const { sourcePortId, targetPortId } = preparePipelineConnectCreate(nodeId,
+        videoPreparation ? { ...option, targetPortId: videoPreparation.targetPortId } : option);
       const result = drop.direction === 'from-output'
         ? drop.sourceNodeId && drop.sourcePortId && targetPortId
           ? graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, targetPortId)
@@ -163,11 +200,12 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
           ? graph.connect(nodeId, sourcePortId, drop.targetNodeId, drop.targetPortId)
           : { ok: false as const, reason: 'Could not create an upstream connection.' };
       if (!result.ok) showToast(result.reason);
+      else if (videoPreparation) showToast('Видео подключено. Добавьте задание и проверьте настройки перед генерацией.');
       setPendingConnectionMenu(null);
     }));
   }, [contextMenu, createNode, graph, showToast]);
 
-  const { clearConnectionDraft, connectionDraft, startConnection } = useConnectionDraft({
+  const { clearConnectionDraft, connectionDraft, draftPathRef, startConnection } = useConnectionDraft({
     connect: graph.connect,
     deleteEdge: graph.deleteEdge,
     edges: graph.edges,
@@ -227,6 +265,18 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     graph.setNodeUiState(nodeId, { state: open ? 'Expanded' : 'Collapsed' });
   }, [graph]);
 
+  const focusNode = useCallback((nodeId: string) => {
+    const node = graph.nodesById.get(nodeId);
+    if (!node) return;
+    graph.selectNode(nodeId, false);
+    canvas.zoomToBounds({
+      minX: node.position.x,
+      minY: node.position.y,
+      maxX: node.position.x + node.size.width,
+      maxY: node.position.y + node.size.height,
+    }, 180);
+  }, [canvas, graph]);
+
   return {
     bounds: graph.bounds,
     boxSelection,
@@ -235,6 +285,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     closeContextMenu,
     collapsedGenerateComposingNodeIds,
     connectionDraft,
+    draftPathRef,
     contextMenu,
     createFavoriteNodeFromPalette: favoriteNodes.createFavoriteNodeFromPalette,
     createTemplateNodeFromPalette: nodeTemplates.createTemplateNodeFromPalette,
@@ -250,11 +301,13 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     favoriteNodesError: favoriteNodes.error,
     favoriteNodes: favoriteNodes.favorites,
     favoriteNodesLoading: favoriteNodes.loading,
+    focusNode,
     nodeTemplatesError: nodeTemplates.error,
     nodeTemplates: nodeTemplates.templates,
     nodeTemplatesLoading: nodeTemplates.loading,
     imageViewer,
     importProjectSnapshotFile,
+    importProgressStore,
     measuredPortPoints,
     nodes: graph.nodes,
     nodesById: graph.nodesById,
@@ -272,6 +325,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     documentThumbnailMode: documentThumbnail.thumbnailMode,
     documentThumbnailPending: documentThumbnail.manualCapturePending,
     createDocumentThumbnail: documentThumbnail.createManualSnapshot,
+    prepareDocumentExit: documentThumbnail.prepareDocumentExit,
     moveDocumentToTrash: documentSync.moveDocumentToTrash,
     renameDocument: documentSync.renameDocument,
     reloadDocumentFromServer: documentSync.reloadFromServer,

@@ -2,8 +2,8 @@
   position: fixed;
   z-index: 1000;
   inset: 0;
-  background: #f6f6f4;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-editor-shell {
@@ -16,13 +16,13 @@
 .composition-editor-sidebar,
 .composition-editor-inspector {
   min-width: 0;
-  border-color: #dfdfdc;
-  background: #fff;
+  border-color: var(--pui-semantic-border-default);
+  background: var(--pui-semantic-surface-primary);
   padding: 22px 18px;
 }
 
 .composition-editor-sidebar {
-  border-right: 1px solid #dfdfdc;
+  border-right: 1px solid var(--pui-semantic-border-default);
 }
 
 .composition-editor-inspector {
@@ -30,7 +30,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  border-left: 1px solid #dfdfdc;
+  border-left: 1px solid var(--pui-semantic-border-default);
   overflow: auto;
   padding: 0 18px 22px;
 }
@@ -48,17 +48,17 @@
 }
 
 .composition-editor-title span {
-  color: #777;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   font-weight: 650;
 }
 
 .composition-layer-list-fullscreen .composition-layer-item {
-  background: #f3f3f3;
-  color: #4b5563;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
 }
 
 .composition-layer-list-fullscreen .composition-layer-item-active {
-  background: #e8f0ff;
-  color: #0d44d9;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
 }

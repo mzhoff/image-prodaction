@@ -1,0 +1,20 @@
+.canvas-bottom-controls {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 20px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.canvas-bottom-controls > * { pointer-events: auto; }
+.canvas-bottom-controls .canvas-toolbar,
+.canvas-bottom-controls .canvas-toast { position: relative; left: auto; bottom: auto; transform: none; }
+.canvas-bottom-controls .canvas-toast { box-sizing: border-box; width: max-content; max-width: min(480px, calc(100vw - 32px)); }
+.canvas-import-progress { width: min(480px, calc(100vw - 32px)); box-shadow: 0 12px 36px color-mix(in srgb, var(--pui-semantic-shadow-color) 20%, transparent); }
+@media (max-width: 760px) { .canvas-bottom-controls { bottom: 12px; } }
+@media (max-width: 600px) { .canvas-bottom-controls { bottom: 80px; } }

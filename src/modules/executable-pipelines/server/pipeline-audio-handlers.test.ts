@@ -17,7 +17,9 @@ test('audio handlers require one correctly typed input; Voice caps text before d
     await assert.rejects(handler.execute({ ...input, inputs: { source: { kind: 'image', assetId: 'image' } } }));
     await assert.rejects(handler.execute({ ...input, inputs: { source: audio, second: audio } }));
   }
-  await assert.rejects(handlers.find((h) => h.handlerType === 'ai.audio.generate')!.execute({ ...input, inputs: { text: 'a'.repeat(5001) } }));
+  const voice = handlers.find((h) => h.handlerType === 'ai.audio.generate')!;
+  assert.deepEqual(await voice.execute({ ...input, inputs: { text: 'a'.repeat(20_000) } }), { audio });
+  await assert.rejects(voice.execute({ ...input, inputs: { text: 'a'.repeat(30_001) } }));
 });
 test('audio conversion IDs are stable and isolated by runtime run and content', () => {
   assert.ok(isUuidV7(createAudioResultId('run', 'node:file')));

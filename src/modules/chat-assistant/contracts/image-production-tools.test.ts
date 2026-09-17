@@ -19,6 +19,18 @@ test('assistant tool names are compatible with OpenAI-compatible providers', () 
   assert.equal(imageProductionTools.find((tool) => tool.name === DOCUMENT_GRAPH_TOOL)?.riskLevel, 'read');
 });
 
+test('build and update explain populated settings and opt-in QR consistently', () => {
+  for (const name of [PIPELINE_BUILD_TOOL, PIPELINE_UPDATE_TOOL]) {
+    const description = imageProductionTools.find((tool) => tool.name === name)!.description;
+    assert.match(description, /QR is opt-in.*omit it without asking/u);
+    assert.match(description, /earlier assistant-invented QR are not user requirements/u);
+    assert.match(description, /complete user brief, not an empty skeleton/u);
+    assert.match(description, /textGeneration\.settings\.instruction.*never textGeneration\.settings\.prompt/u);
+    assert.match(description, /Set requested aspectRatio/u);
+    assert.match(description, /never put @brief or @nodeKey in generateImage\.prompt/u);
+  }
+});
+
 test('pipeline update contract exposes bounded edits to existing nodes and edges', () => {
   const tool = imageProductionTools.find((candidate) => candidate.name === PIPELINE_UPDATE_TOOL);
   const schema = tool?.inputSchema as { properties?: Record<string, unknown>; required?: string[] };
@@ -60,8 +72,12 @@ test('write tool descriptions prepare a single UI-confirmed canvas proposal by d
   assert.match(updateDescription, /exportImage\.image-0.*exportImage\.image.*pipelineOutput/u);
   assert.match(buildDescription, /audioConvert\.source -> audioConvert\.audio/u);
   assert.match(buildDescription, /managed private Workspace assets, not URLs or base64/u);
-  assert.match(buildDescription, /sourceAttachmentIndex imports audio/u);
+  assert.match(buildDescription, /do not force mediaKind, forge asset ids or use sourceAttachmentIndex for audio\/video/u);
   assert.match(updateDescription, /sourceAttachmentIndex remains image-only/u);
+  assert.match(buildDescription, /Video exposes original \(video with audio\), video \(silent video\), audio \(selected audio track\)/u);
+  assert.match(buildDescription, /videoAudioTrackIndex must be an existing stream index/u);
+  assert.match(buildDescription, /Voice accepts up to 30000 characters.*Over 5000 characters.*one MP3/u);
+  assert.match(buildDescription, /each part is paid.*does not clone a voice/u);
 });
 
 test('pipeline tool keeps graph structure strict while settings stay bounded and recoverable', () => {

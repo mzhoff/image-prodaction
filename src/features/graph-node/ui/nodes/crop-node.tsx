@@ -1,11 +1,13 @@
 'use client';
 
-import { Link2, RotateCcw } from 'lucide-react';
+import { Crop as CropIcon, Link2, Loader2, RotateCcw } from '@prodactionpro/ui-core/icons';
+import { Button } from '@prodactionpro/ui-core/button';
 import type { ChangeEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { cn } from '@/shared/lib/cn';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { DarkSelect } from '@/shared/ui/dark-select';
+import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { useCropImageNodeModel } from '../../model/use-crop-image-node-model';
 import { CropEditor } from '../crop-editor';
@@ -13,7 +15,9 @@ import { NodeTitle } from '../node-title';
 
 export function CropNode({ node }: { node: ProductionNode }) {
   const model = useCropImageNodeModel(node);
-  const sourceUrl = useAssetUrl(model.sourceAsset?.id);
+  const sourceUrl = useAssetUrl(model.sourceAsset?.id, 'thumbnail');
+  const videoUrl = useAssetUrl(model.video.result?.id);
+  const videoPoster = useAssetUrl(model.video.result?.id, 'thumbnail');
 
   return (
     <>
@@ -27,6 +31,8 @@ export function CropNode({ node }: { node: ProductionNode }) {
         onCropChange={model.handleCropChange}
         onCropDragStart={model.handleCropDragStart}
         url={sourceUrl ?? undefined}
+        emptyText={model.hasVideoInput ? 'Ожидаем видео' : 'Connect image or video'}
+        sourceLabel={model.hasVideoInput ? 'Кадр видео для обрезки' : 'Crop source'}
       />
       <CollapsibleSection title="Settings">
         <div className="crop-setting-row">
@@ -78,7 +84,20 @@ export function CropNode({ node }: { node: ProductionNode }) {
           </div>
         </div>
       </CollapsibleSection>
-      {model.message ? <div className="node-note node-note-compact">{model.message}</div> : null}
+      {model.hasVideoInput ? (
+        <div className="crop-video-output" data-node-interactive>
+          <PrimaryActionButton
+            disabled={!model.video.canPrepare || model.video.busy || Boolean(model.video.result)}
+            onClick={() => void model.video.prepare()}
+            icon={model.video.busy ? <Loader2 size={16} /> : <CropIcon size={16} />}
+          >
+            {model.video.busy ? 'Обрезаем видео…' : model.video.result ? 'Видео готово' : 'Обрезать видео'}
+          </PrimaryActionButton>
+          {model.video.busy ? <Button appearance="outline" intent="neutral" size="sm" onClick={model.video.cancel}>Отменить обработку</Button> : null}
+          {videoUrl ? <video key={model.video.result?.id} src={videoUrl} poster={videoPoster ?? undefined} controls playsInline preload="metadata" aria-label="Обрезанное видео" /> : null}
+        </div>
+      ) : null}
+      {model.message ? <div className="node-note node-note-compact" role={model.video.error ? 'alert' : 'status'}>{model.message}</div> : null}
     </>
   );
 }

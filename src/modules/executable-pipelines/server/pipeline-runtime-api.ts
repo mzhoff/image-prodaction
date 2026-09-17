@@ -194,7 +194,7 @@ function isPipelineValue(value: unknown): value is PipelineValue {
 function containsAssetReference(value: PipelineValue, assetId: string): boolean {
   if (Array.isArray(value)) return value.some((entry) => containsAssetReference(entry, assetId));
   if (!value || typeof value !== 'object') return false;
-  if (value.assetId === assetId && (value.kind === 'image' || value.kind === 'audio')) return true;
+  if (value.assetId === assetId && (value.kind === 'image' || value.kind === 'audio' || value.kind === 'video')) return true;
   return Object.values(value).some((entry) => containsAssetReference(entry, assetId));
 }
 

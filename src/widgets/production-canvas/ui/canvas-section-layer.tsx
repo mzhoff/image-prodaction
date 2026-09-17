@@ -4,7 +4,7 @@ import { sortSectionsForRender } from '@/entities/production-graph/model/graph-s
 import type { GraphSection } from '@/entities/production-graph/model/types';
 import type { StudioPipelinePublication } from '@/modules/executable-pipelines/contracts/pipeline-publication-contracts';
 import { cn } from '@/shared/lib/cn';
-import { Workflow } from 'lucide-react';
+import { Workflow } from '@prodactionpro/ui-core/icons';
 import type { SectionResizeHandle } from '../model/use-section-resize';
 
 interface CanvasSectionLayerProps {
@@ -107,6 +107,7 @@ function CanvasSection({
     <div
       className={cn('canvas-section', selected && 'canvas-section-selected', section.locked && 'canvas-section-locked')}
       data-canvas-section
+      data-section-id={section.id}
       onContextMenu={(event) => {
         if (selected) onSectionContextMenu(section, event);
       }}

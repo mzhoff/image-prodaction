@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, MailCheck } from 'lucide-react';
+import { ArrowLeft, MailCheck } from '@prodactionpro/ui-core/icons';
 import { useEffect, useState } from 'react';
 import { authClient } from '@/shared/auth/client';
 import { AuthShell } from './auth-shell';

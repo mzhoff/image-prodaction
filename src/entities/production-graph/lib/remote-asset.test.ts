@@ -126,3 +126,8 @@ test('content read and delete use private same-origin API routes', async () => {
     init: { method: 'DELETE', credentials: 'same-origin' },
   });
 });
+
+test('thumbnail URL is opt-in; graph processing and download keep the original URL', () => {
+  assert.equal(getRemoteAssetContentUrl('image-id'), '/api/assets/image-id/content');
+  assert.equal(getRemoteAssetContentUrl('image-id', 'thumbnail'), '/api/assets/image-id/content?variant=thumbnail');
+});

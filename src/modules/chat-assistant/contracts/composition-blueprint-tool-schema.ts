@@ -52,7 +52,7 @@ const compositionLayerSchema = {
       type: 'object',
       additionalProperties: false,
       properties: {
-        fit: { type: 'string', enum: ['fit', 'fill', 'stretch'] },
+        fit: { type: 'string', enum: ['fit', 'fill', 'stretch'], description: 'Use fit (contain), fill (cover/crop), or stretch. CSS values contain/cover are not valid here.' },
         preserveAspectRatio: { type: 'boolean' },
         flipX: { type: 'boolean' },
         flipY: { type: 'boolean' },

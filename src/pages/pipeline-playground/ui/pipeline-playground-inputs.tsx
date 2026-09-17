@@ -1,5 +1,7 @@
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+import { TextareaControl as PuiTextarea } from '@prodactionpro/ui-core/textarea-control';
 import Image from 'next/image';
-import { CheckCircle2, LoaderCircle, Upload } from 'lucide-react';
+import { CheckCircle2, LoaderCircle, Upload } from '@prodactionpro/ui-core/icons';
 import type { PipelinePlaygroundDescriptor,
   PipelinePlaygroundField } from '@/modules/executable-pipelines/contracts/pipeline-playground-contracts';
 import type { PipelinePlaygroundDraft } from '../model/pipeline-playground-inputs';
@@ -90,18 +92,19 @@ function InputControl({ describedBy, draft, field, fieldId, onChange, onUpload, 
     );
   }
   if (field.kind === 'number') {
-    return <input aria-describedby={describedBy} id={fieldId} inputMode="decimal"
+    return <PuiInput aria-describedby={describedBy} id={fieldId} inputMode="decimal"
       onChange={(event) => onChange(event.target.value)} placeholder="0" type="number"
       value={typeof draft === 'string' ? draft : ''} />;
   }
-  if (field.kind === 'audio') {
+  if (field.kind === 'audio' || field.kind === 'video') {
     return <div className="playground-unsupported-input">
-      Audio upload will be added with the audio asset contract.
+      {field.kind === 'video' ? 'Video upload is available in Studio Import. Playground upload is not available yet; Runtime API accepts a managed Workspace video asset reference.'
+        : 'Audio upload is available through the Runtime API. Playground audio upload is not available yet.'}
     </div>;
   }
   const jsonLike = field.kind === 'json' || field.kind === 'publication';
   return (
-    <textarea aria-describedby={describedBy} id={fieldId}
+    <PuiTextarea aria-describedby={describedBy} id={fieldId}
       onChange={(event) => onChange(event.target.value)}
       placeholder={jsonLike ? '{\n  "key": "value"\n}'
         : field.kind === 'text_collection' ? 'One value per line' : 'Enter text…'}

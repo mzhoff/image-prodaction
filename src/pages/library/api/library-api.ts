@@ -24,6 +24,7 @@ export async function fetchLibraryAssets(
   signal?: AbortSignal,
 ) {
   const params = new URLSearchParams({ workspaceId });
+  setIfPresent(params, 'folderId', filters.folderId ?? '');
   setIfPresent(params, 'origin', filters.origin);
   setIfPresent(params, 'mediaKind', filters.mediaKind);
   setIfPresent(params, 'modelId', filters.modelId);
@@ -64,6 +65,7 @@ export async function fetchLibraryAsset(assetId: string, signal?: AbortSignal) {
     operation: item.operation ?? null,
     width: item.width ?? null,
     height: item.height ?? null,
+    byteSize: item.byteSize ?? null,
     createdAt: item.createdAt ?? new Date(0).toISOString(),
     contentUrl: item.contentUrl,
     thumbnailUrl: item.thumbnailUrl ?? null,

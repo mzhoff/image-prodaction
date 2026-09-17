@@ -1,3 +1,4 @@
+import { getNodeTimelineFrameAssetIds } from './graph-timeline-io';
 import { getGenerationHistory } from './generation-history';
 import { getExportImageInputPortIndex } from './node-definitions';
 import { createExportImageResultSignature } from './export-image-result';
@@ -34,7 +35,7 @@ export function getNodeImageAssetId(
   }
   if (node.type === 'importImage') {
     const data = node.data as ImportImageNodeData;
-    return data.mediaKind === 'audio' ? undefined : data.assetId;
+    return data.mediaKind && data.mediaKind !== 'image' ? undefined : data.assetId;
   }
   if (node.type === 'iterator') {
     const data = node.data as IteratorNodeData;
@@ -43,8 +44,12 @@ export function getNodeImageAssetId(
   if (node.type === 'generateImage') return getGenerationHistory(node.data as GenerateImageNodeData).activeAssetId;
   if (node.type === 'qrCode') return (node.data as QrCodeNodeData).resultAssetId;
   if (node.type === 'composition') return (node.data as CompositionNodeData).resultAssetId;
+  if (node.type === 'timelineHandoff') return getNodeTimelineFrameAssetIds(node, context)[0];
   if (node.type === 'sketch') return (node.data as SketchNodeData).assetId;
-  if (node.type === 'cropImage') return (node.data as CropImageNodeData).resultAssetId;
+  if (node.type === 'cropImage') {
+    if (context?.edges.some((edge) => edge.targetNodeId === node.id && edge.targetPortId === 'video')) return undefined;
+    return (node.data as CropImageNodeData).resultAssetId;
+  }
   if (node.type === 'adjustment') {
     const data = node.data as AdjustmentNodeData;
     return data.resultAssetId ?? data.sourceAssetId;
@@ -90,6 +95,7 @@ export function getNodeImageAssetId(
 
 export function getNodeImageAssetIds(node?: ProductionNode) {
   if (!node) return [];
+  if (node.type === 'timelineHandoff') return getNodeTimelineFrameAssetIds(node);
   const data = node.data as unknown as Record<string, unknown>;
   if (node.type === 'generateImage' || node.type === 'refineImage') {
     const resultAssetIds = uniqueStrings([
@@ -147,6 +153,7 @@ export function getNodeImageOutputAssetIds(
   visited = new Set<string>(),
 ): string[] {
   if (!node) return [];
+  if (node.type === 'timelineHandoff') return getNodeTimelineFrameAssetIds(node, context);
   if (node.type === 'router') {
     const source = getRouterIncomingSource(node, context, visited);
     return source ? getNodeImageOutputAssetIds(source.sourceNode, context, visited) : [];
@@ -174,5 +181,5 @@ export function getNodeImageOutputAssetIds(
     const assetId = (node.data as ImportImageNodeData | SketchNodeData | PreviewNodeData | BannerNodeData).assetId;
     return assetId ? [assetId] : [];
   }
-  return uniqueStrings([getNodeImageAssetId(node)]);
+  return uniqueStrings([getNodeImageAssetId(node, context, visited)]);
 }

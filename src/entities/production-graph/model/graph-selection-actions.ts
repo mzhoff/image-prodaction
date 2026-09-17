@@ -11,6 +11,7 @@ import { isNodeInsideSectionIds } from './graph-section-membership';
 import { initialProject } from './initial-project';
 import { normalizeProject } from './normalize-project';
 import { createEmptyProjectUiState } from './project-schema';
+import { clearCopiedNodeExecution } from './speech-request';
 import type { ProductionGraphState } from './store-types';
 import type { StoreGet, StoreSet } from './store-action-types';
 
@@ -95,7 +96,7 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
       const minY = Math.min(...nodesToPaste.map((node) => node.position.y));
       const idMap = new Map(nodesToPaste.map((node) => [node.id, createId('node')]));
       const nextNodes = nodesToPaste.map((node) => ({
-        ...cloneSnapshot({
+        ...clearCopiedNodeExecution(cloneSnapshot({
           nodes: [node],
           sections: [],
           edges: [],
@@ -107,7 +108,7 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
           runs: [],
           selectedNodeIds: [],
           selectedSectionIds: [],
-        }).nodes[0],
+        }).nodes[0]!),
         id: idMap.get(node.id) ?? createId('node'),
         position: { x: position.x + node.position.x - minX, y: position.y + node.position.y - minY },
       }));
@@ -167,7 +168,7 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
   };
 }
 
-function isNodeInsideLockedSection(
+export function isNodeInsideLockedSection(
   node: ReturnType<StoreGet>['nodes'][number],
   sections: ReturnType<StoreGet>['sections'],
 ) {

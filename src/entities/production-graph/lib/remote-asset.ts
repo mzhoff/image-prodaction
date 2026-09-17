@@ -34,6 +34,12 @@ const REMOTE_IMAGE_MIME_TYPES = new Set([
 ]);
 
 let activeScope: ActiveAssetScope | undefined;
+const activeScopeListeners = new Set<() => void>();
+export const getActiveAssetScopeSnapshot = () => activeScope;
+export function subscribeActiveAssetScope(listener: () => void) {
+  activeScopeListeners.add(listener);
+  return () => { activeScopeListeners.delete(listener); };
+}
 
 export class AssetClientError extends Error {
   readonly code?: string;
@@ -50,9 +56,13 @@ export class AssetClientError extends Error {
 export function activateAssetScope(scope: ActiveAssetScope) {
   const activated = { ...scope };
   activeScope = activated;
+  activeScopeListeners.forEach((listener) => listener());
 
   return () => {
-    if (activeScope === activated) activeScope = undefined;
+    if (activeScope === activated) {
+      activeScope = undefined;
+      activeScopeListeners.forEach((listener) => listener());
+    }
   };
 }
 
@@ -106,8 +116,8 @@ export function mapRemoteImageAsset(asset: RemoteImageAssetDto): AssetRecord {
 
 export const mapUploadedImageAsset = mapRemoteImageAsset;
 
-export function getRemoteAssetContentUrl(assetId: string) {
-  return `/api/assets/${encodeURIComponent(assetId)}/content`;
+export function getRemoteAssetContentUrl(assetId: string, variant?: 'thumbnail') {
+  return `/api/assets/${encodeURIComponent(assetId)}/content${variant === 'thumbnail' ? '?variant=thumbnail' : ''}`;
 }
 
 export async function loadRemoteAssetBlob(assetId: string, fetchAsset: FetchAsset = fetch) {

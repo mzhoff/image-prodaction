@@ -27,11 +27,16 @@ export async function getAssetContent(
   if (record.status !== 'ready') throw new AssetNotReadyError();
   let variant = purpose ? await dependencies.repository.findVariant(record.id, purpose) : undefined;
   try {
-    if (purpose === 'thumbnail' && !variant && dependencies.createId && dependencies.createThumbnail) {
-      if (record.mediaKind !== 'image') throw new AssetNotFoundError();
+    if (purpose === 'thumbnail' && !variant && dependencies.createId) {
       const original = await dependencies.objectStore.get({ bucket: record.bucket, key: record.storageKey });
       const bytes = new Uint8Array(await new Response(original.body).arrayBuffer());
-      await storeThumbnailVariant(record, await dependencies.createThumbnail(bytes), {
+      const thumbnail = record.mediaKind === 'image' && dependencies.createThumbnail
+        ? await dependencies.createThumbnail(bytes)
+        : record.mediaKind === 'video' && dependencies.createVideoThumbnail
+          ? await dependencies.createVideoThumbnail(bytes)
+          : null;
+      if (!thumbnail) throw new AssetNotFoundError();
+      await storeThumbnailVariant(record, thumbnail, {
         ...dependencies,
         createId: dependencies.createId,
       });

@@ -23,6 +23,8 @@ export interface ProjectSummary {
   workspaceId: string;
   name: string;
   thumbnailUrl: string;
+  folderId?: string | null;
+  librarySaved?: boolean;
   thumbnailMode: 'auto' | 'manual';
   thumbnailAvailable?: boolean;
   hasEverHadContent: boolean;

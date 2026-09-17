@@ -70,14 +70,24 @@ export function usePortPointMeasurement({
 
     let frame = 0;
     const scheduleMeasure = () => {
+      if (container.dataset.dragPreview) return;
       if (frame) window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(measurePortPoints);
     };
 
     const observer = new ResizeObserver(scheduleMeasure);
+    container.addEventListener('canvas-drag-preview-end', scheduleMeasure);
     observer.observe(container);
     container.querySelectorAll('[data-node-id]').forEach((element) => observer.observe(element));
-    const mutationObserver = new MutationObserver(scheduleMeasure);
+    const mutationObserver = new MutationObserver((records) => {
+      if (records.some((record) => {
+        const target = record.target as HTMLElement;
+        // Translation and z-order do not change local port offsets.
+        if (record.type === 'attributes' && (target.matches('.production-node, .canvas-world')
+          || !target.closest('[data-node-id]'))) return false;
+        return true;
+      })) scheduleMeasure();
+    });
     mutationObserver.observe(container, {
       attributeFilter: ['class', 'data-port-id', 'data-port-node-id', 'data-port-side', 'style'],
       attributes: true,
@@ -89,6 +99,7 @@ export function usePortPointMeasurement({
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       observer.disconnect();
+      container.removeEventListener('canvas-drag-preview-end', scheduleMeasure);
       mutationObserver.disconnect();
     };
   }, [collapsedGenerateComposingNodeIds, containerRef, measurePortPoints, nodePortLayoutSignature]);

@@ -1,6 +1,8 @@
 import { getNodeImageAssetId, getNodeLocationResult, getNodePublicationResult, getNodeSubjectResult, getNodeTextResult, getRouterDataKind } from '@/entities/production-graph/model/graph-io';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import { getNodeAudioAssetId } from '@/entities/production-graph/model/graph-audio-io';
+import { getNodeVideoAssetId } from '@/entities/production-graph/model/graph-video-io';
+import { getNodeTimelineResult } from '@/entities/production-graph/model/graph-timeline-io';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { GraphEdge, ProductionNode } from '@/entities/production-graph/model/types';
 
@@ -50,14 +52,16 @@ export function getEdgeHasData(edge: GraphEdge, nodesById: Map<string, Productio
     if (kind === 'location') return Boolean(getNodeLocationResult(source, context));
     if (kind === 'publication') return Boolean(getNodePublicationResult(source, context));
     if (kind === 'audio') return Boolean(getNodeAudioAssetId(source, context));
-    if (kind === 'video') return true;
+    if (kind === 'video') return Boolean(getNodeVideoAssetId(source, edge.sourcePortId, context));
   }
   if (sourcePort?.kind === 'image') return Boolean(getNodeImageAssetId(source, { ...context, assets: [] }));
   if (sourcePort?.kind === 'audio') return Boolean(getNodeAudioAssetId(source, context));
+  if (sourcePort?.kind === 'video') return Boolean(getNodeVideoAssetId(source, edge.sourcePortId, context));
   if (sourcePort?.kind === 'subject') return Boolean(getNodeSubjectResult(source, context));
   if (sourcePort?.kind === 'location') return Boolean(getNodeLocationResult(source, context));
   if (sourcePort?.kind === 'publication') return Boolean(getNodePublicationResult(source, context));
   if (sourcePort?.kind === 'json' || sourcePort?.kind === 'number' || sourcePort?.kind === 'boolean') {
+    if (source.type === 'timelineHandoff') return Boolean(getNodeTimelineResult(source, context));
     return source.type === 'structuredOutput'
       && Boolean((source.data as { result?: unknown }).result);
   }

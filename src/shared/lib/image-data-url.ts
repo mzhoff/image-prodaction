@@ -1,5 +1,16 @@
+import { IMAGE_GENERATION_REQUEST_MAX_BYTES } from '@/shared/api/image-request-limits';
+
 export const OPENROUTER_IMAGE_MAX_BYTES = 4_500_000;
 export const OPENROUTER_IMAGE_MAX_SIDE = 1536;
+
+/** Generate Image sends original pixels; its durable server worker optimises encoding. */
+export async function prepareGenerationReferenceForServer(blob: Blob) {
+  if (!isBrowserSafeImage(blob.type)) throw new Error('Для референса используйте PNG, JPEG, WebP или GIF.');
+  if (4 * Math.ceil(blob.size / 3) + 128 > IMAGE_GENERATION_REQUEST_MAX_BYTES) {
+    throw new Error('Референс превышает лимит передачи 30 МиБ с учётом base64. Уменьшите вес файла без изменения разрешения.');
+  }
+  return blobToDataUrl(blob);
+}
 
 export async function prepareImageForOpenRouter(blob: Blob) {
   if (blob.size <= OPENROUTER_IMAGE_MAX_BYTES && isBrowserSafeImage(blob.type)) {

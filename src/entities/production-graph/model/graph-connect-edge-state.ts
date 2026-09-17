@@ -14,7 +14,13 @@ interface ConnectEdgeParams {
 }
 
 export function connectEdgeState(nodes: ProductionNode[], edges: GraphEdge[], params: ConnectEdgeParams) {
-  let nextEdges = edges.filter((edge) => edge.id !== params.detachedEdge?.id);
+  const targetNode = nodes.find((node) => node.id === params.targetNodeId);
+  const isCropSource = targetNode?.type === 'cropImage'
+    && (params.targetPortId === 'image' || params.targetPortId === 'video');
+  let nextEdges = edges.filter((edge) => edge.id !== params.detachedEdge?.id
+    && !(isCropSource && edge.targetNodeId === params.targetNodeId
+      && (edge.targetPortId === 'image' || edge.targetPortId === 'video')
+      && edge.targetPortId !== params.targetPortId));
   const connectedEdge: GraphEdge = {
     id: params.detachedEdge?.id ?? createId('edge'),
     sourceNodeId: params.sourceNodeId,

@@ -22,7 +22,7 @@
   left: 18px;
   height: 2px;
   border-radius: 999px;
-  background: #111;
+  background: var(--pui-semantic-surface-inverse);
   content: "";
   pointer-events: none;
 }
@@ -39,7 +39,7 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #4b5563;
+  color: var(--pui-semantic-text-secondary);
   cursor: grab;
   padding: 0 4px;
   text-align: left;
@@ -50,21 +50,21 @@
 }
 
 .composition-layer-row:hover {
-  background: #f3f3f3;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-layer-row-active {
-  background: #e8f0ff;
-  color: #0d44d9;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-accent-foreground);
 }
 
 .composition-layer-row-active:hover {
-  background: #dde9ff;
+  background: var(--pui-semantic-surface-secondary);
 }
 
 .composition-layer-row-hidden {
-  color: #a1a1aa;
+  color: var(--pui-semantic-text-muted);
 }
 
 .composition-layer-row-drop-before::before,
@@ -76,7 +76,7 @@
   left: 0;
   height: 2px;
   border-radius: 999px;
-  background: #111;
+  background: var(--pui-semantic-surface-inverse);
   content: "";
   pointer-events: none;
 }
@@ -108,8 +108,8 @@
 }
 
 .composition-layer-collapse:hover {
-  background: #e8e8e5;
-  color: #111;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-layer-main {
@@ -149,10 +149,10 @@
   min-width: 0;
   width: 100%;
   height: 22px;
-  border: 1px solid #0d44d9;
+  border: 1px solid var(--pui-semantic-border-focus);
   border-radius: 3px;
-  background: #fff;
-  color: #111;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-primary);
   font: inherit;
   font-size: 13px;
   font-weight: 650;
@@ -181,13 +181,13 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #6b7280;
+  color: var(--pui-semantic-text-secondary);
   cursor: pointer;
   opacity: 0;
   transition: opacity 120ms ease;
 }
 
 .composition-layer-action:hover {
-  background: #e8e8e5;
-  color: #111;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-text-primary);
 }

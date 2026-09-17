@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutTemplate } from 'lucide-react';
+import { LayoutTemplate } from '@prodactionpro/ui-core/icons';
 import type { DragEvent } from 'react';
 import {
   type NodeTemplatePreset,

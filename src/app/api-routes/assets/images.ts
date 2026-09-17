@@ -5,15 +5,15 @@ import {
 } from '@/entities/asset/server/asset-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from './error-response';
 
 const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 const uploadFieldsSchema = z.object({
-  documentId: z.string().refine(isUuidV7).nullable(),
+  documentId: z.string().refine(isUuid).nullable(),
   origin: z.enum(['uploaded', 'saved']),
-  workspaceId: z.string().refine(isUuidV7),
+  workspaceId: z.string().refine(isUuid),
 });
 
 export async function postAssetImage(request: Request) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { ImageUp, Trash2 } from 'lucide-react';
+import { ImageUp, Trash2 } from '@prodactionpro/ui-core/icons';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 
 export interface NodeReferenceGridItem {
@@ -52,7 +52,7 @@ function NodeReferenceCell({
   item?: NodeReferenceGridItem;
   onRemove: (assetId: string, edgeId?: string) => void;
 }) {
-  const url = useAssetUrl(item?.assetId);
+  const url = useAssetUrl(item?.assetId, 'thumbnail');
 
   return (
     <div className="entity-reference-cell">

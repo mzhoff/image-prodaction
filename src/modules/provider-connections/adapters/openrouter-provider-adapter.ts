@@ -4,6 +4,10 @@ import {
   type ProviderCallContext,
   type ProviderExecuteRequest,
 } from '../contracts/provider-contracts';
+import { getGeminiInlineRequestSizeError } from '@/shared/api/image-request-limits';
+import { prepareOpenRouterImages } from './openrouter-image-preparation';
+import { createImagesApiPayload, normalizeImagesApiResult } from './openrouter-images-api';
+import { createOpenRouterImageCatalog } from './openrouter-image-catalog';
 import {
   ProviderAdapterError,
   ProviderCanceledError,
@@ -49,14 +53,26 @@ export function createOpenRouterProviderAdapter(
   options: OpenRouterProviderAdapterOptions = {},
 ): ProviderAdapter {
   const requestJson = createRequestJson(options);
+  const imageCatalog = createOpenRouterImageCatalog(options.fetch, options.baseUrl);
   const adapter: ProviderAdapter = {
     provider: PROVIDER,
     classifyError: (error, context) => classifyProviderError(error, context),
     async execute(request, context) {
       validateExecuteRequest(request);
+      const prepared = await prepareOpenRouterImages(request, context.signal);
+      if (request.parameters?.image?.api === 'images') {
+        const body = JSON.stringify(await createImagesApiPayload(prepared, imageCatalog));
+        const sizeError = getGeminiInlineRequestSizeError(request.modelId, body);
+        if (sizeError) throw permanentError('invalid_request', sizeError);
+        const payload = await requestJson('/images', { method: 'POST', body }, context);
+        return normalizeImagesApiResult(payload, request);
+      }
+      const body = JSON.stringify(createExecutePayload(prepared));
+      const sizeError = getGeminiInlineRequestSizeError(request.modelId, body);
+      if (sizeError) throw permanentError('invalid_request', sizeError);
       const payload = await requestJson('/chat/completions', {
         method: 'POST',
-        body: JSON.stringify(createExecutePayload(request)),
+        body,
       }, context);
       return normalizeOpenRouterResult(payload, request);
     },
@@ -147,6 +163,7 @@ function createRequestJson(options: OpenRouterProviderAdapterOptions) {
     validateCredentialValue(context.credential);
     const { controller, dispose, timedOut } = createRequestAbort(context, requestTimeoutMs);
     let response: Response;
+    let payload: unknown;
     try {
       response = await fetchProvider(`${baseUrl}${path}`, {
         ...init,
@@ -160,14 +177,17 @@ function createRequestJson(options: OpenRouterProviderAdapterOptions) {
         },
         signal: controller.signal,
       });
+      payload = await readJsonSafely(response);
     } catch (error) {
       if (context.signal?.aborted) throw new ProviderCanceledError(true);
       if (timedOut()) throw new ProviderTimeoutError({ requestDispatched: true });
+      if (error instanceof ProviderAdapterError && error.descriptor.code === 'invalid_response' && init.method === 'POST') {
+        throw new ProviderAdapterError({ ...error.descriptor, classification: 'ambiguous' }, error);
+      }
       throw new ProviderAdapterError(classifyProviderError(error, { requestDispatched: true }), error);
     } finally {
       dispose();
     }
-    const payload = await readJsonSafely(response);
     const embeddedError = readEmbeddedError(payload);
     if (!response.ok || embeddedError) {
       throw new ProviderHttpError({

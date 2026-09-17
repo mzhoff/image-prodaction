@@ -19,7 +19,7 @@ export const ImageViewerThumbnail = memo(function ImageViewerThumbnail({
   item?: ImageViewerItem;
   onSelect: (index: number) => void;
 }) {
-  const graphUrl = useAssetUrl(item ? undefined : assetId);
+  const graphUrl = useAssetUrl(item ? undefined : assetId, 'thumbnail');
   const url = item?.thumbnailUrl ?? item?.url ?? graphUrl;
   if (!url) return null;
   return (

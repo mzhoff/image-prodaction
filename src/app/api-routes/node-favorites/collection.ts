@@ -7,11 +7,11 @@ import {
 } from '@/entities/production-graph/server/favorite-node-service';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { apiError } from '@/shared/api/api-error';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toFavoriteNodeApiErrorResponse } from './error-response';
 
 const MAX_REQUEST_BYTES = 128 * 1024;
-const workspaceIdSchema = z.string().refine(isUuidV7);
+const workspaceIdSchema = z.string().refine(isUuid);
 const createFavoriteBody = z.object({
   workspaceId: workspaceIdSchema,
   node: z.object({

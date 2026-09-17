@@ -1,11 +1,11 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { clampTextConcatOptionalHeight, useTextConcatNodeModel } from '../../model/use-text-workflow-node-models';
 import { FilteredTextSectionOutput } from '../filtered-text-section-output';
@@ -86,6 +86,7 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
             className="text-node-section text-node-result-section"
           >
             <FilteredTextSectionOutput
+              textField="result"
               ariaLabel="Concat result"
               boxClassName="text-node-result-box text-concat-result-box"
               disabledFilterIds={model.disabledResultFilterIds}
@@ -98,6 +99,7 @@ export function TextConcatNode({ node, onStartConnection }: TextConcatNodeProps)
           </CollapsibleSection>
           <CollapsibleSection title="Optional Text" className="text-node-section text-node-optional-section">
             <PromptBox
+              textField="suffix"
               value={model.optionalText}
               onChange={model.handleOptionalTextChange}
               className="text-node-optional-box"

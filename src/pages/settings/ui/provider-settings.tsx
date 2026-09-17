@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Loader2, PlugZap, RefreshCcw } from 'lucide-react';
+import { AlertCircle, Loader2, PlugZap, RefreshCcw } from '@prodactionpro/ui-core/icons';
 import { BrandSelect } from '@/shared/ui/brand-select';
 import { useProviderSettingsModel } from '../model/use-provider-settings-model';
 import { ProviderConnectionCard } from './provider-connection-card';

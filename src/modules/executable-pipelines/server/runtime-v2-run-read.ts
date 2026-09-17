@@ -12,6 +12,7 @@ import type { RuntimeV2Scope } from '../contracts/runtime-v2-contracts';
 import { authenticateRuntimeClientRequest, type RuntimeClientIdentity } from './runtime-client-auth';
 import { getRuntimeRunUsage } from './runtime-usage-service';
 import { runtimeId, runtimeJson } from './runtime-v2-http';
+import { requireProductionStoryDocument, STORIES_DOCUMENT_FORMAT } from '@/shared/contracts/stories-document';
 
 export async function findOwnedRuntimeRun(identity: RuntimeClientIdentity, runId: string) {
   runtimeId(runId);
@@ -86,16 +87,19 @@ export async function readRuntimeV2Artifact(run: typeof pipelineRun.$inferSelect
 export function containsRuntimeArtifact(value: PipelineValue, assetId: string): boolean {
   if (Array.isArray(value)) return value.some((item) => containsRuntimeArtifact(item, assetId));
   if (!value || typeof value !== 'object') return false;
-  if ((value.kind === 'image' || value.kind === 'audio') && value.assetId === assetId) return true;
+  if ((value.kind === 'image' || value.kind === 'audio' || value.kind === 'video') && value.assetId === assetId) return true;
   return Object.values(value).some((item) => containsRuntimeArtifact(item, assetId));
 }
 
 export function runtimeOutputArtifacts(value: PipelineValue, runId: string): PipelineValue {
   if (Array.isArray(value)) return value.map((item) => runtimeOutputArtifacts(item, runId));
   if (!value || typeof value !== 'object') return value;
-  if ((value.kind === 'image' || value.kind === 'audio') && typeof value.assetId === 'string') {
+  if (value.schemaVersion === STORIES_DOCUMENT_FORMAT) {
+    return requireProductionStoryDocument(value) as unknown as PipelineValue;
+  }
+  if ((value.kind === 'image' || value.kind === 'audio' || value.kind === 'video') && typeof value.assetId === 'string') {
     runtimeId(value.assetId);
-    const safeKeys = ['kind', 'assetId', 'mimeType', 'sizeBytes', 'width', 'height', 'checksumSha256', 'durationSeconds'];
+    const safeKeys = ['kind', 'assetId', 'mimeType', 'sizeBytes', 'width', 'height', 'checksumSha256', 'durationSeconds', 'codec', 'channels', 'sampleRateHz', 'hasAudio'];
     return { ...Object.fromEntries(Object.entries(value).filter(([key]) => safeKeys.includes(key))),
       contentUrl: `/v2/runtime/runs/${runId}/artifacts/${value.assetId}` };
   }

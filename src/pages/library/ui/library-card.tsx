@@ -2,81 +2,57 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ImageIcon, LibraryBig, Sparkles, Upload, Video } from 'lucide-react';
+import { ImageIcon, MoreHorizontal, Play, Video } from '@prodactionpro/ui-core/icons';
 import { memo, useEffect, useState } from 'react';
-import type { LibraryAssetItem, LibraryAssetOrigin } from '../model/types';
+import type { LibraryAssetItem } from '../model/types';
+import { formatLibraryByteSize, formatLibraryTimestamp } from '../lib/library-gallery';
+import { useLibraryAssetActions } from './library-asset-actions';
 
 export const LibraryCard = memo(function LibraryCard({
   item,
   filterQuery,
+  width,
 }: {
   item: LibraryAssetItem;
   filterQuery: string;
+  width: number;
 }) {
+  const actions = useLibraryAssetActions();
   const previewHref = `/library/${encodeURIComponent(item.id)}${filterQuery ? `?${filterQuery}` : ''}`;
-  const preferredPreviewUrl = item.thumbnailUrl || item.contentUrl;
-  const [previewUrl, setPreviewUrl] = useState(preferredPreviewUrl);
-  useEffect(() => setPreviewUrl(preferredPreviewUrl), [preferredPreviewUrl]);
+  const previewUrl = item.thumbnailUrl || item.contentUrl;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [previewUrl]);
+  const detailsId = `library-details-${item.id}`;
   return (
-    <article className="library-card">
-      <Link href={previewHref} className="library-card-preview" aria-label={`Открыть ${item.originalName}`}>
-        {item.mediaKind === 'image' && previewUrl ? <Image
+    <article className={`library-card${actions.selection.selectedIds.has(item.id) ? ' library-card-selected' : ''}`}
+      data-asset-id={item.id} style={{ width }} onContextMenu={(event) => actions.openMenu(event, item)}>
+      <Link href={previewHref} prefetch={false} className="library-card-preview"
+        onClick={(event) => { if (actions.selection.active) { event.preventDefault(); if (!actions.busy) actions.selection.toggle(item); } }}
+        aria-label={`${actions.selection.active ? 'Выбрать' : 'Открыть'} ${item.originalName}`} aria-describedby={detailsId}>
+        {previewUrl && !failed ? <Image
           src={previewUrl}
           alt=""
           fill
-          sizes="(max-width: 760px) 100vw, (max-width: 1200px) 33vw, 280px"
+          sizes={`${Math.ceil(width)}px`}
           unoptimized
           loading="lazy"
           decoding="async"
-          onError={() => {
-            if (previewUrl !== item.contentUrl) setPreviewUrl(item.contentUrl);
-          }}
+          onError={() => setFailed(true)}
         /> : <span className="library-media-placeholder" aria-hidden="true">
           {item.mediaKind === 'video' ? <Video size={30} /> : <ImageIcon size={30} />}
         </span>}
-        <span className={`library-origin-badge library-origin-${item.origin}`}>
-          {originIcon(item.origin)} {originLabel(item.origin)}
+        {item.mediaKind === 'video' ? <span className="library-video-play-badge" aria-hidden="true"><Play fill="currentColor" size={18} /></span> : null}
+        <span className="library-card-details" id={detailsId}>
+          <span>{item.width && item.height ? `${item.width} × ${item.height}` : 'Разрешение неизвестно'}<span aria-hidden="true"> · </span>{formatLibraryByteSize(item.byteSize)}</span>
+          <time dateTime={item.createdAt}>{formatLibraryTimestamp(item.createdAt)}</time>
         </span>
-        {item.width && item.height ? <span className="library-dimensions">{item.width} × {item.height}</span> : null}
       </Link>
-      <div className="library-card-body">
-        <h3 title={item.originalName}>{item.originalName}</h3>
-        <p>
-          <span>{item.document?.name ?? 'Без проекта'}</span>
-          <time dateTime={item.createdAt}>{formatLibraryDate(item.createdAt)}</time>
-        </p>
-        <div className="library-card-meta">
-          <span>{item.modelId || item.provider || formatContentType(item.contentType)}</span>
-          {item.operation ? <span>{item.operation}</span> : null}
-        </div>
-      </div>
+        {actions.selection.active ? <label className="library-card-checkbox">
+          <input type="checkbox" aria-label={`Выбрать ${item.originalName}`} checked={actions.selection.selectedIds.has(item.id)}
+            disabled={actions.busy} onChange={() => actions.selection.toggle(item)} />
+        </label> : null}
+        <button type="button" className="library-card-actions"
+          aria-label={`Действия с ${item.originalName}`} onClick={(event) => actions.openMenu(event, item)}><MoreHorizontal size={18} /></button>
     </article>
   );
 });
-
-function originLabel(origin: LibraryAssetOrigin) {
-  if (origin === 'uploaded') return 'Uploaded';
-  if (origin === 'generated') return 'Generated';
-  if (origin === 'saved') return 'Saved';
-  return 'Unknown';
-}
-
-function originIcon(origin: LibraryAssetOrigin) {
-  if (origin === 'uploaded') return <Upload size={12} />;
-  if (origin === 'generated') return <Sparkles size={12} />;
-  return <LibraryBig size={12} />;
-}
-
-function formatLibraryDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Без даты';
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: 'short',
-    year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
-  }).format(date);
-}
-
-function formatContentType(value: string) {
-  return value.split('/').pop()?.toUpperCase() || 'FILE';
-}

@@ -3,7 +3,7 @@ import { writeFile, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import {
   GenerationWorker,
-  createImageGenerationExecutor,
+  createProductionGenerationExecutor,
   reconcileOpenRouterUsageBatch,
   recoverExpiredShortAiJobs,
 } from '@/modules/generation';
@@ -30,7 +30,7 @@ let currentStatus: WorkerStatus = 'starting';
 let lastLoopErrorAt: string | null = null;
 let lastPollSucceededAt: string | null = null;
 const worker = new GenerationWorker({
-  executor: createImageGenerationExecutor(),
+  executor: createProductionGenerationExecutor(),
   heartbeatIntervalMs: readPositiveInteger('GENERATION_WORKER_LEASE_HEARTBEAT_MS', 20_000),
   leaseDurationMs: readPositiveInteger('GENERATION_WORKER_LEASE_MS', 60_000),
   pollIntervalMs: readPositiveInteger('GENERATION_WORKER_POLL_MS', 750),

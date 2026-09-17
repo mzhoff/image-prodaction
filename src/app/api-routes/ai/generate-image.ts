@@ -19,19 +19,18 @@ import {
 } from '@/modules/generation/server/generation-submission-service';
 import type { QueuedGenerateImagePayload } from '@/modules/generation';
 import { apiError } from '@/shared/api/api-error';
+import { IMAGE_GENERATION_REQUEST_MAX_BYTES } from '@/shared/api/image-request-limits';
+import { JsonRequestError, readBoundedJsonObject } from '@/shared/api/read-bounded-json';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import {
-  DEFAULT_IMAGE_MODEL,
-  getImageModelConfig,
-  PREFERRED_IMAGE_MODEL_IDS,
-} from '@/shared/api/openrouter-models';
-import { isUuidV7 } from '@/shared/lib/id';
+import { DEFAULT_IMAGE_MODEL } from '@/shared/api/openrouter-models';
+import { imageGenerationOptionsSchema, pickImageGenerationOptions } from '@/shared/media/image-generation-settings';
+import { ImageModelValidationError, openRouterImageCatalog } from '@/modules/provider-connections/adapters/openrouter-image-catalog';
+import { isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
 export const runtime = 'nodejs';
 
-const MAX_GENERATION_REQUEST_BYTES = 30 * 1024 * 1024;
-const MAX_REFERENCE_DATA_URL_LENGTH = 6_500_000;
+const MAX_REFERENCE_DATA_URL_LENGTH = IMAGE_GENERATION_REQUEST_MAX_BYTES;
 const MAX_PROMPT_TEXT_LENGTH = 50_000;
 const generationTextSchema = z.string().min(1).max(20_000);
 
@@ -62,8 +61,9 @@ const emptyStructuredInputs = {
 };
 
 const generateImageSchema = z.object({
+  ...imageGenerationOptionsSchema.shape,
   operation: z.literal('generate_image').optional(),
-  documentId: z.string().refine(isUuidV7),
+  documentId: z.string().refine(isUuid),
   idempotencyKey: z.string().trim().min(1).max(255),
   model: z.string().min(1).default(DEFAULT_IMAGE_MODEL),
   prompt: z.string().max(MAX_PROMPT_TEXT_LENGTH).default(''),
@@ -78,7 +78,7 @@ const generateImageSchema = z.object({
     sourceNodeTypes: z.array(z.custom<ProductionNodeType>(isProductionNodeType)).max(50).optional(),
     slots: z.array(z.custom<GenerateReferenceSlot>(isGenerateReferenceSlot)).max(50).default([]),
   })).max(4).default([]),
-  workspaceId: z.string().refine(isUuidV7),
+  workspaceId: z.string().refine(isUuid),
 });
 
 const referenceSlotIds = new Set<string>([
@@ -108,11 +108,14 @@ const productionNodeTypes = new Set<string>([
 ]);
 
 export async function POST(request: Request) {
-  const contentLength = Number(request.headers.get('content-length'));
-  if (Number.isFinite(contentLength) && contentLength > MAX_GENERATION_REQUEST_BYTES) {
-    return apiError('generation_request_too_large', 'Generation request is too large.', 413);
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonObject(request, IMAGE_GENERATION_REQUEST_MAX_BYTES);
+  } catch (error) {
+    if (error instanceof JsonRequestError) return apiError(error.code, error.message, error.status);
+    throw error;
   }
-  const parsed = generateImageSchema.safeParse(await request.json().catch(() => null));
+  const parsed = generateImageSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
@@ -122,7 +125,9 @@ export async function POST(request: Request) {
   try {
     const session = await requireApiSession(request);
     await resolveOpenRouterCredential(session.user.id, parsed.data.workspaceId);
+    await openRouterImageCatalog.resolve(parsed.data.model, parsed.data, parsed.data.referenceImages.length);
     const payload: QueuedGenerateImagePayload = {
+      ...pickImageGenerationOptions(parsed.data),
       workspaceId: parsed.data.workspaceId,
       documentId: parsed.data.documentId,
       model: parsed.data.model,
@@ -181,6 +186,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof ImageModelValidationError) {
+      return apiError('generation_image_config_unavailable', error.message, 400);
+    }
     if (error instanceof ProviderConnectionNotConfiguredError) {
       return apiError('provider_not_configured', error.message, 409);
     }
@@ -216,24 +224,6 @@ function validateGenerationInput(data: z.infer<typeof generateImageSchema>) {
     return apiError(
       'generation_input_required',
       'Add a prompt or connect at least one reference.',
-      400,
-    );
-  }
-  if (!PREFERRED_IMAGE_MODEL_IDS.includes(data.model)) {
-    return apiError(
-      'generation_model_unavailable',
-      `Model ${data.model} is not available for image generation.`,
-      400,
-    );
-  }
-  const imageConfig = getImageModelConfig(data.model);
-  if (
-    !imageConfig.aspectRatios.includes(data.aspectRatio)
-    || !imageConfig.sizes.includes(data.size)
-  ) {
-    return apiError(
-      'generation_image_config_unavailable',
-      'Aspect ratio or size is not available for selected model.',
       400,
     );
   }

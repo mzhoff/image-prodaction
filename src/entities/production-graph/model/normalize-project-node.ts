@@ -1,5 +1,7 @@
 import { normalizeNodeSize } from './node-layout';
 import { normalizeAudioNode } from './normalize-project-audio-nodes';
+import { normalizeTimelineNode } from './normalize-project-timeline-nodes';
+import { normalizeVideoNode } from './normalize-project-video-nodes';
 import { normalizeContextNode } from './normalize-project-context-nodes';
 import { normalizeImageNode } from './normalize-project-image-nodes';
 import { getNodeDefinition } from './node-registry';
@@ -17,6 +19,8 @@ export function normalizeNodeRuntimeStatus(node: ProductionNode): ProductionNode
 export function normalizeNode(node: ProductionNode): ProductionNode {
   const normalized = normalizeImageNode(node)
     ?? normalizeAudioNode(node)
+    ?? normalizeTimelineNode(node)
+    ?? normalizeVideoNode(node)
     ?? normalizeTextNode(node)
     ?? normalizeContextNode(node)
     ?? normalizePublicationNode(node)

@@ -1,6 +1,6 @@
 'use client';
 
-import { Maximize2, Minimize2, Plus } from 'lucide-react';
+import { Maximize2, Minimize2, Plus } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { ProductionNode, TextPromptNodeData } from '@/entities/production-graph/model/types';
@@ -104,6 +104,13 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
       />
       {!collapsed ? (
         <div className="text-prompt-body">
+          <TextSectionFilterTags
+            textField="text"
+            className="text-prompt-filter-tags"
+            disabledFilterIds={model.disabledResultFilterIds}
+            onToggle={model.handleResultFilterToggle}
+            text={data.text}
+          />
           <TextPromptVariableEditor
             canAddVariable={model.canAddVariable}
             className="text-prompt-main-box"
@@ -116,12 +123,6 @@ export function TextPromptNode({ node, onStartConnection }: TextPromptNodeProps)
             slots={model.variableSlots}
             style={{ height: textareaHeight }}
             value={data.text}
-          />
-          <TextSectionFilterTags
-            className="text-prompt-filter-tags"
-            disabledFilterIds={model.disabledResultFilterIds}
-            onToggle={model.handleResultFilterToggle}
-            text={model.result}
           />
           <TextSectionDuplicateWarnings
             className="text-prompt-filter-warnings"

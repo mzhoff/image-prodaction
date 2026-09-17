@@ -1,7 +1,7 @@
 'use client';
 
 import { createPortal } from 'react-dom';
-import { FileText, Maximize2, Minimize2, Scan, X } from 'lucide-react';
+import { FileText, Maximize2, Minimize2, Scan, X } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { FormattedTextFeature } from '@/entities/production-graph/model/formatted-text';
@@ -13,6 +13,7 @@ import { clampTextFormatterEditorHeight, clampTextFormatterNodeWidth, useTextFor
 import { NodeTitle, NodeTitleActions, NodeTitleOptionsButton } from '../node-title';
 import { PortButton } from '../port-button';
 import { TelegramMessageEditor } from '../telegram-message-editor';
+import { TextSectionFilterTags } from '../text-section-filter-tags';
 import type { TelegramTextContextMenuFeature } from '../telegram-message-editor-context-menu';
 
 interface TextFormatterNodeProps {
@@ -158,6 +159,8 @@ export function TextFormatterNode({ node, onStartConnection }: TextFormatterNode
               <span>Open document</span>
             </button>
           </div>
+          <TextSectionFilterTags text={model.plainText} textField="plainText" readOnly className="text-fragment-field-tags" />
+          <div data-text-field="plainText">
           {model.usesArticleEditor ? (
             <ArticleRichTextEditor
               className="text-formatter-editor-shell"
@@ -183,6 +186,7 @@ export function TextFormatterNode({ node, onStartConnection }: TextFormatterNode
               value={model.plainText}
             />
           )}
+          </div>
           <div className="text-formatter-meta-row">
             <span>{model.plainText.length} chars</span>
             <span>{model.sourceCount} input</span>

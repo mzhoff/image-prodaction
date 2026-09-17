@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera, Download, Menu, Pencil, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Download, Menu, Pencil, Star, Trash2 } from '@prodactionpro/ui-core/icons';
 import { useEffect, useRef, useState } from 'react';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
@@ -11,6 +11,7 @@ import { useContextMenu } from '@/shared/ui/use-context-menu';
 interface DocumentTitleBarProps {
   favorite: boolean;
   onCreateSnapshot: () => Promise<void>;
+  onExit?: () => void;
   onCloseCanvasMenu: () => void;
   onExportProject: () => void;
   onMoveToTrash: () => Promise<unknown>;
@@ -25,6 +26,7 @@ interface DocumentTitleBarProps {
 export function DocumentTitleBar({
   favorite,
   onCreateSnapshot,
+  onExit,
   onCloseCanvasMenu,
   onExportProject,
   onMoveToTrash,
@@ -121,7 +123,7 @@ export function DocumentTitleBar({
 
   return (
     <div className="document-title-pill" data-canvas-ui data-snapshot-exclude>
-      <Link className="document-title-back" href="/" aria-label="Back to My Files" title="Back to My Files">
+      <Link className="document-title-back" href="/" onNavigate={onExit} aria-label="Back to My Files" title="Back to My Files">
         <ArrowLeft size={16} />
       </Link>
       <button

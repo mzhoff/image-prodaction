@@ -48,6 +48,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const processingRef = useRef(0);
+  const renderedRef = useRef<{ sourceId: string; values: ImageAdjustmentValues } | null>(null);
 
   const sourceAsset = useMemo(() => (
     getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
@@ -124,6 +125,8 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
         if (processingRef.current !== runId) return;
 
         const asset = await saveTransientImageAsset(file);
+        if (processingRef.current !== runId) return;
+        renderedRef.current = { sourceId: sourceAsset.id, values };
         addAsset(asset);
         updateNodeDataSilent(node.id, {
           message: '',
@@ -178,6 +181,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
     handleReset,
     message: data.message,
     resultAsset: validResultAsset,
+    outputPending: Boolean(sourceAsset && (!validResultAsset || renderedRef.current?.sourceId !== sourceAsset.id || renderedRef.current.values !== values)),
     sourceAsset,
     values,
   };

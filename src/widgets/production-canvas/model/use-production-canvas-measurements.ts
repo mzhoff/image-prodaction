@@ -10,11 +10,12 @@ type CanvasNavigation = ReturnType<typeof useCanvasNavigation>;
 type GraphModel = ReturnType<typeof useProductionCanvasStore>;
 
 export function useProductionCanvasMeasurements(graph: GraphModel, canvas: CanvasNavigation) {
-  const collapsedGenerateComposingNodeIds = useMemo(() => new Set(
-    graph.nodes.filter((node) => node.type === 'generateImage'
+  const collapsedSignature = graph.nodes.filter((node) => node.type === 'generateImage'
       && normalizeNodeDisplayState(graph.uiState.nodes[node.id]) === 'Collapsed')
-      .map((node) => node.id),
-  ), [graph.nodes, graph.uiState.nodes]);
+      .map((node) => node.id).join('|');
+  const collapsedGenerateComposingNodeIds = useMemo(() => new Set(
+    collapsedSignature ? collapsedSignature.split('|') : [],
+  ), [collapsedSignature]);
   const measuredPortPoints = usePortPointMeasurement({
     collapsedGenerateComposingNodeIds,
     containerRef: canvas.containerRef,

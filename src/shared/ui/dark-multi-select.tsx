@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from '@prodactionpro/ui-core/icons';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/shared/lib/cn';
@@ -12,9 +12,11 @@ interface DarkMultiSelectProps {
   options: DarkSelectOption[];
   onChange: (value: string[]) => void;
   wide?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
 }
 
-export function DarkMultiSelect({ value, label, options, onChange, wide }: DarkMultiSelectProps) {
+export function DarkMultiSelect({ value, label, options, onChange, wide, disabled = false, ariaLabel }: DarkMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -42,6 +44,7 @@ export function DarkMultiSelect({ value, label, options, onChange, wide }: DarkM
   };
 
   const toggleValue = (nextValue: string) => {
+    if (disabled) return;
     if (nextValue === 'default') {
       onChange(['default']);
       return;
@@ -60,9 +63,14 @@ export function DarkMultiSelect({ value, label, options, onChange, wide }: DarkM
         ref={triggerRef}
         type="button"
         className={cn('mini-select', wide && 'mini-select-wide')}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        aria-expanded={open && !disabled}
+        aria-haspopup="listbox"
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
+          if (disabled) return;
           if (open) setOpen(false);
           else openMenu();
         }}
@@ -70,11 +78,14 @@ export function DarkMultiSelect({ value, label, options, onChange, wide }: DarkM
         {label}
         <ChevronDown size={13} />
       </button>
-      {open && anchor ? createPortal(
+      {open && anchor && !disabled ? createPortal(
         <>
           <div className="dark-select-backdrop" onClick={() => setOpen(false)} />
           <div
             className="dark-select-menu"
+            role="listbox"
+            aria-label={ariaLabel}
+            aria-multiselectable="true"
             style={{ top: anchor.top, left: anchor.left, minWidth: anchor.width }}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
@@ -85,6 +96,8 @@ export function DarkMultiSelect({ value, label, options, onChange, wide }: DarkM
                 <button
                   key={option.value}
                   type="button"
+                  role="option"
+                  aria-selected={isSelected}
                   className={cn('dark-select-item', isSelected && 'dark-select-item-selected')}
                   onClick={() => toggleValue(option.value)}
                 >

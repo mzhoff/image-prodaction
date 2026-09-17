@@ -81,7 +81,7 @@ export async function submitRuntimeV2Run(request: Request, grantId: string, body
 async function validateRuntimeInputAssets(db: RuntimeDatabase, workspaceId: string, value: unknown): Promise<void> {
   if (!value || typeof value !== 'object') return;
   const record = value as Record<string, unknown>;
-  if ((record.kind === 'image' || record.kind === 'audio') && typeof record.assetId === 'string') {
+  if ((record.kind === 'image' || record.kind === 'audio' || record.kind === 'video') && typeof record.assetId === 'string') {
     runtimeId(record.assetId);
     const [owned] = await db.select({ id: asset.id, contentType: asset.contentType, byteSize: asset.byteSize, checksumSha256: asset.checksumSha256 }).from(asset).where(and(
       eq(asset.id, record.assetId), eq(asset.workspaceId, workspaceId), eq(asset.status, 'ready'), eq(asset.mediaKind, record.kind),

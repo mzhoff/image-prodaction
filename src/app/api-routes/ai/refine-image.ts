@@ -15,7 +15,7 @@ import {
 } from '@/entities/generation/server/generation-orchestrator';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 import {
   extractOpenRouterImageUrl,
@@ -47,7 +47,7 @@ const preserveStrengthSchema = z.enum(['strict', 'balanced', 'creative']);
 
 const refineImageSchema = z.object({
   aspectRatio: z.string().min(1).default('1:1'),
-  documentId: z.string().refine(isUuidV7),
+  documentId: z.string().refine(isUuid),
   idempotencyKey: z.string().trim().min(1).max(255),
   imageDataUrl: z.string().min(1).max(MAX_IMAGE_DATA_URL_LENGTH),
   instruction: z.string().max(20_000).default(''),
@@ -55,7 +55,7 @@ const refineImageSchema = z.object({
   model: z.string().min(1).default(DEFAULT_IMAGE_MODEL),
   preserveStrength: preserveStrengthSchema.default('strict'),
   size: z.string().min(1).default('2K'),
-  workspaceId: z.string().refine(isUuidV7),
+  workspaceId: z.string().refine(isUuid),
 });
 
 export async function POST(request: Request) {

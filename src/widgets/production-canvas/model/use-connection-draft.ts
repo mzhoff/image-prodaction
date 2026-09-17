@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import type { GraphEdge, GraphPoint, PortKind, ProductionNode } from '@/entities/production-graph/model/types';
 import type { ConnectOptions, DeleteEdgeOptions } from '@/entities/production-graph/model/store-types';
-import { getPortPoint, type PortPointLookup } from '../lib/edge-path';
+import { getBezierPath, getPortPoint, type PortPointLookup } from '../lib/edge-path';
 
 export interface ConnectionDraft {
   detached: boolean;
@@ -53,6 +53,9 @@ export function useConnectionDraft({
   screenToWorld,
 }: UseConnectionDraftParams) {
   const [connectionDraft, setConnectionDraft] = useState<ConnectionDraft | null>(null);
+  const draftPathRef = useRef<SVGPathElement | null>(null);
+  const cancelRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelRef.current?.(), []);
 
   const startConnection = useCallback((nodeId: string, portId: string, event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
@@ -103,17 +106,39 @@ export function useConnectionDraft({
 
     event.preventDefault();
     event.stopPropagation();
+    cancelRef.current?.();
     setConnectionDraft(draft);
+
+    let frame = 0;
+    let currentPoint = draft.current;
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const current = screenToWorld(moveEvent);
       if (!current) return;
-      setConnectionDraft((draft) => (draft ? { ...draft, current } : null));
+      currentPoint = current;
+      if (!frame) frame = requestAnimationFrame(() => {
+        frame = 0;
+        const path = draft.startSide === 'input' && !draft.sourceNodeId
+          ? getBezierPath(currentPoint, draft.start)
+          : getBezierPath(draft.start, currentPoint);
+        draftPathRef.current?.setAttribute('d', path);
+      });
     };
 
-    const handlePointerUp = (upEvent: PointerEvent) => {
+    const cleanup = () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('blur', cancel);
+      window.removeEventListener('keydown', handleKeyDown);
+      cancelRef.current = null;
+    };
+    const cancel = () => { cleanup(); setConnectionDraft(null); };
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') cancel(); };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      cleanup();
 
       const target = (upEvent.target as HTMLElement | null)?.closest('[data-port-side]') as HTMLElement | null;
       const targetNodeId = target?.dataset.portNodeId;
@@ -153,9 +178,13 @@ export function useConnectionDraft({
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('blur', cancel);
+    window.addEventListener('keydown', handleKeyDown);
+    cancelRef.current = cancel;
   }, [connect, deleteEdge, edges, measuredPortPoints, nodesById, onConnectionError, onDropOnEmpty, screenToWorld]);
 
-  return { clearConnectionDraft: () => setConnectionDraft(null), connectionDraft, startConnection };
+  return { clearConnectionDraft: () => { cancelRef.current?.(); setConnectionDraft(null); }, connectionDraft, draftPathRef, startConnection };
 }
 
 function connectDroppedPorts(

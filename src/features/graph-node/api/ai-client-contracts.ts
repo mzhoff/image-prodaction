@@ -1,10 +1,14 @@
+import type { ExtractAnalysisPresetId } from '@/entities/production-graph/model/extract-analysis-profiles';
+import type { ImageGenerationOptions } from '@/shared/media/image-generation-settings';
+
 export interface AnalyzeImageRequest {
-  imageDataUrl: string;
+  analysisPreset?: ExtractAnalysisPresetId;
+  imageDataUrls: string[];
   model: string;
   prompt: string;
 }
 
-export interface GenerateImageRequest {
+export interface GenerateImageRequest extends ImageGenerationOptions {
   aspectRatio: string;
   documentId: string;
   idempotencyKey: string;
@@ -116,6 +120,15 @@ export interface RemoveBackgroundRequest {
 
 export interface GenerationRequestOptions {
   onJobAccepted?: (jobId: string) => void;
+  onJobUpdate?: (job: GenerationJobProgress) => void;
   signal?: AbortSignal;
   timeoutMs?: number;
+}
+
+/** A durable job stage, deliberately not an invented provider percentage. */
+export interface GenerationJobProgress {
+  id?: string;
+  startedAt?: string | null;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+  updatedAt?: string | null;
 }

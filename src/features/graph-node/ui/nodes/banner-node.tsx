@@ -1,12 +1,13 @@
 'use client';
 
-import { ImagePlus, Upload, X } from 'lucide-react';
+import { Upload, X } from '@prodactionpro/ui-core/icons';
 import type { ChangeEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { useRef } from 'react';
 import { saveBannerAsset } from '@/entities/production-graph/lib/banner-asset';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import type { BannerNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { NodeIcon } from '@/entities/production-graph/ui/node-icon';
 import { cn } from '@/shared/lib/cn';
 
 interface BannerNodeProps {
@@ -24,7 +25,7 @@ const MAX_BANNER_HEIGHT = 800;
 export function BannerNode({ node, selected }: BannerNodeProps) {
   const data = node.data as BannerNodeData;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const url = useAssetUrl(data.assetId);
+  const url = useAssetUrl(data.assetId, 'thumbnail');
   const assignBannerAssetToNode = useProductionGraphStore((state) => state.assignBannerAssetToNode);
   const deleteSelected = useProductionGraphStore((state) => state.deleteSelected);
   const resizeNodeFrame = useProductionGraphStore((state) => state.resizeNodeFrame);
@@ -119,7 +120,7 @@ export function BannerNode({ node, selected }: BannerNodeProps) {
               fileInputRef.current?.click();
             }}
           >
-            <ImagePlus size={24} />
+            <NodeIcon nodeType="banner" size={24} />
             <span>Upload banner PNG</span>
           </button>
         </div>

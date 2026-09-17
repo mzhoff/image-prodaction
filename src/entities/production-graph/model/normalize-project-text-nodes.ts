@@ -7,6 +7,8 @@ import {
   normalizeTextPromptVariables,
 } from './text-prompt-normalization';
 import type { ProductionNode, ProductionNodeData } from './types';
+import { normalizeSpeechRequest } from './speech-request';
+import { TEXT_SPLITTER_MAX_ITEMS } from './text-splitter-slots';
 
 export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   if (node.type === 'textPrompt') {
@@ -24,6 +26,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         sourceCount: 0,
         text: '',
         ...data,
+        presentation: 'card',
         disabledResultFilterIds: normalizeStringArray(data.disabledResultFilterIds),
         textareaHeight: normalizeTextPromptTextareaHeight(data.textareaHeight),
         title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Prompt',
@@ -82,6 +85,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
       responseFormat?: unknown;
       resultAssetIds?: unknown;
       resultMetadata?: unknown;
+      speechRequest?: unknown;
     };
     return {
       ...node,
@@ -99,6 +103,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         responseFormat: data.responseFormat === 'pcm' ? 'pcm' : 'mp3',
         resultAssetIds: normalizeStringArray(data.resultAssetIds),
         resultMetadata: isRecord(data.resultMetadata) ? data.resultMetadata : {},
+        speechRequest: normalizeSpeechRequest(data.speechRequest),
         title: typeof data.title === 'string' && data.title.trim() ? data.title : 'Voice',
       },
     } as ProductionNode;
@@ -125,6 +130,7 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
   }
 
   if (node.type === 'textSplitter') {
+    const data = node.data as unknown as Record<string, unknown>;
     return {
       ...node,
       size: normalizeNodeSize(node.type, node.size),
@@ -137,6 +143,8 @@ export function normalizeTextNode(node: ProductionNode): ProductionNode | null {
         result: '',
         sourceText: '',
         ...node.data,
+        itemKeys: Array.isArray(data.itemKeys)
+          ? data.itemKeys.slice(0, TEXT_SPLITTER_MAX_ITEMS).map((key) => typeof key === 'string' ? key : '') : [],
         title: 'Splitter',
       },
     } as ProductionNode;

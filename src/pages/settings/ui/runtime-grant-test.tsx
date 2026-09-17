@@ -1,5 +1,8 @@
 'use client';
 
+import { TextareaControl as PuiTextarea } from '@prodactionpro/ui-core/textarea-control';
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import type { RuntimeV2Grant } from '@/modules/executable-pipelines/contracts/runtime-v2-descriptor-contracts';
 import type { RuntimeConnectionsModel } from '../model/use-runtime-connections';
 import { useRuntimeGrantTest } from '../model/use-runtime-grant-test';
@@ -15,12 +18,12 @@ export function RuntimeGrantTest({ grant, model }: { grant: RuntimeV2Grant; mode
       <div className={`settings-form ${styles.nestedForm}`}>
         <p className={styles.muted}>Этот тест запускается только по кнопке. Чтобы проверить обновление без изменения рабочего pipeline, создайте для новой версии отдельное разрешение выше.</p>
         <label><span>Входные данные (JSON)</span>
-          <textarea className={styles.jsonInput} spellCheck={false} autoComplete="off" maxLength={50_000}
+          <PuiTextarea className={styles.jsonInput} spellCheck={false} autoComplete="off" maxLength={50_000}
             value={test.input} disabled={test.busy || Boolean(test.attempt)}
             onChange={(event) => test.setInput(event.target.value)} />
         </label>
         <label><span>Лимит этого теста, USD (необязательно)</span>
-          <input inputMode="decimal" value={test.cap} disabled={test.busy || Boolean(test.attempt)}
+          <PuiInput inputMode="decimal" value={test.cap} disabled={test.busy || Boolean(test.attempt)}
             onChange={(event) => test.setCap(event.target.value)} placeholder="Использовать лимит разрешения" />
         </label>
         <p className={styles.muted}>{grant.costPolicy.mode === 'STRICT'

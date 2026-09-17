@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { CheckCircle2, CircleAlert, FileImage, LoaderCircle } from 'lucide-react';
+import { CheckCircle2, CircleAlert, FileImage, LoaderCircle } from '@prodactionpro/ui-core/icons';
 import type { PipelinePlaygroundDescriptor, PipelinePlaygroundOutput,
   PipelinePlaygroundRun } from '@/modules/executable-pipelines/contracts/pipeline-playground-contracts';
 import type { PipelineValue } from '@/modules/executable-pipelines/contracts/pipeline-contracts';

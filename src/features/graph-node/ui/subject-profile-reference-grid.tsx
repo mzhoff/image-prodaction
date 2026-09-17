@@ -1,6 +1,6 @@
 'use client';
 
-import { ImageUp, Loader2, Sparkles } from 'lucide-react';
+import { ImageUp, Loader2, Sparkles } from '@prodactionpro/ui-core/icons';
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
@@ -120,7 +120,7 @@ function SubjectProfileReferenceCell({
   onRegenerate: (slotId: string) => void;
   slot: SubjectProfileReferenceSlot;
 }) {
-  const url = useAssetUrl(slot.assetId);
+  const url = useAssetUrl(slot.assetId, 'thumbnail');
   const handleOpen = () => {
     if (!url) return;
     onOpen(slot.id);

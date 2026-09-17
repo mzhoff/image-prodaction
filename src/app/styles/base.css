@@ -1,16 +1,16 @@
 :root {
-  --app-bg: #f4f4f2;
-  --canvas-bg: #f7f7f5;
-  --ink: #111111;
-  --ink-soft: #5c5f6c;
-  --muted: #8ca2a7;
-  --line: #e4e4e1;
-  --plate: #f1f1f0;
-  --blue: #052cd9;
-  --blue-soft: rgba(5, 44, 217, 0.16);
-  --green: #2f7d5a;
-  --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-bg: var(--pui-semantic-surface-canvas);
+  --canvas-bg: var(--pui-semantic-surface-canvas);
+  --ink: var(--pui-semantic-text-primary);
+  --ink-soft: var(--pui-semantic-text-secondary);
+  --muted: var(--pui-semantic-text-muted);
+  --line: var(--pui-semantic-border-default);
+  --plate: var(--pui-semantic-surface-secondary);
+  --blue: var(--pui-semantic-accent-default);
+  --blue-soft: var(--pui-semantic-accent-soft);
+  --green: var(--pui-semantic-status-success-foreground);
+  --shadow: var(--pui-shadow-md);
+  --font-sans: var(--pui-font-family-sans);
   --cursor-mouse-pointer-2: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23111'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M4.037%204.688a.495.495%200%200%201%20.651-.651l16%206.5a.5.5%200%200%201-.063.947l-6.124%201.58a2%202%200%200%200-1.438%201.435l-1.579%206.126a.5.5%200%200%201-.947.063z'/%3E%3C/svg%3E") 4 4, default;
   --cursor-move-horizontal: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23111'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m18%208%204%204-4%204'/%3E%3Cpath%20d='M2%2012h20'/%3E%3Cpath%20d='m6%208-4%204%204%204'/%3E%3C/svg%3E") 12 12, ew-resize;
   --cursor-move-vertical: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23111'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M12%202v20'/%3E%3Cpath%20d='m8%2018%204%204%204-4'/%3E%3Cpath%20d='m8%206%204-4%204%204'/%3E%3C/svg%3E") 12 12, ns-resize;
@@ -20,7 +20,7 @@
 
 * {
   box-sizing: border-box;
-  scrollbar-color: rgba(0, 0, 0, 0.26) transparent;
+  scrollbar-color: color-mix(in srgb, var(--pui-semantic-surface-inverse) 26%, transparent) transparent;
   scrollbar-width: thin;
 }
 
@@ -37,7 +37,7 @@
 *::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 28%, transparent);
   background-clip: content-box;
 }
 
@@ -83,7 +83,7 @@ button {
 
 .reverie-logo-link:hover .reverie-logo-accent,
 .reverie-logo-link:focus-visible .reverie-logo-accent {
-  fill: #4a7aff;
+  fill: var(--pui-semantic-accent-foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -103,7 +103,7 @@ button {
   justify-content: space-between;
   gap: 18px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 86%, transparent);
   padding: 0 18px;
   backdrop-filter: blur(12px);
 }
@@ -121,8 +121,8 @@ button {
   height: 32px;
   place-items: center;
   border-radius: 8px;
-  background: #111;
-  color: #fff;
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
   font-size: 15px;
   font-weight: 750;
 }
@@ -137,7 +137,7 @@ button {
 .editor-brand p,
 .editor-status span {
   margin: 0;
-  color: #777;
+  color: var(--pui-semantic-text-secondary);
   font-size: 11px;
   line-height: 14px;
 }
@@ -146,14 +146,14 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #777;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
 }
 
 .editor-status strong {
-  border: 1px solid #cdd8d3;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 999px;
-  background: #eff7f3;
+  background: var(--pui-semantic-surface-secondary);
   color: var(--green);
   padding: 5px 9px;
   font-size: 11px;

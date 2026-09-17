@@ -1,10 +1,12 @@
 'use client';
 
-import { Fingerprint, Loader2, Sparkles } from 'lucide-react';
+import { Fingerprint, Loader2, Sparkles } from '@prodactionpro/ui-core/icons';
+import Link from 'next/link';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import {
@@ -71,10 +73,12 @@ export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNo
               />
             </div>
             <div className="subject-node-field-label">Description</div>
-            <PromptBox value={model.data.identitySummary} onChange={model.handleIdentitySummaryChange} className="subject-node-prompt-box" placeholder="Description" />
-            <button type="button" className="secondary-node-button subject-node-library-button" onClick={model.handlePublishSubject} data-node-interactive>
-              {model.data.librarySubjectId ? 'Update Library' : 'Publish Subject'}
+            <PromptBox textField="identitySummary" value={model.data.identitySummary} onChange={model.handleIdentitySummaryChange} className="subject-node-prompt-box" placeholder="Description" />
+            <button type="button" disabled={model.libraryBusy} className="secondary-node-button subject-node-library-button" onClick={model.handlePublishSubject} data-node-interactive>
+              {model.libraryBusy ? 'Saving…' : model.data.librarySubjectId ? 'Update Library' : 'Publish Subject'}
             </button>
+            <Link className="node-note" href="/library?section=subjects" data-node-interactive>Library → Персонажи</Link>
+            {model.libraryError ? <div className="node-note" role="alert">{model.libraryError}<button type="button" onClick={() => void model.reloadLibrary()}>Повторить</button></div> : null}
           </CollapsibleSection>
           <CollapsibleSection title="Inputs" className="text-node-section subject-node-inputs-section">
             <EntityBuilderInputRow
@@ -115,7 +119,7 @@ export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNo
             </div>
           </CollapsibleSection>
           <CollapsibleSection title="Canonical references" className="text-node-section subject-node-reference-section">
-            <SettingRow
+            <ModelSettingRow modality="image"
               label="Model"
               value={model.selectedReferenceModel}
               options={model.referenceModelOptions}
@@ -140,13 +144,13 @@ export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNo
             />
           </CollapsibleSection>
           <CollapsibleSection title="Passport" className="text-node-section subject-node-result-section">
-            <PromptBox value={model.result} readonly className="subject-node-result-box" />
+            <PromptBox textField="result" value={model.result} readonly className="subject-node-result-box" />
           </CollapsibleSection>
           <CollapsibleSection title="Constraints" className="text-node-section subject-node-constraints-section" defaultOpen={false}>
-            <PromptBox value={model.data.immutableTraits} onChange={model.handleImmutableTraitsChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Cannot change: stable identity, face, silhouette, marks, materials" />
-            <PromptBox value={model.data.mutableAttributes} onChange={model.handleMutableAttributesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Can change: clothing, pose, emotion, lighting, scene context" />
-            <PromptBox value={model.data.negativeConstraints} onChange={model.handleNegativeConstraintsChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Must not appear or must not be changed" />
-            <PromptBox value={model.data.notes} onChange={model.handleNotesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Additional passport notes" />
+            <PromptBox textField="immutableTraits" value={model.data.immutableTraits} onChange={model.handleImmutableTraitsChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Cannot change: stable identity, face, silhouette, marks, materials" />
+            <PromptBox textField="mutableAttributes" value={model.data.mutableAttributes} onChange={model.handleMutableAttributesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Can change: clothing, pose, emotion, lighting, scene context" />
+            <PromptBox textField="negativeConstraints" value={model.data.negativeConstraints} onChange={model.handleNegativeConstraintsChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Must not appear or must not be changed" />
+            <PromptBox textField="notes" value={model.data.notes} onChange={model.handleNotesChange} className="subject-node-prompt-box subject-node-small-box" placeholder="Additional passport notes" />
           </CollapsibleSection>
           {model.data.message ? <div className="node-note node-note-compact subject-node-message">{model.data.message}</div> : null}
         </>

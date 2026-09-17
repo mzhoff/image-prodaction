@@ -1,12 +1,13 @@
 'use client';
 
-import { Minus } from 'lucide-react';
+import { Minus } from '@prodactionpro/ui-core/icons';
 import type { DragEvent, ReactNode } from 'react';
 import { useState } from 'react';
 import type { FavoriteNodePreset } from '@/entities/production-graph/model/favorite-node-preset';
 import type { NodeTemplatePreset } from '@/entities/production-graph/model/node-template-preset';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
+import { NodeIcon } from '@/entities/production-graph/ui/node-icon';
 import { useScrollableWheel } from '@/shared/ui/use-scrollable-wheel';
 import { addNodeMenuGroups } from '../lib/add-node-menu';
 import type { AddNodeMenuEntry } from '../lib/add-node-menu';
@@ -127,9 +128,6 @@ function FavoritePaletteCard({ favorite, onCreateFavoriteNode }: {
   onCreateFavoriteNode: (favoriteId: string) => void;
 }) {
   const definition = getNodeDefinition(favorite.snapshot.nodeType);
-  const menuItem = addNodeMenuGroups
-    .flatMap((group) => flattenPaletteNodes(group.items))
-    .find((item) => item.type === favorite.snapshot.nodeType);
   const title = (favorite.snapshot.data as { title?: unknown }).title;
   const presetTitle = typeof title === 'string' && title.trim() ? title.trim() : definition.title;
 
@@ -149,7 +147,7 @@ function FavoritePaletteCard({ favorite, onCreateFavoriteNode }: {
       type="button"
     >
       <span className="document-node-palette-favorite-preview">
-        {menuItem?.icon}
+        <NodeIcon nodeType={favorite.snapshot.nodeType} size={14} />
         <strong>{presetTitle}</strong>
       </span>
       <span className="document-node-palette-favorite-type">{definition.menuLabel}</span>

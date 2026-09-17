@@ -5,6 +5,8 @@ import type { CropImageNodeData, CropRect, ProductionNode } from '@/entities/pro
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
+import { getFirstIncomingVideoAsset } from '@/entities/production-graph/model/graph-video-io';
+import { getVideoDisplayDimensions, resolveVideoCropPixels } from '@/shared/media/video-crop';
 import type { DarkSelectOption } from '@/shared/ui/dark-select';
 import {
   aspectRatioValue,
@@ -15,6 +17,7 @@ import {
   fullCrop,
 } from '../lib/crop-geometry';
 import { cropImageBlob } from '../lib/crop-image';
+import { useCropVideoProcessing } from './use-crop-video-processing';
 
 export const cropAspectRatioSelectOptions: DarkSelectOption[] = [
   { value: 'Custom', label: 'Custom' },
@@ -41,15 +44,36 @@ export function useCropImageNodeModel(node: ProductionNode) {
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const crop = useMemo(() => data.crop ?? fullCrop(), [data.crop]);
-  const sourceAsset = useMemo(() => (
-    getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets })
-  ), [assets, edges, node.id, nodes]);
-  const resultAsset = useMemo(() => (
+  const hasVideoInput = edges.some((edge) => edge.targetNodeId === node.id && edge.targetPortId === 'video');
+  const hasImageInput = edges.some((edge) => edge.targetNodeId === node.id && edge.targetPortId === 'image');
+  const sourceConflict = hasVideoInput && hasImageInput;
+  const source = useMemo(() => {
+    if (sourceConflict) return { asset: undefined };
+    const asset = hasVideoInput
+      ? getFirstIncomingVideoAsset(node.id, 'video', { edges, nodes, assets })
+      : getFirstIncomingImageAsset(node.id, 'image', { edges, nodes, assets });
+    // Rotation metadata describes the displayed frame, which is what the crop box edits.
+    if (asset?.kind === 'video' && asset.video) {
+      try { return { asset: { ...asset, ...getVideoDisplayDimensions(asset.video) } }; }
+      catch { return { asset: undefined, error: 'Для обрезки нужен ролик с поворотом на 0°, 90°, 180° или 270°.' }; }
+    }
+    return { asset };
+  }, [assets, edges, hasVideoInput, node.id, nodes, sourceConflict]);
+  const sourceAsset = source.asset;
+  const imageResultAsset = useMemo(() => (
     assets.find((asset) => asset.id === data.resultAssetId)
   ), [assets, data.resultAssetId]);
-  const pixelSize = useMemo(() => (
-    sourceAsset ? cropPixelSize(crop, sourceAsset.width, sourceAsset.height) : { height: 0, width: 0 }
-  ), [crop, sourceAsset]);
+  const video = useCropVideoProcessing(node, hasVideoInput ? sourceAsset : undefined, crop);
+  const resultAsset = hasVideoInput ? video.result : imageResultAsset;
+  const pixelSize = useMemo(() => {
+    if (sourceAsset?.kind === 'video' && sourceAsset.video) {
+      try {
+        const { width, height } = resolveVideoCropPixels(sourceAsset.video, crop);
+        return { width, height };
+      } catch { return { width: 0, height: 0 }; }
+    }
+    return sourceAsset ? cropPixelSize(crop, sourceAsset.width, sourceAsset.height) : { height: 0, width: 0 };
+  }, [crop, sourceAsset]);
   const processingRef = useRef(0);
 
   useEffect(() => {
@@ -85,15 +109,18 @@ export function useCropImageNodeModel(node: ProductionNode) {
     if (!sourceChanged && !needsVersionUpdate) return;
 
     if (firstSourceBinding) {
+      const requestedRatio = aspectRatioValue(data.aspectRatio);
       const matchedAspectRatio = sourceAsset.width && sourceAsset.height
         ? getSourceAspectRatioLabel(sourceAsset.width, sourceAsset.height)
         : 'Custom';
+      const aspectRatio = requestedRatio ? data.aspectRatio : matchedAspectRatio;
 
       updateNodeDataSilent(node.id, {
-        aspectRatio: matchedAspectRatio,
-        crop: fullCrop(),
+        aspectRatio,
+        crop: requestedRatio && sourceAsset.width && sourceAsset.height
+          ? fitCropToAspect(sourceAsset.width, sourceAsset.height, requestedRatio) : fullCrop(),
         cropStateVersion: CROP_STATE_VERSION,
-        locked: matchedAspectRatio !== 'Custom',
+        locked: aspectRatio !== 'Custom',
         message: '',
         resultAssetId: undefined,
         sourceAssetId: sourceAsset.id,
@@ -132,20 +159,20 @@ export function useCropImageNodeModel(node: ProductionNode) {
   ]);
 
   useEffect(() => {
-    if (!sourceAsset) {
+    if (!sourceAsset || sourceAsset.kind === 'video') {
       return undefined;
     }
 
     const runId = processingRef.current + 1;
     processingRef.current = runId;
     const timer = window.setTimeout(async () => {
-      const sourceBlob = await loadAssetBlob(sourceAsset);
-      if (!sourceBlob || processingRef.current !== runId) return;
-
       try {
+        const sourceBlob = await loadAssetBlob(sourceAsset);
+        if (!sourceBlob || processingRef.current !== runId) return;
         const file = await cropImageBlob(sourceBlob, crop, `crop-${Date.now()}.png`);
         if (processingRef.current !== runId) return;
         const asset = await saveTransientImageAsset(file);
+        if (processingRef.current !== runId) return;
         addAsset(asset);
         updateNodeDataSilent(node.id, {
           resultAssetId: asset.id,
@@ -159,7 +186,7 @@ export function useCropImageNodeModel(node: ProductionNode) {
       }
     }, 180);
 
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); processingRef.current += 1; };
   }, [
     addAsset,
     crop,
@@ -256,7 +283,12 @@ export function useCropImageNodeModel(node: ProductionNode) {
     handlePixelSizeChange,
     handleReset,
     locked: Boolean(data.locked),
-    message: data.message,
+    message: sourceConflict ? 'Подключите один источник: изображение или видео.'
+      : hasVideoInput ? source.error || video.error || (video.busy ? 'Обрезаем видео…'
+        : video.result ? `${video.result.width} × ${video.result.height} · MP4 · Видео готово`
+          : sourceAsset ? 'Настройте рамку и нажмите «Обрезать видео».' : 'Ожидаем видео от предыдущей ноды.') : data.message,
+    hasVideoInput,
+    video,
     pixelSize,
     resultAsset,
     sourceAsset,

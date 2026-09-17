@@ -1,11 +1,11 @@
 'use client';
 
-import { productionLayerTextSectionParseOptions } from '@/entities/production-graph/model/layer-text-parser';
-import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
+import { extractLayerTextSectionParseOptions } from '@/entities/production-graph/model/extract-layer-parser';
+import type { ExtractLayerId } from '@/entities/production-graph/model/extract-analysis-profiles';
 import { TextSectionResultBox } from './text-section-result-box';
 
 interface ExtractResultBoxProps {
-  disabledLayerIds?: ProductionLayerId[];
+  disabledLayerIds?: ExtractLayerId[];
   onChange?: (value: string) => void;
   value?: string;
 }
@@ -13,11 +13,12 @@ interface ExtractResultBoxProps {
 export function ExtractResultBox({ disabledLayerIds = [], onChange, value }: ExtractResultBoxProps) {
   return (
     <TextSectionResultBox
+      textField="result"
       ariaLabel="Extract result"
       className="extract-result-box"
       disabledFilterIds={disabledLayerIds}
       onChange={onChange}
-      parseOptions={productionLayerTextSectionParseOptions}
+      parseOptions={extractLayerTextSectionParseOptions}
       value={value}
     />
   );

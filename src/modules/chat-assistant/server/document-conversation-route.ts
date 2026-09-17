@@ -1,14 +1,17 @@
 import { resolveChatPrincipal } from './auth';
+import { listDocumentAssistantActivity } from './document-activity-service';
 import {
   bindDocumentConversation,
   DocumentConversationAccessError,
-  findDocumentConversation,
+  ensureDocumentConversation,
 } from './document-conversation-service';
 
 export async function getDocumentConversationRoute(request: Request, documentId: string) {
   try {
     const principal = await resolveChatPrincipal(request);
-    const conversationId = await findDocumentConversation(principal, normalizeId(documentId));
+    const id = normalizeId(documentId);
+    const conversationId = await ensureDocumentConversation(principal, id);
+    await listDocumentAssistantActivity(principal, id);
     return Response.json({ conversationId }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return routeError(error);
@@ -19,8 +22,7 @@ export async function putDocumentConversationRoute(request: Request, documentId:
   try {
     const principal = await resolveChatPrincipal(request);
     const body = await request.json() as { conversationId?: unknown };
-    const conversationId = normalizeId(body.conversationId);
-    await bindDocumentConversation(principal, normalizeId(documentId), conversationId);
+    const conversationId = await bindDocumentConversation(principal, normalizeId(documentId), normalizeId(body.conversationId));
     return Response.json({ conversationId });
   } catch (error) {
     return routeError(error);

@@ -17,6 +17,8 @@ import type {
   StudioPipelineSourceMetadata,
 } from '../contracts/pipeline-publication-contracts';
 import { isProductionPipelineHandlerSupported } from './pipeline-production-manifest';
+import { pinTimelinePublicationAssets } from './pipeline-timeline-assets';
+import { pinStoriesPublicationAssets } from './pipeline-stories-publication';
 
 export async function listStudioPipelinePublications(input: {
   documentId: string;
@@ -57,6 +59,8 @@ export async function publishStudioPipeline(input: {
   const compilation = compileStudioSection(snapshot.project, input.sectionId, {
     isHandlerSupported: isProductionPipelineHandlerSupported,
   });
+  compilation.compiledPlan = await pinTimelinePublicationAssets(compilation.compiledPlan, document.workspaceId);
+  compilation.compiledPlan = await pinStoriesPublicationAssets(compilation.compiledPlan, document.workspaceId);
   verifySemanticContractChecksum(compilation.compiledPlan.definition.inputSemanticContract);
   verifySemanticContractChecksum(compilation.compiledPlan.definition.outputSemanticContract);
   const checksum = checksumPublication(compilation);

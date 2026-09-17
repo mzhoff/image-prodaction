@@ -4,7 +4,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(17, 24, 39, 0.18);
+  background: color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
   backdrop-filter: blur(10px);
   padding: 18px;
 }
@@ -13,11 +13,11 @@
   display: grid;
   width: min(430px, calc(100vw - 36px));
   gap: 14px;
-  border: 1px solid rgba(17, 24, 39, 0.1);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 10%, transparent);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 24px 62px rgba(17, 24, 39, 0.18);
-  color: #111;
+  background: var(--pui-semantic-surface-primary);
+  box-shadow: 0 24px 62px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
+  color: var(--pui-semantic-text-primary);
   padding: 16px;
 }
 
@@ -44,19 +44,19 @@
   place-items: center;
   border: 0;
   border-radius: 7px;
-  background: #f3f3f3;
-  color: #4b5563;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   padding: 0;
 }
 
 .composition-confirm-close:hover {
-  background: #e8e8e5;
-  color: #111;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-confirm-panel p {
   margin: 0;
-  color: #4b5563;
+  color: var(--pui-semantic-text-secondary);
   font-size: 13px;
   font-weight: 560;
   line-height: 18px;
@@ -79,20 +79,20 @@
 }
 
 .composition-confirm-secondary {
-  background: #eef1f5;
-  color: #374151;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
 }
 
 .composition-confirm-secondary:hover {
-  background: #e2e6ee;
-  color: #111;
+  background: var(--pui-semantic-surface-hover);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-confirm-primary {
-  background: #111;
-  color: #fff;
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
 }
 
 .composition-confirm-primary:hover {
-  background: #2b2b2b;
+  background: var(--pui-semantic-surface-inverse);
 }

@@ -3,6 +3,7 @@ import {
   getPortById,
 } from '@/entities/production-graph/model/node-definitions';
 import { getPipelineFieldPortId } from '@/entities/production-graph/model/pipeline-contract-fields';
+import { TIMELINE_PUBLIC_SCHEMA } from '@/shared/media/timeline-public-contract';
 import type {
   GraphEdge,
   GraphProject,
@@ -25,6 +26,7 @@ import {
   resolveTransparentSource,
 } from './studio-graph-resolution';
 import { createRuntimeNodeDefinition, sourcePortKey } from './studio-runtime-node-definition';
+import { storiesOutputContract } from './studio-stories-descriptor';
 
 const EXPLICIT_BOUNDARY_TYPES = new Set<ProductionNode['type']>(['pipelineInput', 'pipelineOutput']);
 const SINK_TYPES = new Set<ProductionNode['type']>(['preview']);
@@ -78,6 +80,7 @@ export function compileExplicitStudioSection(input: {
     incomingByNode: input.incomingByNode,
     node,
     nodeById: input.nodeById,
+    outputPortIds: input.edges.filter((edge) => edge.sourceNodeId === node.id).map((edge) => edge.sourcePortId),
     runtimeNodeIdSet,
   }));
 
@@ -85,12 +88,12 @@ export function compileExplicitStudioSection(input: {
   const outputContracts: NonNullable<ExecutablePipelineDefinition['outputContracts']> = {};
   const outputBoundaries = outputFields.map((field) => {
     const portId = getPipelineFieldPortId(field.id);
-    outputContracts[field.key] = contractFromField(field);
     const incoming = (input.incomingByNode.get(outputNode.id) ?? [])
       .filter((edge) => edge.targetPortId === portId);
     if (incoming.length > 1) throw invalidPipeline(`Выход «${field.key}» имеет несколько источников.`);
     const edge = incoming[0];
     if (!edge) {
+      outputContracts[field.key] = contractFromField(field);
       if (field.required) throw invalidPipeline(`Обязательный выход «${field.key}» не подключён.`);
       return createBoundary(outputNode, portId, field.key, field.kind);
     }
@@ -98,10 +101,17 @@ export function compileExplicitStudioSection(input: {
     if (!resolved || !runtimeNodeIdSet.has(resolved.source.id)) {
       throw invalidPipeline(`Выход «${field.key}» должен быть подключён к исполняемой ноде.`);
     }
+    outputContracts[field.key] = resolved.source.type === 'reverieStories' && field.kind === 'json'
+      ? storiesOutputContract(field.required)
+      : resolved.source.type === 'timelineHandoff' && resolved.sourcePortId === 'timeline' && field.kind === 'json'
+      ? { kind: 'json', required: field.required, ...(field.description ? { description: field.description } : {}), schema: structuredClone(TIMELINE_PUBLIC_SCHEMA) }
+      : resolved.source.type === 'timelineHandoff' && resolved.sourcePortId === 'frames' && field.kind === 'image'
+      ? { kind: 'image_collection', required: field.required, ...(field.description ? { description: field.description } : {}) }
+      : contractFromField(field);
     const runtimeOutput = getRuntimeOutput(resolved.source, resolved.sourcePortId);
     if (!runtimeOutput) throw invalidPipeline(`Источник выхода «${field.key}» не имеет серверного результата.`);
     outputs[field.key] = { nodeId: resolved.source.id, outputKey: runtimeOutput.outputKey };
-    return createBoundary(outputNode, portId, field.key, field.kind);
+    return createBoundary(outputNode, portId, field.key, outputContracts[field.key]!.kind);
   });
   if (Object.keys(outputs).length === 0) {
     throw invalidPipeline('Pipeline Output должен содержать хотя бы один подключённый результат.');

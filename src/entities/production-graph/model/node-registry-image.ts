@@ -35,14 +35,16 @@ export const imageNodeDefinitions = {
     menuLabel: 'Extract',
     defaultHeight: 468,
     ports: [
-      { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+      { id: 'image-0', label: 'Image 1', kind: 'image', side: 'input' },
       { id: 'result', label: 'Result', kind: 'text', side: 'output' },
     ],
     createData: () => ({
       title: 'Extract',
+      analysisPreset: 'composition',
       model: 'google/gemini-2.5-flash',
       preset: 'default',
       presets: ['default'],
+      imageInputCount: 1,
       prompt: defaultExtractPrompt,
     }),
   },
@@ -140,7 +142,9 @@ export const imageNodeDefinitions = {
     defaultHeight: 638,
     ports: [
       { id: 'image', label: 'Image', kind: 'image', side: 'input' },
+      { id: 'video', label: 'Video', kind: 'video', side: 'input' },
       { id: 'result', label: 'Image', kind: 'image', side: 'output' },
+      { id: 'videoResult', label: 'Video', kind: 'video', side: 'output' },
     ],
     createData: () => ({ title: 'Crop', aspectRatio: 'Custom', locked: false }),
   },

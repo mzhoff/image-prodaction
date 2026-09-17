@@ -35,7 +35,7 @@
   display: grid;
   min-width: 0;
   gap: 4px;
-  color: #8aa0a5;
+  color: var(--pui-semantic-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -47,8 +47,8 @@
   height: 28px;
   border: 0;
   border-radius: 8px;
-  background: #f3f3f3;
-  color: #4b5563;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   padding: 0 8px;
   font-size: 12px;
   font-weight: 650;
@@ -68,12 +68,12 @@
   position: relative;
   overflow: hidden;
   border-radius: 9px;
-  background-color: #eee;
+  background-color: var(--pui-semantic-surface-secondary);
   background-image:
-    linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.08) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.08) 75%);
+    linear-gradient(45deg, color-mix(in srgb, var(--pui-semantic-surface-inverse) 8%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--pui-semantic-surface-inverse) 8%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--pui-semantic-surface-inverse) 8%, transparent) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--pui-semantic-surface-inverse) 8%, transparent) 75%);
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
   background-size: 20px 20px;
   container-type: inline-size;
@@ -93,7 +93,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  color: #c7c7c1;
+  color: var(--pui-semantic-text-muted);
 }
 
 .composition-preview-layer {
@@ -120,12 +120,12 @@
   z-index: 3;
   left: -1px;
   top: -18px;
-  color: #eaff9c;
+  color: var(--pui-semantic-accent-foreground);
   font-size: 11px;
   font-weight: 650;
   line-height: 14px;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--pui-semantic-shadow-color) 55%, transparent);
 }
 
 .composition-preview-layer img {
@@ -169,7 +169,8 @@
 .composition-add-layer-button,
 .composition-open-editor-button,
 .composition-render-button {
-  min-height: 34px;
+  height: 44px;
+  min-height: 44px;
 }
 
 .composition-editor {
@@ -189,7 +190,7 @@
 .composition-layer-list > strong,
 .composition-layer-controls > strong,
 .composition-result > span {
-  color: #111;
+  color: var(--pui-semantic-text-primary);
   font-size: 13px;
   font-weight: 760;
   line-height: 16px;
@@ -203,8 +204,8 @@
   gap: 6px;
   border: 0;
   border-radius: 7px;
-  background: #f3f3f3;
-  color: #4b5563;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-secondary);
   padding: 0 8px;
   text-align: left;
 }
@@ -217,8 +218,8 @@
 }
 
 .composition-layer-item-active {
-  background: #e8f7ed;
-  color: #15803d;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-status-success-foreground);
 }
 
 .composition-control-grid {
@@ -232,7 +233,7 @@
   height: 28px;
   border: 0;
   border-radius: 8px;
-  background: #f3f3f3;
+  background: var(--pui-semantic-surface-secondary);
   padding: 3px 6px;
 }
 

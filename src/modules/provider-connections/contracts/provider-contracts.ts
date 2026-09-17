@@ -1,3 +1,4 @@
+import type { ImageGenerationOptions } from '@/shared/media/image-generation-settings';
 import type {
   ProviderErrorClassificationContext,
   ProviderErrorDescriptor,
@@ -38,7 +39,8 @@ export interface ProviderMessage {
   role: ProviderMessageRole;
 }
 
-export interface ProviderImageParameters {
+export interface ProviderImageParameters extends ImageGenerationOptions {
+  api?: 'images';
   aspectRatio?: string;
   size?: string;
 }

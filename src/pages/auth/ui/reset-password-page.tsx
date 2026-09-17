@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Eye, EyeOff, KeyRound } from '@prodactionpro/ui-core/icons';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient } from '@/shared/auth/client';

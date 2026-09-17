@@ -181,7 +181,9 @@ test('production image handlers return typed results through injected durable se
   const registry = createProductionPipelineHandlerRegistry(
     { actorUserId: 'user-1' },
     {
-      analyzeImage: async ({ artifact }) => {
+      analyzeImage: async ({ artifact, config }) => {
+        assert.equal(config.analysisPreset, 'graphics');
+        assert.deepEqual(config.presets, ['typography']);
         calls.push(`analyze:${artifact.assetId}`);
         return 'Description';
       },
@@ -211,7 +213,7 @@ test('production image handlers return typed results through injected durable se
   assert.ok(generate);
   assert.ok(exportImage);
   assert.deepEqual(await analyze.execute({
-    config: { model: 'model', prompt: 'Describe' },
+    config: { model: 'model', prompt: 'Describe', analysisPreset: 'graphics', presets: ['typography'] },
     context,
     inputs: { image: { assetId: 'asset-input', kind: 'image' } },
     nodeId: 'analyze',

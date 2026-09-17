@@ -11,6 +11,9 @@ import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { isUuidV7 } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
+import { getSpeechGenerationProgress } from '@/modules/generation/server/speech-generation-submission';
+import { readAuthServerConfig } from '@/shared/auth/config';
+import { createCancelGenerationJobHandler } from './cancel-handler';
 
 export async function getGenerationJobRequest(request: Request, jobId: string) {
   try {
@@ -23,6 +26,7 @@ export async function getGenerationJobRequest(request: Request, jobId: string) {
     return Response.json({
       job: toPublicGenerationJob(job),
       asset,
+      ...(job.operation === 'generate_speech_long' ? { progress: await getSpeechGenerationProgress(job) } : {}),
     }, {
       headers: {
         'Cache-Control': 'private, no-store',
@@ -34,16 +38,11 @@ export async function getGenerationJobRequest(request: Request, jobId: string) {
   }
 }
 
-export async function cancelGenerationJobRequest(request: Request, jobId: string) {
-  try {
-    if (!isUuidV7(jobId)) return invalidJobId();
-    const session = await requireApiSession(request);
-    const job = await cancelGenerationJob(session.user.id, jobId);
-    return Response.json({ job: toPublicGenerationJob(job) });
-  } catch (error) {
-    return toGenerationJobApiError(error);
-  }
-}
+export const cancelGenerationJobRequest = createCancelGenerationJobHandler({
+  trustedOrigins: () => readAuthServerConfig().trustedOrigins,
+  userId: async (request) => (await requireApiSession(request)).user.id,
+  cancel: cancelGenerationJob, toPublic: toPublicGenerationJob, toErrorResponse: toGenerationJobApiError,
+});
 
 function invalidJobId() {
   return apiError('invalid_generation_job_id', 'Invalid generation job id.', 400);

@@ -1,6 +1,8 @@
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 
 export interface DocumentProject {
+  folderId?: string | null;
+  librarySaved?: boolean;
   favorite: boolean;
   hasEverHadContent: boolean;
   id: string;
@@ -78,10 +80,12 @@ export async function uploadDocumentThumbnail(
   projectId: string,
   file: File,
   mode: 'auto' | 'manual',
+  expectedRevision?: number,
 ) {
   const formData = new FormData();
   formData.set('file', file);
   formData.set('mode', mode);
+  if (expectedRevision !== undefined) formData.set('expectedRevision', String(expectedRevision));
 
   return requestJson<{ project: DocumentProject }>(
     `/api/projects/${encodeURIComponent(projectId)}/thumbnail`,

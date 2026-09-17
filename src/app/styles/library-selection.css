@@ -1,0 +1,18 @@
+.library-card-selected { box-shadow: inset 0 0 0 3px var(--pui-semantic-border-focus); }
+.library-card-selected::after { content: ''; position: absolute; inset: 0; border: 3px solid var(--pui-semantic-border-focus); border-radius: inherit; pointer-events: none; }
+.library-card-checkbox { position: absolute; top: 8px; left: 8px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: rgb(0 0 0 / 52%); cursor: pointer; }
+.library-card-checkbox input { width: 20px; height: 20px; margin: 0; accent-color: var(--pui-semantic-accent-default); cursor: pointer; }
+.library-card-checkbox:focus-within { outline: 2px solid var(--pui-semantic-border-focus); outline-offset: 2px; }
+.library-selection-toolbar { position: sticky; top: 8px; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--pui-semantic-border-default); border-radius: 12px; background: var(--pui-semantic-surface-primary); box-shadow: 0 6px 20px #0001; font-size: 13px; }
+.library-selection-toolbar strong { margin-right: auto; }
+.library-selection-toolbar button, .library-delete-buttons button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-primary); font: inherit; cursor: pointer; }
+.library-selection-toolbar button:disabled, .library-delete-buttons button:disabled { opacity: .45; cursor: default; }
+.library-selection-toolbar button:focus-visible, .library-delete-buttons button:focus-visible { outline: 2px solid var(--pui-semantic-border-focus); outline-offset: 2px; }
+.library-delete-dialog { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 24px; border: 1px solid var(--pui-semantic-border-default); border-radius: 16px; background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); font: inherit; box-shadow: 0 20px 80px #0004; }
+.library-delete-dialog::backdrop { background: rgb(0 0 0 / 40%); backdrop-filter: blur(3px); }
+.library-delete-dialog h2 { font-size: 18px; margin: 0 0 12px; }
+.library-delete-dialog p, .library-delete-dialog li { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.library-delete-dialog p { color: var(--pui-semantic-text-secondary); }
+.library-delete-dialog ul { padding-left: 18px; }
+.library-delete-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.library-delete-buttons .library-delete-confirm { background: var(--pui-semantic-status-danger-foreground); color: var(--pui-semantic-text-on-inverse); }

@@ -1,18 +1,28 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import {
   LibraryBig,
   RotateCcw,
   Search,
-} from 'lucide-react';
+  LayoutGrid,
+  CalendarDays,
+} from '@prodactionpro/ui-core/icons';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useWorkspaceShell } from '@/pages/workspace/ui/workspace-shell-context';
+import { WorkspacePage } from '@/pages/workspace/ui/workspace-page';
+import { StudioFoldersPage } from '@/pages/workspace/ui/studio-folders-page';
+import { SubjectLibraryPage } from './subject-library-page';
 import type { FormEvent } from 'react';
 import { BrandSelect } from '@/shared/ui/brand-select';
 import type { BrandSelectOption } from '@/shared/ui/brand-select';
 import { hasLibraryFilters, emptyLibraryFilters } from '../model/library-filters';
 import { useLibrary } from '../model/library-context';
 import type { LibraryFacetOption } from '../model/types';
-import { LibraryCard } from './library-card';
+import { LibraryGallery } from './library-gallery';
+import { LibrarySelectionToolbar } from './library-asset-actions';
 
 const originOptions: BrandSelectOption[] = [
   { value: '', label: 'Все источники' },
@@ -29,14 +39,25 @@ const mediaOptions: BrandSelectOption[] = [
 ];
 
 export function LibraryPage() {
+  const section = useSearchParams()?.get('section');
+  if (section === 'pipelines') return <WorkspacePage libraryOnly />;
+  if (section === 'projects') return <StudioFoldersPage library />;
+  if (section === 'subjects') return <SubjectLibraryPage />;
+  return <LibraryAssetsPage />;
+}
+
+function LibraryAssetsPage() {
   const library = useLibrary();
+  const workspace = useWorkspaceShell();
+  const folders = workspace.folders.filter((folder) => folder.workspaceId === workspace.activeWorkspace?.id);
+  const folder = folders.find((item) => item.id === library.filters.folderId);
   const [search, setSearch] = useState(library.filters.q);
   const modelOptions = useMemo(
     () => facetOptions('Все модели', library.facets.models),
     [library.facets.models],
   );
   const projectOptions = useMemo(
-    () => facetOptions('Все проекты', library.facets.documents),
+    () => facetOptions('Все канвасы', library.facets.documents),
     [library.facets.documents],
   );
   const originsWithCounts = useMemo(
@@ -60,7 +81,7 @@ export function LibraryPage() {
       <header className="workspace-header library-header">
         <div>
           <span className="library-kicker"><LibraryBig size={14} /> Asset Library</span>
-          <h1>Библиотека</h1>
+          <h1>{folder ? `Библиотека · ${folder.name}` : 'Библиотека'}</h1>
         </div>
         <p>
           {library.loading
@@ -71,17 +92,23 @@ export function LibraryPage() {
 
       <div className="workspace-content library-content">
         <section className="library-toolbar" aria-label="Фильтры библиотеки">
+          <div className="library-toolbar-top">
           <form className="library-search" role="search" onSubmit={submitSearch}>
             <Search size={17} />
-            <input
+            <PuiInput
               type="search"
               aria-label="Поиск по библиотеке"
-              placeholder="Имя файла, модель или операция"
+              placeholder="Поиск в библиотеке"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
             <button type="submit">Найти</button>
           </form>
+          <div className="library-view-switch" role="group" aria-label="Вид библиотеки">
+            <button type="button" aria-pressed={library.view === 'gallery'} onClick={() => library.setView('gallery')}><LayoutGrid size={16} />Галерея</button>
+            <button type="button" aria-pressed={library.view === 'dates'} onClick={() => library.setView('dates')}><CalendarDays size={16} />По датам</button>
+          </div>
+          </div>
 
           <div className="library-filter-row">
             <BrandSelect
@@ -104,6 +131,12 @@ export function LibraryPage() {
             />
             <BrandSelect
               label="Проект"
+              value={library.filters.folderId ?? ''}
+              options={[{ value: '', label: 'Все проекты' }, ...folders.map((item) => ({ value: item.id, label: item.name }))]}
+              onChange={(folderId) => library.setFilters({ folderId, documentId: '' })}
+            />
+            <BrandSelect
+              label="Канвас"
               value={library.filters.documentId}
               options={projectOptions}
               onChange={(documentId) => library.setFilters({ documentId })}
@@ -125,12 +158,8 @@ export function LibraryPage() {
         </section>
 
         <section className="library-results" aria-labelledby="library-grid-title">
-          <div className="library-results-head">
-            <div>
-              <h2 id="library-grid-title">Медиатека</h2>
-              <p>Загрузки, генерации и сохранённые результаты в одном месте.</p>
-            </div>
-          </div>
+          <h2 id="library-grid-title" className="library-sr-only">Медиатека</h2>
+          <LibrarySelectionToolbar />
 
           {library.loading ? <LibrarySkeleton /> : null}
           {!library.loading && library.error ? (
@@ -165,11 +194,7 @@ export function LibraryPage() {
           ) : null}
 
           {!library.loading && !library.error && library.items.length > 0 ? (
-            <div className="library-grid" aria-label="Медиатека">
-              {library.items.map((item) => (
-                <LibraryCard item={item} filterQuery={library.filterQuery} key={item.id} />
-              ))}
-            </div>
+            <LibraryGallery items={library.items} view={library.view} filterQuery={library.navigationQuery} />
           ) : null}
 
           {library.nextCursor ? (
@@ -194,7 +219,6 @@ function LibrarySkeleton() {
       {Array.from({ length: 8 }, (_, index) => (
         <div className="library-card library-card-skeleton" key={index}>
           <div className="library-card-preview" />
-          <div className="library-card-body"><i /><i /></div>
         </div>
       ))}
     </div>

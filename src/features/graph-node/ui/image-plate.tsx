@@ -10,8 +10,8 @@ import {
   ImageUp,
   Loader2,
   Maximize2,
-} from 'lucide-react';
-import { useCallback, useRef, useState, type CSSProperties } from 'react';
+} from '@prodactionpro/ui-core/icons';
+import { useCallback, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { GenerationResultMetadata } from '@/entities/production-graph/model/types';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
@@ -34,14 +34,20 @@ interface ImagePlateProps {
   aspectRatio?: string;
   compact?: boolean;
   loading?: boolean;
+  outputPending?: boolean;
   mediaStyle?: CSSProperties;
   adaptive?: boolean;
+  renderLoadingOverlay?: (context: { previewUrl?: string }) => ReactNode;
   onActiveIndexChange?: (index: number) => void;
+  navigationLabels?: { previous: string; next: string };
   maskDataUrl?: string;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
   onMaskChange?: (maskDataUrl: string | null) => void;
   sourceModel?: string;
   viewerPanel?: ImageViewerEditorPanel;
+  previewMedia?: ReactNode;
+  viewerMedia?: ReactNode;
+  mediaKind?: 'image' | 'video';
 }
 
 export function ImagePlate({
@@ -52,13 +58,19 @@ export function ImagePlate({
   aspectRatio,
   compact,
   loading,
+  outputPending,
   maskDataUrl,
   mediaStyle,
+  renderLoadingOverlay,
   onActiveIndexChange,
+  navigationLabels,
   onMaskChange,
   onMaskEdit,
   sourceModel,
   viewerPanel,
+  previewMedia,
+  viewerMedia,
+  mediaKind = 'image',
 }: ImagePlateProps) {
   const historyAssetIds = assetIds?.length ? assetIds : assetId ? [assetId] : [];
   const currentIndex = getSafeIndex(activeIndex, historyAssetIds.length);
@@ -66,15 +78,17 @@ export function ImagePlate({
   const hasHistory = historyAssetIds.length > 1 && Boolean(onActiveIndexChange);
   const asset = useProductionGraphStore((state) => state.assets.find((item) => item.id === currentAssetId));
   const url = useAssetUrl(currentAssetId);
+  const previewUrl = useAssetUrl(currentAssetId, 'thumbnail');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const imageAspectRatio = asset?.width && asset.height ? `${asset.width} / ${asset.height}` : undefined;
   const plateAspectRatio = formatCssAspectRatio(aspectRatio) ?? imageAspectRatio ?? formatCssAspectRatio(DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO);
+  const mediaName = mediaKind === 'video' ? 'video' : 'image';
 
   const handleDownload = () => {
-    if (!url || !asset) return;
+    if (!url || !asset || outputPending) return;
     const link = document.createElement('a');
     link.href = url;
     link.download = asset.name || 'reverie-image.png';
@@ -84,13 +98,13 @@ export function ImagePlate({
   };
 
   const handleSaveToLibrary = async () => {
-    if (!asset || savingToLibrary || isAssetInLibrary(asset)) return;
+    if (!asset || outputPending || savingToLibrary || isAssetInLibrary(asset)) return;
     setSavingToLibrary(true);
     setSaveError(null);
     try {
       await persistAssetToLibrary(asset);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Не удалось сохранить изображение в библиотеку.');
+      setSaveError(error instanceof Error ? error.message : `Не удалось сохранить ${mediaKind === 'video' ? 'видео' : 'изображение'} в библиотеку.`);
     } finally {
       setSavingToLibrary(false);
     }
@@ -125,13 +139,14 @@ export function ImagePlate({
           if (url) setViewerOpen(true);
         }}
       >
-        {url ? (
-          <Image src={url} alt="Reference preview" fill sizes="368px" unoptimized draggable={false} className="image-plate-media" style={mediaStyle} />
+        {previewMedia ?? (previewUrl ? (
+          <Image src={previewUrl} alt="Reference preview" fill sizes="368px" unoptimized draggable={false} className="image-plate-media" style={mediaStyle} />
         ) : (
           <div className="image-plate-empty">
             <ImageUp size={22} />
           </div>
-        )}
+        ))}
+        {loading ? renderLoadingOverlay?.({ previewUrl: previewUrl ?? undefined }) : null}
         {url ? (
           <div className="image-plate-actions">
             <ProTooltip
@@ -140,8 +155,8 @@ export function ImagePlate({
             >
               <button
                 type="button"
-                aria-label={saveError || (isAssetInLibrary(asset) ? 'Image is saved in Library' : 'Save image to Library')}
-                disabled={savingToLibrary || isAssetInLibrary(asset)}
+                aria-label={saveError || (isAssetInLibrary(asset) ? `${mediaName === 'video' ? 'Video' : 'Image'} is saved in Library` : `Save ${mediaName} to Library`)}
+                disabled={outputPending || savingToLibrary || isAssetInLibrary(asset)}
                 onClick={(event) => {
                   event.stopPropagation();
                   void handleSaveToLibrary();
@@ -155,7 +170,8 @@ export function ImagePlate({
             <ProTooltip label="Download" side="bottom">
               <button
                 type="button"
-                aria-label="Download image"
+                aria-label={`Download ${mediaName}`}
+                disabled={outputPending}
                 onClick={(event) => {
                   event.stopPropagation();
                   handleDownload();
@@ -167,7 +183,7 @@ export function ImagePlate({
             <ProTooltip label="Open" side="bottom">
               <button
                 type="button"
-                aria-label="Open image"
+                aria-label={`Open ${mediaName}`}
                 onClick={(event) => {
                   event.stopPropagation();
                   setViewerOpen(true);
@@ -184,7 +200,7 @@ export function ImagePlate({
               <ProTooltip label="Previous">
                 <button
                   type="button"
-                  aria-label="Previous generated image"
+                  aria-label={navigationLabels?.previous ?? 'Previous generated image'}
                   onClick={(event) => {
                     event.stopPropagation();
                     showPrevious();
@@ -196,7 +212,7 @@ export function ImagePlate({
               <ProTooltip label="Next">
                 <button
                   type="button"
-                  aria-label="Next generated image"
+                  aria-label={navigationLabels?.next ?? 'Next generated image'}
                   onClick={(event) => {
                     event.stopPropagation();
                     showNext();
@@ -214,7 +230,7 @@ export function ImagePlate({
         <ImageViewer
           asset={asset}
           assetId={currentAssetId}
-          busy={loading}
+          busy={loading || outputPending}
           currentIndex={currentIndex}
           hasHistory={hasHistory}
           historyAssetIds={historyAssetIds}
@@ -231,6 +247,7 @@ export function ImagePlate({
           sourceModel={sourceModel}
           url={url}
           viewerPanel={viewerPanel}
+          viewerMedia={viewerMedia}
         />,
         document.body,
       ) : null}

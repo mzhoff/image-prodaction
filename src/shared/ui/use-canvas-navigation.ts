@@ -25,7 +25,7 @@ interface UseCanvasNavigationOptions {
 }
 
 const DEFAULT_MIN_ZOOM = 0.1;
-const DEFAULT_MAX_ZOOM = 2.4;
+const DEFAULT_MAX_ZOOM = 1.35;
 const DEFAULT_ZOOM_SENSITIVITY = 0.001;
 const DEFAULT_SCROLL_PAN_SPEED = 1.3;
 

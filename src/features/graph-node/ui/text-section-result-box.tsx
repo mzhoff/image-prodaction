@@ -12,6 +12,7 @@ import {
   $createTextNode,
   $getRoot,
   ParagraphNode,
+  SKIP_DOM_SELECTION_TAG,
   type EditorConfig,
   type LexicalEditor,
   type LexicalUpdateJSON,
@@ -27,6 +28,7 @@ import { cn } from '@/shared/lib/cn';
 import { useScrollableWheel } from '@/shared/ui/use-scrollable-wheel';
 
 interface TextSectionResultBoxProps {
+  textField?: string;
   ariaLabel?: string;
   className?: string;
   disabledFilterIds?: string[];
@@ -99,6 +101,7 @@ class TextSectionParagraphNode extends ParagraphNode {
 }
 
 export function TextSectionResultBox({
+  textField,
   ariaLabel = 'Text section result',
   className,
   disabledFilterIds = [],
@@ -139,6 +142,7 @@ export function TextSectionResultBox({
         <RichTextPlugin
           contentEditable={(
             <ContentEditable
+              data-text-field={textField}
               aria-label={ariaLabel}
               className="text-section-result-editor"
               data-node-interactive
@@ -223,7 +227,7 @@ function TextSectionSyncPlugin({
 
     editor.update(() => {
       rebuildEditorState(value, disabledFilterIds, parseOptions);
-    }, { tag: 'external-sync' });
+    }, { tag: ['external-sync', SKIP_DOM_SELECTION_TAG] });
     lastDisabledKeyRef.current = disabledKey;
     lastParseOptionsRef.current = parseOptions;
   }, [disabledFilterIds, disabledKey, editor, parseOptions, value]);

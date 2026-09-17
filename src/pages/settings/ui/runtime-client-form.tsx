@@ -1,5 +1,7 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+
 import { useState, type FormEvent } from 'react';
 import { runtimeV2DefaultScopes, runtimeV2Scopes, type RuntimeV2Scope } from '@/modules/executable-pipelines/contracts/runtime-v2-contracts';
 import { runtimeConnectionsApi } from '../api/runtime-connections-api';
@@ -10,13 +12,15 @@ import styles from './runtime-connections.module.css';
 export function RuntimeClientForm({ model, onCreated }: { model: RuntimeConnectionsModel; onCreated: () => void }) {
   const [name, setName] = useState('Content Hub');
   const [application, setApplication] = useState('content-hub');
-  const [externalWorkspace, setExternalWorkspace] = useState('');
+  const [externalWorkspace, setExternalWorkspace] = useState(model.workspaceId);
   const [scopes, setScopes] = useState<RuntimeV2Scope[]>([...runtimeV2DefaultScopes]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = await model.mutate(() => runtimeConnectionsApi.createClient(model.workspaceId, {
       displayName: name.trim(), sourceApplication: application.trim(), externalWorkspaceRef: externalWorkspace.trim(), scopes,
-    }), 'Подключение создано. Теперь выпустите ключ и добавьте разрешённые pipelines.');
+    }), application.trim() === 'content-hub'
+      ? 'Создан Content Hub Starter v1: пять независимых пайплайнов. Выпустите ключ для Content Hub.'
+      : 'Подключение создано. Теперь выпустите ключ и добавьте разрешённые pipelines.');
     if (!result) return;
     model.setClientId(result.client.id);
     await model.refresh();
@@ -25,15 +29,16 @@ export function RuntimeClientForm({ model, onCreated }: { model: RuntimeConnecti
   return (
     <form className="settings-card settings-form" onSubmit={(event) => void submit(event)}>
       <h3>Новое подключение</h3>
-      <label><span>Название приложения</span><input required maxLength={120} value={name}
+      <label><span>Название приложения</span><PuiInput required maxLength={120} value={name}
         disabled={model.mutation} onChange={(event) => setName(event.target.value)} /></label>
-      <label><span>Код приложения</span><input required maxLength={120} pattern="[a-z0-9][a-z0-9._-]*" value={application}
+      <label><span>Код приложения</span><PuiInput required maxLength={120} pattern="[a-z0-9][a-z0-9._-]*" value={application}
         disabled={model.mutation} onChange={(event) => setApplication(event.target.value)} />
         <small>Стабильное имя, например content-hub. Оно объединяет ключи одного приложения.</small></label>
       <label><span>ID рабочего пространства в подключаемом приложении</span>
-        <input required maxLength={160} pattern="[A-Za-z0-9._:-]+" value={externalWorkspace}
+        <PuiInput required maxLength={160} pattern="[A-Za-z0-9._:-]+" value={externalWorkspace}
           disabled={model.mutation} onChange={(event) => setExternalWorkspace(event.target.value)} />
-        <small>Возьмите ID из Content Hub. Для каждой пары рабочих пространств создаётся одно подключение.</small></label>
+        <small>Для Content Hub ID должен совпадать с выбранным Workspace Image Production. Чужое личное пространство подключить нельзя.</small></label>
+      {application.trim() === 'content-hub' ? <p className={styles.muted}>Content Hub Starter v1 автоматически создаст пять редактируемых пайплайнов: описание и обложку статьи, SEO- и Telegram-черновики, анализ Telegram. Без чужих файлов, ключей и запусков. Провайдер настраивается отдельно для этого пространства.</p> : null}
       <fieldset className={styles.scopes} disabled={model.mutation}>
         <legend>Что приложение сможет делать</legend>
         {runtimeV2Scopes.map((scope) => (

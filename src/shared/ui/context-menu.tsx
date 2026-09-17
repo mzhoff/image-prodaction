@@ -1,9 +1,10 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, HelpCircle } from '@prodactionpro/ui-core/icons';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/shared/lib/cn';
+import { ProTooltip } from './pro-tooltip';
 import type { ContextMenuAction, ContextMenuColorAction, ContextMenuState } from './context-menu-types';
 import { FLOATING_CONTEXT_MENU_CLOSE_EVENT } from './floating-context-menu';
 
@@ -99,9 +100,12 @@ function ContextMenuActionList({
               action.disabled && 'context-menu-item-disabled',
             )}
           >
-            {action.icon ? <span className="context-menu-icon">{action.icon}</span> : null}
+            <span className="context-menu-icon">{action.icon}</span>
             <span className="context-menu-label">{action.label}</span>
-            <ChevronRight className="context-menu-submenu-chevron" size={14} />
+            <span className="context-menu-trailing">
+              <ChevronRight className="context-menu-submenu-chevron" size={14} />
+              {action.disabled && action.disabledReason ? <ProTooltip label={action.disabledReason} side="bottom" offset={5}><HelpCircle className="context-menu-help" size={13} /></ProTooltip> : null}
+            </span>
           </button>
           {!action.disabled ? (
             <div className="context-menu context-menu-submenu">
@@ -124,9 +128,12 @@ function ContextMenuActionList({
             action.onSelect();
           }}
         >
-          {action.icon ? <span className="context-menu-icon">{action.icon}</span> : null}
+          <span className="context-menu-icon">{action.icon}</span>
           <span className="context-menu-label">{action.label}</span>
-          {action.shortcut ? <span className="context-menu-shortcut">{action.shortcut}</span> : null}
+          <span className="context-menu-trailing">
+            {action.disabled && action.disabledReason ? <ProTooltip label={action.disabledReason} side="bottom" offset={5}><HelpCircle className="context-menu-help" size={13} /></ProTooltip> : null}
+            {action.shortcut ? <span className="context-menu-shortcut">{action.shortcut}</span> : null}
+          </span>
         </button>
       )}
     </div>

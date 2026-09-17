@@ -1,8 +1,11 @@
 'use client';
 
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
+import { Button } from '@prodactionpro/ui-core/button';
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from '@prodactionpro/ui-core/icons';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient, signIn, signUp } from '@/shared/auth/client';
@@ -98,7 +101,7 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
 
   return (
     <AuthShell ariaLabel={title}>
-      <div className="auth-card">
+      <div className="auth-card auth-entry-card">
         <div className="auth-card-head auth-card-head-no-badge">
           <h2>{mode === 'login' ? 'Войти' : title}</h2>
           <p>{subtitle}</p>
@@ -108,7 +111,7 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
           {mode === 'register' ? (
             <label>
               <span>Имя и фамилия</span>
-              <input
+              <PuiInput
                 type="text"
                 name="name"
                 value={name}
@@ -122,7 +125,7 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
           ) : null}
           <label>
             <span>Email</span>
-            <input
+            <PuiInput
               type="email"
               name="email"
               value={email}
@@ -177,12 +180,9 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
 
           {error ? <p className="auth-form-error" role="alert">{error}</p> : null}
 
-          <button className="auth-submit" type="submit" disabled={pending}>
+          <Button className="auth-submit" type="submit" intent="accent" size="md" disabled={pending} trailingIcon={<ArrowRight size={14} />}>
             {pending ? 'Подождите…' : submitLabel}
-            <span>
-              <ArrowRight size={16} />
-            </span>
-          </button>
+          </Button>
         </form>
 
         {mode === 'register' || allowRegistration ? (

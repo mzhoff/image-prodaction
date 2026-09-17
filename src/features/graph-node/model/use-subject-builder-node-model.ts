@@ -17,6 +17,7 @@ import {
   uniqueStrings,
 } from './subject-reference-values';
 import { useSubjectReferenceRecovery } from './use-subject-reference-recovery';
+import { useSubjectLibraryActions } from './use-subject-library-actions';
 
 export { subjectPreserveStrengthOptions, subjectTypeOptions } from './subject-reference-values';
 
@@ -27,9 +28,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
   const assets = useProductionGraphStore((state) => state.assets);
   const subjects = useProductionGraphStore((state) => state.subjects);
   const addAsset = useProductionGraphStore((state) => state.addAsset);
-  const applySubjectToNode = useProductionGraphStore((state) => state.applySubjectToNode);
   const deleteEdge = useProductionGraphStore((state) => state.deleteEdge);
-  const publishSubjectFromNode = useProductionGraphStore((state) => state.publishSubjectFromNode);
   const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
@@ -66,14 +65,18 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
   })), [generatedImageAssetIds]);
   const imageCount = imageAssetIds.length;
   const sourceCount = textInputs.length + imageCount;
+  const subjectLibrary = useSubjectLibraryActions(node.id, data, imageAssetIds, textInputs.map((input) => input.text));
   const subjectLibraryOptions = useMemo(
-    () => subjects.map((subject) => ({ value: subject.id, label: subject.title })),
-    [subjects],
+    () => [{ value: '', label: 'Выберите персонажа' },
+      ...subjectLibrary.library.subjects.map((subject) => ({ value: subject.id, label: subject.title })),
+      ...subjects.filter((subject) => !subjectLibrary.library.subjects.some((item) => item.id === subject.id))
+        .map((subject) => ({ value: subject.id, label: `${subject.title} · в канвасе` }))],
+    [subjects, subjectLibrary.library.subjects],
   );
   const selectedLibrarySubjectId = data.librarySubjectId
     && subjectLibraryOptions.some((option) => option.value === data.librarySubjectId)
     ? data.librarySubjectId
-    : subjectLibraryOptions[0]?.value ?? '';
+    : '';
   const preserveStrength = normalizeSubjectPreserveStrength(data.preserveStrength);
   const subjectType = normalizeSubjectType(data.subjectType);
   const selectedReferenceModel = getSelectedModelId(imageModels, data.referenceModel, DEFAULT_IMAGE_MODEL);
@@ -145,6 +148,9 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
   }, [data.referenceGenerationBatchPending, generatedImageAssetIds.length, generatingReferences, imageAssetIds.length, pendingReferenceJobId]);
 
   return {
+    libraryBusy: subjectLibrary.busy,
+    libraryError: subjectLibrary.library.error,
+    reloadLibrary: subjectLibrary.library.reload,
     canDescribeSubject: sourceCount > 0 && !describing,
     canGenerateSubjectReferences: imageAssetIds.length > 0 && !generatingReferences,
     data,
@@ -156,8 +162,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
     generatingReferences,
     handleApplySubjectFromLibrary: (subjectId: string) => {
       if (!subjectId) return;
-      const response = applySubjectToNode(node.id, subjectId);
-      if (!response.ok) updateNodeData(node.id, { message: response.reason });
+      void subjectLibrary.load(subjectId);
     },
     handleDescribeSubject: describing ? async () => undefined : handleDescribeSubject,
     handleGenerateSubjectReferences,
@@ -171,10 +176,7 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
     handlePreserveStrengthChange: (value: string) => updateNodeData(node.id, {
       preserveStrength: normalizeSubjectPreserveStrength(value),
     }),
-    handlePublishSubject: () => {
-      const response = publishSubjectFromNode(node.id);
-      if (!response.ok) updateNodeData(node.id, { message: response.reason });
-    },
+    handlePublishSubject: () => void subjectLibrary.save(),
     handleReferenceModelChange: (referenceModel: string) => updateNodeData(node.id, { referenceModel }),
     handleRemoveImageReference: (assetId: string, edgeId?: string) => edgeId
       ? deleteEdge(edgeId)

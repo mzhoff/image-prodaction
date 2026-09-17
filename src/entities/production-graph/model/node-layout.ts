@@ -19,14 +19,16 @@ export function normalizeNodeSize(type: ProductionNodeType, size?: Partial<Graph
 }
 
 function getDefaultNodeWidth(type: ProductionNodeType) {
+  if (type === 'generateVideo') return 400;
   if (type === 'router') return 250;
   if (type === 'banner') return 560;
   if (type === 'composition') return 430;
-  if (type === 'textToSpeech' || type === 'speechToText' || type === 'audioConvert') return 400;
+  if (type === 'textToSpeech' || type === 'speechToText' || type === 'audioConvert' || type === 'timelineHandoff') return 400;
   return type === 'textFormatter' ? 400 : DEFAULT_NODE_CARD_WIDTH;
 }
 
 function normalizeNodeWidth(type: ProductionNodeType, value: unknown) {
+  if (type === 'generateVideo') return 400;
   if (type === 'router') return 250;
   if (type === 'banner') {
     if (typeof value !== 'number' || !Number.isFinite(value)) return 560;
@@ -36,7 +38,7 @@ function normalizeNodeWidth(type: ProductionNodeType, value: unknown) {
     if (typeof value !== 'number' || !Number.isFinite(value)) return 430;
     return Math.min(Math.max(Math.round(value), 400), 720);
   }
-  if (type !== 'textFormatter' && type !== 'textToSpeech' && type !== 'speechToText' && type !== 'audioConvert') return DEFAULT_NODE_CARD_WIDTH;
+  if (type !== 'textFormatter' && type !== 'textToSpeech' && type !== 'speechToText' && type !== 'audioConvert' && type !== 'timelineHandoff') return DEFAULT_NODE_CARD_WIDTH;
   if (typeof value !== 'number' || !Number.isFinite(value)) return 400;
   const maxWidth = type === 'textFormatter' ? 800 : 600;
   return Math.min(Math.max(Math.round(value), 400), maxWidth);

@@ -1,6 +1,6 @@
 'use client';
 
-import { AlignCenter, AlignCenterVertical, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Baseline, Blend, Circle, Droplet, Eye, FlipHorizontal, FlipVertical, Link2, MoveHorizontal, MoveVertical, RotateCw, Square } from 'lucide-react';
+import { AlignCenter, AlignCenterVertical, AlignLeft, AlignRight, ArrowDownToLine, ArrowUpToLine, Baseline, Blend, Circle, Droplet, Eye, FlipHorizontal, FlipVertical, Link2, MoveHorizontal, MoveVertical, RotateCw, Square } from '@prodactionpro/ui-core/icons';
 import {
   COMPOSITION_TEXT_FONT_SIZE_MAX,
   COMPOSITION_TEXT_FONT_SIZE_MIN,

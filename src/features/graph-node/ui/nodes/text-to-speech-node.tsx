@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Loader2, Pause, Play, Volume2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Pause, Play, Volume2 } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
@@ -8,11 +8,13 @@ import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
 import { RangeSlider } from '@/shared/ui/range-slider';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import { useNodeDisplayState } from '../../model/use-node-display-state';
 import { useTextToSpeechNodeModel } from '../../model/use-text-workflow-node-models';
 import { NodeTitle, TextNodeTitleActions } from '../node-title';
 import { PortButton } from '../port-button';
+import { VoiceSelector } from '../voice-selector';
 
 interface TextToSpeechNodeProps {
   node: ProductionNode;
@@ -50,9 +52,9 @@ export function TextToSpeechNode({ node, onStartConnection }: TextToSpeechNodePr
             dropTarget={{ nodeId: node.id, portId: 'text' }}
             sidePort={<PortButton nodeId={node.id} portId="text" side="input" kind="text" label="Text" className="node-port-section" onStartConnection={onStartConnection} />}
           >
-            <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
+            <ModelSettingRow modality="audio" label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
             <SettingRow label="Language" value={model.language} options={model.languageOptions} onChange={model.handleLanguageChange} />
-            <SettingRow label="Voice" value={model.selectedVoice} options={model.voiceOptions} onChange={model.handleVoiceChange} wide />
+            <VoiceSelector model={model.selectedModel} value={model.selectedVoice} options={model.voiceOptions} onChange={model.handleVoiceChange} />
             {model.showFormat ? (
               <SettingRow label="Format" value={model.responseFormat} options={model.responseFormatOptions} onChange={model.handleResponseFormatChange} />
             ) : null}
@@ -102,15 +104,22 @@ export function TextToSpeechNode({ node, onStartConnection }: TextToSpeechNodePr
               </label>
             ) : null}
           </CollapsibleSection>
-          <div className="node-note node-note-compact">Up to 5000 characters per generation. Audio is saved to the workspace.</div>
+          <div className="node-note node-note-compact">Up to 30,000 characters / 30 minutes. Text over 5,000 characters is split on the server and joined into one MP3. Audio is saved to the workspace.</div>
+          {model.progress ? <div className="node-note node-note-compact" role="status" aria-live="polite">
+            {model.progress.phase === 'assembling' ? 'Assembling one audio file…' : `${model.progress.completedParts} / ${model.progress.totalParts} parts ready · ${model.progress.phase}`}
+          </div> : null}
           <PrimaryActionButton
             className="text-generation-button"
             icon={node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Volume2 size={17} />}
-            onClick={model.handleGenerate}
+            onClick={model.data.speechRequest?.jobId ? model.handleCheckResult : model.handleGenerate}
             disabled={node.status === 'running' || model.loading}
           >
-            Generate Voice
+            {model.data.speechRequest ? 'Check / resume request' : 'Generate Voice'}
           </PrimaryActionButton>
+          {model.data.speechRequest ? <div className="text-generation-version-row" data-node-interactive>
+            {model.data.speechRequest.jobId ? <button type="button" className="node-inline-action" onClick={model.handleCancel}>Cancel request</button> : null}
+            {node.status !== 'running' ? <button type="button" className="node-inline-action" onClick={model.handleNewRequest}>Prepare new request…</button> : null}
+          </div> : null}
           <CollapsibleSection
             title="Result"
             className="text-node-section text-to-speech-result-section"

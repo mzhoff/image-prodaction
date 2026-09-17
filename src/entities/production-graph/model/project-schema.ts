@@ -36,6 +36,7 @@ export interface AssetManifestItem {
   name: string;
   mimeType: string;
   audio?: AssetRecord['audio'];
+  video?: AssetRecord['video'];
   width?: number;
   height?: number;
   createdAt: string;
@@ -117,6 +118,7 @@ export function createAssetManifest(assets: AssetRecord[]): AssetManifestItem[] 
     name: asset.name,
     mimeType: asset.mimeType,
     audio: asset.audio,
+    video: asset.video,
     width: asset.width,
     height: asset.height,
     createdAt: asset.createdAt,

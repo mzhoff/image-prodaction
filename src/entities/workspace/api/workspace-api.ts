@@ -17,17 +17,17 @@ export async function fetchWorkspaceState(signal?: AbortSignal) {
   return { workspaces, projects: projectResult.projects };
 }
 
-export async function createWorkspaceProject(workspaceId: string, name = 'Untitled Pipeline') {
+export async function createWorkspaceProject(workspaceId: string, name = 'Untitled Pipeline', folderId?: string | null) {
   return requestJson<{ project: ProjectSummary }>('/api/projects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ workspaceId, name }),
+    body: JSON.stringify({ workspaceId, name, folderId }),
   }).then((result) => result.project);
 }
 
 export async function updateWorkspaceProject(
   projectId: string,
-  patch: Pick<Partial<ProjectSummary>, 'favorite' | 'name' | 'status'>,
+  patch: Pick<Partial<ProjectSummary>, 'favorite' | 'name' | 'status' | 'folderId' | 'librarySaved'>,
 ) {
   return requestJson<{ project: ProjectSummary }>(`/api/projects/${projectId}`, {
     method: 'PATCH',

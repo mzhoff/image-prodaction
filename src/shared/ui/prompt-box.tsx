@@ -1,10 +1,13 @@
 'use client';
 
 import type { CSSProperties, RefObject } from 'react';
+import { TextareaControl } from '@prodactionpro/ui-core/textarea-control';
 import { cn } from '@/shared/lib/cn';
 import { useScrollableWheel } from './use-scrollable-wheel';
 
 interface PromptBoxProps {
+  textField?: string;
+  ariaLabel?: string;
   className?: string;
   style?: CSSProperties;
   value?: string;
@@ -17,6 +20,8 @@ interface PromptBoxProps {
 const DEFAULT_PROMPT_PLACEHOLDER = 'Добавьте промпт или ограничение';
 
 export function PromptBox({
+  textField,
+  ariaLabel,
   className,
   style,
   value,
@@ -29,7 +34,9 @@ export function PromptBox({
   const handleWheel = useScrollableWheel<HTMLTextAreaElement>();
 
   return (
-    <textarea
+    <TextareaControl
+      data-text-field={textField}
+      aria-label={ariaLabel}
       ref={textareaRef}
       className={cn('prompt-box', readonly && 'prompt-box-readonly', className)}
       value={value ?? ''}

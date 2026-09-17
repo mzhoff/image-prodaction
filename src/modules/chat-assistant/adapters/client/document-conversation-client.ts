@@ -31,6 +31,9 @@ export async function bindDocumentConversation(input: {
     signal: input.signal,
   });
   if (!response.ok) throw new Error('Не удалось привязать историю ассистента к документу.');
+  const body = await response.json() as { conversationId?: unknown };
+  if (typeof body.conversationId !== 'string') throw new Error('Не удалось восстановить историю ассистента.');
+  return body.conversationId;
 }
 
 function createUrl(documentId: string) {

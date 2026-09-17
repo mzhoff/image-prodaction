@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { ImageUp, Paintbrush } from 'lucide-react';
+import { ImageUp, Paintbrush } from '@prodactionpro/ui-core/icons';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO } from '@/entities/production-graph/model/node-layout';
@@ -43,7 +43,7 @@ export function SketchNode({ node }: { node: ProductionNode }) {
 }
 
 function SketchPreview({ data }: { data: SketchNodeData }) {
-  const url = useAssetUrl(data.assetId);
+  const url = useAssetUrl(data.assetId, 'thumbnail');
   const aspectRatio = (data.aspectRatio || DEFAULT_IMAGE_PLACEHOLDER_ASPECT_RATIO).replace(':', ' / ');
 
   return (

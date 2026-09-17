@@ -1,8 +1,14 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { GraphPoint, ProductionNode } from '@/entities/production-graph/model/types';
+import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { isNodeInsideLockedSection } from '@/entities/production-graph/model/graph-selection-actions';
+import { isNodeInsideSectionIds } from '@/entities/production-graph/model/graph-section-membership';
+import { getSectionAndDescendantIds } from '@/entities/production-graph/model/graph-section-layout';
+import { createNodeDragPreview } from '../lib/node-drag-preview';
+import type { PortPointLookup } from '../lib/edge-path';
 
 interface UseNodeDragParams {
   closeContextMenu: () => void;
@@ -13,6 +19,8 @@ interface UseNodeDragParams {
   selectNode: (nodeId: string, additive?: boolean) => void;
   selectedSectionSet: Set<string>;
   selectedSet: Set<string>;
+  measuredPortPoints: PortPointLookup;
+  collapsedGenerateComposingNodeIds: Set<string>;
 }
 
 export function useNodeDrag({
@@ -24,7 +32,11 @@ export function useNodeDrag({
   selectNode,
   selectedSectionSet,
   selectedSet,
+  measuredPortPoints,
+  collapsedGenerateComposingNodeIds,
 }: UseNodeDragParams) {
+  const cancelRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelRef.current?.(), []);
   return useCallback((node: ProductionNode, event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
 
@@ -40,13 +52,24 @@ export function useNodeDrag({
 
     const alreadySelected = selectedSet.has(node.id);
     if (!alreadySelected) selectNode(node.id, event.shiftKey);
-    if (node.locked) return;
+    const graph = useProductionGraphStore.getState();
+    if (node.locked || isNodeInsideLockedSection(node, graph.sections)) return;
+    const container = event.currentTarget.closest<HTMLElement>('.production-canvas');
+    if (!container) return;
+    cancelRef.current?.();
 
     const groupDrag = alreadySelected && selectedSet.size + selectedSectionSet.size > 1;
     const startPosition = node.position;
     const startClient = { x: event.clientX, y: event.clientY };
     let didStartDrag = false;
-    let previousPoint = startPoint;
+    const sectionIds = groupDrag ? getSectionAndDescendantIds(graph.sections, selectedSectionSet) : new Set<string>();
+    const nodeIds = new Set(groupDrag ? graph.nodes.filter((item) => (
+      (selectedSet.has(item.id) || isNodeInsideSectionIds(item, graph.sections, sectionIds))
+      && !item.locked && !isNodeInsideLockedSection(item, graph.sections)
+    )).map((item) => item.id) : [node.id]);
+    let delta = { x: 0, y: 0 };
+    let frame = 0;
+    let preview: ReturnType<typeof createNodeDragPreview> | undefined;
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const nextPoint = screenToWorld(moveEvent);
@@ -56,35 +79,54 @@ export function useNodeDrag({
       if (!didStartDrag && distance < 4) return;
       if (!didStartDrag) {
         didStartDrag = true;
-        pushHistory();
+        preview = createNodeDragPreview(container, graph.nodes, graph.edges, nodeIds, sectionIds, {
+          measuredPortPoints, collapsedGenerateComposingNodeIds,
+        });
       }
 
       moveEvent.preventDefault();
       moveEvent.stopPropagation();
 
-      if (groupDrag) {
-        moveSelectedNodesBy({ x: nextPoint.x - previousPoint.x, y: nextPoint.y - previousPoint.y });
-        previousPoint = nextPoint;
-        return;
-      }
-
-      moveNode(node.id, {
-        x: startPosition.x + nextPoint.x - startPoint.x,
-        y: startPosition.y + nextPoint.y - startPoint.y,
-      });
+      delta = { x: nextPoint.x - startPoint.x, y: nextPoint.y - startPoint.y };
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; preview?.move(delta); });
     };
 
+    const finish = (commit: boolean) => {
+      cancelAnimationFrame(frame);
+      preview?.dispose();
+      if (commit && didStartDrag && (delta.x !== 0 || delta.y !== 0)) {
+        // Snapshot immediately before the coordinate commit: concurrent generation results survive undo.
+        pushHistory();
+        if (groupDrag) moveSelectedNodesBy(delta);
+        else moveNode(node.id, { x: startPosition.x + delta.x, y: startPosition.y + delta.y });
+      }
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('blur', cancel);
+      window.removeEventListener('keydown', handleKeyDown);
+      cancelRef.current = null;
+    };
+    const cancel = () => finish(false);
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') cancel(); };
     const handlePointerUp = (upEvent: PointerEvent) => {
       if (didStartDrag) {
         upEvent.preventDefault();
         upEvent.stopPropagation();
       }
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
+      if (didStartDrag) {
+        const point = screenToWorld(upEvent);
+        if (point) delta = { x: point.x - startPoint.x, y: point.y - startPoint.y };
+      }
+      finish(true);
     };
 
+    cancelRef.current = cancel;
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('blur', cancel);
+    window.addEventListener('keydown', handleKeyDown);
   }, [
     closeContextMenu,
     moveNode,
@@ -94,5 +136,7 @@ export function useNodeDrag({
     selectNode,
     selectedSectionSet,
     selectedSet,
+    measuredPortPoints,
+    collapsedGenerateComposingNodeIds,
   ]);
 }

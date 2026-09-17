@@ -10,14 +10,16 @@ import {
 } from '@/entities/document/server/document-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuidV7, isUuid } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from '../assets/error-response';
 import { toApiErrorResponse } from '../error-response';
 
-const documentIdSchema = z.string().refine(isUuidV7);
+const documentIdSchema = z.string().refine(isUuid);
 const updateDocumentBody = z.object({
   name: z.string().trim().max(120).optional(),
   favorite: z.boolean().optional(),
+  folderId: z.string().refine(isUuidV7).nullable().optional(),
+  librarySaved: z.boolean().optional(),
   status: z.enum(['active', 'trash']).optional(),
   snapshot: z.unknown().optional(),
   expectedRevision: z.number().int().min(0).optional(),

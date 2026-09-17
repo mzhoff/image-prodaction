@@ -21,10 +21,10 @@
 .composition-segmented-icon-control,
 .composition-square-icon-button {
   min-height: 28px;
-  border: 1px solid #e2e2e2;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 5px;
-  background: #f3f3f3;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-inspector-section .mini-select {
@@ -71,7 +71,7 @@
   min-width: 0;
   border: 0;
   background: transparent;
-  color: #111;
+  color: var(--pui-semantic-text-primary);
   font: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -88,7 +88,7 @@
 .composition-unit-number-icon,
 .composition-unit-number-prefix,
 .composition-unit-number-suffix {
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   font-weight: 650;
   line-height: 16px;
@@ -117,9 +117,9 @@
   height: 28px;
   place-items: center;
   border: 0;
-  border-right: 1px solid #e2e2e2;
+  border-right: 1px solid var(--pui-semantic-border-default);
   background: transparent;
-  color: #5f6368;
+  color: var(--pui-semantic-text-secondary);
 }
 
 .composition-segmented-icon-control button:last-child {
@@ -128,8 +128,8 @@
 
 .composition-segmented-icon-control button:hover,
 .composition-segmented-icon-control button.composition-segmented-icon-active {
-  background: #fff;
-  color: #111;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-layout-section .composition-segmented-icon-control {
@@ -157,15 +157,15 @@
 }
 
 .composition-square-icon-button-active {
-  background: #fff;
-  color: #0d44d9;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-accent-foreground);
 }
 
 .composition-opacity-title-actions {
   display: inline-flex;
   align-items: center;
   gap: 16px;
-  color: #111;
+  color: var(--pui-semantic-text-primary);
 }
 
 .composition-letter-spacing-mark {

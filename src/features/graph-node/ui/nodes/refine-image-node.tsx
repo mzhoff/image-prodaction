@@ -1,10 +1,11 @@
 'use client';
 
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from '@prodactionpro/ui-core/icons';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
 import { CollapsibleSection } from '@/shared/ui/collapsible-section';
 import { PrimaryActionButton } from '@/shared/ui/primary-action-button';
-import { PromptBox } from '@/shared/ui/prompt-box';
+import { FragmentPromptBox as PromptBox } from '../fragment-prompt-box';
+import { ModelSettingRow } from '@/features/model-selector/ui/model-selector';
 import { SettingRow } from '@/shared/ui/setting-row';
 import {
   refineModeOptions,
@@ -45,11 +46,11 @@ export function RefineImageNode({ node }: { node: ProductionNode }) {
       <CollapsibleSection title="Settings">
         <SettingRow label="Mode" value={model.data.mode} options={refineModeOptions} onChange={model.handleModeChange} wide />
         <SettingRow label="Preserve" value={model.data.preserveStrength} options={refinePreserveStrengthOptions} onChange={model.handlePreserveStrengthChange} />
-        <SettingRow label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
+        <ModelSettingRow modality="image" label="Model" value={model.selectedModel} options={model.modelOptions} onChange={model.handleModelChange} wide />
         <SettingRow label="Size" value={model.selectedSize} options={model.sizeOptions} onChange={model.handleSizeChange} />
       </CollapsibleSection>
       <CollapsibleSection title="Instruction">
-        <PromptBox value={model.data.instruction} onChange={model.handleInstructionChange} />
+        <PromptBox textField="instruction" value={model.data.instruction} onChange={model.handleInstructionChange} />
       </CollapsibleSection>
       <div className="node-note node-note-compact">
         OpenRouter refine is generative: it improves reference quality but can redraw details.

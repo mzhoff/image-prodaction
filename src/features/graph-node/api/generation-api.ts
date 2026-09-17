@@ -1,6 +1,6 @@
 import { mapRemoteImageAsset, type RemoteImageAssetDto } from '@/entities/production-graph/lib/remote-asset';
 import { notifyProviderUsageUpdated } from '@/shared/api/provider-usage-events';
-import type { GenerateImageRequest, GenerationRequestOptions } from './ai-client-contracts';
+import type { GenerateImageRequest, GenerationJobProgress, GenerationRequestOptions } from './ai-client-contracts';
 import { AiRequestError } from './ai-request-error';
 
 interface GenerationResultPayload {
@@ -9,7 +9,9 @@ interface GenerationResultPayload {
   job?: {
     error?: { code?: string; message?: string } | null;
     id?: string;
+    startedAt?: string | null;
     status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+    updatedAt?: string | null;
   };
   message?: string;
   statusUrl?: string;
@@ -48,7 +50,7 @@ export async function requestGenerationJob(
 ) {
   const abortContext = createGenerationAbortContext(options.signal, options.timeoutMs ?? 5 * 60 * 1_000);
   try {
-    return await pollGenerationJob(resolveGenerationStatusUrl(undefined, jobId), abortContext.signal, false);
+    return await pollGenerationJob(resolveGenerationStatusUrl(undefined, jobId), abortContext.signal, false, options);
   } catch (error) {
     throwTimedOutGeneration(abortContext.didTimeout());
     throw error;
@@ -70,7 +72,7 @@ async function waitForAcceptedGeneration(
     });
   }
   options.onJobAccepted?.(jobId);
-  return pollGenerationJob(resolveGenerationStatusUrl(result.statusUrl, jobId), signal);
+  return pollGenerationJob(resolveGenerationStatusUrl(result.statusUrl, jobId), signal, true, options);
 }
 
 async function readGenerationResult(response: Response) {
@@ -88,7 +90,12 @@ function resolveGenerationStatusUrl(statusUrl: string | undefined, jobId: string
     : `/api/generation-jobs/${encodeURIComponent(jobId)}`;
 }
 
-async function pollGenerationJob(statusUrl: string, signal: AbortSignal, waitBeforeFirstRequest = true) {
+async function pollGenerationJob(
+  statusUrl: string,
+  signal: AbortSignal,
+  waitBeforeFirstRequest = true,
+  options?: Pick<GenerationRequestOptions, 'onJobUpdate'>,
+) {
   let waitBeforeRequest = waitBeforeFirstRequest;
   while (true) {
     if (waitBeforeRequest) await waitForGenerationPoll(1_000, signal);
@@ -96,14 +103,25 @@ async function pollGenerationJob(statusUrl: string, signal: AbortSignal, waitBef
     const response = await fetch(statusUrl, { cache: 'no-store', credentials: 'same-origin', signal });
     const result = await readGenerationResult(response);
     if (!response.ok) throw new AiRequestError(response.status, result.error);
-    if (result.job?.status === 'failed' || result.job?.status === 'canceled') {
-      throw new AiRequestError(409, result.job.error ?? {
-        code: `generation_${result.job.status}`,
+    const job = result.job;
+    if (job?.status) options?.onJobUpdate?.(toGenerationJobProgress(job));
+    if (job?.status === 'failed' || job?.status === 'canceled') {
+      throw new AiRequestError(409, job.error ?? {
+        code: `generation_${job.status}`,
         message: result.message ?? 'Задача генерации не была завершена.',
       });
     }
     if (result.job?.status === 'succeeded' || result.asset) return mapCompletedGeneration(result);
   }
+}
+
+function toGenerationJobProgress(job: NonNullable<GenerationResultPayload['job']>): GenerationJobProgress {
+  return {
+    id: job.id,
+    startedAt: job.startedAt,
+    status: job.status!,
+    updatedAt: job.updatedAt,
+  };
 }
 
 function createGenerationAbortContext(signal: AbortSignal | undefined, timeoutMs: number) {

@@ -63,6 +63,11 @@ export function useLibraryAssets(workspaceId: string | undefined, filters: Libra
     }
   }, [facets, loadingMore, nextCursor, stableFilters, workspaceId]);
 
+  const removeItems = useCallback((ids: string[]) => {
+    const removed = new Set(ids);
+    setItems((current) => current.filter((item) => !removed.has(item.id)));
+  }, []);
+
   return {
     error,
     facets,
@@ -72,6 +77,7 @@ export function useLibraryAssets(workspaceId: string | undefined, filters: Libra
     loadingMore,
     nextCursor,
     refresh,
+    removeItems,
   };
 }
 

@@ -12,7 +12,7 @@ import { $createParagraphNode, $getSelection, $insertNodes, $isRangeSelection,
   FORMAT_TEXT_COMMAND } from 'lexical';
 import type { ReactNode } from 'react';
 import { Bold, Heading2, Heading3, Heading4, ImagePlus, Italic, Link2, List,
-  ListOrdered, Quote, RemoveFormatting, Strikethrough, Table2, Underline } from 'lucide-react';
+  ListOrdered, Quote, RemoveFormatting, Strikethrough, Table2, Underline } from '@prodactionpro/ui-core/icons';
 import { cn } from '@/shared/lib/cn';
 import { $createArticleImageNode } from './article-image-node';
 import { normalizeEditorUrl } from './article-rich-text-state';

@@ -12,6 +12,7 @@ export interface AssetLibraryCursor {
 }
 
 export interface AssetLibraryFilters {
+  folderId?: string;
   cursor?: AssetLibraryCursor;
   documentIds?: string[];
   limit: number;

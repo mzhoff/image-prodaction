@@ -29,6 +29,26 @@
 - If a change alters an ecosystem boundary, update the product direction
   document or add a focused ADR before implementation.
 
+## Сохранение локальной интеграции с Content Hub
+
+- Перед пересозданием локального `web` проверяй его Docker networks и наличие
+  работающего `ludimogut-api` в сети `prodaction-services-local`.
+- Если локальная интеграция используется, включай `compose.integration.yaml`
+  вместе с `compose.yaml` во **все** команды `compose up`, которые пересоздают
+  `web`. Сохраняй остальные необходимые overlays и защищённые runtime-настройки.
+  Один `compose.yaml` удаляет сетевое подключение и alias `image-production-api`
+  при пересоздании контейнера, хотя сам Image Production остаётся healthy.
+- После перезапуска проверяй из контейнера Content Hub доступность
+  `http://image-production-api:3000` и живую проверку Runtime v2 connection
+  без запуска генерации. Host healthcheck на `localhost:3004` не подтверждает
+  работоспособность межпродуктовой сети.
+- Уже работающий контейнер можно вернуть в существующую сеть без остановки:
+  `docker network connect --alias image-production-api prodaction-services-local image-prodaction-web-1`.
+  Сначала проверь точный контейнер, его Compose project и отсутствие подключения.
+  Это аварийное восстановление, а не замена Compose overlay при следующем `up`.
+- Не меняй ради такого восстановления tokens, Workspace, grants и bindings;
+  не пересоздавай базы, volumes или пользовательские pipelines.
+
 ## Node behavior and assistant knowledge invariant
 
 Any change to a node's behavior, ports, settings, execution support, limits, or
@@ -104,3 +124,13 @@ scope или архитектуры, запуском, паузой либо в�
 пользователя на конкретную запись, затем повторно прочитай страницу и проверь
 результат.
 <!-- portfolio-context:end -->
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

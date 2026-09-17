@@ -8,8 +8,12 @@ import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
 import { usageEvent } from '@/shared/db/schema/usage';
 import { normalizeProviderCostUsd } from '@/shared/lib/provider-cost-decimal';
+import { createOpenRouterVideoAdapter } from '@/modules/provider-connections/adapters/openrouter-video-adapter';
+import type { VideoProviderAdapter } from '@/modules/provider-connections/contracts/video-provider';
 
 interface UsageReconciliationCandidate {
+  operation?: string;
+  videoOperationId?: string | null;
   attemptCount: number;
   id: string;
   providerDispatchedAttempt: number | null;
@@ -24,6 +28,7 @@ interface UsageReconciliationCandidate {
 }
 
 export interface ProviderUsageReconcilerDependencies {
+  videoAdapter?: VideoProviderAdapter;
   adapter: ProviderAdapter;
   loadCandidates(limit: number): Promise<UsageReconciliationCandidate[]>;
   reconcileCandidate(
@@ -45,7 +50,9 @@ export async function reconcileOpenRouterUsageBatch(
   for (const candidate of candidates) {
     try {
       const credential = await dependencies.resolveCredential(candidate.workspaceId);
-      const status = await dependencies.adapter.getOperationStatus(
+      const status = candidate.operation === 'generate_video' && candidate.videoOperationId
+        ? await (dependencies.videoAdapter ?? createOpenRouterVideoAdapter()).poll(candidate.videoOperationId, { credential, signal: AbortSignal.timeout(60_000) })
+        : await dependencies.adapter.getOperationStatus(
         candidate.providerOperationId,
         { credential },
       );
@@ -77,6 +84,8 @@ function createDependencies(): ProviderUsageReconcilerDependencies {
 async function loadCandidates(limit: number): Promise<UsageReconciliationCandidate[]> {
   const newer = alias(usageEvent, 'newer_usage_revision');
   const rows = await getDb().select({
+    operation: generationJob.operation,
+    videoOperationId: generationJob.providerOperationId,
     attemptCount: usageEvent.attemptCount,
     id: generationJob.id,
     providerOperationId: usageEvent.providerOperationId,
@@ -103,6 +112,7 @@ async function loadCandidates(limit: number): Promise<UsageReconciliationCandida
     : []);
   if (candidates.length < limit) {
     const missingEvents = await getDb().select({
+      operation: generationJob.operation, videoOperationId: generationJob.providerOperationId,
       id: generationJob.id, attemptCount: generationJob.attemptCount,
       providerDispatchedAttempt: generationJob.providerDispatchedAttempt,
       providerOperationId: generationJob.providerOperationId, workspaceId: generationJob.workspaceId,

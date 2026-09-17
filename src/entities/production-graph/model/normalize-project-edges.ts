@@ -18,7 +18,9 @@ export function normalizeProjectEdge(edge: GraphEdge, nodes: ProductionNode[]) {
     : target?.type === 'exportImage' && edge.targetPortId === 'image'
     ? 'image-0'
     : target?.type === 'generateImage' && edge.targetPortId === 'subject' ? 'actors'
-    : edge.targetPortId === 'reference' ? 'style' : edge.targetPortId;
+    // General reference and semantic style are distinct live ports, not aliases.
+    // Loading/recovering a document must preserve the user's selected input.
+    : edge.targetPortId;
 
   return {
     ...edge,

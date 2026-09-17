@@ -1,6 +1,6 @@
 'use client';
 
-import { ImageIcon } from 'lucide-react';
+import { ImageIcon } from '@prodactionpro/ui-core/icons';
 import type { CSSProperties, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { useAssetUrl } from '@/entities/production-graph/model/use-asset-url';
@@ -108,7 +108,7 @@ function PublicationMediaCell({
   onDragIndexChange: (index: number | null) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
 }) {
-  const url = useAssetUrl(item.assetId);
+  const url = useAssetUrl(item.assetId, 'thumbnail');
 
   return (
     <button

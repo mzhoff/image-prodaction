@@ -6,6 +6,7 @@ import type {
   PipelineValueKind,
 } from '../contracts/pipeline-contracts';
 import { getPipelineJsonSchemaDefinitionError } from './pipeline-schema-definition-validation';
+import { STORIES_DOCUMENT_FORMAT, STORY_DOCUMENT_SCHEMA_CHECKSUM, validateStoryDocumentV1 } from '@/shared/contracts/stories-document';
 
 export {
   getPipelineJsonSchemaDefinitionError,
@@ -14,6 +15,7 @@ export {
 
 const PIPELINE_VALUE_KINDS = new Set<PipelineValueKind>([
   'audio',
+  'video',
   'boolean',
   'image',
   'image_collection',
@@ -31,6 +33,12 @@ export function getPipelineValueContractDefinitionError(
 ): string | null {
   if (!PIPELINE_VALUE_KINDS.has(contract.kind)) return 'kind is not supported';
   if (typeof contract.required !== 'boolean') return 'required must be a boolean';
+  if (contract.documentFormat !== undefined || contract.documentSchemaChecksum !== undefined) {
+    if (contract.kind !== 'json' || contract.documentFormat !== STORIES_DOCUMENT_FORMAT
+      || contract.documentSchemaChecksum !== STORY_DOCUMENT_SCHEMA_CHECKSUM || contract.schema !== undefined) {
+      return 'document format must reference the exact supported Stories schema';
+    }
+  }
   if (contract.description !== undefined && typeof contract.description !== 'string') {
     return 'description must be a string';
   }
@@ -74,7 +82,15 @@ export function getPipelineValueContractIssue(
   if (contract.kind === 'audio') {
     return isPipelineArtifactReference(value, 'audio') ? null : 'must be an audio artifact';
   }
+  if (contract.kind === 'video') {
+    return isPipelineArtifactReference(value, 'video') ? null : 'must be a video artifact';
+  }
   if (contract.kind === 'json') {
+    if (contract.documentFormat === STORIES_DOCUMENT_FORMAT) {
+      if (contract.documentSchemaChecksum !== STORY_DOCUMENT_SCHEMA_CHECKSUM) return 'Stories schema checksum does not match';
+      const result = validateStoryDocumentV1(value);
+      return result.valid ? null : 'Stories does not match the shared document contract';
+    }
     if (!isJsonContainer(value) || !isSafeJsonValue(value)) return 'must be structured JSON';
     return contract.schema ? getPipelineJsonValueIssue(value, contract.schema) : null;
   }
@@ -145,7 +161,7 @@ export function isPipelineArtifactReference(
   kind?: PipelineArtifactReference['kind'],
 ): value is PipelineArtifactReference & Record<string, PipelineValue> {
   if (!isRecord(value)) return false;
-  if (value.kind !== 'image' && value.kind !== 'audio') return false;
+  if (value.kind !== 'image' && value.kind !== 'audio' && value.kind !== 'video') return false;
   if (kind && value.kind !== kind) return false;
   if (typeof value.assetId !== 'string' || !value.assetId.trim()) return false;
   if (value.mimeType !== undefined && typeof value.mimeType !== 'string') return false;

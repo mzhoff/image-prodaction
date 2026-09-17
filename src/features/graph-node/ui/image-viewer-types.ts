@@ -10,6 +10,8 @@ export interface MaskEditPayload {
 export interface ImageViewerEditorPanel {
   active: boolean;
   body: ReactNode;
+  placement?: 'bottom' | 'right';
+  label?: string;
   className?: string;
   height?: number;
   toolbar?: ReactNode;

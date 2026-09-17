@@ -1,22 +1,26 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Loader2, X } from '@prodactionpro/ui-core/icons';
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
 import type { ImageViewerItem } from '@/features/graph-node/ui/image-viewer';
 import { fetchLibraryAsset } from '../api/library-api';
 import { useLibrary } from '../model/library-context';
 import type { LibraryAssetItem } from '../model/types';
+import { LibraryImageToolbar } from './library-asset-actions';
 
 interface LibraryPreviewProps {
   assetId: string;
   mode: 'intercepted' | 'direct';
 }
 
-export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
+export function LibraryPreview({ assetId: initialAssetId, mode }: LibraryPreviewProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const pathAssetId = /^\/library\/([^/]+)$/.exec(pathname ?? '')?.[1];
+  const assetId = pathAssetId ?? initialAssetId;
   const library = useLibrary();
   const loadMore = library.loadMore;
   const [fallbackItem, setFallbackItem] = useState<LibraryAssetItem | null>(null);
@@ -71,9 +75,10 @@ export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
 
   const current = currentFromCollection ?? fallbackItem;
   const sequence = useMemo(() => {
-    const imageItems = library.items.filter((item) => item.mediaKind === 'image');
-    if (!current || imageItems.some((item) => item.id === current.id)) return imageItems;
-    return current.mediaKind === 'image' ? [current, ...imageItems] : imageItems;
+    const mediaKind = current?.mediaKind ?? 'image';
+    const matchingItems = library.items.filter((item) => item.mediaKind === mediaKind);
+    if (!current || matchingItems.some((item) => item.id === current.id)) return matchingItems;
+    return [current, ...matchingItems];
   }, [current, library.items]);
   const currentIndex = Math.max(0, sequence.findIndex((item) => item.id === assetId));
   const viewerItems = useMemo<ImageViewerItem[]>(() => sequence.map((item) => ({
@@ -84,7 +89,7 @@ export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
     url: item.contentUrl,
     width: item.width ?? undefined,
   })), [sequence]);
-  const querySuffix = library.filterQuery ? `?${library.filterQuery}` : '';
+  const querySuffix = library.navigationQuery ? `?${library.navigationQuery}` : '';
   const collectionPending = library.loading
     || library.loadingMore
     || Boolean(library.filterQuery && library.nextCursor);
@@ -96,8 +101,13 @@ export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
 
   const selectAt = useCallback((index: number) => {
     const next = sequence[wrapIndex(index, sequence.length)];
-    if (next) router.replace(`/library/${encodeURIComponent(next.id)}${querySuffix}`, { scroll: false });
-  }, [querySuffix, router, sequence]);
+    // This viewer already owns the overlay. A router navigation from a direct
+    // asset page would intercept itself and mount a second viewer in @preview.
+    // Native history integrates with usePathname and keeps the URL reloadable.
+    if (next) window.history.replaceState(null, '', `/library/${encodeURIComponent(next.id)}${querySuffix}`);
+  }, [querySuffix, sequence]);
+
+  if (!pathAssetId) return null;
 
   if ((collectionPending || fallbackPending) && !current) {
     return (
@@ -118,16 +128,6 @@ export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
     );
   }
 
-  if (current.mediaKind !== 'image') {
-    return (
-      <PreviewState onClose={close}>
-        <AlertTriangle size={24} />
-        <strong>Предпросмотр этого формата пока недоступен</strong>
-        <a href={current.contentUrl} target="_blank" rel="noreferrer">Открыть оригинал</a>
-      </PreviewState>
-    );
-  }
-
   return (
     <ImageViewer
       assetId={current.id}
@@ -135,12 +135,24 @@ export function LibraryPreview({ assetId, mode }: LibraryPreviewProps) {
       hasHistory={sequence.length > 1}
       historyAssetIds={sequence.map((item) => item.id)}
       items={viewerItems}
+      thumbnailLayout={current.mediaKind === 'video' ? 'strip' : 'dock'}
       onClose={close}
       onNext={() => selectAt(currentIndex + 1)}
       onPrevious={() => selectAt(currentIndex - 1)}
       onSelectVersion={selectAt}
       sourceModel={current.modelId ?? current.provider ?? undefined}
       url={current.contentUrl}
+      viewerMedia={current.mediaKind === 'video' ? <video
+        className="image-viewer-media library-video-player"
+        controls
+        playsInline
+        poster={current.thumbnailUrl ?? undefined}
+        preload="metadata"
+        src={current.contentUrl}
+      /> : undefined}
+      viewerPanel={current.mediaKind === 'image'
+        ? { active: false, body: null, className: 'image-editor-panel-library', toolbar: <LibraryImageToolbar item={current} /> }
+        : undefined}
     />
   );
 }

@@ -48,7 +48,7 @@ function isSchemaCompatibleWithKind(
   if (kind === 'number') return schemaType === 'number' || schemaType === 'integer';
   if (kind === 'boolean') return schemaType === 'boolean';
   if (kind === 'json' || kind === 'publication') return schemaType === 'object' || schemaType === 'array';
-  if (kind === 'image' || kind === 'audio') return schemaType === 'object';
+  if (kind === 'image' || kind === 'audio' || kind === 'video') return schemaType === 'object';
   if (kind === 'image_collection' || kind === 'text_collection') return schemaType === 'array';
   return false;
 }

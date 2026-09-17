@@ -1,31 +1,7 @@
 'use client';
 
+import { Ellipsis, Minimize2 } from '@prodactionpro/ui-core/icons';
 import {
-  Crop,
-  Braces,
-  Download,
-  Ellipsis,
-  Eye,
-  FileInput,
-  ImageIcon,
-  FileOutput,
-  Layers,
-  ListPlus,
-  Minimize2,
-  Paintbrush,
-  Repeat2,
-  QrCode, Route,
-  Scissors,
-  Send,
-  Slice,
-  SlidersHorizontal,
-  Text,
-  Type,
-  Volume2,
-  WandSparkles,
-} from 'lucide-react';
-import {
-  createElement,
   createContext,
   useCallback,
   useContext,
@@ -36,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
+import { NodeIcon } from '@/entities/production-graph/ui/node-icon';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { cn } from '@/shared/lib/cn';
 
@@ -76,7 +53,7 @@ export function NodeTitle({
   title: string;
   muted?: boolean;
   action?: ReactNode;
-  nodeType?: ProductionNodeType;
+  nodeType: ProductionNodeType;
   onRename?: (title: string) => void;
 }) {
   const renameNode = useProductionGraphStore((state) => state.renameNode);
@@ -137,13 +114,10 @@ export function NodeTitle({
     if (nextTitle !== title) onRenameNode(nextTitle);
   };
 
-  const Icon = getNodeIcon(title, nodeType);
-  const icon = Icon ? createElement(Icon, { size: 16 }) : null;
-
   return (
     <h2 className={cn('node-title', muted && 'node-title-muted')}>
       <span className="node-title-main">
-        {icon}
+        <NodeIcon nodeType={nodeType} />
         {editing ? (
           <input
             ref={inputRef}
@@ -241,60 +215,4 @@ export function TextNodeTitleActions({
       <NodeTitleOptionsButton />
     </NodeTitleActions>
   );
-}
-
-function getNodeIcon(title: string, nodeType?: ProductionNodeType) {
-  if (nodeType === 'qrCode' || (!nodeType && title === 'QR Code')) return QrCode;
-  if (nodeType) {
-    if (nodeType === 'importImage') return FileInput;
-    if (nodeType === 'imageToText') return WandSparkles;
-    if (nodeType === 'referenceComposer') return ImageIcon;
-    if (nodeType === 'composition') return Layers;
-    if (nodeType === 'generateImage') return ImageIcon;
-    if (nodeType === 'textPrompt') return Type;
-    if (nodeType === 'textConcat') return ListPlus;
-    if (nodeType === 'textGeneration') return Text;
-    if (nodeType === 'textToSpeech' || nodeType === 'speechToText' || nodeType === 'audioConvert') return Volume2;
-    if (nodeType === 'textFormatter') return Text;
-    if (nodeType === 'textSplitter') return Slice;
-    if (nodeType === 'pipelineInput') return FileInput;
-    if (nodeType === 'pipelineOutput') return FileOutput;
-    if (nodeType === 'structuredOutput') return Braces;
-    if (nodeType === 'router') return Route;
-    if (nodeType === 'iterator') return Repeat2;
-    if (nodeType === 'subjectBuilder') return WandSparkles;
-    if (nodeType === 'locationBuilder') return WandSparkles;
-    if (nodeType === 'telegramPublication') return Send;
-    if (nodeType === 'sketch') return Paintbrush;
-    if (nodeType === 'cropImage') return Crop;
-    if (nodeType === 'adjustment') return SlidersHorizontal;
-    if (nodeType === 'curves') return SlidersHorizontal;
-    if (nodeType === 'frequencyRetouch') return Paintbrush;
-    if (nodeType === 'refineImage') return Paintbrush;
-    if (nodeType === 'removeBackground') return Scissors;
-    if (nodeType === 'exportImage') return Download;
-    if (nodeType === 'banner') return ImageIcon;
-    if (nodeType === 'preview') return Eye;
-  }
-  if (title === 'Import') return FileInput;
-  if (title === 'Extract') return WandSparkles;
-  if (title === 'Generate Image') return ImageIcon;
-  if (title === 'Composition') return Layers;
-  if (title === 'Concatenate') return ListPlus;
-  if (title === 'Text Generate (LLM)' || title === 'Text Gen') return Text;
-  if (title === 'Formatter') return Text;
-  if (title === 'Text Split' || title === 'Splitter') return Slice;
-  if (title === 'Router') return Route;
-  if (title === 'Iterator') return Repeat2;
-  if (title === 'Telegram Post') return Send;
-  if (title === 'Sketch') return Paintbrush;
-  if (title === 'Retouch') return Paintbrush;
-  if (title === 'Crop') return Crop;
-  if (title === 'Adjustments') return SlidersHorizontal;
-  if (title === 'Remove BG') return Scissors;
-  if (title === 'Export') return Download;
-  if (title === 'Banner') return ImageIcon;
-  if (title === 'Preview') return Eye;
-  if (title === 'Prompt') return Text;
-  return null;
 }

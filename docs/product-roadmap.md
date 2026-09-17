@@ -2,6 +2,17 @@
 
 Дата: 2026-06-06
 
+Дополнение 2026-09-06: [отложенные идеи голоса автора и аудиостатей](./audio-video-backlog.md).
+Они не входят в текущий срез длинной Voice и импорта видео; портфельные приоритеты
+и следующий рубеж остаются в Notion.
+
+Дополнение 2026-09-16: владелец продукта зафиксировал порядок
+[сценарий → раскадровка по сценам → визуальные референсы → видеофрагменты](./scenario-to-video-production-plan.md).
+Сначала закрываем этот сквозной путь. [Передача во внешние монтажные редакторы](./editing-handoff-backlog.md)
+сохранена как последующий отложенный этап. Это уточнение видеонаправления имеет
+приоритет над его последовательностью в исходном плане от 2026-06-06;
+оно не объявляет функции реализованными и не меняет портфельные поля Notion.
+
 ## 1. Принцип планирования
 
 Двигаемся не по жесткому fixed scope, а по правилу:
@@ -308,7 +319,8 @@ Frontend и backend должны сохранять:
 
 ## 9. Priority 6: Visual LUT Builder and color look
 
-Перед video layer нужно закрыть отдельный image/color блок:
+Отдельное направление image/color, не являющееся обязательным условием пути
+от сценария до видеофрагментов, зафиксированного 2026-09-16:
 
 - Visual LUT Builder / Color Look node;
 - простая "color warp" сетка вместо профессионального color grading UI;
@@ -321,16 +333,28 @@ Frontend и backend должны сохранять:
 
 ## 10. Priority 7: Video and timeline handoff
 
-Когда image / text / publication foundations станут устойчивыми:
+Уточнение владельца продукта от 2026-09-16: сначала закрыть путь производства
+фрагментов, затем вернуться к монтажу. Число Priority в заголовке относится
+к исходной структуре этого документа, а не к текущему приоритету в Notion.
 
-- video generation nodes;
-- first frame / last frame workflow;
-- video asset history;
-- video export;
-- handoff to timeline editor;
-- publication nodes with video attachments.
+1. Сценарий истории.
+2. Раскадровка по сценам и необходимым планам.
+3. Визуальные референсы из описаний сцен/планов, выбор принятых вариантов.
+4. Видеофрагменты из принятых референсов с сохранением связи и истории версий.
+5. Позже: монтажный пакет и передача в CapCut, Premiere или DaVinci.
 
-Video layer должен использовать те же principles: graph values, library entities, publication artifacts and backend run metadata.
+Ранее намеченные экспорт видео и publication nodes with video attachments
+сохраняются отдельными направлениями. Работа с first/last frame и историей
+видеоассетов остаётся частью соответствующих контрактов генерации и библиотеки.
+
+Критерии сквозного пути и повторной генерации отдельного плана:
+[scenario-to-video-production-plan.md](./scenario-to-video-production-plan.md).
+Результаты исследования API/MCP, варианты передачи и условия возвращения:
+[editing-handoff-backlog.md](./editing-handoff-backlog.md).
+
+Video layer использует graph values, library entities, сохранённые артефакты
+и backend run metadata. Текущий Timeline Handoff разбирает готовое видео;
+он не заменяет прямой путь от сценария к генерации фрагментов.
 
 ## 11. Priority 8: Analytics and HADI loop
 
@@ -357,6 +381,7 @@ Video layer должен использовать те же principles: graph va
 6. Сделать первую publication node на Telegram.
 7. Добавить export package / Kanban handoff placeholder.
 8. Вернуться к executable sections как к следующему крупному automation layer.
-9. До перехода к video layer реализовать простой Visual LUT Builder / Color Look node.
+9. Visual LUT Builder / Color Look сохранить отдельным направлением; по решению
+   2026-09-16 он не блокирует путь от сценария до видеофрагментов (раздел 10).
 
 Если нужна максимальная быстрая продуктовая демонстрация, можно начинать с Telegram publication node сразу после минимального contract design. Но без пунктов 1-3 publication layer быстро начнет тянуть хаос из builder и storage слоев.

@@ -3,10 +3,10 @@
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
 import { createNodeAskAiLaunchCoordinator,
   createNodeAskAiLaunchRequest } from '@/features/chat-assistant/model/node-ask-ai';
-import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
+import { AssistantPetLauncher } from '@/features/assistant-pet/ui/assistant-pet-launcher';
 import { ContextMenu } from '@/shared/ui/context-menu';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
-import { Plus } from 'lucide-react';
+import { Plus } from '@prodactionpro/ui-core/icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { CanvasEdges } from './canvas-edges';
@@ -14,9 +14,12 @@ import { CanvasGrid } from './canvas-grid';
 import { CanvasNodeLayer } from './canvas-node-layer';
 import { CanvasSectionLayer } from './canvas-section-layer';
 import { CanvasToolbar } from './canvas-toolbar';
+import { CanvasImportProgressCard } from './canvas-import-progress';
 import { DocumentNodePalette } from './document-node-palette';
 import { DocumentTitleBar } from './document-title-bar';
 import { OpenRouterBalance } from './openrouter-balance';
+import { useTextFragmentDrag } from '../model/use-text-fragment-drag';
+import { TextFragmentDragPreview } from '@/features/graph-node/ui/text-fragment-drag-preview';
 
 interface ProductionCanvasProps {
   projectId?: string;
@@ -34,6 +37,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
     [chatLaunchCoordinator],
   );
   const model = useProductionCanvasModel({ onAskAiNode: askAiNode, projectId });
+  const fragmentDrag = useTextFragmentDrag({ projectId, containerRef: model.canvas.containerRef, screenToWorld: model.canvas.screenToWorld, notify: model.showToast });
   const autoOpenedProjectRef = useRef<string | undefined>(undefined);
   const projectTitle = model.documentName
     ?? (model.documentSync.phase === 'loading' ? 'Загрузка документа…' : 'Untitled Pipeline');
@@ -53,20 +57,29 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
 
   return (
     <div className="canvas-shell">
-      <CanvasToolbar
-        activeTool={model.canvasTool}
-        canRedo={model.historyFutureLength > 0}
-        canUndo={model.historyPastLength > 0}
-        onExportProject={model.exportProjectSnapshot}
-        onImportProject={model.importProjectSnapshotFile}
-        onDeleteSelected={model.deleteSelected}
-        onRedo={model.redo}
-        onSelectTool={model.setCanvasTool}
-        onUndo={model.undo}
-        onZoomToFit={() => model.canvas.zoomToBounds(model.bounds)}
-      />
+      <TextFragmentDragPreview {...fragmentDrag} />
+      <div className="canvas-bottom-controls" data-snapshot-exclude>
+        {syncProblem && model.documentSync.message ? (
+          <div className="canvas-toast" role="status">{model.documentSync.message}</div>
+        ) : null}
+        <CanvasImportProgressCard store={model.importProgressStore} />
+        <CanvasToolbar
+          activeTool={model.canvasTool}
+          canRedo={model.historyFutureLength > 0}
+          canUndo={model.historyPastLength > 0}
+          zoom={model.canvas.zoom}
+          onExportProject={model.exportProjectSnapshot}
+          onImportProject={model.importProjectSnapshotFile}
+          onDeleteSelected={model.deleteSelected}
+          onRedo={model.redo}
+          onSelectTool={model.setCanvasTool}
+          onUndo={model.undo}
+          onZoomToFit={() => model.canvas.zoomToBounds(model.bounds)}
+        />
+      </div>
       <div
         ref={model.canvas.containerRef}
+        tabIndex={-1}
         className={`production-canvas ${model.connectionDraft ? 'production-canvas-connecting' : ''}`}
         onMouseDown={model.handleCanvasMouseDown}
         onMouseMove={model.handleCanvasMouseMove}
@@ -78,6 +91,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         <DocumentTitleBar
           favorite={model.documentFavorite}
           onCreateSnapshot={model.createDocumentThumbnail}
+          onExit={model.prepareDocumentExit}
           onCloseCanvasMenu={model.closeContextMenu}
           onExportProject={model.exportProjectSnapshot}
           onMoveToTrash={model.moveDocumentToTrash}
@@ -125,6 +139,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           <CanvasEdges
             collapsedGenerateComposingNodeIds={model.collapsedGenerateComposingNodeIds}
             connectionDraft={model.connectionDraft}
+            draftPathRef={model.draftPathRef}
             edges={model.edges}
             measuredPortPoints={model.measuredPortPoints}
             nodesById={model.nodesById}
@@ -152,9 +167,11 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         >
           <Plus size={28} />
         </button>
-        <AssistantFloatingButton
+        <AssistantPetLauncher
           className={assistantOpen ? 'assistant-floating-button-hidden' : ''}
+          notice={assistantOpen ? null : model.toastMessage}
           onClick={openAssistant}
+          size="canvas"
         />
         <AssistantShell
           open={assistantOpen}
@@ -170,15 +187,16 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             setAssistantOpen(false);
           }}
           onOpen={openAssistant}
+          onFocusNode={(nodeId) => {
+            setAssistantOpen(false);
+            window.requestAnimationFrame(() => model.focusNode(nodeId));
+          }}
           onPipelineChanged={model.reloadDocumentFromServer}
           registerChatLauncher={chatLaunchCoordinator.register}
           route={projectId ? `/projects/${projectId}` : '/projects'}
           selectionIds={[...model.selectedSet, ...model.selectedSectionSet]}
           workspaceId={model.workspaceId}
         />
-        {syncProblem && model.documentSync.message ? (
-          <div className="canvas-toast" data-snapshot-exclude role="status">{model.documentSync.message}</div>
-        ) : model.toastMessage ? <div className="canvas-toast" data-snapshot-exclude>{model.toastMessage}</div> : null}
         {model.boxSelection.rectStyle ? <div className="selection-rect" data-snapshot-exclude style={model.boxSelection.rectStyle} /> : null}
         {model.sectionDraftStyle ? <div className="section-draft-rect" data-snapshot-exclude style={model.sectionDraftStyle} /> : null}
         <ContextMenu menu={model.contextMenu.menu} onClose={model.closeContextMenu} />

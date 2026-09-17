@@ -18,7 +18,7 @@ export type PipelineArtifactReference = {
   checksumSha256?: string;
   contentUrl?: string;
   height?: number | null;
-  kind: 'audio' | 'image';
+  kind: 'audio' | 'image' | 'video';
   mimeType?: string;
   sizeBytes?: number;
   width?: number | null;
@@ -26,6 +26,7 @@ export type PipelineArtifactReference = {
 
 export type PipelineValueKind =
   | 'audio'
+  | 'video'
   | 'boolean'
   | 'image'
   | 'image_collection'
@@ -38,6 +39,8 @@ export type PipelineValueKind =
 export type PipelineJsonSchema = SemanticJsonSchema;
 
 export interface PipelineValueContract {
+  documentFormat?: 'stories.document@1.0.0';
+  documentSchemaChecksum?: string;
   defaultValue?: PipelineValue;
   description?: string;
   kind: PipelineValueKind;

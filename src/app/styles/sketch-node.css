@@ -3,9 +3,9 @@
   width: 100%;
   min-height: 132px;
   overflow: hidden;
-  border: 1px solid #ecece9;
+  border: 1px solid var(--pui-semantic-border-default);
   border-radius: 8px;
-  background: #fff;
+  background: var(--pui-semantic-surface-primary);
   -webkit-user-drag: none;
   user-select: none;
 }
@@ -21,7 +21,7 @@
   height: 100%;
   min-height: 132px;
   place-items: center;
-  color: #c4c4bf;
+  color: var(--pui-semantic-text-muted);
 }
 
 .sketch-editor-overlay {
@@ -47,8 +47,8 @@
   width: min(92vw, 1180px, calc((100vh - 138px) * var(--sketch-editor-aspect)));
   overflow: hidden;
   border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  background: var(--pui-semantic-surface-primary);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--pui-semantic-shadow-color) 34%, transparent);
 }
 
 .sketch-editor-panel {
@@ -61,10 +61,10 @@
   width: max-content;
   max-width: calc(100vw - 36px);
   gap: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 8%, transparent);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 88%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--pui-semantic-shadow-color) 8%, transparent);
   padding: 6px;
   transform: translateX(-50%);
   backdrop-filter: blur(12px);
@@ -99,11 +99,11 @@
   top: 0;
   z-index: 2;
   display: none;
-  border: 1.5px solid rgba(255, 255, 255, 0.96);
+  border: 1.5px solid color-mix(in srgb, var(--pui-semantic-border-subtle) 96%, transparent);
   border-radius: 999px;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.62),
-    0 0 14px rgba(31, 98, 255, 0.22);
+    0 0 0 1px color-mix(in srgb, var(--pui-semantic-shadow-color) 62%, transparent),
+    0 0 14px color-mix(in srgb, var(--pui-semantic-accent-default) 22%, transparent);
   pointer-events: none;
 }
 
@@ -126,13 +126,13 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
 }
 
 .sketch-tool-button:hover,
 .sketch-tool-button-active {
-  background: #f0f0ee;
-  color: #111;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
 }
 
 .sketch-tool-button:disabled {
@@ -142,7 +142,7 @@
 
 .sketch-tool-button:disabled:hover {
   background: transparent;
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
 }
 
 .sketch-size-slider.range-slider-row {
@@ -151,11 +151,11 @@
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 7px;
   padding: 0;
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
 }
 
 .sketch-size-slider .range-slider-label {
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
   font-weight: 700;
   line-height: 14px;
 }
@@ -164,7 +164,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #555;
+  color: var(--pui-semantic-text-secondary);
   font-size: 12px;
   font-weight: 700;
   line-height: 14px;
@@ -174,7 +174,7 @@
   display: flex;
   gap: 5px;
   overflow-x: auto;
-  scrollbar-color: rgba(0, 0, 0, 0.26) transparent;
+  scrollbar-color: color-mix(in srgb, var(--pui-semantic-surface-inverse) 26%, transparent) transparent;
 }
 
 .sketch-palette::-webkit-scrollbar {
@@ -187,7 +187,7 @@
 
 .sketch-palette::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.26);
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 26%, transparent);
 }
 
 .sketch-color-swatch,

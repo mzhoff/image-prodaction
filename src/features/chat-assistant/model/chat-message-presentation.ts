@@ -11,7 +11,7 @@ export function prepareChatMessagesForPresentation(
       blocks: message.blocks.map(toMarkdownBlock),
       metadata: {
         ...message.metadata,
-        ...(index === messages.length - 1 ? { animate: true } : {}),
+        ...(index === messages.length - 1 && message.metadata?.animate !== false ? { animate: true } : {}),
       },
     };
   });

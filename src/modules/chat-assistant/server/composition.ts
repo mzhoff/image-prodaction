@@ -1,16 +1,12 @@
 import {
   ChatAttachmentApplicationService,
   ChatConversationApplicationService,
-  PersistentConversationEventBus,
   ToolCallingChatAgent,
   type ChatApplicationOptions,
 } from '@prodactionpro/chat-application';
 import { S3AttachmentObjectStorage } from '@prodactionpro/chat-attachments-s3';
 import {
   DrizzleAttachmentStore,
-  DrizzleConversationEventStore,
-  DrizzleConversationStore,
-  PostgresConversationEventWakeup,
 } from '@prodactionpro/chat-persistence-drizzle';
 import {
   createNextAttachmentCompleteUploadRoute,
@@ -28,7 +24,7 @@ import {
   createNextToolConfirmRoute,
   createNextToolRejectRoute,
 } from '@prodactionpro/chat-runtime-next/server';
-import { getDb, getPostgresPool } from '@/shared/db/client';
+import { getDb } from '@/shared/db/client';
 import { buildImageProductionSystemPrompt } from '../core/system-prompt';
 import { imageProductionTools } from '../contracts/image-production-tools';
 import { designElementSelectionTool } from '../contracts/design-element-selection';
@@ -39,6 +35,9 @@ import { LimitedOpenRouterGateway } from './limited-openrouter-gateway';
 import { admitChatTurn } from './turn-admission';
 import { resolveVerifiedChatContext } from './verified-context';
 import { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
+import { getChatConversationInfrastructure } from './conversation-infrastructure';
+
+export { getChatConversationInfrastructure } from './conversation-infrastructure';
 
 export class ChatAssistantUnavailableError extends Error {
   readonly code = 'CHAT_ASSISTANT_UNAVAILABLE';
@@ -59,7 +58,7 @@ function createComposition() {
     throw new ChatAssistantUnavailableError('Chat assistant is not configured.');
   }
 
-  const store = new DrizzleConversationStore(getDb());
+  const { store, eventBus } = getChatConversationInfrastructure();
   const attachmentStore = new DrizzleAttachmentStore(getDb());
   const s3AttachmentStorage = new S3AttachmentObjectStorage({
     accessKeyId: config.attachmentS3AccessKeyId,
@@ -86,18 +85,9 @@ function createComposition() {
       },
     },
   );
-  const eventWakeup = new PostgresConversationEventWakeup(getPostgresPool(), {
-    onError: (error) => console.error('[chat-assistant-event-wakeup-error]', error),
-  });
-  const eventBus = new PersistentConversationEventBus(
-    new DrizzleConversationEventStore(getDb()),
-    {
-      onError: (error) => console.error('[chat-assistant-event-replay-error]', error),
-      wakeup: eventWakeup,
-    },
-  );
   const toolGateway = new ImageProductionToolGateway(
     new ChatAttachmentAssetBridge(store, attachmentService),
+    store,
   );
   const options: ChatApplicationOptions = {
     agent: {
@@ -199,6 +189,8 @@ function createComposition() {
 
   return {
     config,
+    store,
+    eventBus,
     routes: {
       attachmentComplete: createNextAttachmentCompleteUploadRoute(attachmentRouteOptions),
       attachmentContent: createNextAttachmentContentRoute(attachmentRouteOptions),

@@ -3,7 +3,9 @@ import { runtimeV2ChecksumSchema, runtimeV2CostPolicySchema, runtimeV2ExecutionP
 import { runtimeV2SemanticContractSchema, runtimeV2SemanticJsonSchema } from './runtime-v2-semantic-schema';
 
 export const runtimeV2FieldSchema = z.object({
-  kind: z.enum(['audio', 'boolean', 'image', 'image_collection', 'json', 'number', 'publication', 'text', 'text_collection']),
+  documentFormat: z.literal('stories.document@1.0.0').optional(),
+  documentSchemaChecksum: runtimeV2ChecksumSchema.optional(),
+  kind: z.enum(['audio', 'video', 'boolean', 'image', 'image_collection', 'json', 'number', 'publication', 'text', 'text_collection']),
   required: z.boolean(), description: z.string().optional(), defaultValue: z.json().optional(), schema: runtimeV2SemanticJsonSchema.optional(),
 }).strict();
 export const runtimeV2BoundarySchema = z.object({

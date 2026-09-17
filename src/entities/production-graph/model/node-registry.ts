@@ -1,4 +1,7 @@
 import { audioNodeDefinitions } from './node-registry-audio';
+import { timelineNodeDefinitions } from './node-registry-timeline';
+import { storiesNodeDefinitions } from './node-registry-stories';
+import { videoNodeDefinitions } from './node-registry-video';
 import { contextNodeDefinitions } from './node-registry-context';
 import { imageNodeDefinitions } from './node-registry-image';
 import { publicationNodeDefinitions } from './node-registry-publication';
@@ -17,6 +20,9 @@ export const NODE_DEFINITIONS = {
   textToSpeech: textNodeDefinitions.textToSpeech,
   speechToText: audioNodeDefinitions.speechToText,
   audioConvert: audioNodeDefinitions.audioConvert,
+  timelineHandoff: timelineNodeDefinitions.timelineHandoff,
+  reverieStories: storiesNodeDefinitions.reverieStories,
+  generateVideo: videoNodeDefinitions.generateVideo,
   textFormatter: textNodeDefinitions.textFormatter,
   textSplitter: textNodeDefinitions.textSplitter,
   pipelineInput: pipelineNodeDefinitions.pipelineInput,

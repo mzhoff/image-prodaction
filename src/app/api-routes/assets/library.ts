@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { listLibraryAssets } from '@/entities/asset/server/asset-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuidV7, isUuid } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from './error-response';
 
 const originSchema = z.enum(['uploaded', 'generated', 'saved', 'unknown']);
@@ -13,7 +13,7 @@ export async function getAssetLibrary(request: Request) {
     const session = await requireApiSession(request);
     const params = new URL(request.url).searchParams;
     const workspaceId = params.get('workspaceId')?.trim();
-    if (!workspaceId || !isUuidV7(workspaceId)) {
+    if (!workspaceId || !isUuid(workspaceId)) {
       return apiError('invalid_workspace_id', 'Valid workspaceId is required.', 400);
     }
 
@@ -22,7 +22,9 @@ export async function getAssetLibrary(request: Request) {
     const mediaKinds = parseEnumFilters(params, 'mediaKind', mediaKindSchema);
     if (mediaKinds instanceof Response) return mediaKinds;
     const documentIds = parseTextFilters(params, 'documentId');
-    if (documentIds.some((value) => !isUuidV7(value))) {
+    const folderId = params.get('folderId')?.trim() || undefined;
+    if (folderId && !isUuidV7(folderId)) return apiError('invalid_folder_id', 'Project filter must be a valid id.', 400);
+    if (documentIds.some((value) => !isUuid(value))) {
       return apiError('invalid_document_id', 'Document filters must be valid ids.', 400);
     }
 
@@ -37,6 +39,7 @@ export async function getAssetLibrary(request: Request) {
       providers: parseTextFilters(params, 'provider'),
       modelIds: parseTextFilters(params, 'modelId'),
       documentIds,
+      folderId,
       search: params.get('search') ?? undefined,
       cursor: params.get('cursor'),
       limit,

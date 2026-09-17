@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import { getDocument } from '@/entities/document/server/document-service';
 import { requireWorkspaceMembership } from '@/entities/workspace/server/workspace-service';
 import { createUuidV7 } from '@/shared/lib/id';
+import { extractVideoPosterFrame } from '@/shared/media/video-processor';
 import {
   getAssetObjectStore,
   getConfiguredAssetBucket,
@@ -31,6 +32,7 @@ export function createDefaultUploadDependencies(): AssetUploadDependencies {
     assertAccess: assertUploadAccess,
     bucket: getConfiguredAssetBucket(),
     createThumbnail: createLibraryThumbnail,
+    createVideoThumbnail: createVideoLibraryThumbnail,
     createId: createUuidV7,
     objectStore: getAssetObjectStore(),
     repository: createDbAssetRepository(),
@@ -41,6 +43,7 @@ export function createDefaultStorageDependencies(): AssetStorageDependencies {
   return {
     createId: createUuidV7,
     createThumbnail: createLibraryThumbnail,
+    createVideoThumbnail: createVideoLibraryThumbnail,
     objectStore: getAssetObjectStore(),
     repository: createDbAssetRepository(),
   };
@@ -145,4 +148,8 @@ async function createLibraryThumbnail(bytes: Uint8Array): Promise<ThumbnailImage
     height: result.info.height ?? null,
     width: result.info.width ?? null,
   };
+}
+
+async function createVideoLibraryThumbnail(bytes: Uint8Array, signal?: AbortSignal) {
+  return createLibraryThumbnail(await extractVideoPosterFrame(bytes, signal));
 }

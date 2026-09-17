@@ -13,10 +13,11 @@ interface AdjustmentPreviewProps {
   assetId?: string;
   aspectRatio?: string;
   values: ImageAdjustmentValues;
+  variant?: 'node' | 'viewer';
 }
 
-export function AdjustmentPreview({ assetId, aspectRatio, values }: AdjustmentPreviewProps) {
-  const url = useAssetUrl(assetId);
+export function AdjustmentPreview({ assetId, aspectRatio, values, variant = 'node' }: AdjustmentPreviewProps) {
+  const url = useAssetUrl(assetId, variant === 'viewer' ? undefined : 'thumbnail');
   const [fallbackCanvas, setFallbackCanvas] = useState<HTMLCanvasElement | null>(null);
   const [webglCanvas, setWebglCanvas] = useState<HTMLCanvasElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -107,22 +108,22 @@ export function AdjustmentPreview({ assetId, aspectRatio, values }: AdjustmentPr
     const observer = new ResizeObserver(() => {
       rendererRef.current?.resize();
       rendererRef.current?.render(latestValuesRef.current);
-      if (ENABLE_ADJUSTMENT_PREVIEW_FALLBACK && fallbackCanvas && imageRef.current) {
-        drawAdjustedImagePreview(fallbackCanvas, imageRef.current, values);
+      if (ENABLE_ADJUSTMENT_PREVIEW_FALLBACK && !webglReady && fallbackCanvas && imageRef.current) {
+        drawAdjustedImagePreview(fallbackCanvas, imageRef.current, latestValuesRef.current);
       }
     });
     if (fallbackCanvas) observer.observe(fallbackCanvas);
     if (webglCanvas) observer.observe(webglCanvas);
 
     return () => observer.disconnect();
-  }, [fallbackCanvas, useCanvasFallback, values, webglCanvas, webglReady]);
+  }, [fallbackCanvas, webglCanvas, webglReady]);
 
   useEffect(() => {
     if (!ready || !imageRef.current) return undefined;
 
     const frame = window.requestAnimationFrame(() => {
       if (!imageRef.current) return;
-      if (ENABLE_ADJUSTMENT_PREVIEW_FALLBACK && fallbackCanvas) {
+      if (ENABLE_ADJUSTMENT_PREVIEW_FALLBACK && !webglReady && fallbackCanvas) {
         drawAdjustedImagePreview(fallbackCanvas, imageRef.current, values);
       }
       if (rendererRef.current) {
@@ -135,7 +136,7 @@ export function AdjustmentPreview({ assetId, aspectRatio, values }: AdjustmentPr
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [fallbackCanvas, ready, useCanvasFallback, values]);
+  }, [fallbackCanvas, ready, useCanvasFallback, values, webglReady]);
 
   useEffect(() => {
     if (!ENABLE_ADJUSTMENT_PREVIEW_FALLBACK || !fallbackCanvas || !imageRef.current || webglReady) return undefined;
@@ -155,7 +156,9 @@ export function AdjustmentPreview({ assetId, aspectRatio, values }: AdjustmentPr
 
   return (
     <div
-      className="image-plate image-plate-sized adjustment-preview"
+      className={variant === 'viewer' ? 'adjustment-preview adjustment-viewer-preview' : 'image-plate image-plate-sized adjustment-preview'}
+      role="img"
+      aria-label="Adjusted image preview"
       style={{ aspectRatio: formatCssAspectRatio(aspectRatio) ?? '1 / 1' }}
       onDragStart={(event) => event.preventDefault()}
     >

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Button } from '@prodactionpro/ui-core/button';
 import { cn } from '@/shared/lib/cn';
 
 interface PrimaryActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,9 +16,8 @@ export function PrimaryActionButton({
   ...props
 }: PrimaryActionButtonProps) {
   return (
-    <button type={type} className={cn('primary-node-button', className)} {...props}>
-      {icon}
+    <Button type={type} intent="neutral" size="md" leadingIcon={icon} className={cn('primary-node-button', className)} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }

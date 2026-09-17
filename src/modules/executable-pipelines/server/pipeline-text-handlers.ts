@@ -1,5 +1,6 @@
 import { TEXT_SPLITTER_MAX_ITEMS } from '@/entities/production-graph/model/node-definitions';
 import { splitProductionText } from '@/entities/production-graph/model/text-splitter';
+import { reconcileTextSplitterSlots } from '@/entities/production-graph/model/text-splitter-slots';
 import type { PipelineNodeHandler, PipelineValue } from '../contracts/pipeline-contracts';
 import {
   compareInputKeys,
@@ -23,12 +24,16 @@ function createTextSplitHandler(): PipelineNodeHandler {
     handlerVersion: '1',
     async execute(input) {
       const text = Object.values(input.inputs).filter(isString).join('\n\n');
-      const items = splitProductionText(
+      const fragments = splitProductionText(
         text,
         readTextSplitterMode(input.config.mode),
         readString(input.config.delimiter),
-      ).slice(0, TEXT_SPLITTER_MAX_ITEMS);
-      return { items, ...Object.fromEntries(items.map((item, index) => [`item-${index}`, item])) };
+      );
+      // Opt-in config keeps previously published immutable versions positional.
+      const itemKeys = Array.isArray(input.config.itemKeys) ? input.config.itemKeys.filter(isString) : undefined;
+      const items = itemKeys ? reconcileTextSplitterSlots(fragments, { itemKeys }, itemKeys.map((_, index) => index)).items
+        : fragments.slice(0, TEXT_SPLITTER_MAX_ITEMS);
+      return { items: items.filter(Boolean), ...Object.fromEntries(items.map((item, index) => [`item-${index}`, item])) };
     },
   };
 }

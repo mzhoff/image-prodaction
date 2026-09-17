@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createFakeProviderAdapter } from '@/modules/provider-connections';
+import type { VideoProviderAdapter } from '@/modules/provider-connections/contracts/video-provider';
 import {
   reconcileOpenRouterUsageBatch,
   type ProviderUsageReconcilerDependencies,
@@ -134,4 +135,31 @@ test('unchanged token-only response does not append endless reconciliation revis
   });
   assert.equal(result.pending, 1);
   assert.equal(result.reconciled, 0);
+});
+
+test('video reconciliation polls the durable video ID, not the chat generation ID, without dispatching again', async () => {
+  const adapter = createFakeProviderAdapter();
+  adapter.getOperationStatus = async () => { assert.fail('Video has its own status API.'); };
+  const usage = { complete: true, providerCostUsd: '0.42', inputTokens: null, outputTokens: null,
+    totalTokens: null, cacheReadTokens: null, cacheWriteTokens: null, reasoningTokens: null };
+  const videoAdapter: VideoProviderAdapter = {
+    submit: async () => { assert.fail('Reconciliation never generates video.'); },
+    download: async () => { assert.fail('Reconciliation never downloads media.'); },
+    poll: async (id, context) => {
+      assert.equal(id, 'video-accepted-id'); assert.equal(context.credential, 'workspace-secret');
+      return { operationId: id, generationId: 'gen-accounting-id', status: 'completed', usage };
+    },
+  };
+  const writes: string[] = [];
+  const result = await reconcileOpenRouterUsageBatch(1, { adapter, videoAdapter,
+    resolveCredential: async () => 'workspace-secret',
+    loadCandidates: async () => [{ id: 'canceled-video-job', operation: 'generate_video', attemptCount: 2,
+      providerDispatchedAttempt: 1, providerOperationId: 'gen-accounting-id', videoOperationId: 'video-accepted-id',
+      workspaceId: 'workspace-1', providerCostUsd: null }],
+    reconcileCandidate: async (candidate, actual) => {
+      assert.equal(candidate.providerDispatchedAttempt, 1); assert.equal(actual.providerCostUsd, '0.42'); writes.push(candidate.id);
+    },
+  });
+  assert.deepEqual(result, { scanned: 1, reconciled: 1, pending: 0, failed: 0 });
+  assert.deepEqual(writes, ['canceled-video-job']);
 });

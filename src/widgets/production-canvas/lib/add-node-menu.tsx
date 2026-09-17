@@ -1,43 +1,10 @@
-import { Archive, Braces, BriefcaseBusiness, Clapperboard, Crop, Download, Eye, FileInput, FileOutput, FileText, Fingerprint, ImagePlus, Images, Layers, Library, MapPin, MessageCircle, Newspaper, Paintbrush, PanelsTopLeft, QrCode, Repeat2, Route, Scissors, Send, SlidersHorizontal, Sparkles, SquarePlay, StickyNote, TextCursorInput, Volume2, WandSparkles } from 'lucide-react';
+import { Archive, Braces, BriefcaseBusiness, Clapperboard, Download, FileText, Images, Library, MessageCircle, Newspaper, PanelsTopLeft, Send, SquarePlay, StickyNote, Volume2 } from '@prodactionpro/ui-core/icons';
 import type { ReactNode } from 'react';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
 import type { ProductionNodeType } from '@/entities/production-graph/model/types';
+import { NodeIcon } from '@/entities/production-graph/ui/node-icon';
 import type { ContextMenuAction } from '@/shared/ui/context-menu-types';
 
-const nodeMenuIcons: Record<ProductionNodeType, ReactNode> = {
-  importImage: <ImagePlus size={14} />,
-  imageToText: <WandSparkles size={14} />,
-  qrCode: <QrCode size={14} />,
-  textPrompt: <TextCursorInput size={14} />,
-  textConcat: <TextCursorInput size={14} />,
-  textGeneration: <Sparkles size={14} />,
-  textToSpeech: <Volume2 size={14} />,
-  speechToText: <FileText size={14} />,
-  audioConvert: <SlidersHorizontal size={14} />,
-  textFormatter: <TextCursorInput size={14} />,
-  textSplitter: <TextCursorInput size={14} />,
-  pipelineInput: <FileInput size={14} />,
-  pipelineOutput: <FileOutput size={14} />,
-  structuredOutput: <Braces size={14} />,
-  router: <Route size={14} />,
-  iterator: <Repeat2 size={14} />,
-  subjectBuilder: <Fingerprint size={14} />,
-  locationBuilder: <MapPin size={14} />,
-  telegramPublication: <Send size={14} />,
-  referenceComposer: <Sparkles size={14} />,
-  composition: <Layers size={14} />,
-  generateImage: <Sparkles size={14} />,
-  sketch: <Paintbrush size={14} />,
-  cropImage: <Crop size={14} />,
-  adjustment: <SlidersHorizontal size={14} />,
-  curves: <SlidersHorizontal size={14} />,
-  frequencyRetouch: <Paintbrush size={14} />,
-  refineImage: <WandSparkles size={14} />,
-  removeBackground: <Scissors size={14} />,
-  exportImage: <Download size={14} />,
-  banner: <PanelsTopLeft size={14} />,
-  preview: <Eye size={14} />,
-};
 export interface AddNodeMenuItem {
   type: ProductionNodeType;
   label: string;
@@ -128,7 +95,7 @@ function createNodeMenuItem(type: ProductionNodeType): AddNodeMenuItem {
   return {
     type,
     label: getNodeDefinition(type).menuLabel,
-    icon: nodeMenuIcons[type],
+    icon: <NodeIcon nodeType={type} size={14} />,
   };
 }
 
@@ -145,14 +112,14 @@ function disabledCollaborationItem(id: string, label: string, icon?: ReactNode):
 }
 
 const videoMenuItems: AddNodeMenuEntry[] = [
-  disabledVideoItem('video-generate', 'Generate video', <Clapperboard size={14} />),
-  disabledVideoItem('video-first-last-frame', 'First / last frame', <SquarePlay size={14} />),
-  disabledVideoItem('video-timeline-handoff', 'Timeline handoff', <PanelsTopLeft size={14} />),
+  createNodeMenuItem('generateVideo'),
+  createNodeMenuItem('timelineHandoff'),
   disabledVideoItem('video-export', 'Export video', <Download size={14} />),
   disabledVideoItem('video-history', 'Video history', <Archive size={14} />),
 ];
 
 const publicationMenuItems: AddNodeMenuEntry[] = [
+  createNodeMenuItem('reverieStories'),
   {
     id: 'telegram',
     label: 'Telegram',
@@ -207,7 +174,7 @@ const publicationMenuItems: AddNodeMenuEntry[] = [
     label: 'TikTok',
     icon: <Clapperboard size={14} />,
     items: [
-      disabledPublicationItem('tiktok-video', 'Video post', <VideoPlaceholderIcon />),
+      disabledPublicationItem('tiktok-video', 'Video post', <Clapperboard size={14} />),
       disabledPublicationItem('tiktok-series', 'Series item', <PanelsTopLeft size={14} />),
     ],
   },
@@ -293,8 +260,4 @@ function getEnabledNodeMenuItems(items: AddNodeMenuEntry[]): AddNodeMenuItem[] {
     if ('type' in item) return [item];
     return [];
   });
-}
-
-function VideoPlaceholderIcon() {
-  return <Clapperboard size={14} />;
 }

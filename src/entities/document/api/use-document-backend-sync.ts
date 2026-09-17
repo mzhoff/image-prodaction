@@ -21,6 +21,7 @@ import {
 } from './document-recovery';
 import { classifyDocumentSyncFailure, createDebouncedAction } from './document-sync';
 import type { DocumentSyncState } from './document-sync';
+import { retainDocumentExitSave, waitForDocumentExitSave } from './document-exit-tasks';
 
 const AUTOSAVE_DELAY_MS = 800;
 
@@ -53,6 +54,8 @@ export function useDocumentBackendSync({
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
   const discardCandidateRef = useRef<string | null>(null);
   const loadedProjectIdRef = useRef<string | undefined>(undefined);
+  const exitRef = useRef<(() => Promise<number>) | null>(null);
+  const prepareExit = useCallback(() => exitRef.current?.() ?? Promise.reject(new Error('Document is not ready.')), []);
 
   useEffect(() => {
     if (!projectId) {
@@ -87,6 +90,11 @@ export function useDocumentBackendSync({
     let releaseAssetScope = () => {};
     let saving = false;
     let unsubscribe = () => {};
+    let loaded = false;
+    let flight: Promise<void> | undefined;
+    let exitFlight: Promise<number> | undefined;
+    let exitSnapshot: ProjectExport | undefined;
+    let saveFailure: unknown;
 
     const persistRecovery = () => {
       if (!dirty) return;
@@ -97,40 +105,75 @@ export function useDocumentBackendSync({
       }
     };
 
-    const save = async () => {
-      if (!active || halted || saving || !dirty) return;
+    const performSave = async () => {
+      if ((!active && !exitSnapshot) || halted || saving || !dirty) return;
+      let snapshot: ProjectExport;
+      try { snapshot = exitSnapshot ?? exportSnapshot(); } catch (error) {
+        saveFailure = error;
+        if (active) setSyncState(classifyDocumentSyncFailure(error));
+        return;
+      }
       saving = true;
       changedWhileSaving = false;
       dirty = false;
       const refreshThumbnail = thumbnailDirty;
       thumbnailDirty = false;
-      const snapshot = exportSnapshot();
+      exitSnapshot = undefined;
       saveDocumentRecoverySnapshot(documentId, snapshot);
-      setSyncState({ phase: 'saving' });
+      if (active) setSyncState({ phase: 'saving' });
 
       try {
         const saved = await saveDocumentProjectSnapshot(documentId, snapshot, revision);
-        if (!active) return;
         revision = saved.revision;
+        saveFailure = undefined;
+        if (!dirty) clearDocumentRecoverySnapshot(documentId);
+        if (!active) return;
         setRevision(saved.revision);
         setThumbnailMode(saved.thumbnailMode);
         setThumbnailAvailable(saved.thumbnailAvailable);
-        clearDocumentRecoverySnapshot(documentId);
         setSyncState({ phase: 'saved' });
         if (refreshThumbnail) setSaveSequence((current) => current + 1);
       } catch (error) {
-        if (!active) return;
+        saveFailure = error;
         const failure = classifyDocumentSyncFailure(error);
         halted = failure.phase === 'conflict';
         dirty = true;
         thumbnailDirty ||= refreshThumbnail;
-        setSyncState(failure);
+        if (active) setSyncState(failure);
       } finally {
         saving = false;
         if (active && changedWhileSaving && !halted && debouncedSave.pending === false) debouncedSave.schedule();
       }
     };
+    const save = () => {
+      if (saving) return flight ?? Promise.resolve();
+      flight = performSave();
+      return flight;
+    };
     const debouncedSave = createDebouncedAction(() => { void save(); }, AUTOSAVE_DELAY_MS);
+    const flushOnExit = () => {
+      if (exitFlight) return exitFlight;
+      if (!loaded) return Promise.reject(new Error('Document is not ready.'));
+      debouncedSave.cancel();
+      // Freeze before unmount: the shared graph may soon contain another document.
+      if (dirty) {
+        exitSnapshot = exportSnapshot();
+        saveDocumentRecoverySnapshot(documentId, exitSnapshot);
+      }
+      exitFlight = retainDocumentExitSave(documentId, (async () => {
+        await flight;
+        if (dirty && !halted) {
+          // If the in-flight request failed without newer edits, its recovery copy
+          // is retained; do not read the shared graph after navigating away.
+          exitSnapshot ??= loadDocumentRecoverySnapshot(documentId) ?? undefined;
+          await save();
+        }
+        if (saveFailure || halted || dirty) throw saveFailure ?? new Error('Document was not saved.');
+        return revision;
+      })());
+      return exitFlight;
+    };
+    exitRef.current = flushOnExit;
 
     const markDirty = (change?: { thumbnailRelevant?: boolean }) => {
       if (halted) return;
@@ -138,7 +181,7 @@ export function useDocumentBackendSync({
       dirty = true;
       if (change?.thumbnailRelevant !== false) thumbnailDirty = true;
       if (saving) changedWhileSaving = true;
-      setSyncState((current) => current.phase === 'saving' ? current : { phase: 'dirty' });
+      setSyncState((current) => current.phase === 'saving' || current.phase === 'dirty' ? current : { phase: 'dirty' });
       debouncedSave.schedule();
     };
 
@@ -167,6 +210,8 @@ export function useDocumentBackendSync({
     async function load() {
       setSyncState({ phase: 'loading' });
       try {
+        await waitForDocumentExitSave(documentId);
+        if (!active) return;
         const project = await fetchDocumentProject(documentId, controller.signal);
         if (!active) return;
         clearPendingUntouchedDocument(documentId);
@@ -184,6 +229,7 @@ export function useDocumentBackendSync({
           resetProject();
         }
         revision = project.revision;
+        loaded = true;
         setRevision(project.revision);
         releaseAssetScope();
         releaseAssetScope = activateAssetScope({
@@ -233,6 +279,8 @@ export function useDocumentBackendSync({
 
     return () => {
       persistRecovery();
+      if (loaded && (dirty || saving)) void flushOnExit().catch(() => undefined);
+      if (exitRef.current === flushOnExit) exitRef.current = null;
       if (!pageHiding) discardIfUntouched();
       active = false;
       controller.abort();
@@ -261,6 +309,7 @@ export function useDocumentBackendSync({
 
   return {
     documentName,
+    prepareExit,
     documentStatus,
     favorite,
     renameDocument: (name: string) => updateMetadata({ name }),

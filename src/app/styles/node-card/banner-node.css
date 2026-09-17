@@ -10,14 +10,14 @@
 
 .production-node-banner.production-node-selected {
   box-shadow:
-    0 0 0 1.5px #a78bfa,
-    0 0 0 5.5px rgba(167, 139, 250, 0.22);
+    0 0 0 1.5px var(--pui-semantic-accent-default),
+    0 0 0 5.5px color-mix(in srgb, var(--pui-semantic-accent-default) 22%, transparent);
 }
 
 .production-node-banner.production-node-locked::after {
   top: -11px;
   right: -11px;
-  background: rgba(91, 33, 182, 0.5);
+  background: color-mix(in srgb, var(--pui-semantic-accent-default) 50%, transparent);
 }
 
 .banner-node-body {
@@ -44,21 +44,21 @@
   width: 100%;
   height: 100%;
   place-items: center;
-  border: 1px dashed rgba(124, 58, 237, 0.55);
+  border: 1px dashed color-mix(in srgb, var(--pui-semantic-border-focus) 55%, transparent);
   border-radius: 14px;
-  background: rgba(245, 243, 255, 0.86);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 86%, transparent);
   padding: 18px;
 }
 
 .banner-node-upload-button {
   display: inline-grid;
   place-items: center;
-  color: #6d28d9;
+  color: var(--pui-semantic-accent-foreground);
   gap: 6px;
   padding: 10px 14px;
   border: 0;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.74);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 74%, transparent);
   font-size: 13px;
   font-weight: 720;
   cursor: pointer;
@@ -66,14 +66,14 @@
 
 .banner-node-empty:hover,
 .banner-node-upload-button:hover {
-  background: rgba(237, 233, 254, 0.95);
+  background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 95%, transparent);
 }
 
 .banner-node-selection-fill {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(167, 139, 250, 0.16);
+  background: color-mix(in srgb, var(--pui-semantic-accent-soft) 16%, transparent);
   pointer-events: none;
 }
 
@@ -85,17 +85,17 @@
   width: 18px;
   height: 18px;
   place-items: center;
-  border: 1px solid rgba(124, 58, 237, 0.32);
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-border-focus) 32%, transparent);
   border-radius: 999px;
-  background: #fff;
-  color: #6d28d9;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-accent-foreground);
   padding: 0;
-  box-shadow: 0 6px 16px rgba(54, 28, 113, 0.18);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--pui-semantic-accent-default) 18%, transparent);
 }
 
 .banner-node-close:hover {
-  background: #f5f3ff;
-  color: #4c1d95;
+  background: var(--pui-semantic-surface-primary);
+  color: var(--pui-semantic-accent-foreground);
 }
 
 .banner-node-resize-handle {
@@ -125,8 +125,8 @@
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  background: rgba(17, 17, 17, 0.72);
-  color: #fff;
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 72%, transparent);
+  color: var(--pui-semantic-text-on-inverse);
   padding: 5px 8px;
   font-size: 11px;
   font-weight: 650;

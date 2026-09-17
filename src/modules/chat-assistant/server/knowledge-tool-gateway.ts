@@ -1,6 +1,8 @@
 import type { McpToolGateway, ToolExecutionContext } from '@prodactionpro/chat-connectors';
+import type { ConversationStore } from '@prodactionpro/chat-application';
 import { requireWorkspaceMembership, WorkspaceAccessError } from '@/entities/workspace/server/workspace-service';
 import { getAssistantNodeCatalog } from '../core/node-catalog';
+import { readImageGenerationModelCatalog } from './image-generation-model-catalog';
 import { CHAT_ASSISTANT_PRODUCT_ID } from '../contracts/assistant-config';
 import { DESIGN_ELEMENT_SELECTION_TOOL } from '../contracts/design-element-selection';
 import {
@@ -22,9 +24,13 @@ import {
 } from './pipeline-update-service';
 import type { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
 import { createDesignElementSelection } from './design-element-selection-service';
+import { readDesignSelectionContinuation } from './design-selection-continuation';
 
 export class ImageProductionToolGateway implements McpToolGateway {
-  constructor(private readonly attachmentAssetBridge?: ChatAttachmentAssetBridge) {}
+  constructor(
+    private readonly attachmentAssetBridge?: ChatAttachmentAssetBridge,
+    private readonly conversations?: ConversationStore,
+  ) {}
 
   async prepareTool(request: Parameters<NonNullable<McpToolGateway['prepareTool']>>[0], context: ToolExecutionContext) {
     const accessFailure = await verifyToolContext(context);
@@ -59,12 +65,17 @@ export class ImageProductionToolGateway implements McpToolGateway {
     if (request.toolName === NODE_CATALOG_TOOL) {
       const query = readOptionalString(request.input.query);
       const nodes = getAssistantNodeCatalog(query);
-      return { ok: true, output: { count: nodes.length, nodes, query } };
+      const imageModels = nodes.some((node) => node.type === 'generateImage') ? await readImageGenerationModelCatalog() : {};
+      return { ok: true, output: { count: nodes.length, nodes, query, ...imageModels } };
     }
     if (request.toolName === DOCUMENT_GRAPH_TOOL) {
       return { ok: true, output: await readAssistantDocumentGraph(context) };
     }
     if (request.toolName === DESIGN_ELEMENT_SELECTION_TOOL) {
+      const submitted = this.conversations
+        ? await readDesignSelectionContinuation(this.conversations, context)
+        : undefined;
+      if (submitted) return { ok: true, output: submitted };
       try {
         return {
           ok: true,

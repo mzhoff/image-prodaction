@@ -1,8 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { saveUploadedAudioAsset } from '@/entities/production-graph/lib/remote-audio-asset';
-import { getActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
+import { useEffect, useMemo } from 'react';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
 import type { ProductionNode, TextToSpeechNodeData } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
@@ -13,11 +11,10 @@ import {
   getSafeSpeechVoice,
 } from '@/shared/api/openrouter-speech-capabilities';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
-import { requestGenerateSpeech } from '../api/ai-client';
+import { useSpeechExecution } from './use-speech-execution';
 import { getSelectedModelId, modelSelectOptions } from '../lib/node-select-options';
 import { textToSpeechLanguageOptions, textToSpeechResponseFormatLabels } from './text-workflow-options';
 import {
-  appendSpeechResult,
   clampSpeechSpeed,
   clampTemperature,
   clampTopP,
@@ -31,12 +28,9 @@ import {
 
 export function useTextToSpeechNodeModel(node: ProductionNode) {
   const data = node.data as TextToSpeechNodeData;
-  const requestGuard = useRef<symbol | null>(null);
-  useEffect(() => () => { requestGuard.current = null; }, [node.id]);
+  const execution = useSpeechExecution(node.id, data);
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
-  const setNodeStatus = useProductionGraphStore((state) => state.setNodeStatus);
-  const addAsset = useProductionGraphStore((state) => state.addAsset);
   const updateNodeData = useProductionGraphStore((state) => state.updateNodeData);
   const updateNodeDataSilent = useProductionGraphStore((state) => state.updateNodeDataSilent);
   const { loading, speechModels } = useOpenRouterModels();
@@ -71,23 +65,10 @@ export function useTextToSpeechNodeModel(node: ProductionNode) {
     if (Object.keys(nextData).length > 0) updateNodeDataSilent(node.id, nextData);
   }, [data.language, data.responseFormat, data.sourceText, data.speed, data.voice, inputText, language, node.id, responseFormat, selectedVoice, speed, updateNodeDataSilent]);
 
-  const handleGenerate = useCallback(async () => {
-    if (requestGuard.current) return;
-    const scope = getActiveAssetScope();
-    if (!scope) { updateNodeDataSilent(node.id, { message: 'Open a saved project before generating audio.' }); return; }
+  const handleGenerate = async () => {
     const text = effectiveText.trim();
-    if (!text || text.length > 5000) {
-      updateNodeData(node.id, { message: text ? 'Для Voice нужно не больше 5000 символов.' : 'Подключи текст ко входу Text или добавь текст в поле ноды.' });
-      return;
-    }
     const resolvedLanguage = language === 'auto' ? detectSpeechLanguage(text) : language;
-    const requestId = Symbol(); requestGuard.current = requestId;
-    const isCurrent = () => requestGuard.current === requestId
-      && getActiveAssetScope()?.documentId === scope.documentId && getActiveAssetScope()?.workspaceId === scope.workspaceId;
-    try {
-      setNodeStatus(node.id, 'running');
-      updateNodeDataSilent(node.id, { message: '' });
-      const result = await requestGenerateSpeech({
+    await execution.generate({
         inputText: text,
         language: resolvedLanguage,
         model: selectedModel,
@@ -97,30 +78,8 @@ export function useTextToSpeechNodeModel(node: ProductionNode) {
         temperature: capabilities.supportsTemperature ? temperature : undefined,
         topP: capabilities.supportsTopP ? topP : undefined,
         voice: selectedVoice,
-      });
-      if (!isCurrent()) return;
-      const extension = result.mimeType.includes('wav') ? 'wav' : responseFormat === 'mp3' ? 'mp3' : 'pcm';
-      const asset = await saveUploadedAudioAsset(new File([result.blob], `voice-${Date.now()}.${extension}`, { type: result.mimeType }), scope, 'saved');
-      if (!isCurrent()) return;
-      addAsset(asset);
-      updateNodeData(node.id, appendSpeechResult(data, asset.id, {
-        createdAt: asset.createdAt,
-        generationId: result.generationId,
-        language: resolvedLanguage,
-        mimeType: result.mimeType,
-        model: selectedModel,
-        sizeBytes: result.blob.size,
-        voice: selectedVoice,
-      }));
-      setNodeStatus(node.id, 'success');
-    } catch (error) {
-      if (!isCurrent()) return;
-      setNodeStatus(node.id, 'error');
-      updateNodeDataSilent(node.id, {
-        message: error instanceof Error ? error.message : 'OpenRouter speech generation failed',
-      });
-    } finally { if (requestGuard.current === requestId) requestGuard.current = null; }
-  }, [addAsset, capabilities.supportsSeed, capabilities.supportsSpeed, capabilities.supportsTemperature, capabilities.supportsTopP, data, effectiveText, language, node.id, responseFormat, seed, selectedModel, selectedVoice, setNodeStatus, speed, temperature, topP, updateNodeData, updateNodeDataSilent]);
+    });
+  };
 
   return {
     activeAssetId,
@@ -128,6 +87,10 @@ export function useTextToSpeechNodeModel(node: ProductionNode) {
     data,
     effectiveText,
     handleGenerate,
+    progress: execution.progress,
+    handleCancel: execution.cancel,
+    handleNewRequest: execution.prepareNewRequest,
+    handleCheckResult: execution.checkResult,
     handleLanguageChange: (value: string) => updateNodeData(node.id, { language: normalizeTextToSpeechLanguage(value) }),
     handleLocalTextChange: (localText: string) => updateNodeData(node.id, { localText }),
     handleModelChange: (model: string) => updateNodeData(node.id, {

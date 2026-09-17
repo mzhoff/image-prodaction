@@ -8,7 +8,7 @@ import {
   Send,
   Star,
   Trash2,
-} from 'lucide-react';
+} from '@prodactionpro/ui-core/icons';
 import type { ChangeEvent, ClipboardEvent, FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { FEEDBACK_COMMENT_MAX_LENGTH } from '@/modules/feedback/contracts/feedback-contracts';

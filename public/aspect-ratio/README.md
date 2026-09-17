@@ -1,0 +1,1 @@
+`preview.svg` is the unmodified rectangle artwork exported from Figma node 666:2308 in REVERIE, parent reference 666:2508, on 2026-09-15. Used as a nine-slice border image so the 35 px-high preview can animate its width while preserving its border and corners.

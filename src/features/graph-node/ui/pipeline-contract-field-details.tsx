@@ -68,7 +68,7 @@ export function PipelineContractFieldDetails({
         <p>Defaults are configured only for values supplied through Pipeline Input.</p>
       ) : field.required ? (
         <p>Default values are available for optional fields.</p>
-      ) : field.kind === 'image' || field.kind === 'audio' ? (
+      ) : field.kind === 'image' || field.kind === 'audio' || field.kind === 'video' ? (
         <p>Media defaults are not supported. Supply an asset when the pipeline starts.</p>
       ) : field.kind === 'boolean' ? (
         <label>

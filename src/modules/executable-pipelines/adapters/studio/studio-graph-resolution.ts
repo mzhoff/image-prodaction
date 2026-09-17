@@ -32,6 +32,7 @@ export function resolveLeafOutput(
     return output ? { ...output, node: resolved.source, portId } : null;
   }
   if (!runtimeNodeIdSet.has(leaf.id)) return null;
+  if (leaf.type === 'cropImage') return { kind: 'video' as const, node: leaf, outputKey: 'videoResult', portId: 'videoResult' };
   const port = getNodePorts(leaf).find((candidate) => candidate.side === 'output');
   if (!port) return null;
   const output = getRuntimeOutput(leaf, port.id);
@@ -42,11 +43,25 @@ export function getRuntimeOutput(
   node: ProductionNode,
   sourcePortId: string,
 ): { kind: PipelineValueKind; outputKey: string } | null {
+  if (node.type === 'importImage' && (node.data as ImportImageNodeData).mediaKind === 'video') {
+    if (sourcePortId === 'original' || sourcePortId === 'video') return { kind: 'video', outputKey: sourcePortId };
+    if (sourcePortId === 'audio') return { kind: 'audio', outputKey: 'audio' };
+    return null;
+  }
   if (node.type === 'importImage' && sourcePortId === 'image') {
     return { kind: (node.data as ImportImageNodeData).mediaKind ?? 'image', outputKey: 'asset' };
   }
   if ((node.type === 'textToSpeech' || node.type === 'audioConvert') && sourcePortId === 'audio') return { kind: 'audio', outputKey: 'audio' };
   if (node.type === 'speechToText' && sourcePortId === 'text') return { kind: 'text', outputKey: 'text' };
+  if (node.type === 'timelineHandoff') {
+    if (sourcePortId === 'timeline') return { kind: 'json', outputKey: 'timeline' };
+    if (sourcePortId === 'frames') return { kind: 'image_collection', outputKey: 'frames' };
+    if (sourcePortId === 'descriptions') return { kind: 'text', outputKey: 'descriptions' };
+    if (sourcePortId === 'videoResult') return { kind: 'video', outputKey: 'videoResult' };
+  }
+  if (node.type === 'reverieStories' && sourcePortId === 'story') return { kind: 'json', outputKey: 'story' };
+  if (node.type === 'generateVideo' && sourcePortId === 'video') return { kind: 'video', outputKey: 'video' };
+  if (node.type === 'cropImage' && sourcePortId === 'videoResult') return { kind: 'video', outputKey: 'videoResult' };
   if (node.type === 'textPrompt' && sourcePortId === 'text') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textConcat' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };
   if (node.type === 'textGeneration' && sourcePortId === 'result') return { kind: 'text', outputKey: 'text' };

@@ -25,6 +25,9 @@ export interface FavoriteNodePreset {
 }
 
 const ALLOWED_DATA_FIELDS = new Set([
+  'videoResultAssetId', 'videoResultSignature',
+  'videoAudioTrackIndex', 'videoAudioAssetId', 'videoOnlyAssetId', 'videoPreviewAssetId',
+  'videoDerivedSourceAssetId', 'videoDerivedAudioTrackIndex', 'videoPreviewAudioTrackIndex',
   'mediaKind', 'audioAssetId', 'sourceAudioAssetId', 'audioResultSignature', 'bitrateKbps', 'sampleRateHz', 'channels',
   'activeChannel', 'activeImageAssetId', 'activeIndex', 'activeItemIndex',
   'activeKind', 'activeResultIndex', 'activeText', 'adjustment', 'align',
@@ -37,7 +40,7 @@ const ALLOWED_DATA_FIELDS = new Set([
   'imageInputCount', 'inputCount', 'instruction', 'items', 'language', 'layerInputCount', 'layerOrder', 'layers',
   'libraryImageAssetIds', 'locationType', 'locked', 'localText', 'margin', 'mediaOrder',
   'mediaInputCount', 'messageRichText', 'messageRichTextSource', 'messageSourceText', 'messageText',
-  'mode', 'model', 'mutableAttributes', 'name', 'negativeConstraints', 'notes',
+  'mode', 'model', 'outputScope', 'mutableAttributes', 'name', 'negativeConstraints', 'notes',
   'opacity', 'optionalTextHeight', 'outputFormat', 'outputLabel', 'outputStyle', 'pixelSize', 'plainText',
   'platformId', 'prefix', 'preset', 'presetId', 'presets', 'preserveStrength',
   'prompt', 'publicationTitle', 'quality', 'radius', 'reasoning',
@@ -47,7 +50,7 @@ const ALLOWED_DATA_FIELDS = new Set([
   'selectedLayerId', 'selectedLayerIds', 'separator', 'shadows', 'size', 'site',
   'slots', 'spatialLayout', 'speed', 'subjectType', 'suffix', 'temperature',
   'sourceAspectRatio', 'sourceAssetId', 'sourceText', 'text', 'textareaHeight', 'textureAmount',
-  'tint', 'title', 'toneSmoothing',
+  'tint', 'title', 'toneSmoothing', 'threshold', 'previewMode',
   'topP', 'variableDisplayMode', 'variables', 'voice',
 ]);
 
@@ -68,6 +71,7 @@ export function createFavoriteNodeSnapshot(
   const data = Object.fromEntries(
     Object.entries(source).flatMap(([key, value]) => {
       if (!ALLOWED_DATA_FIELDS.has(key)) return [];
+      if (node.type === 'timelineHandoff' && (key === 'videoResultAssetId' || key === 'videoResultSignature')) return [];
       const safeValue = sanitizeFavoriteValue(value, key, 0);
       return safeValue === undefined ? [] : [[key, safeValue]];
     }),

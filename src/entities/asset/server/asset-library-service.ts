@@ -29,6 +29,7 @@ export async function listLibraryAssets(
     workspaceId: input.workspaceId,
     cursor: decodeLibraryCursor(input.cursor),
     documentIds: normalizeStringFilters(input.documentIds),
+    ...(input.folderId ? { folderId: input.folderId } : {}),
     limit: limit + 1,
     mediaKinds: input.mediaKinds,
     modelIds: normalizeStringFilters(input.modelIds),
@@ -74,7 +75,7 @@ export async function getLibraryAssetMetadata(
 ) {
   const record = await requireAccessibleAsset(userId, assetId, repository);
   if (record.status !== 'ready' || !record.libraryVisible) throw new AssetNotFoundError();
-  return toAssetDto(record);
+  return toAssetDto(record, record.mediaKind === 'image' || record.mediaKind === 'video');
 }
 
 export async function publishGeneratedAssetToLibrary(

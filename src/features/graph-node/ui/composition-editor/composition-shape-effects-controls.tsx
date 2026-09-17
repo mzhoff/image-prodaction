@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from '@prodactionpro/ui-core/icons';
 import { DEFAULT_COMPOSITION_SHADOW } from '@/entities/production-graph/model/composition-shape';
 import type { CompositionLayerStyle } from '@/entities/production-graph/model/types';
 import { CompositionColorInput } from './composition-fill-controls';

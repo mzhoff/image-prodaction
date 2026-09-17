@@ -1,7 +1,8 @@
 import { relations } from 'drizzle-orm';
-import { boolean, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, foreignKey, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth';
 import { workspace } from './workspace';
+import { studioFolder } from './studio-folder';
 
 export const documentStatus = pgEnum('document_status', ['active', 'trash']);
 export const documentThumbnailMode = pgEnum('document_thumbnail_mode', ['auto', 'manual']);
@@ -15,6 +16,8 @@ export const document = pgTable('document', {
     .notNull()
     .references(() => user.id, { onDelete: 'restrict' }),
   name: text('name').notNull(),
+  folderId: uuid('folder_id'),
+  librarySaved: boolean('library_saved').default(false).notNull(),
   status: documentStatus('status').default('active').notNull(),
   snapshot: jsonb('snapshot').$type<unknown | null>(),
   thumbnailAssetId: uuid('thumbnail_asset_id'),
@@ -31,6 +34,9 @@ export const document = pgTable('document', {
   trashedAt: timestamp('trashed_at', { withTimezone: true }),
 }, (table) => [
   index('document_workspace_status_updated_idx').on(table.workspaceId, table.status, table.updatedAt),
+  index('document_folder_idx').on(table.folderId),
+  foreignKey({ name: 'document_workspace_folder_fk', columns: [table.workspaceId, table.folderId],
+    foreignColumns: [studioFolder.workspaceId, studioFolder.id] }),
 ]);
 
 export const documentPreference = pgTable('document_preference', {

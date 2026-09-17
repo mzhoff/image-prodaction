@@ -3,12 +3,13 @@ import { createDocument, listDocuments } from '@/entities/document/server/docume
 import { ensurePersonalWorkspace } from '@/entities/workspace/server/workspace-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
-import { isUuidV7 } from '@/shared/lib/id';
+import { isUuidV7, isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
 const createDocumentBody = z.object({
-  workspaceId: z.string().refine(isUuidV7, 'workspaceId must be UUIDv7'),
+  workspaceId: z.string().refine(isUuid, 'workspaceId must be UUID'),
   name: z.string().trim().max(120).optional(),
+  folderId: z.string().refine(isUuidV7).nullable().optional(),
 });
 
 export async function getProjects(request: Request) {

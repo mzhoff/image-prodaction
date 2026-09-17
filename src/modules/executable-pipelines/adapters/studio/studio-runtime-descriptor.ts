@@ -1,5 +1,13 @@
+import { normalizeExtractAnalysisPreset } from '@/entities/production-graph/model/extract-analysis-profiles';
+import { buildExtractPrompt } from '@/entities/production-graph/model/extract-presets';
 import { getTextPromptVariables } from '@/entities/production-graph/model/node-definitions';
 import { getTextPromptSourceAlias } from '@/entities/production-graph/model/text-prompt-source-alias';
+import { getTextSplitterItemKeys } from '@/entities/production-graph/model/text-splitter-slots';
+import { getTimelineRuntimeDescriptor } from './studio-timeline-descriptor';
+import { getStoriesRuntimeDescriptor } from './studio-stories-descriptor';
+import { getVideoCropRuntimeDescriptor } from './studio-video-crop-descriptor';
+import { videoSettingsSchema } from '@/shared/media/video-generation-contracts';
+import type { GenerateVideoNodeData } from '@/entities/production-graph/model/types';
 import type {
   ExportImageNodeData,
   GenerateImageNodeData,
@@ -20,6 +28,7 @@ import type {
   TextToSpeechNodeData,
 } from '@/entities/production-graph/model/types';
 import type { PipelineJsonSchema, PipelineValue } from '../../contracts/pipeline-contracts';
+import { pickImageGenerationOptions } from '@/shared/media/image-generation-settings';
 import {
   getNodeTitle,
   invalidPipeline,
@@ -32,12 +41,24 @@ export function getRuntimeDescriptor(
     edges: GraphEdge[];
     incomingByNode: ReadonlyMap<string, GraphEdge[]>;
     nodeById: ReadonlyMap<string, ProductionNode>;
+    outputPortIds?: string[];
   },
 ): { handlerType: string; config: Record<string, PipelineValue> } {
   switch (node.type) {
+    case 'cropImage': return getVideoCropRuntimeDescriptor(node, graph);
+    case 'generateVideo': return { handlerType: 'ai.video.generate', config: {
+      ...videoSettingsSchema.parse(node.data), referenceDescriptions: (node.data as GenerateVideoNodeData).referenceDescriptions,
+    } };
+    case 'timelineHandoff': return getTimelineRuntimeDescriptor(node, graph.outputPortIds);
+    case 'reverieStories': return getStoriesRuntimeDescriptor(node, graph.edges);
     case 'importImage': {
       const data = node.data as ImportImageNodeData;
       if (!data.assetId) throw invalidPipeline('Загрузите файл в Import перед публикацией.');
+      if (data.mediaKind === 'video') return { handlerType: 'video.import', config: {
+        assetId: data.assetId,
+        outputPorts: [...new Set(graph.outputPortIds ?? ['original'])],
+        ...(data.videoAudioTrackIndex !== undefined ? { audioTrackIndex: data.videoAudioTrackIndex } : {}),
+      } };
       return { handlerType: 'asset.reference', config: { assetId: data.assetId, mediaKind: data.mediaKind ?? 'image' } };
     }
     case 'speechToText': {
@@ -88,6 +109,7 @@ export function getRuntimeDescriptor(
       const data = node.data as TextSplitterNodeData;
       return { handlerType: 'text.split', config: {
         activeItemIndex: data.activeItemIndex ?? 0, delimiter: data.delimiter, mode: data.mode,
+        itemKeys: getTextSplitterItemKeys(data),
       } };
     }
     case 'textFormatter': {
@@ -111,13 +133,18 @@ export function getRuntimeDescriptor(
     }
     case 'imageToText': {
       const data = node.data as ImageToTextNodeData;
+      const analysisPreset = normalizeExtractAnalysisPreset(data.analysisPreset);
+      const generated = buildExtractPrompt(data.presets ?? data.preset, analysisPreset);
       return { handlerType: 'ai.image.analyze', config: {
-        model: data.model ?? '', preset: data.preset ?? 'default', prompt: data.prompt ?? '',
+        model: data.model ?? '', analysisPreset,
+        preset: generated.presetIds[0], presets: generated.presetIds,
+        prompt: data.prompt?.trim() ? data.prompt : generated.systemPrompt,
       } };
     }
     case 'generateImage': {
       const data = node.data as GenerateImageNodeData;
       return { handlerType: 'ai.image.generate', config: {
+        ...pickImageGenerationOptions(data),
         model: data.model, prompt: data.prompt ?? '', aspectRatio: data.aspectRatio, size: data.size,
       } };
     }

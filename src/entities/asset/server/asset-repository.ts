@@ -16,6 +16,7 @@ import { getDb } from '@/shared/db/client';
 import { asset, assetVariant } from '@/shared/db/schema/asset';
 import { document } from '@/shared/db/schema/document';
 import { membership } from '@/shared/db/schema/workspace';
+import { excludeRetainedAssetCandidates } from './pipeline-timeline-asset-retention';
 
 export type {
   AssetLibraryCursor,
@@ -73,6 +74,7 @@ export function createDbAssetRepository(): AssetRepository {
             inArray(asset.status, ['pending', 'failed']),
             and(eq(asset.status, 'ready'), eq(asset.libraryVisible, false)),
           ),
+          excludeRetainedAssetCandidates(),
         ))
         .orderBy(asc(asset.createdAt))
         .limit(limit);

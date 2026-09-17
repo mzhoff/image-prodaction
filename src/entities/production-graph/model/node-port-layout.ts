@@ -23,11 +23,11 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'generateImage' && side === 'input') return 610 + index * 39;
   if (node.type === 'generateImage' && side === 'output') return 127;
   if (node.type === 'sketch' && side === 'output') return getSketchOutputPortTop(node);
-  if (node.type === 'imageToText' && side === 'input') return 74;
+  if (node.type === 'imageToText' && side === 'input') return 74 + index * 32;
   if (node.type === 'imageToText' && side === 'output') return 402;
   if (node.type === 'qrCode' && side === 'input') return QR_CODE_CONTENT_FIELD_TOP - PORT_CONTAINER_HALF_HEIGHT;
   if (node.type === 'qrCode' && side === 'output') return 312;
-  if (node.type === 'cropImage' && (side === 'input' || side === 'output')) return getCropImagePortTop(node);
+  if (node.type === 'cropImage' && (side === 'input' || side === 'output')) return getCropImagePortTop(node) + index * 36;
   if (node.type === 'adjustment' && (side === 'input' || side === 'output')) return getAdjustmentPortTop(node);
   if (node.type === 'curves' && (side === 'input' || side === 'output')) return getCurvesPortTop(node);
   if (node.type === 'frequencyRetouch' && (side === 'input' || side === 'output')) return getFrequencyRetouchPortTop(node);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Minus, Plus, Trash2 } from 'lucide-react';
+import { Eye, Minus, Plus, Trash2 } from '@prodactionpro/ui-core/icons';
 import { COMPOSITION_GRADIENT_MAX_STOPS, createDefaultCompositionGradient, normalizeGradientAngle } from '@/entities/production-graph/model/composition-gradient';
 import type { CompositionGradientStop, CompositionLayerStyle } from '@/entities/production-graph/model/types';
 import { DarkSelect } from '@/shared/ui/dark-select';

@@ -58,6 +58,16 @@ export function createConnectMenuActions(
 
 function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) {
   if (type === 'router') return 'input';
+  if (type === 'reverieStories') {
+    if (sourceKind === 'text') return 'title';
+    if (sourceKind === 'image') return 'image';
+    if (sourceKind === 'video') return 'video';
+    if (sourceKind === 'json' || sourceKind === 'any') return 'document';
+    return undefined;
+  }
+  if (type === 'cropImage' && sourceKind === 'video') return 'video';
+  if (type === 'generateVideo' && sourceKind === 'image') return 'first-frame';
+  if (type === 'timelineHandoff' && (sourceKind === 'video' || sourceKind === 'any')) return 'video';
   if (type === 'textPrompt' && sourceKind === 'text') return getTextPromptVariablePortId(0);
   if (type === 'pipelineOutput' && isPipelineContractFieldKind(sourceKind)) return CONNECT_CREATE_PIPELINE_FIELD_PORT;
   if (type === 'structuredOutput') return 'source';
@@ -85,6 +95,16 @@ function getDefaultTargetPortId(type: ProductionNodeType, sourceKind: PortKind) 
 
 function getDefaultSourcePortId(type: ProductionNodeType, targetKind: PortKind, targetPortId?: string) {
   if (type === 'router') return 'output';
+  if (type === 'reverieStories') return targetKind === 'json' || targetKind === 'any' ? 'story' : undefined;
+  if (type === 'cropImage' && targetKind === 'video') return 'videoResult';
+  if (type === 'generateVideo' && (targetKind === 'video' || targetKind === 'any')) return 'video';
+  if (type === 'timelineHandoff') {
+    if (targetKind === 'json' || targetKind === 'any') return 'timeline';
+    if (targetKind === 'video') return 'videoResult';
+    if (targetKind === 'image' || targetKind === 'reference') return 'frames';
+    if (targetKind === 'text') return 'descriptions';
+    return undefined;
+  }
   if (type === 'pipelineInput' && isPipelineContractFieldKind(targetKind)) return CONNECT_CREATE_PIPELINE_FIELD_PORT;
   const outputPorts = NODE_PORTS[type].filter((port) => port.side === 'output');
   const priority = targetKind === 'reference' && targetPortId === 'actors'

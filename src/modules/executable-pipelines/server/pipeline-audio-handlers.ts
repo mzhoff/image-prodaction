@@ -1,6 +1,7 @@
 import type { PipelineArtifactReference, PipelineNodeHandler, PipelineNodeHandlerInput } from '../contracts/pipeline-contracts';
 import { PipelineNodeHandlerError } from '../contracts/pipeline-errors';
 import { isPipelineArtifactReference } from '../core/pipeline-executor';
+import { MAX_SPEECH_TEXT_CHARACTERS } from '@/shared/media/speech-text';
 
 export type AudioOperationInput = Omit<PipelineNodeHandlerInput, 'inputs'> & { artifact: PipelineArtifactReference };
 export interface AudioHandlerDependencies {
@@ -21,7 +22,7 @@ export function createAudioPipelineHandlers(dependencies: AudioHandlerDependenci
     { handlerType: 'ai.audio.generate', handlerVersion: '1', async execute(input) {
       const connected = Object.values(input.inputs).filter((value): value is string => typeof value === 'string').join('\n\n').trim();
       const text = connected || (typeof input.config.inputText === 'string' ? input.config.inputText.trim() : '');
-      if (!text || text.length > 5000) throw new PipelineNodeHandlerError({ nodeId: input.nodeId, message: 'Voice requires 1–5000 characters.' });
+      if (!text || text.length > MAX_SPEECH_TEXT_CHARACTERS) throw new PipelineNodeHandlerError({ nodeId: input.nodeId, message: `Voice requires 1–${MAX_SPEECH_TEXT_CHARACTERS} characters.` });
       return { audio: await dependencies.generateAudio({ ...input, text }) };
     } },
     { handlerType: 'asset.reference', handlerVersion: '1', async execute(input) {

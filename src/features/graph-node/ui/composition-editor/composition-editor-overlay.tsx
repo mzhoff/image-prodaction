@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { X } from '@prodactionpro/ui-core/icons';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';

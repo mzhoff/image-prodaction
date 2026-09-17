@@ -1,8 +1,8 @@
 .production-node-text-workflow {
   gap: 0;
   border: 0;
-  background: #fff;
-  box-shadow: 0 8px 14.45px rgba(0, 0, 0, 0.07);
+  background: var(--pui-semantic-surface-primary);
+  box-shadow: 0 8px 14.45px color-mix(in srgb, var(--pui-semantic-shadow-color) 7%, transparent);
   padding: 16px 0;
 }
 
@@ -15,46 +15,42 @@
 }
 
 .production-node-text-workflow.production-node-selected {
-  --node-selected-accent: #16a34a;
-  --node-selected-accent-rgb: 22, 163, 74;
+  --node-selected-accent: var(--pui-semantic-dataflow-text);
   outline: 1.5px solid var(--node-selected-accent);
   outline-offset: 0;
   box-shadow:
-    0 14px 34px rgba(var(--node-selected-accent-rgb), 0.16),
-    0 0 0 4px rgba(var(--node-selected-accent-rgb), 0.1);
+    0 14px 34px color-mix(in srgb, var(--node-selected-accent) 16%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--node-selected-accent) 10%, transparent);
 }
 
 .production-node-text-workflow.production-node-selected .node-title-main,
 .production-node-text-workflow.production-node-selected .node-title-action {
-  color: #08913e;
+  color: var(--node-selected-accent);
 }
 
 .production-node-subject-workflow.production-node-selected {
-  --node-selected-accent: #7c3aed;
-  --node-selected-accent-rgb: 124, 58, 237;
+  --node-selected-accent: var(--pui-semantic-dataflow-subject);
 }
 
 .production-node-subject-workflow.production-node-selected .node-title-main,
 .production-node-subject-workflow.production-node-selected .node-title-action {
-  color: #6d28d9;
+  color: var(--node-selected-accent);
 }
 
 .production-node-location-workflow.production-node-selected {
-  --node-selected-accent: #0f766e;
-  --node-selected-accent-rgb: 15, 118, 110;
+  --node-selected-accent: var(--pui-semantic-dataflow-location);
 }
 
 .production-node-location-workflow.production-node-selected .node-title-main,
 .production-node-location-workflow.production-node-selected .node-title-action {
-  color: #0f766e;
+  color: var(--node-selected-accent);
 }
 
 .production-node-publication-workflow.production-node-selected {
-  --node-selected-accent: #111;
-  --node-selected-accent-rgb: 17, 17, 17;
+  --node-selected-accent: var(--pui-semantic-dataflow-publication);
 }
 
 .production-node-publication-workflow.production-node-selected .node-title-main,
 .production-node-publication-workflow.production-node-selected .node-title-action {
-  color: #111;
+  color: var(--node-selected-accent);
 }

@@ -7,7 +7,7 @@ import {
   Plus,
   Settings2,
   Trash2,
-} from 'lucide-react';
+} from '@prodactionpro/ui-core/icons';
 import {
   memo,
   useEffect,
@@ -43,6 +43,7 @@ const PIPELINE_FIELD_TYPE_LABELS: Record<PipelineContractFieldKind, string> = {
   boolean: 'Boolean',
   image: 'Image',
   audio: 'Audio',
+  video: 'Video',
   json: 'JSON',
 };
 
@@ -52,7 +53,7 @@ const PIPELINE_FIELD_TYPE_OPTIONS: DarkSelectOption[] = PIPELINE_CONTRACT_FIELD_
 }));
 
 const PIPELINE_STRUCTURED_FIELD_TYPE_OPTIONS = PIPELINE_FIELD_TYPE_OPTIONS.filter(
-  (option) => option.value !== 'image' && option.value !== 'audio',
+  (option) => option.value !== 'image' && option.value !== 'audio' && option.value !== 'video',
 );
 
 export interface PipelineContractFieldRowProps {

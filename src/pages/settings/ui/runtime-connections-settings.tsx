@@ -1,6 +1,6 @@
 'use client';
 
-import { Cable, Loader2, RefreshCcw } from 'lucide-react';
+import { Cable, Loader2, RefreshCcw } from '@prodactionpro/ui-core/icons';
 import { useState } from 'react';
 import { useRuntimeConnections } from '../model/use-runtime-connections';
 import { RuntimeClientForm } from './runtime-client-form';
