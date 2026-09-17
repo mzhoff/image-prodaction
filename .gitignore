@@ -31,3 +31,6 @@ tsconfig.tsbuildinfo
 image-prodaction-canvas-*.png
 /.codex/artifacts/
 /.visual-intent/
+
+# Generic shared Identity client, built from the exact Content Hub package version.
+!.local-packages/reverie-identity-client-0.1.0-canary.2.tgz

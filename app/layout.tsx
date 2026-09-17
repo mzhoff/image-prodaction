@@ -1,3 +1,4 @@
+import '@reverie/identity-client/styles.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { ReverieThemeProvider } from '@prodactionpro/ui-core/theme';

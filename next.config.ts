@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     // The default 10 MiB truncates valid JSON containing multiple image references.
     proxyClientMaxBodySize: IMAGE_GENERATION_REQUEST_MAX_BYTES,
   },
+  logging: { incomingRequests: { ignore: [/\/identity\/callback/] } },
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,

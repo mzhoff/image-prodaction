@@ -1,4 +1,5 @@
 // Authentication application composition; shared auth keeps only low-level contracts.
+import { identityPlugins } from './identity';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
@@ -122,6 +123,6 @@ async function createAuth() {
         },
       },
     },
-    plugins: [nextCookies()],
+    plugins: [...identityPlugins(), nextCookies()],
   });
 }

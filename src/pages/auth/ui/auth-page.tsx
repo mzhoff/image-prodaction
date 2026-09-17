@@ -1,5 +1,6 @@
 'use client';
 
+import { IdentityActions } from '@reverie/identity-client/react';
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 import { Button } from '@prodactionpro/ui-core/button';
 
@@ -19,9 +20,10 @@ type AuthMode = 'login' | 'register';
 interface AuthPageProps {
   mode: AuthMode;
   allowRegistration?: boolean;
+  identityEnabled?: boolean;
 }
 
-export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
+export function AuthPage({ mode, allowRegistration = true, identityEnabled = false }: AuthPageProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -107,6 +109,8 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
           <p>{subtitle}</p>
         </div>
 
+        {identityEnabled ? <IdentityActions authPath="/api/auth" /> : null}
+        {mode === "login" || !identityEnabled ? <details open={!identityEnabled} className="auth-legacy-entry"><summary>Войти в прежний аккаунт Image Production</summary>
         <form className="auth-form" onSubmit={handleSubmit}>
           {mode === 'register' ? (
             <label>
@@ -184,6 +188,7 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
             {pending ? 'Подождите…' : submitLabel}
           </Button>
         </form>
+        </details> : null}
 
         {mode === 'register' || allowRegistration ? (
           <div className="auth-switch">
