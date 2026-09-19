@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { getDb, getPostgresPool } from '@/shared/db/client';
+import { getDb } from '@/shared/db/client';
+import { getCoordinationPool } from '@/shared/db/coordination-pool';
 import { user } from '@/shared/db/schema/auth';
 import { ensurePersonalWorkspace } from '@/entities/workspace/server/workspace-service';
 import { findProviderConnection } from '../../adapters/postgres/provider-connection-repository';
@@ -10,7 +11,7 @@ export async function projectBudgetConnection(input: { issuer: string; subject: 
   const [account] = await getDb().select().from(user).where(eq(user.identitySubject, `${input.issuer}#${input.subject}`)).limit(1);
   if (!account) return { status: 409, code: 'PRODUCT_LOGIN_REQUIRED' };
   const workspace = await ensurePersonalWorkspace(account);
-  const lock = await getPostgresPool().connect();
+  const lock = await getCoordinationPool().connect();
   try {
     await lock.query('SELECT pg_advisory_lock(hashtextextended($1,0))', [`budget-projection:${workspace.id}`]);
     const existing = await findProviderConnection(workspace.id, 'openrouter');

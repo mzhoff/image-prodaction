@@ -14,6 +14,12 @@ objects and workers; web joins the existing ingress network with alias
 `reverie-image-production`. The old standalone Caddy is behind an explicit profile
 and does not claim ports 80/443. Do not replace the existing Hub Compose stack.
 
+Paid execution and credential projection use a separate PostgreSQL coordination
+pool (four connections per application process, two-second acquisition timeout).
+Long video operations cannot exhaust the ordinary auth/document database pool.
+Include these connections when sizing PostgreSQL; saturation rejects new work
+before paid dispatch and allows a retry.
+
 The standalone Identity image and Compose definition live in the platform repo:
 `apps/identity/Dockerfile`, `deploy/identity/compose.yaml`. Its own PostgreSQL contains
 Identity records and the platform budget schema. Neither product writes another

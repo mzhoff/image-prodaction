@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { getPostgresPool } from '@/shared/db/client';
+import { getCoordinationPool } from '@/shared/db/coordination-pool';
 import { ProviderAdapterError } from '../core/provider-errors';
 import { descriptor } from '../core/provider-error-descriptors';
 
@@ -7,7 +7,11 @@ import { descriptor } from '../core/provider-error-descriptors';
 export async function withPaidCredential<T>(credential: string, run: () => Promise<T>) {
   if (process.env.PLATFORM_PAID_REQUEST_GUARD !== 'true') return run();
   const binding = `paid:${createHash('sha256').update(credential).digest('hex')}`;
-  const db = await getPostgresPool().connect();
+  const db = await getCoordinationPool().connect().catch(() => {
+    throw new ProviderAdapterError(descriptor('upstream_unavailable', 'retryable', {
+      httpStatus: 503, retryAfterMs: 2_000, message: 'Все слоты AI-запросов заняты. Повторите чуть позже.',
+    }));
+  });
   let locked = false;
   try {
     locked = (await db.query('SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS locked', [binding])).rows[0].locked;

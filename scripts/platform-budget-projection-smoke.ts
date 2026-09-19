@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { getDb, getPostgresPool } from '../src/shared/db/client.ts';
+import { getCoordinationPool } from '../src/shared/db/coordination-pool.ts';
 import { user } from '../src/shared/db/schema/auth.ts';
 import { handleBudgetProjection } from '../src/app/api-routes/platform/budget-connection.ts';
 import { connectOpenRouterProvider, disconnectOpenRouterProvider, listWorkspaceProviderConnections, validateStoredOpenRouterProvider, resolveOpenRouterCredential } from '../src/modules/provider-connections/server/provider-connection-service.ts';
@@ -52,5 +53,10 @@ try {
   release(); assert.equal(await firstPaid, 'first');
   await assert.rejects(withPaidCredential(apiKey, async () => { throw new Error('provider failure'); }), /provider failure/);
   assert.equal(await withPaidCredential(apiKey, async () => 'recovered'), 'recovered');
+  const held = await Promise.all(Array.from({ length: 4 }, () => getCoordinationPool().connect()));
+  try {
+    assert.equal((await db.query('SELECT 1 AS usable')).rows[0].usable, 1);
+    await assert.rejects(withPaidCredential(apiKey, async () => assert.fail('Must not dispatch while saturated')), /слоты/);
+  } finally { held.forEach((client) => client.release()); }
   console.info('Platform projection and cross-process paid-request guard: passed');
-} finally { await getPostgresPool().end(); }
+} finally { await Promise.all([getPostgresPool().end(), getCoordinationPool().end()]); }
