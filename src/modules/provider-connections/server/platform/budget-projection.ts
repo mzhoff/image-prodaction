@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { getDb, getPostgresPool } from '@/shared/db/client';
 import { user } from '@/shared/db/schema/auth';
-import { workspaceProviderConnection } from '@/shared/db/schema/provider';
 import { ensurePersonalWorkspace } from '@/entities/workspace/server/workspace-service';
 import { findProviderConnection } from '../../adapters/postgres/provider-connection-repository';
 import { connectOpenRouterProvider, resolveOpenRouterCredential } from '../provider-connection-service';
@@ -21,11 +20,7 @@ export async function projectBudgetConnection(input: { issuer: string; subject: 
       const credential = await resolveOpenRouterCredential(account.id, workspace.id);
       if (digest(credential.apiKey) === digest(input.apiKey) && managed === input.keyHash) return { status: 200, workspaceId: workspace.id };
     }
-    const result = await connectOpenRouterProvider({ apiKey: input.apiKey, userId: account.id, workspaceId: workspace.id });
-    const saved = await findProviderConnection(workspace.id, 'openrouter');
-    if (!saved) throw new Error('Projection was not persisted');
-    await getDb().update(workspaceProviderConnection).set({ providerMetadata: { ...saved.providerMetadata, platformManagedKeyHash: input.keyHash } })
-      .where(eq(workspaceProviderConnection.id, saved.id));
+    const result = await connectOpenRouterProvider({ apiKey: input.apiKey, userId: account.id, workspaceId: workspace.id, managedKeyHash: input.keyHash });
     return { status: 200, workspaceId: workspace.id, connected: result.provider.status === 'connected' };
   } finally {
     let reusable = true;

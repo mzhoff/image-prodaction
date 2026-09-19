@@ -11,6 +11,7 @@ export interface ProviderConnectionDto {
   provider: 'openrouter';
   status: ProviderConnectionStatus;
   canManage: boolean;
+  managedByPlatform?: boolean;
   maskedKey: string | null;
   lastValidatedAt: string | null;
   lastUsedAt: string | null;

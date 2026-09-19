@@ -58,7 +58,7 @@ export async function listWorkspaceProviderConnections(userId: string, workspace
 }
 
 export async function connectOpenRouterProvider(
-  input: { apiKey: string; userId: string; workspaceId: string },
+  input: { apiKey: string; userId: string; workspaceId: string; managedKeyHash?: string },
   dependencies: ProviderConnectionServiceDependencies = createDefaultDependencies(),
 ) {
   await requireWorkspaceMembership(input.userId, input.workspaceId, MANAGER_ROLES);
@@ -84,7 +84,7 @@ export async function connectOpenRouterProvider(
     credentialId: dependencies.createId(),
     now,
     provider: OPENROUTER_PROVIDER,
-    providerMetadata: summaryToProviderMetadata(summary),
+    providerMetadata: { ...summaryToProviderMetadata(summary), ...(input.managedKeyHash ? { platformManagedKeyHash: input.managedKeyHash } : {}) },
     userId: input.userId,
     workspaceId: input.workspaceId,
   });

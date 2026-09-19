@@ -1,3 +1,4 @@
+import { ManagedProviderConnectionError } from '../../core/provider-connection-errors';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { ProviderAdapterError } from '../../core/provider-errors';
 import type { ProviderCredentialSummary } from '../../contracts/provider-contracts';
@@ -95,6 +96,10 @@ export async function saveProviderCredential(input: {
   workspaceId: string;
 }) {
   await getDb().transaction(async (tx) => {
+    const [prior] = await tx.select().from(workspaceProviderConnection)
+      .where(eq(workspaceProviderConnection.id, input.connectionId)).for('update');
+    const managed = prior?.providerMetadata?.platformManagedKeyHash;
+    if (managed && managed !== input.providerMetadata.platformManagedKeyHash) throw new ManagedProviderConnectionError();
     const [connection] = await tx.insert(workspaceProviderConnection).values({
       id: input.connectionId,
       workspaceId: input.workspaceId,
@@ -142,6 +147,9 @@ export async function saveProviderCredential(input: {
 
 export async function disconnectProviderConnection(connectionId: string, userId: string, now: Date) {
   await getDb().transaction(async (tx) => {
+    const [prior] = await tx.select().from(workspaceProviderConnection)
+      .where(eq(workspaceProviderConnection.id, connectionId)).for('update');
+    if (prior?.providerMetadata?.platformManagedKeyHash) throw new ManagedProviderConnectionError();
     await tx.update(workspaceProviderCredential).set({ revokedAt: now }).where(and(
       eq(workspaceProviderCredential.connectionId, connectionId),
       isNull(workspaceProviderCredential.revokedAt),

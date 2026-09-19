@@ -16,3 +16,10 @@ export class ProviderCredentialValidationError extends Error {
     this.providerError = error;
   }
 }
+
+export class ManagedProviderConnectionError extends Error {
+  constructor() {
+    super('AI-бюджетом управляет платформа. Для изменения подключения обратитесь к оператору.');
+    this.name = 'ManagedProviderConnectionError';
+  }
+}

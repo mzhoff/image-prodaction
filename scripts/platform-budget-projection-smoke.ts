@@ -3,7 +3,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { getDb, getPostgresPool } from '../src/shared/db/client.ts';
 import { user } from '../src/shared/db/schema/auth.ts';
 import { handleBudgetProjection } from '../src/app/api-routes/platform/budget-connection.ts';
-import { resolveOpenRouterCredential } from '../src/modules/provider-connections/server/provider-connection-service.ts';
+import { connectOpenRouterProvider, disconnectOpenRouterProvider, listWorkspaceProviderConnections, validateStoredOpenRouterProvider, resolveOpenRouterCredential } from '../src/modules/provider-connections/server/provider-connection-service.ts';
 import { withPaidCredential } from '../src/modules/provider-connections/server/paid-request-guard.ts';
 
 assert.match(new URL(process.env.DATABASE_URL ?? '').pathname, /^\/image_budget_test_[a-f0-9]+$/);
@@ -32,6 +32,12 @@ try {
   assert.equal((await project({ ...payload, issuer: 'https://evil.test' })).status, 400);
   assert.equal((await resolveOpenRouterCredential(localId, workspaceId)).apiKey, apiKey);
   await assert.rejects(resolveOpenRouterCredential('outsider', workspaceId), /access denied/i);
+  await validateStoredOpenRouterProvider(localId, workspaceId);
+  const connections = await listWorkspaceProviderConnections(localId, workspaceId);
+  assert.equal(connections.providers[0].canManage, false);
+  assert.equal(connections.providers[0].managedByPlatform, true);
+  await assert.rejects(connectOpenRouterProvider({ userId: localId, workspaceId, apiKey }), /платформа/);
+  await assert.rejects(disconnectOpenRouterProvider(localId, workspaceId), /платформа/);
   const db = getPostgresPool();
   assert.equal((await db.query('SELECT count(*) FROM workspace_provider_credential')).rows[0].count, '1');
   assert.equal((await db.query('SELECT count(*) FROM workspace')).rows[0].count, '1');
