@@ -43,12 +43,9 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
 
   await page.getByRole('button', { name: 'Open node palette' }).click();
   await page.locator('.document-node-palette-card').filter({ hasText: 'Text prompt' }).click();
-  await page.locator('.document-node-palette-card').filter({ hasText: 'Banner' }).click();
   await page.getByRole('button', { name: 'Minimize node palette' }).click();
   const promptNode = page.locator('.production-node-textPrompt').last();
-  const bannerNode = page.locator('.production-node-banner').last();
   await expect(promptNode).toBeVisible();
-  await expect(bannerNode).toBeVisible();
   const promptNodeId = await promptNode.getAttribute('data-node-id');
   if (!promptNodeId) throw new Error('Text prompt node must expose data-node-id.');
 
@@ -127,6 +124,10 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   manualTurnRequestAllowed = false;
 
   await page.getByRole('button', { name: 'Закрыть ассистента' }).click();
+  await page.getByRole('button', { name: 'Open node palette' }).click();
+  await page.locator('.document-node-palette-card').filter({ hasText: 'Banner' }).click();
+  await page.getByRole('button', { name: 'Minimize node palette' }).click();
+  const bannerNode = page.locator('.production-node-banner').last();
   await bannerNode.click({ button: 'right' });
   await page.getByText('Ask AI', { exact: true }).click();
   await expect(assistantShell).toHaveAttribute('aria-hidden', 'false');
@@ -137,7 +138,7 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
 
   await page.reload();
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}$`, 'u'));
-  await page.getByRole('button', { name: 'Open assistant' }).click();
+  await page.getByRole('button', { name: /Открыть ассистента/ }).click();
   await expect(page.locator('.assistant-shell')).toHaveAttribute('aria-hidden', 'false');
   await expect(page.getByPlaceholder('Напишите задачу для ассистента...')).toBeVisible();
   await expect(messageByRole(page, 'user', askAiPrompt)).toBeVisible();

@@ -35,7 +35,7 @@ async function openVisualFixture(page: Page, context: BrowserContext, baseURL?: 
   // Opening a document auto-fits all 33 cards. Zoom/pan through the canvas's
   // normal wheel gestures so the first card can be edited at a readable scale.
   const canvas = page.locator('.production-canvas');
-  await page.getByRole('button', { name: 'Zoom to fit', exact: true }).click();
+  await expect(page.getByLabel('Canvas zoom', { exact: true })).toHaveText('10%');
   const scale = await page.locator('.canvas-world').evaluate((world) => new DOMMatrixReadOnly(getComputedStyle(world).transform).a);
   let first = (await page.locator('.production-node-textGeneration').boundingBox())!;
   await canvas.dispatchEvent('wheel', { ctrlKey: true, deltaY: (1 - 1 / scale) / 0.001, clientX: first.x, clientY: first.y });

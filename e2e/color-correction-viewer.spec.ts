@@ -77,7 +77,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     await sidebar.getByRole('slider', { name: 'Curves opacity' }).focus();
     await page.keyboard.press('ArrowLeft');
     await expect(sidebar.getByRole('slider', { name: 'Curves opacity' })).toHaveValue('99');
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     const maskTools = viewer.locator('.image-editor-mask-tools');
     await expect(maskTools).toBeVisible();
     expect((await maskTools.boundingBox())!.y).toBeGreaterThanOrEqual(fullImage.y + fullImage.height);
@@ -96,10 +96,10 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     await page.mouse.up();
     const drawnMask = await maskCanvas.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
     expect(drawnMask).not.toBe(emptyMask);
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(maskTools).toHaveCount(0);
     await expect(maskCanvas).toHaveCount(1);
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(maskTools).toBeVisible();
     expect(await maskCanvas.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(drawnMask);
     await viewer.getByRole('button', { name: 'Clear mask', exact: true }).click();
@@ -164,7 +164,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     await page.setViewportSize({ width: 1600, height: 1000 });
     await card(generate.id).locator('.image-plate').click();
     await expect(sidebar).toHaveCount(0);
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(viewer.locator('.image-editor-prompt')).toBeVisible();
     expect((await viewer.locator('.image-editor-input-area').boundingBox())!.y)
       .toBeGreaterThan((await stage.boundingBox())!.y + (await stage.boundingBox())!.height);

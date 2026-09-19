@@ -76,7 +76,7 @@ test('42-file drop shows live progress, preserves successes, and finishes as one
     expect(cardBox.y + cardBox.height).toBeLessThan(toolbarBox.y);
     await page.screenshot({ path: testInfo.outputPath('import-start.png') });
     await dropFiles(page, png, 1);
-    await expect(page.locator('.canvas-toast')).toContainText('Импорт уже идёт');
+    await expect(page.locator('.assistant-notice')).toContainText('Импорт уже идёт');
     expect(requests).toBe(1);
     releaseFirst();
     await expect.poll(() => requests, { timeout: 90_000 }).toBe(25);

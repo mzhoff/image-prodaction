@@ -71,7 +71,7 @@ test('verified user persists a private image and can reset the password', async 
     const nodeAutosaveResponsePromise = waitForDocumentAutosave(page, projectId);
     await page
       .getByRole('complementary', { name: 'Document tools' })
-      .getByRole('button', { name: 'Import image' })
+      .getByRole('button', { name: 'Import', exact: true })
       .click();
 
     const importNode = page.locator('.production-node-importImage').first();
