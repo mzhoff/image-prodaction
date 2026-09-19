@@ -1,3 +1,5 @@
+import { getGeneratePromptSectionId, routeGeneratePromptText } from '@/entities/production-graph/model/generate-image-prompt-sections';
+import { getGeneratePromptRoute } from '@/entities/production-graph/model/sync-generate-prompt-sections';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
 import type { ProductionLayerId } from '@/entities/production-graph/model/production-layers';
 import { getPortById } from '@/entities/production-graph/model/node-definitions';
@@ -74,6 +76,7 @@ export async function buildGeneratePayload(
     sourceNodeTypes: Set<ProductionNode['type']>;
   }>();
   const promptInputs: string[] = [];
+  const targetNode = nodes.find((node) => node.id === targetNodeId);
   const subjectInputs: string[] = [];
   const locationInputs: string[] = [];
   const actorImageReferenceAssetIds = new Set<string>();
@@ -103,13 +106,14 @@ export async function buildGeneratePayload(
     const sourceNode = nodes.find((node) => node.id === edge.sourceNodeId);
     if (!sourceNode) continue;
     const sourcePort = getPortById(sourceNode, edge.sourcePortId);
-    if (sourceNode.type === 'imageToText' && !getNodeTextResult(sourceNode, edge.sourcePortId)) {
+    if (sourceNode.type === 'imageToText' && !getNodeTextResult(sourceNode, edge.sourcePortId, { edges, nodes })) {
       throw new Error('В подключенной Extract node пока нет результата. Сначала нажми Analyze, потом запускай Generate.');
     }
 
-    const text = getNodeTextResult(sourceNode, edge.sourcePortId);
-    if (edge.targetPortId === 'prompt') {
-      if (text) promptInputs.push(text);
+    const text = getNodeTextResult(sourceNode, edge.sourcePortId, { edges, nodes });
+    if (edge.targetPortId === 'prompt' || getGeneratePromptSectionId(edge.targetPortId)) {
+      const routed = routeGeneratePromptText(text, targetNode ? getGeneratePromptRoute(edge, targetNode, edges) : undefined);
+      if (routed) promptInputs.push(routed);
       continue;
     }
     if (edge.targetPortId === 'subject' || (edge.targetPortId === 'actors' && sourcePort?.kind === 'subject')) {

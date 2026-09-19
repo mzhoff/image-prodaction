@@ -1,3 +1,4 @@
+import { syncGeneratePromptSections } from './sync-generate-prompt-sections';
 import { initialProject } from './initial-project';
 import { compactDynamicInputsForNodes } from './dynamic-input-slot';
 import { PROJECT_SCHEMA_VERSION } from './project-schema';
@@ -14,9 +15,10 @@ export function normalizeProject(project: GraphProject): GraphProject {
   const nodes = (project.nodes ?? []).map(normalizeNode).map(normalizeNodeRuntimeStatus);
   const normalizedEdges = (project.edges ?? []).map((edge) => normalizeProjectEdge(edge, nodes));
   const normalizedPortState = compactDynamicInputsForNodes(nodes, normalizedEdges);
-  const nodesWithPortCounts = normalizedPortState.nodes;
+  const syncedPromptState = syncGeneratePromptSections(normalizedPortState.nodes, normalizedPortState.edges);
+  const nodesWithPortCounts = syncedPromptState.nodes;
   const edges = canKeepSingleIncomingEdge({
-    edges: normalizedPortState.edges,
+    edges: syncedPromptState.edges,
     nodes: nodesWithPortCounts,
   });
   const nodesWithRuntimeMentions = ensurePipelineInputPromptMentions(nodesWithPortCounts, edges);

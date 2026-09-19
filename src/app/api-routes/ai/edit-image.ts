@@ -1,3 +1,4 @@
+import { withPaidCredential } from '@/modules/provider-connections/server/paid-request-guard';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { formatOpenRouterError, getOpenRouterErrorStatus, sendOpenRouterChat } from '@/shared/api/openrouter';
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
       model: parsed.data.model,
       size: parsed.data.size,
     });
-    const result = await sendOpenRouterChat({
+    const result = await withPaidCredential(providerConnection.apiKey, () => sendOpenRouterChat({
       apiKey: providerConnection.apiKey,
       model: parsed.data.model,
       messages: [{ role: 'user', content }],
@@ -121,7 +122,7 @@ export async function POST(request: Request) {
         aspect_ratio: parsed.data.aspectRatio,
         image_size: parsed.data.size,
       },
-    });
+    }));
     providerOperationId = result.id ?? null;
     providerUsage = normalizeOpenRouterUsage(result.usage);
     await Promise.all([

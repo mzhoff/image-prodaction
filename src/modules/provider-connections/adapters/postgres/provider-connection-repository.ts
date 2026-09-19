@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { ProviderAdapterError } from '../../core/provider-errors';
 import type { ProviderCredentialSummary } from '../../contracts/provider-contracts';
 import { getDb } from '@/shared/db/client';
@@ -166,7 +166,7 @@ export async function updateProviderValidation(input: {
 }) {
   await getDb().update(workspaceProviderConnection).set({
     status: 'connected',
-    providerMetadata: input.metadata,
+    providerMetadata: sql`COALESCE(${workspaceProviderConnection.providerMetadata}, '{}'::jsonb) || ${JSON.stringify(input.metadata)}::jsonb`,
     lastValidatedAt: input.validatedAt,
     lastErrorCode: null,
     lastErrorMessage: null,

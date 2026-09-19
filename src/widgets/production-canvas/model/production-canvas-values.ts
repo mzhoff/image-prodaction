@@ -5,7 +5,7 @@ import {
   NODE_TEMPLATE_DRAG_MIME_TYPE,
 } from '../lib/node-drag';
 
-export type CanvasTool = 'select' | 'section';
+export type CanvasTool = 'select' | 'section' | 'scissors';
 
 export function getDraggedNodeType(dataTransfer: DataTransfer) {
   const value = dataTransfer.getData(NODE_DRAG_MIME_TYPE);

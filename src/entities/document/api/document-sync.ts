@@ -1,3 +1,5 @@
+export const DOCUMENT_AUTOSAVE_DELAY_MS = 800;
+
 export type DocumentSyncPhase = 'idle' | 'loading' | 'saved' | 'dirty' | 'saving' | 'recovery' | 'conflict' | 'error';
 
 export interface DocumentSyncState {

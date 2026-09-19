@@ -108,7 +108,7 @@
     "@prodactionpro/ui-media": "file:.local-packages/prodactionpro-ui-media-0.1.0-canary-media.4.tgz",
     "@prodactionpro/ui-stories-editor": "file:.local-packages/prodactionpro-ui-stories-editor-0.1.0-canary-stories.5.tgz",
     "@prodactionpro/ui-tokens": "0.2.0-canary-reverie-20260910.2",
-    "@reverie/identity-client": "file:.local-packages/reverie-identity-client-0.1.0-canary.2.tgz",
+    "@reverie/identity-client": "file:.local-packages/reverie-identity-client-0.1.0-canary.4.tgz",
     "better-auth": "1.6.25",
     "clsx": "2.1.1",
     "drizzle-orm": "^0.45.2",

@@ -71,6 +71,9 @@ export interface GraphSection {
 }
 
 export interface GraphEdge {
+  /** Managed section connection; references an editor source binding after the Prompt wire is consumed. */
+  promptSourceEdgeId?: string;
+  excludedPromptSectionIds?: string[];
   id: string;
   sourceNodeId: string;
   sourcePortId: string;

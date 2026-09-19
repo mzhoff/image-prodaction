@@ -1,3 +1,4 @@
+import { withPaidCredential } from '@/modules/provider-connections/server/paid-request-guard';
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getGeneratedAssetByJobId } from '@/entities/asset/server/asset-service';
@@ -43,6 +44,7 @@ export function createVideoGenerationExecutor(overrides: Partial<typeof defaults
       || createHash('sha256').update(JSON.stringify(payload)).digest('hex') !== record.metadata?.requestHash) throw failure('video_payload_scope', 'Запрос видео не соответствует сохранённому заданию.');
     payload.request = videoRequestSchema.parse(payload.request);
     const credential = await dependencies.credential(job.workspaceId);
+    return withPaidCredential(credential.apiKey, async () => {
     const context = { credential: credential.apiKey, signal,
       redactions: [payload.request.prompt, ...payload.request.references.map((ref) => ref.description)] };
     let operationId = record.providerOperationId;
@@ -114,6 +116,7 @@ export function createVideoGenerationExecutor(overrides: Partial<typeof defaults
       throw new GenerationExecutionError({ code: 'video_recovery_required',
         message: 'Проверка или сохранение видео прервались. Повтор проверит то же задание без повторной генерации.', retryable: true });
     }
+    });
   } };
 }
 function failure(code: string, message: string) { return new GenerationExecutionError({ code, message, retryable: false }); }

@@ -26,7 +26,7 @@ test('input status distinguishes disconnected, connected-empty and resolved type
   image.data = { ...image.data, assetId: '019f1e15-0185-7000-8000-000000000001' } as ImportImageNodeData;
   context.edges.push({ id: 'image', sourceNodeId: image.id, sourcePortId: 'image', targetNodeId: target.id, targetPortId: 'actors' });
   assert.deepEqual(getInputConnectionStatus(target.id, 'actors', context), {
-    kind: 'mixed', label: 'Text · 1 + Image · 1', state: 'ready',
+    kind: 'mixed', label: 'Text · 1 + Image · 1', state: 'ready', sourceLabels: ['Prompt', 'Import'], sourceEdgeIds: ['text', 'image'],
   });
 });
 
@@ -48,6 +48,18 @@ test('Timeline Frames badges count prepared gallery items through routers and sh
     { id: 'router', sourceNodeId: timeline.id, sourcePortId: 'frames', targetNodeId: router.id, targetPortId: 'input' },
     { id: 'output', sourceNodeId: router.id, sourcePortId: 'output', targetNodeId: 'generator', targetPortId: 'reference-1' },
   ], assets: [firstId, secondId].map((id) => ({ id, kind: 'image' as const, name: 'Frame', mimeType: 'image/jpeg', createdAt: '', storage: { type: 'remote' as const, assetId: id } })) };
-  assert.deepEqual(getInputConnectionStatus('generator', 'reference-1', graph), { kind: 'image', label: 'Image · 2', state: 'ready' });
+  assert.deepEqual(getInputConnectionStatus('generator', 'reference-1', graph), { kind: 'image', label: 'Image · 2', state: 'ready', sourceLabels: ['Router'], sourceEdgeIds: ['output'] });
   assert.deepEqual(getInputConnectionStatus('generator', 'reference-1', { ...graph, assets: graph.assets.slice(0, 1) }), { kind: 'empty', label: 'Кадры готовятся', state: 'empty' });
+});
+
+test('reference names come from source nodes and reflect rename independently of filenames', () => {
+  const target = createDefaultNode('generateVideo', { x: 400, y: 0 });
+  const source = createDefaultNode('importImage', { x: 0, y: 0 });
+  source.data = { ...source.data, title: 'Главный герой', assetId: 'asset' };
+  const context = { nodes: [source, target], assets: [], edges: [
+    { id: 'reference', sourceNodeId: source.id, sourcePortId: 'image', targetNodeId: target.id, targetPortId: 'reference-1' },
+  ] };
+  assert.deepEqual(getInputConnectionStatus(target.id, 'reference-1', context).sourceLabels, ['Главный герой']);
+  source.data.title = 'Новое имя';
+  assert.deepEqual(getInputConnectionStatus(target.id, 'reference-1', context).sourceLabels, ['Новое имя']);
 });

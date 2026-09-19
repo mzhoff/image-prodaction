@@ -20,8 +20,8 @@ export function getPortTop(node: ProductionNode, side: 'input' | 'output', index
   if (node.type === 'composition' && side === 'input') return 138 + index * 39;
   if (node.type === 'composition' && side === 'output') return 168;
   if (node.type === 'referenceComposer' && side === 'input') return 304 + index * 38;
-  if (node.type === 'generateImage' && side === 'input') return 610 + index * 39;
-  if (node.type === 'generateImage' && side === 'output') return 127;
+  if (node.type === 'generateImage' && side === 'input') return 64 + index * 39;
+  if (node.type === 'generateImage' && side === 'output') return Math.max(350, node.size.height - 310);
   if (node.type === 'sketch' && side === 'output') return getSketchOutputPortTop(node);
   if (node.type === 'imageToText' && side === 'input') return 74 + index * 32;
   if (node.type === 'imageToText' && side === 'output') return 402;

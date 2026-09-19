@@ -34,3 +34,5 @@ image-prodaction-canvas-*.png
 
 # Generic shared Identity client, built from the exact Content Hub package version.
 !.local-packages/reverie-identity-client-0.1.0-canary.2.tgz
+
+!.local-packages/reverie-identity-client-0.1.0-canary.4.tgz

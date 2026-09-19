@@ -1,3 +1,4 @@
+import { removeGeneratePromptSectionEdge } from './sync-generate-prompt-sections';
 import { createId } from '@/shared/lib/id';
 import { compactDynamicInputNodeState, isDynamicInputPort } from './dynamic-input-slot';
 import { getTextPromptVariables } from './node-definitions';
@@ -17,7 +18,8 @@ export function connectEdgeState(nodes: ProductionNode[], edges: GraphEdge[], pa
   const targetNode = nodes.find((node) => node.id === params.targetNodeId);
   const isCropSource = targetNode?.type === 'cropImage'
     && (params.targetPortId === 'image' || params.targetPortId === 'video');
-  let nextEdges = edges.filter((edge) => edge.id !== params.detachedEdge?.id
+  const base = params.detachedEdge ? removeGeneratePromptSectionEdge(nodes, edges, params.detachedEdge) : { nodes, edges };
+  let nextEdges = base.edges.filter((edge) => edge.id !== params.detachedEdge?.id
     && !(isCropSource && edge.targetNodeId === params.targetNodeId
       && (edge.targetPortId === 'image' || edge.targetPortId === 'video')
       && edge.targetPortId !== params.targetPortId));
@@ -36,7 +38,7 @@ export function connectEdgeState(nodes: ProductionNode[], edges: GraphEdge[], pa
   nextEdges = [...nextEdges, connectedEdge];
 
   const affectedNodeIds = getAffectedDynamicInputNodeIds(nodes, params);
-  let nextState = { edges: nextEdges, nodes };
+  let nextState = { edges: nextEdges, nodes: base.nodes };
   for (const nodeId of affectedNodeIds) {
     nextState = compactDynamicInputNodeState(nextState.nodes, nextState.edges, nodeId);
   }

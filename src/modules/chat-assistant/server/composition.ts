@@ -31,7 +31,7 @@ import { designElementSelectionTool } from '../contracts/design-element-selectio
 import { resolveChatPrincipal } from './auth';
 import { readChatAssistantConfig } from './config';
 import { ImageProductionToolGateway } from './knowledge-tool-gateway';
-import { LimitedOpenRouterGateway } from './limited-openrouter-gateway';
+import { createWorkspaceProviderResolver } from './workspace-provider';
 import { admitChatTurn } from './turn-admission';
 import { resolveVerifiedChatContext } from './verified-context';
 import { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
@@ -54,7 +54,7 @@ export async function getChatAssistantComposition() {
 
 function createComposition() {
   const config = readChatAssistantConfig();
-  if (!config.enabled || !config.apiKey || !config.approvalSecret) {
+  if (!config.enabled || !config.approvalSecret) {
     throw new ChatAssistantUnavailableError('Chat assistant is not configured.');
   }
 
@@ -105,26 +105,7 @@ function createComposition() {
       'knowledge-base': [config.model],
       'product-copilot': [config.model],
     },
-    assistantProviderResolver: () => ({
-      capabilities: {
-        inputModalities: ['text', 'image'],
-        supportsImageInputWithTools: true,
-        toolCalling: true,
-      },
-      connectionId: 'env:chat-openrouter',
-      providerId: 'openrouter',
-      toolCallingLanguageModelGateway: new LimitedOpenRouterGateway({
-        apiKey: config.apiKey!,
-        appTitle: 'Reverie Image Production Assistant',
-        baseUrl: config.openRouterBaseUrl,
-        httpReferer: config.openRouterSiteUrl,
-        maxOutputTokens: config.maxOutputTokens,
-        maxAttempts: config.providerMaxAttempts,
-        retryDeadlineMs: config.providerRetryDeadlineMs,
-        retryBaseDelayMs: config.providerRetryBaseDelayMs,
-        timeoutMs: config.providerRequestTimeoutMs,
-      }),
-    }),
+    assistantProviderResolver: createWorkspaceProviderResolver(config),
     attachmentMessageCoordinator: store,
     attachmentService,
     capabilities: {

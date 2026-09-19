@@ -26,6 +26,7 @@ test('assistant config fails closed and public projection never contains secrets
     assert.equal(incomplete.enabled, false);
     assert.deepEqual(incomplete.missingSettings, ['CHAT_TOOL_APPROVAL_SECRET']);
 
+    delete process.env.CHAT_OPENROUTER_API_KEY;
     process.env.CHAT_TOOL_APPROVAL_SECRET = 'x'.repeat(32);
     process.env.CHAT_ASSISTANT_MAX_TOOL_CALLS_PER_TURN = '99';
     process.env.CHAT_ASSISTANT_PROVIDER_MAX_ATTEMPTS = '99';

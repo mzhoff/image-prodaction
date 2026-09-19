@@ -1,3 +1,4 @@
+import { getGeneratePromptSectionId } from '@/entities/production-graph/model/generate-image-prompt-sections';
 import { getNodePorts } from '@/entities/production-graph/model/node-definitions';
 import { getPortTop } from '@/entities/production-graph/model/node-port-layout';
 import { productionLayers } from '@/entities/production-graph/model/production-layers';
@@ -7,7 +8,7 @@ import { getBezierPath } from './edge-bezier-path';
 const PORT_CENTER_OFFSET = 13.5;
 const PORT_DOT_RADIUS = 6;
 const PORT_CONTAINER_HALF = 12;
-const GENERATE_REFERENCE_GROUP_TOP = 580;
+const GENERATE_REFERENCE_GROUP_TOP = 220;
 const generateInputPortIds = new Set<string>(['reference', ...productionLayers.map((layer) => layer.id)]);
 
 export { getBezierPath };
@@ -61,6 +62,10 @@ export function getPortPoint(node: ProductionNode, portId: string, measuredPortP
 
   const measured = getMeasuredPortPoint(node, portId, port.side, measuredPortPoints);
   if (measured) return getPortEdgePoint(measured, port.side);
+  if (node.type === 'generateImage' && port.side === 'input' && getGeneratePromptSectionId(portId)) {
+    const prompt = getMeasuredPortPoint(node, 'prompt', 'input', measuredPortPoints);
+    if (prompt) return getPortEdgePoint(prompt, 'input');
+  }
 
   const sidePorts = ports.filter((item) => item.side === port.side);
   const index = sidePorts.findIndex((item) => item.id === portId);
@@ -116,7 +121,13 @@ export function getEdgePath(
   if (!source || !target) return null;
 
   const start = getPortPoint(source, normalizeSourcePortId(source, edge.sourcePortId), options?.measuredPortPoints);
-  const end = shouldUseCollapsedGenerateGroup(edge, target, options?.collapsedGenerateComposingNodeIds)
+  const sourcePort = getNodePorts(source).find((port) => port.id === edge.sourcePortId);
+  const textPromptPort = target.type === 'generateImage' && edge.targetPortId !== 'prompt'
+    && (sourcePort?.kind === 'text' || getGeneratePromptSectionId(edge.targetPortId));
+  const hiddenPromptPort = textPromptPort && options?.measuredPortPoints
+    && !options.measuredPortPoints[getPortPointKey(target.id, edge.targetPortId, 'input')];
+  const end = hiddenPromptPort ? getPortPoint(target, 'prompt', options?.measuredPortPoints)
+    : !textPromptPort && shouldUseCollapsedGenerateGroup(edge, target, options?.collapsedGenerateComposingNodeIds)
     ? getGenerateComposingGroupPoint(target, options?.measuredPortPoints)
     : getPortPoint(target, edge.targetPortId, options?.measuredPortPoints);
   if (!start || !end) return null;

@@ -1,12 +1,12 @@
 'use client';
 
-import { Download, Frame, Maximize2, MousePointer2, Redo2, Trash2, Undo2, Upload } from '@prodactionpro/ui-core/icons';
+import { Download, Frame, Maximize2, MousePointer2, Scissors, Redo2, Trash2, Undo2, Upload } from '@prodactionpro/ui-core/icons';
 import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { ThemeControl } from '@/shared/ui/theme-control';
 import { ProTooltip } from '@/shared/ui/pro-tooltip';
 
-type CanvasTool = 'select' | 'section';
+import type { CanvasTool } from '../model/production-canvas-values';
 
 interface CanvasToolbarProps {
   activeTool: CanvasTool;
@@ -62,6 +62,13 @@ export function CanvasToolbar({
           onClick={() => onSelectTool('section')}
         >
           <Frame size={16} />
+        </button>
+      </ProTooltip>
+      <ProTooltip label="Cut connections">
+        <button type="button" aria-label="Cut connections" aria-pressed={activeTool === 'scissors'}
+          className={activeTool === 'scissors' ? 'canvas-toolbar-active' : undefined}
+          onClick={() => onSelectTool(activeTool === 'scissors' ? 'select' : 'scissors')}>
+          <Scissors size={16} />
         </button>
       </ProTooltip>
       <ProTooltip label="Undo" shortcut="Ctrl+Z">

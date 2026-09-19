@@ -1,3 +1,5 @@
+import { getGeneratePromptSectionId } from '@/entities/production-graph/model/generate-image-prompt-sections';
+import { getGeneratePromptRoute } from '@/entities/production-graph/model/sync-generate-prompt-sections';
 import type { GraphEdge, ProductionNode, TimelineHandoffNodeData } from '@/entities/production-graph/model/types';
 import { getNodeVideoAssetId } from '@/entities/production-graph/model/graph-video-io';
 import type {
@@ -24,13 +26,21 @@ export function createRuntimeNodeDefinition(input: {
 }): PipelineNodeDefinition {
   const descriptor = getRuntimeDescriptor(input.node, input);
   const bindings: Record<string, PipelineInputBinding> = {};
+  const promptRoutes: Record<string, import('../../contracts/pipeline-contracts').PipelineValue> = {};
   const inputCounts = new Map<string, number>();
+  let sectionInputCount = 0;
   for (const edge of input.edges) {
     const resolved = resolveTransparentSource(edge, input.incomingByNode, input.nodeById);
     if (!resolved) continue;
     const count = inputCounts.get(edge.targetPortId) ?? 0;
     inputCounts.set(edge.targetPortId, count + 1);
-    const inputKey = count === 0 ? edge.targetPortId : `${edge.targetPortId}.${count + 1}`;
+    const inputKey = input.node.type === 'generateImage' && getGeneratePromptSectionId(edge.targetPortId)
+      ? `prompt_section_${++sectionInputCount}`
+      : count === 0 ? edge.targetPortId : `${edge.targetPortId}.${count + 1}`;
+    if (input.node.type === 'generateImage') {
+      const route = getGeneratePromptRoute(edge, input.node, input.edges);
+      if (route) promptRoutes[inputKey] = { ...route };
+    }
     const pipelineInputName = input.inputNameBySourcePort?.get(sourcePortKey(
       resolved.source.id,
       resolved.sourcePortId,
@@ -63,7 +73,7 @@ export function createRuntimeNodeDefinition(input: {
     id: input.node.id,
     handlerType: descriptor.handlerType,
     handlerVersion: '1',
-    config: descriptor.config,
+    config: { ...descriptor.config, ...(Object.keys(promptRoutes).length ? { promptRoutes } : {}) },
     inputs: bindings,
   };
 }

@@ -1,0 +1,14 @@
+# Layer over compose.production.yaml. Reuse the existing Timeweb Caddy ingress.
+name: reverie-image-production
+services:
+  caddy:
+    profiles: [standalone-edge]
+  web:
+    networks:
+      default: {}
+      edge:
+        aliases: [reverie-image-production]
+networks:
+  edge:
+    external: true
+    name: ludimogut

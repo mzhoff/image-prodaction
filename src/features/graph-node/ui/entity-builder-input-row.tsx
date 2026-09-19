@@ -1,6 +1,9 @@
 'use client';
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { getInputConnectionStatus } from '../lib/input-connection-status';
+import { InputConnectionBadge } from './input-connection-badge';
 import { PortButton } from './port-button';
 
 interface EntityBuilderInputRowProps {
@@ -22,6 +25,9 @@ export function EntityBuilderInputRow({
   onStartConnection,
   portId,
 }: EntityBuilderInputRowProps) {
+  const nodes = useProductionGraphStore((state) => state.nodes);
+  const edges = useProductionGraphStore((state) => state.edges);
+  const assets = useProductionGraphStore((state) => state.assets);
   return (
     <div
       className="setting-row subject-input-row"
@@ -40,9 +46,9 @@ export function EntityBuilderInputRow({
         onStartConnection={onStartConnection}
       />
       <span>{label}</span>
-      <span className={`input-pill ${isConnected ? 'input-pill-connected' : 'input-pill-empty'}`}>
+      {kind === 'image' ? <InputConnectionBadge status={getInputConnectionStatus(nodeId, portId, { nodes, edges, assets })} /> : <span className={`input-pill ${isConnected ? 'input-pill-connected' : 'input-pill-empty'}`}>
         {countLabel}
-      </span>
+      </span>}
     </div>
   );
 }

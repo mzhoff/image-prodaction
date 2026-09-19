@@ -1,3 +1,4 @@
+import { routeGeneratePromptText, type GeneratePromptRoute } from '@/entities/production-graph/model/generate-image-prompt-sections';
 import type { ProviderResult } from '@/modules/provider-connections';
 import { executeInternalOpenRouterChat } from '@/modules/generation';
 import { getRuntimeGenerationAttribution } from './runtime-usage-attribution';
@@ -137,7 +138,8 @@ function createAiImageGenerationHandler(generateImage: PipelineImageGenerator): 
     handlerVersion: '1',
     async execute(input) {
       const textInputs = Object.entries(input.inputs).flatMap(([inputKey, value]) => (
-        typeof value === 'string' ? [{ inputKey, text: value }] : []
+        typeof value === 'string' ? [{ inputKey, text: routeGeneratePromptText(value,
+          (input.config.promptRoutes as Record<string, GeneratePromptRoute> | undefined)?.[inputKey]) }] : []
       ));
       const imageInputs = Object.entries(input.inputs).flatMap(([inputKey, value]) => (
         isPipelineArtifactReference(value, 'image') ? [{ artifact: value, inputKey }] : []

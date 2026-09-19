@@ -267,3 +267,26 @@ test('production image handlers return typed results through injected durable se
     'export:asset-first,asset-second',
   ]);
 });
+
+test('image handler routes tagged input once, keeps new runtime sections and supports plain manual overrides', async () => {
+  const registry = createProductionPipelineHandlerRegistry({ actorUserId: 'user-1' }, {
+    generateImage: async ({ textInputs }) => {
+      assert.deepEqual(textInputs.map((entry) => entry.text), [
+        'Intro\n\n[New runtime tag]\nKeep', '[Actors]\nAlice', '[Style]\nWatercolour', '',
+      ]);
+      return { kind: 'image', assetId: 'test-output' };
+    },
+  });
+  const handler = registry.resolve('ai.image.generate', '1')!;
+  const text = 'Intro\n[Actors]\nAlice\n[New runtime tag]\nKeep';
+  await handler.execute({
+    context, nodeId: 'image', signal: new AbortController().signal,
+    config: { prompt: '', promptRoutes: {
+      prompt: { omitSectionIds: ['actors', 'style', 'missing'] },
+      actors: { sectionId: 'actors', requireSection: true },
+      style: { sectionId: 'style', label: 'Style', requireSection: false },
+      missing: { sectionId: 'missing', requireSection: true },
+    } },
+    inputs: { prompt: text, actors: text, style: 'Watercolour', missing: text },
+  });
+});

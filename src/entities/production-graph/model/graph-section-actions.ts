@@ -1,3 +1,4 @@
+import { remapGeneratePromptSources } from './sync-generate-prompt-sections';
 import { createId } from '@/shared/lib/id';
 import { cloneSnapshot, withHistory } from './graph-history';
 import {
@@ -92,6 +93,7 @@ export function createGraphSectionActions(set: StoreSet, get: StoreGet): Pick<
       }).nodes.map((node) => ({
         ...node,
         id: idMap.get(node.id) ?? createId('node'),
+        data: remapGeneratePromptSources(node.data, idMap),
         position: {
           x: node.position.x + SECTION_DUPLICATE_OFFSET,
           y: node.position.y + SECTION_DUPLICATE_OFFSET,

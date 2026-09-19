@@ -109,6 +109,7 @@ export const imageNodeDefinitions = {
     ports: [
       { id: 'prompt', label: 'Prompt', kind: 'text', side: 'input' },
       { id: 'reference', label: 'Reference', kind: 'image', side: 'input' },
+      // Compatibility ports are shown only when connected; new text sections are derived from Prompt.
       ...layerReferenceInputPorts,
       { id: 'image', label: 'Image', kind: 'image', side: 'output' },
     ],

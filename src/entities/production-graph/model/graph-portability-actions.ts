@@ -1,3 +1,4 @@
+import { remapGeneratePromptSources } from './sync-generate-prompt-sections';
 import {
   createPipelineTemplateExport,
   createProjectSnapshotExport,
@@ -172,7 +173,7 @@ function remapPipelineNodeData(
   subjectIdMap: Map<string, string>,
   locationIdMap: Map<string, string>,
 ): ProductionNodeData {
-  const next = { ...data } as Record<string, unknown>;
+  const next = { ...remapGeneratePromptSources(data, nodeIdMap) } as Record<string, unknown>;
 
   if (typeof next.sourceNodeId === 'string') {
     next.sourceNodeId = nodeIdMap.get(next.sourceNodeId);

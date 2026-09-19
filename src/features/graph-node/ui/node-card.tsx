@@ -118,7 +118,7 @@ export const NodeCard = memo(function NodeCard({
   const visiblePorts = ports.filter((port) => {
     if (node.type === 'generateVideo') return false;
     if (node.type === 'speechToText' || node.type === 'audioConvert' || node.type === 'timelineHandoff' || node.type === 'reverieStories') return false;
-    if (node.type === 'generateImage' && port.side === 'input') return false;
+    if (node.type === 'generateImage') return false;
     if (node.type === 'imageToText' && port.id === 'result') return false;
     if (node.type === 'textPrompt') return false;
     if (node.type === 'textConcat' || node.type === 'textGeneration' || node.type === 'textToSpeech' || node.type === 'textFormatter' || node.type === 'textSplitter' || node.type === 'pipelineInput' || node.type === 'pipelineOutput' || node.type === 'structuredOutput' || node.type === 'iterator' || node.type === 'subjectBuilder' || node.type === 'locationBuilder' || node.type === 'telegramPublication') return false;

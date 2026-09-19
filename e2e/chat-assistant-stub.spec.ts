@@ -22,6 +22,14 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   test.skip(!stubGateEnabled, 'Set E2E_CHAT_STUB=true only with the local OpenRouter stub.');
   const initialStubStats = await readStubStats(request);
   await registerAndVerify(page);
+  const spaces = await page.request.get('/api/workspaces');
+  expect(spaces.ok()).toBe(true);
+  const { workspaces } = await spaces.json() as { workspaces: Array<{ id: string }> };
+  expect(workspaces.length).toBeGreaterThan(0);
+  const connected = await page.request.post(`/api/workspaces/${workspaces[0].id}/providers/openrouter`, {
+    data: { apiKey: process.env.FAKE_AI_PROVIDER_CREDENTIAL ?? 'fake-valid-credential' },
+  });
+  expect(connected.ok()).toBe(true);
 
   await expect(page.getByRole('button', { name: 'Create New' }).first()).toBeEnabled();
   await page.getByRole('button', { name: 'Create New' }).first().click();

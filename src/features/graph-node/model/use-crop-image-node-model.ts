@@ -7,30 +7,17 @@ import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-gr
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { getFirstIncomingVideoAsset } from '@/entities/production-graph/model/graph-video-io';
 import { getVideoDisplayDimensions, resolveVideoCropPixels } from '@/shared/media/video-crop';
-import type { DarkSelectOption } from '@/shared/ui/dark-select';
+import { cropAspectRatioSelectOptions, getSourceAspectRatioLabel, getCropForSourceChange } from './crop-source-geometry';
+export { cropAspectRatioSelectOptions } from './crop-source-geometry';
 import {
   aspectRatioValue,
   cropFromPixelSize,
   cropPixelSize,
   fitCropToAspect,
-  fitCropToOutputAspectPreservingOrigin,
   fullCrop,
 } from '../lib/crop-geometry';
 import { cropImageBlob } from '../lib/crop-image';
 import { useCropVideoProcessing } from './use-crop-video-processing';
-
-export const cropAspectRatioSelectOptions: DarkSelectOption[] = [
-  { value: 'Custom', label: 'Custom' },
-  { value: '1:1', label: '1:1' },
-  { value: '16:9', label: '16:9' },
-  { value: '9:16', label: '9:16' },
-  { value: '4:3', label: '4:3' },
-  { value: '3:4', label: '3:4' },
-  { value: '4:5', label: '4:5' },
-  { value: '5:4', label: '5:4' },
-  { value: '3:2', label: '3:2' },
-  { value: '2:3', label: '2:3' },
-];
 
 const CROP_STATE_VERSION = 3;
 
@@ -293,39 +280,4 @@ export function useCropImageNodeModel(node: ProductionNode) {
     resultAsset,
     sourceAsset,
   };
-}
-
-function getSourceAspectRatioLabel(width: number, height: number) {
-  const ratio = width / height;
-  const match = cropAspectRatioSelectOptions.find((option) => {
-    if (option.value === 'Custom') return false;
-    const [optionWidth, optionHeight] = option.value.split(':').map(Number);
-    return Math.abs(optionWidth / optionHeight - ratio) < 0.01;
-  });
-
-  return match?.value ?? 'Custom';
-}
-
-function getCropForSourceChange({
-  crop,
-  nextSourceAspectRatio,
-  previousSourceAspectRatio,
-  selectedAspectRatio,
-}: {
-  crop: CropRect;
-  nextSourceAspectRatio?: number;
-  previousSourceAspectRatio?: number;
-  selectedAspectRatio?: string;
-}) {
-  if (!nextSourceAspectRatio) return crop;
-
-  const fixedOutputAspectRatio = selectedAspectRatio ? aspectRatioValue(selectedAspectRatio) : null;
-  const customOutputAspectRatio = previousSourceAspectRatio && crop.height > 0
-    ? (crop.width * previousSourceAspectRatio) / crop.height
-    : null;
-  const outputAspectRatio = fixedOutputAspectRatio ?? customOutputAspectRatio;
-
-  return outputAspectRatio
-    ? fitCropToOutputAspectPreservingOrigin(crop, nextSourceAspectRatio, outputAspectRatio)
-    : crop;
 }

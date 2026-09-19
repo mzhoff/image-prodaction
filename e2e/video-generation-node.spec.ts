@@ -115,7 +115,7 @@ test('video modes expose only relevant ports, submit one durable job, resume wit
     await expect(node.getByRole('spinbutton', { name: 'Video seed' })).toHaveCount(0);
     await expect(row('Duration')).toContainText('3 s');
     for (const port of ['first-frame', 'last-frame']) await expect(node.locator(`button.node-port[data-port-id="${port}"]`)).toHaveClass(/node-port-connected/);
-    const readyImageBadge = node.locator('.input-pill-ready.input-pill-data-image').first();
+    const readyImageBadge = node.locator('.input-pill-ready.input-pill-reference').first();
     await expect(readyImageBadge).toBeVisible();
     await expect(readyImageBadge).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await node.getByRole('button', { name: 'Generate video', exact: true }).click();
@@ -148,7 +148,7 @@ test('video modes expose only relevant ports, submit one durable job, resume wit
     await page.getByRole('button', { name: 'Zoom to fit', exact: true }).click();
     const frameRow = node.locator('.video-generation-input').first();
     const inputBox = (await frameRow.locator('.node-port').boundingBox())!;
-    const labelBox = (await frameRow.locator(':scope > span:not(.input-pill)').boundingBox())!;
+    const labelBox = (await frameRow.locator(':scope > span:not(.input-pill):not(.input-source-badges)').boundingBox())!;
     expect(inputBox.x + inputBox.width).toBeLessThan(labelBox.x);
     const nodeBox = (await node.boundingBox())!, playerBox = (await player.boundingBox())!;
     expect(Math.abs(inputBox.x + inputBox.width / 2 - nodeBox.x)).toBeLessThanOrEqual(2);

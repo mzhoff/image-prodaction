@@ -7,6 +7,7 @@ import { getEdgeDataKind, getEdgeHasData } from '../lib/edge-kind';
 import type { ConnectionDraft } from '../model/use-connection-draft';
 
 interface CanvasEdgesProps {
+  cutEdgeIds?: Set<string>;
   collapsedGenerateComposingNodeIds: Set<string>;
   connectionDraft: ConnectionDraft | null;
   draftPathRef?: RefObject<SVGPathElement | null>;
@@ -17,6 +18,7 @@ interface CanvasEdgesProps {
 }
 
 export function CanvasEdges({
+  cutEdgeIds,
   collapsedGenerateComposingNodeIds,
   connectionDraft,
   draftPathRef,
@@ -43,7 +45,7 @@ export function CanvasEdges({
             strokeDasharray={edgeHasData ? undefined : '8 7'}
             strokeLinecap="round"
             strokeWidth={3}
-            className={`edge-path ${getEdgeKindClass(edgeDataKind)} ${edgeHasData ? 'edge-path-has-data' : 'edge-path-empty'}`}
+            className={`edge-path ${cutEdgeIds?.has(edge.id) ? 'edge-path-cut-pending' : ''} ${getEdgeKindClass(edgeDataKind)} ${edgeHasData ? 'edge-path-has-data' : 'edge-path-empty'}`}
           />
         );
       })}
