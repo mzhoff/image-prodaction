@@ -69,6 +69,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     expect(fullImage.x + fullImage.width / 2).toBeCloseTo(800, 0);
     // No letterboxing inside the interactive SVG: pointer coordinates match its square.
     const graph = sidebar.getByRole('application', { name: 'RGB tone curve' });
+    await expect(graph.locator('circle')).toHaveCount(2);
     const graphBox = (await graph.boundingBox())!;
     expect(graphBox.width).toBeCloseTo(graphBox.height, 0);
     const initialPoints = await graph.locator('circle').count();

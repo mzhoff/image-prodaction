@@ -28,12 +28,14 @@ import { ChatLauncherHostProvider } from '@/features/chat-assistant/model/chat-l
 import { useAssistantShellResize } from '../model/use-assistant-shell-resize';
 import { FeedbackPanel } from './feedback-panel';
 import { AssistantLauncherSettings } from '@/features/assistant-pet/ui/assistant-launcher-settings';
+import type { AssistantNotice } from '@/features/assistant-pet/model/assistant-pet-contract';
 
 interface AssistantShellProps {
   open: boolean;
   contextLabel: string;
   documentId?: string;
   documentRevision?: string;
+  notice?: AssistantNotice | null;
   onOpen?: () => void;
   onPipelineChanged?: () => void;
   onClose: () => void;
@@ -58,6 +60,7 @@ export function AssistantShell({
   contextLabel,
   documentId,
   documentRevision,
+  notice,
   onClose,
   onFocusNode,
   onOpen,
@@ -130,6 +133,7 @@ export function AssistantShell({
         'assistant-shell',
         open ? 'assistant-shell-open' : '',
         expanded ? 'assistant-shell-expanded' : 'assistant-shell-compact',
+        notice ? 'assistant-shell-with-notice' : '',
       ].filter(Boolean).join(' ')}
       data-canvas-wheel-block="true"
       data-assistant-drop-active={attachmentDropZone.isFileDragActive ? 'true' : 'false'}
@@ -231,6 +235,13 @@ export function AssistantShell({
           </button>
         </div>
       </header>
+
+      {notice ? (
+        <div className="assistant-shell-notice" role={notice.status === 'error' ? 'alert' : 'status'}>
+          <strong>{notice.title}</strong>
+          {notice.subtitle ? <small>{notice.subtitle}</small> : null}
+        </div>
+      ) : null}
 
       <div
         aria-label="Assistant"

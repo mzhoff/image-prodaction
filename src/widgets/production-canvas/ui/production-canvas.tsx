@@ -182,6 +182,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         />
         <AssistantShell
           open={assistantOpen}
+          notice={assistantOpen ? model.toastMessage : null}
           contextLabel={projectTitle}
           documentId={projectId}
           documentRevision={model.documentRevision === undefined
