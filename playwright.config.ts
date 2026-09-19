@@ -1,6 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { randomBytes } from 'node:crypto';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? process.env.E2E_BASE_URL ?? 'http://localhost:3004';
+const origin = new URL(baseURL);
+const localHeaders = origin.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(origin.hostname)
+  ? { 'x-forwarded-for': `10.${[...randomBytes(3)].join('.')}` }
+  : undefined;
 
 export default defineConfig({
   testDir: './e2e',
@@ -22,6 +27,7 @@ export default defineConfig({
   use: {
     ...devices['Desktop Chrome'],
     baseURL,
+    extraHTTPHeaders: localHeaders,
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     screenshot: 'only-on-failure',
