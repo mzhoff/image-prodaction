@@ -21,7 +21,7 @@ test('Library projects and one passport across form and Canvas, with access and 
   const folderUrl = `/api/workspaces/${owner.workspaceId}/folders`;
   const subjectUrl = `/api/workspaces/${owner.workspaceId}/subjects`;
   await page.goto('/?scope=projects');
-  await page.getByRole('button', { name: 'Новый проект', exact: true }).click();
+  await page.getByRole('button', { name: 'Create New', exact: true }).click();
   await page.getByRole('textbox', { name: 'Название проекта' }).fill('Content Hub QA');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.locator('.studio-folder-card')).toContainText('Content Hub QA');

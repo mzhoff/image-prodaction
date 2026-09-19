@@ -522,3 +522,21 @@ function edge(sourceNodeId: string, sourcePortId: string, targetNodeId: string, 
     targetPortId,
   };
 }
+
+test('tagged image prompts compile only connected section routes', async () => {
+  const { syncGeneratePromptSections } = await import('@/entities/production-graph/model/sync-generate-prompt-sections');
+  const project = createTextProject();
+  project.nodes = [
+    node('input-node', 'textPrompt', 100, { title: 'Brief', text: 'Intro\n[Actors]\nAlice\n[Custom tag]\nBlue' }),
+    node('image-node', 'generateImage', 500, { title: 'Generate Image', model: 'model', prompt: '', aspectRatio: '1:1', size: '1K' }),
+  ];
+  project.edges = [edge('input-node', 'text', 'image-node', 'prompt')];
+  Object.assign(project, syncGeneratePromptSections(project.nodes, project.edges));
+  const compiled = compileStudioSection(project, 'section-main');
+  const image = compiled.compiledPlan.definition.nodes.find((item) => item.id === 'image-node')!;
+  assert.equal(Object.keys(image.inputs).length, 2);
+  assert.deepEqual(image.config.promptRoutes, {
+    prompt_section_1: { sectionId: 'actors', requireSection: true, label: 'Actors' },
+    prompt_section_2: { sectionId: 'custom tag', requireSection: true, label: 'Custom tag' },
+  });
+});

@@ -1,5 +1,7 @@
 'use client';
 
+import { syncGeneratePromptSections } from './sync-generate-prompt-sections';
+import type { StoreSet } from './store-action-types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createGraphConnectionActions } from './graph-connection-actions';
@@ -26,7 +28,16 @@ export { MAX_GENERATE_IMAGE_REFERENCES } from './connection-rules';
 
 export const useProductionGraphStore = create<ProductionGraphState>()(
   persist(
-    (set, get) => ({
+    (rawSet, get) => {
+      const set: StoreSet = (partial) => rawSet((state) => {
+        const patch = typeof partial === 'function' ? partial(state) : partial;
+        const graphChanged = patch.edges && patch.edges !== state.edges;
+        const dataChanged = patch.nodes && (patch.nodes.length !== state.nodes.length
+          || patch.nodes.some((node, index) => node.id !== state.nodes[index]?.id || node.data !== state.nodes[index]?.data));
+        if (!graphChanged && !dataChanged) return patch;
+        return { ...patch, ...syncGeneratePromptSections(patch.nodes ?? state.nodes, patch.edges ?? state.edges) };
+      });
+      return ({
       ...initialProject,
       historyPast: [],
       historyFuture: [],
@@ -43,7 +54,8 @@ export const useProductionGraphStore = create<ProductionGraphState>()(
       ...createGraphHistoryActions(set, get),
       ...createGraphUiStateActions(set),
       ...createGraphPortabilityActions(set, get),
-    }),
+      });
+    },
     {
       name: GRAPH_PERSIST_STORAGE_KEY,
       storage: createGraphStateStorage(),

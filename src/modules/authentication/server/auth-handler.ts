@@ -7,7 +7,7 @@ type AuthHandler = (request: Request) => Promise<Response>;
 export async function handleAuthRequest(request: Request) {
   const policyResponse = enforceAuthAccessPolicy(
     request,
-    readAuthAccessPolicyConfig().allowSignUp,
+    readAuthAccessPolicyConfig().allowSignUp && !process.env.REVERIE_IDENTITY_ISSUER,
   );
   if (policyResponse) return policyResponse;
   return handleAuthRequestSafely(request, async (nextRequest) => (await getAuth()).handler(nextRequest));

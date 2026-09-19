@@ -61,8 +61,8 @@ export function ProviderConnectionCard({ model }: { model: ProviderSettingsModel
         <div className="settings-provider-readonly">
           <ShieldCheck size={17} />
           <div>
-            <strong>Режим просмотра</strong>
-            <span>Подключать, заменять и отключать key могут только Owner и Admin.</span>
+            <strong>{connection?.managedByPlatform ? 'AI-бюджет REVERIE' : 'Режим просмотра'}</strong>
+            <span>{connection?.managedByPlatform ? 'Подключение настроено автоматически. Для пополнения обратитесь к оператору.' : 'Подключать, заменять и отключать key могут только Owner и Admin.'}</span>
           </div>
         </div>
       ) : null}

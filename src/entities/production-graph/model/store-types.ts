@@ -39,6 +39,7 @@ export interface ProductionGraphState extends GraphProject {
   applySubjectToNode: (nodeId: string, subjectId: string) => { ok: true } | { ok: false; reason: string };
   connect: (sourceNodeId: string, sourcePortId: string, targetNodeId: string, targetPortId: string, options?: ConnectOptions) => ConnectResult;
   deleteSelected: () => void;
+  deleteEdges: (edgeIds: string[]) => void;
   deleteEdge: (edgeId: string, options?: DeleteEdgeOptions) => void;
   moveNode: (nodeId: string, position: GraphPoint) => void;
   moveSelectedNodesBy: (delta: GraphPoint) => void;

@@ -6,5 +6,5 @@ export const dynamic = 'force-dynamic';
 
 export default function RegisterPage() {
   if (!readAuthAccessPolicyConfig().allowSignUp) redirect('/login');
-  return <AuthPage mode="register" />;
+  return <AuthPage identityEmailEnabled={process.env.REVERIE_IDENTITY_EMAIL_ENABLED !== 'false'} identityEnabled={Boolean(process.env.REVERIE_IDENTITY_ISSUER)} mode="register" />;
 }

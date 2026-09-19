@@ -1,18 +1,12 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { getTextPromptVariablePortIndex, getPortById } from '@/entities/production-graph/model/node-definitions';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
-import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
-import { getActiveAssetScopeSnapshot } from '@/entities/production-graph/lib/remote-asset';
-import { loadVideoModels } from '@/shared/api/video-model-catalog';
 import type { NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useContextMenu } from '@/shared/ui/use-context-menu';
-import { createConnectMenuActions, getConnectCreateOptions, getConnectCreateSourceOptions } from '../lib/connect-create-menu';
-import { preparePipelineConnectCreate } from '../lib/prepare-pipeline-connect-create';
-import { getVideoConnectCreateMode, prepareVideoConnectCreate } from '../lib/prepare-video-connect-create';
+import { useConnectionCreateMenu } from './use-connection-create-menu';
 import { useCanvasClipboard } from './use-canvas-clipboard';
 import { useCanvasLibraryImport } from './use-canvas-library-import';
 import { useCanvasImageImport } from './use-canvas-image-import';
@@ -144,66 +138,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
 
   const createNode = useCanvasNodeFactory(graph);
 
-  const openConnectionCreateMenu = useCallback((drop: ConnectionDropOnEmpty) => {
-    const source = drop.sourceNodeId ? graph.nodesById.get(drop.sourceNodeId) : undefined;
-    const target = drop.targetNodeId ? graph.nodesById.get(drop.targetNodeId) : undefined;
-    const sourcePort = source && drop.sourcePortId ? getPortById(source, drop.sourcePortId) : undefined;
-    const targetPort = target && drop.targetPortId ? getPortById(target, drop.targetPortId) : undefined;
-    const options = drop.direction === 'from-output'
-      ? sourcePort ? getConnectCreateOptions(sourcePort.kind) : []
-      : targetPort ? getConnectCreateSourceOptions(targetPort.kind, drop.targetPortId) : [];
-    if (options.length === 0) {
-      setPendingConnectionMenu(null);
-      return;
-    }
-
-    setPendingConnectionMenu(drop);
-    contextMenu.openContextMenuAt(drop.screenPoint.x, drop.screenPoint.y, createConnectMenuActions(options, async (option) => {
-      let videoPreparation: ReturnType<typeof prepareVideoConnectCreate> | undefined;
-      if (drop.direction === 'from-output' && option.type === 'generateVideo' && drop.sourceNodeId && drop.sourcePortId) {
-        const before = useProductionGraphStore.getState();
-        const scope = getActiveAssetScopeSnapshot();
-        const mode = getVideoConnectCreateMode(drop.sourceNodeId, drop.sourcePortId, before);
-        if (mode) {
-          try {
-            showToast('Подбираем видеомодель для подключения…');
-            videoPreparation = prepareVideoConnectCreate(mode, await loadVideoModels());
-            const latest = useProductionGraphStore.getState();
-            if (getActiveAssetScopeSnapshot() !== scope || getVideoConnectCreateMode(drop.sourceNodeId, drop.sourcePortId, latest) !== mode) {
-              throw new Error('Источник изменился. Протяните подключение ещё раз.');
-            }
-          } catch (error) {
-            showToast(error instanceof Error ? error.message : 'Не удалось подготовить подключение к видео.');
-            setPendingConnectionMenu(null);
-            return;
-          }
-        }
-      }
-      const nodeId = createNode(option.type, drop.worldPoint);
-      if (videoPreparation) graph.updateNodeDataSilent(nodeId, videoPreparation.data);
-      if (drop.direction === 'from-output' && option.type === 'textPrompt' && option.targetPortId) {
-        const variableIndex = getTextPromptVariablePortIndex(option.targetPortId);
-        graph.updateNodeDataSilent(nodeId, {
-          variables: [{
-            id: option.targetPortId,
-            alias: `Variable ${variableIndex >= 0 ? variableIndex + 1 : 1}`,
-          }],
-        });
-      }
-      const { sourcePortId, targetPortId } = preparePipelineConnectCreate(nodeId,
-        videoPreparation ? { ...option, targetPortId: videoPreparation.targetPortId } : option);
-      const result = drop.direction === 'from-output'
-        ? drop.sourceNodeId && drop.sourcePortId && targetPortId
-          ? graph.connect(drop.sourceNodeId, drop.sourcePortId, nodeId, targetPortId)
-          : { ok: false as const, reason: 'Could not create a downstream connection.' }
-        : drop.targetNodeId && drop.targetPortId && sourcePortId
-          ? graph.connect(nodeId, sourcePortId, drop.targetNodeId, drop.targetPortId)
-          : { ok: false as const, reason: 'Could not create an upstream connection.' };
-      if (!result.ok) showToast(result.reason);
-      else if (videoPreparation) showToast('Видео подключено. Добавьте задание и проверьте настройки перед генерацией.');
-      setPendingConnectionMenu(null);
-    }));
-  }, [contextMenu, createNode, graph, showToast]);
+  const openConnectionCreateMenu = useConnectionCreateMenu({ contextMenu, createNode, graph, showToast, setPendingConnectionMenu });
 
   const { clearConnectionDraft, connectionDraft, draftPathRef, startConnection } = useConnectionDraft({
     connect: graph.connect,

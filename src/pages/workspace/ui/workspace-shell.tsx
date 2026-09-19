@@ -129,7 +129,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                     </div>
                   </div>
                   <Link
-                    href="/settings/account"
+                    href="/account"
                     role="menuitem"
                     onClick={() => setProfileMenuOpen(false)}
                   >

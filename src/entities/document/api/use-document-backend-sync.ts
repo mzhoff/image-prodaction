@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDocumentMetadata } from './use-document-metadata';
 import { activateAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 import { isDisposableUntouchedDocument } from '@/entities/document/model/document-lifecycle';
@@ -12,18 +13,16 @@ import {
   discardEmptyDocumentProject,
   fetchDocumentProject,
   saveDocumentProjectSnapshot,
-  updateDocumentProjectMetadata,
 } from './document-api';
 import {
   clearDocumentRecoverySnapshot,
+  recoverDocumentAfterLoadFailure,
   loadDocumentRecoverySnapshot,
   saveDocumentRecoverySnapshot,
 } from './document-recovery';
-import { classifyDocumentSyncFailure, createDebouncedAction } from './document-sync';
+import { classifyDocumentSyncFailure, createDebouncedAction, DOCUMENT_AUTOSAVE_DELAY_MS } from './document-sync';
 import type { DocumentSyncState } from './document-sync';
 import { retainDocumentExitSave, waitForDocumentExitSave } from './document-exit-tasks';
-
-const AUTOSAVE_DELAY_MS = 800;
 
 interface UseDocumentBackendSyncOptions {
   exportSnapshot: () => ProjectExport;
@@ -42,9 +41,6 @@ export function useDocumentBackendSync({
   resetProject,
   subscribeToProjectChanges,
 }: UseDocumentBackendSyncOptions) {
-  const [documentName, setDocumentName] = useState<string>();
-  const [favorite, setFavorite] = useState(false);
-  const [documentStatus, setDocumentStatus] = useState<'active' | 'trash'>('active');
   const [thumbnailMode, setThumbnailMode] = useState<'auto' | 'manual'>('auto');
   const [thumbnailAvailable, setThumbnailAvailable] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>();
@@ -53,6 +49,8 @@ export function useDocumentBackendSync({
   const [saveSequence, setSaveSequence] = useState(0);
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
   const discardCandidateRef = useRef<string | null>(null);
+  const { documentName, favorite, documentStatus, setDocumentName, setFavorite, setDocumentStatus,
+    renameDocument, setDocumentFavorite, moveDocumentToTrash } = useDocumentMetadata(projectId, discardCandidateRef);
   const loadedProjectIdRef = useRef<string | undefined>(undefined);
   const exitRef = useRef<(() => Promise<number>) | null>(null);
   const prepareExit = useCallback(() => exitRef.current?.() ?? Promise.reject(new Error('Document is not ready.')), []);
@@ -150,7 +148,7 @@ export function useDocumentBackendSync({
       flight = performSave();
       return flight;
     };
-    const debouncedSave = createDebouncedAction(() => { void save(); }, AUTOSAVE_DELAY_MS);
+    const debouncedSave = createDebouncedAction(() => { void save(); }, DOCUMENT_AUTOSAVE_DELAY_MS);
     const flushOnExit = () => {
       if (exitFlight) return exitFlight;
       if (!loaded) return Promise.reject(new Error('Document is not ready.'));
@@ -253,18 +251,7 @@ export function useDocumentBackendSync({
         }
       } catch {
         if (!active || controller.signal.aborted) return;
-        const recoverySnapshot = loadDocumentRecoverySnapshot(documentId);
-        if (recoverySnapshot) {
-          try {
-            importSnapshot(recoverySnapshot, 'projectSnapshot');
-          } catch {
-            // Keep the graph store's already rehydrated fallback if this recovery snapshot is invalid.
-          }
-        }
-        setSyncState({
-          phase: 'recovery',
-          message: 'Сервер недоступен. Открыта локальная аварийная копия; автосохранение повторится после следующего изменения.',
-        });
+        setSyncState(recoverDocumentAfterLoadFailure(documentId, importSnapshot));
       }
 
       if (!active) return;
@@ -291,30 +278,16 @@ export function useDocumentBackendSync({
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
     };
-  }, [exportSnapshot, importSnapshot, projectId, reloadSequence, resetProject, subscribeToProjectChanges]);
-
-  const updateMetadata = useCallback(async (metadata: {
-    favorite?: boolean;
-    name?: string;
-    status?: 'active' | 'trash';
-  }) => {
-    if (!projectId) throw new Error('Document is not connected to the backend.');
-    discardCandidateRef.current = null;
-    const project = await updateDocumentProjectMetadata(projectId, metadata);
-    setDocumentName(project.name);
-    setFavorite(project.favorite);
-    setDocumentStatus(project.status);
-    return project;
-  }, [projectId]);
+  }, [exportSnapshot, importSnapshot, projectId, reloadSequence, resetProject, setDocumentName, setDocumentStatus, setFavorite, subscribeToProjectChanges]);
 
   return {
     documentName,
     prepareExit,
     documentStatus,
     favorite,
-    renameDocument: (name: string) => updateMetadata({ name }),
-    setDocumentFavorite: (nextFavorite: boolean) => updateMetadata({ favorite: nextFavorite }),
-    moveDocumentToTrash: () => updateMetadata({ status: 'trash' }),
+    renameDocument,
+    setDocumentFavorite,
+    moveDocumentToTrash,
     reloadFromServer: () => setReloadSequence((current) => current + 1),
     saveSequence,
     revision,

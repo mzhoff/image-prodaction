@@ -1,3 +1,4 @@
+import type { DocumentSyncState } from './document-sync';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
 
 const RECOVERY_KEY_PREFIX = 'reverie-document-recovery:v1:';
@@ -30,4 +31,22 @@ export function clearDocumentRecoverySnapshot(projectId: string) {
 
 function getRecoveryKey(projectId: string) {
   return `${RECOVERY_KEY_PREFIX}${projectId}`;
+}
+
+export function recoverDocumentAfterLoadFailure(
+  documentId: string,
+  importSnapshot: (snapshot: unknown, expectedKind: 'projectSnapshot') => unknown,
+): DocumentSyncState {
+  const recoverySnapshot = loadDocumentRecoverySnapshot(documentId);
+  if (recoverySnapshot) {
+    try {
+      importSnapshot(recoverySnapshot, 'projectSnapshot');
+    } catch {
+      // Keep the graph store's already rehydrated fallback if this recovery snapshot is invalid.
+    }
+  }
+  return {
+    phase: 'recovery',
+    message: 'Сервер недоступен. Открыта локальная аварийная копия; автосохранение повторится после следующего изменения.',
+  };
 }

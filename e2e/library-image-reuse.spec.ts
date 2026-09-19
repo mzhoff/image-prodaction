@@ -214,7 +214,7 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
     await focusCanvas(page);
     await page.evaluate((text) => navigator.clipboard.writeText(text), link);
     await page.keyboard.press('ControlOrMeta+v');
-    await expect(page.locator('.canvas-toast')).toContainText('Изображение недоступно');
+    await expect(page.locator('.assistant-notice')).toContainText('Изображение недоступно');
     await expect(imports()).toHaveCount(1);
     await page.unroute(metadataPattern);
 

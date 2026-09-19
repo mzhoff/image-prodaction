@@ -148,6 +148,8 @@ export interface GenerateImageNodeData extends BaseNodeData, ImageGenerationOpti
   model: string;
   aspectRatio: string;
   size: string;
+  promptSectionSources?: Array<{ id: string; sourceNodeId: string; sourcePortId: string; excludedSectionIds?: string[] }>;
+  promptSections?: Array<{ id: string; label: string }>;
   activeResultIndex?: number;
   resultAssetId?: string;
   resultAssetIds?: string[];

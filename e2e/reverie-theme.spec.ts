@@ -122,7 +122,7 @@ test('Shared Reverie theme: persistence, forms, menus, canvas and content isolat
   await page.screenshot({ path: info.outputPath('reverie-canvas-theme-menu.png') });
   await page.keyboard.press('Escape');
   await page.screenshot({ path: info.outputPath('reverie-canvas-dark.png') });
-  await page.getByRole('button', { name: 'Open assistant', exact: true }).click();
+  await page.getByRole('button', { name: /Открыть ассистента/ }).click();
   await expect(page.locator('.image-production-chat')).toBeVisible();
   await expect(page.locator('.assistant-shell')).toHaveCSS('opacity', '1');
   await expect(page.locator('.assistant-shell')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');

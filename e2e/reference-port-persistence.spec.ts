@@ -47,9 +47,9 @@ test('three general references survive editing, section collapse, autosave and t
     await page.goto(`/projects/${document.id}`);
     for (let cycle = 1; cycle <= 2; cycle++) {
       await expect(reference).toHaveClass(/node-port-connected/);
-      const toggle = card.getByRole('button', { name: 'Reference', exact: true });
+      const toggle = card.getByRole('button', { name: 'Prompt', exact: true });
       if (!(await styleRow.isVisible())) await toggle.click();
-      await expect(styleRow.locator('.input-pill')).toHaveText('1 text');
+      await expect(styleRow.locator('.input-pill')).toHaveText('Text · 1');
       await toggle.click();
       await expect(reference).toHaveClass(/node-port-connected/);
       await toggle.click();

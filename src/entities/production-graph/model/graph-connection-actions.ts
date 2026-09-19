@@ -1,3 +1,4 @@
+import { removeGraphEdges } from './graph-remove-edge-state';
 import { validateGenerateImageReferenceLimit } from './connection-rules';
 import {
   canConnectPorts,
@@ -27,7 +28,7 @@ import type { StoreGet, StoreSet } from './store-action-types';
 
 export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick<
   ProductionGraphState,
-  'compactDynamicInputSlots' | 'compactTextConcatInputs' | 'connect' | 'deleteEdge' | 'reorderTelegramMediaInputs'
+  'compactDynamicInputSlots' | 'compactTextConcatInputs' | 'connect' | 'deleteEdge' | 'deleteEdges' | 'reorderTelegramMediaInputs'
 > {
   return {
     compactDynamicInputSlots: (nodeId) => {
@@ -151,37 +152,14 @@ export function createGraphConnectionActions(set: StoreSet, get: StoreGet): Pick
     },
     deleteEdge: (edgeId, options) => {
       set((state) => {
-        const edge = state.edges.find((item) => item.id === edgeId);
-        if (!edge) return state;
-        const preserveDynamicInputSlots = Boolean(options?.preserveDynamicInputSlots || options?.preserveTextConcatSlots);
-        const removedEdges = state.edges.filter((item) => item.id !== edgeId);
-
-        if (preserveDynamicInputSlots) {
-          return {
-            ...withHistory(state),
-            edges: removedEdges,
-            nodes: invalidateExportImageResult(
-              invalidateCompositionResult(state.nodes, edge.targetNodeId, {
-                clearLayerContent: !options?.preserveCompositionLayerContent,
-                targetPortId: edge.targetPortId,
-              }),
-              edge.targetNodeId,
-            ),
-          };
-        }
-
-        const nextState = compactDynamicInputNodeState(state.nodes, removedEdges, edge.targetNodeId);
-        return {
-          ...withHistory(state),
-          edges: nextState.edges,
-          nodes: invalidateExportImageResult(
-            invalidateCompositionResult(nextState.nodes, edge.targetNodeId, {
-              clearLayerContent: !options?.preserveCompositionLayerContent,
-              targetPortId: edge.targetPortId,
-            }),
-            edge.targetNodeId,
-          ),
-        };
+        if (!state.edges.some((edge) => edge.id === edgeId)) return state;
+        return { ...withHistory(state), ...removeGraphEdges(state.nodes, state.edges, [edgeId], options) };
+      });
+    },
+    deleteEdges: (edgeIds) => {
+      set((state) => {
+        if (!state.edges.some((edge) => edgeIds.includes(edge.id))) return state;
+        return { ...withHistory(state), ...removeGraphEdges(state.nodes, state.edges, edgeIds) };
       });
     },
   };

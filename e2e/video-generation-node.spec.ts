@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
@@ -7,6 +6,7 @@ import { createEmptyProjectUiState, createProjectExport } from '../src/entities/
 import type { GenerateVideoNodeData } from '../src/entities/production-graph/model/types';
 import type { VideoModelCapabilities } from '../src/shared/media/video-generation-contracts';
 import { createAudioQaOwner } from './audio-runtime-fixtures';
+import { runQaFfmpeg } from './video-import-http-fixtures';
 
 test.use({ channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL, trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1440, height: 1250 } });
 
@@ -21,9 +21,9 @@ test('video modes expose only relevant ports, submit one durable job, resume wit
   expect(liveModels.some((item) => item.key === 'google/veo-3.1-lite')).toBe(true);
   expect((await owner.http.request('/api/ai/generate-video', { json: {} })).status).toBe(400);
   expect((await fetch(`${origin.origin}/api/ai/generate-video`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status).toBe(401);
-  const videoBytes = execFileSync('docker', ['exec', 'image-prodaction-web-1', 'ffmpeg', '-nostdin', '-v', 'error',
+  const videoBytes = runQaFfmpeg(['-nostdin', '-v', 'error',
     '-f', 'lavfi', '-i', 'color=c=blue:s=160x120:r=10:d=1', '-threads', '1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-    '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1'], { timeout: 15_000, maxBuffer: 1024 * 1024 });
+    '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1']);
   const sourceIds = [randomUUID(), randomUUID()];
   const previousId = randomUUID(), resultId = randomUUID(), jobId = randomUUID();
   const sources = sourceIds.map((assetId, i) => {
@@ -115,7 +115,7 @@ test('video modes expose only relevant ports, submit one durable job, resume wit
     await expect(node.getByRole('spinbutton', { name: 'Video seed' })).toHaveCount(0);
     await expect(row('Duration')).toContainText('3 s');
     for (const port of ['first-frame', 'last-frame']) await expect(node.locator(`button.node-port[data-port-id="${port}"]`)).toHaveClass(/node-port-connected/);
-    const readyImageBadge = node.locator('.input-pill-ready.input-pill-data-image').first();
+    const readyImageBadge = node.locator('.input-pill-ready.input-pill-reference').first();
     await expect(readyImageBadge).toBeVisible();
     await expect(readyImageBadge).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await node.getByRole('button', { name: 'Generate video', exact: true }).click();
@@ -148,7 +148,7 @@ test('video modes expose only relevant ports, submit one durable job, resume wit
     await page.getByRole('button', { name: 'Zoom to fit', exact: true }).click();
     const frameRow = node.locator('.video-generation-input').first();
     const inputBox = (await frameRow.locator('.node-port').boundingBox())!;
-    const labelBox = (await frameRow.locator(':scope > span:not(.input-pill)').boundingBox())!;
+    const labelBox = (await frameRow.locator(':scope > span:not(.input-pill):not(.input-source-badges)').boundingBox())!;
     expect(inputBox.x + inputBox.width).toBeLessThan(labelBox.x);
     const nodeBox = (await node.boundingBox())!, playerBox = (await player.boundingBox())!;
     expect(Math.abs(inputBox.x + inputBox.width / 2 - nodeBox.x)).toBeLessThanOrEqual(2);

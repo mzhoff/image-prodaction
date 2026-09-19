@@ -22,12 +22,30 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   test.skip(!stubGateEnabled, 'Set E2E_CHAT_STUB=true only with the local OpenRouter stub.');
   const initialStubStats = await readStubStats(request);
   await registerAndVerify(page);
+  const spaces = await page.request.get('/api/workspaces');
+  expect(spaces.ok()).toBe(true);
+  const { workspaces } = await spaces.json() as { workspaces: Array<{ id: string }> };
+  expect(workspaces.length).toBeGreaterThan(0);
+  const connected = await page.request.post(`/api/workspaces/${workspaces[0].id}/providers/openrouter`, {
+    data: { apiKey: process.env.FAKE_AI_PROVIDER_CREDENTIAL ?? 'fake-valid-credential' },
+  });
+  expect(connected.ok()).toBe(true);
 
+  // The document owns a durable conversation as soon as it opens, before its first turn.
+  const bindingResponsePromise = page.waitForResponse((response) => (
+    response.request().method() === 'GET'
+    && /^\/api\/product-chat\/documents\/[^/]+\/conversation$/u.test(new URL(response.url()).pathname)
+  ));
   await expect(page.getByRole('button', { name: 'Create New' }).first()).toBeEnabled();
   await page.getByRole('button', { name: 'Create New' }).first().click();
   await expect(page).toHaveURL(/\/projects\/[^/?#]+$/u);
   const projectId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
   expect(projectId).not.toBe('');
+  const bindingResponse = await bindingResponsePromise;
+  expect(bindingResponse.status()).toBe(200);
+  expect(new URL(bindingResponse.url()).pathname).toBe(`/api/product-chat/documents/${projectId}/conversation`);
+  const { conversationId } = await bindingResponse.json() as { conversationId: string };
+  expect(conversationId).toBeTruthy();
 
   const composer = page.getByPlaceholder('Напишите задачу для ассистента...');
   await expect(composer).toBeVisible();
@@ -35,12 +53,9 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
 
   await page.getByRole('button', { name: 'Open node palette' }).click();
   await page.locator('.document-node-palette-card').filter({ hasText: 'Text prompt' }).click();
-  await page.locator('.document-node-palette-card').filter({ hasText: 'Banner' }).click();
   await page.getByRole('button', { name: 'Minimize node palette' }).click();
   const promptNode = page.locator('.production-node-textPrompt').last();
-  const bannerNode = page.locator('.production-node-banner').last();
   await expect(promptNode).toBeVisible();
-  await expect(bannerNode).toBeVisible();
   const promptNodeId = await promptNode.getAttribute('data-node-id');
   if (!promptNodeId) throw new Error('Text prompt node must expose data-node-id.');
 
@@ -78,11 +93,6 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
     response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/chat/v1/turn/stream'
   ));
-  const bindingResponsePromise = page.waitForResponse((response) => (
-    response.request().method() === 'PUT'
-    && new URL(response.url()).pathname === `/api/product-chat/documents/${projectId}/conversation`
-  ));
-
   await composer.fill(askAiPrompt);
   manualTurnRequestAllowed = true;
   await composer.press('Enter');
@@ -91,10 +101,12 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   expect(streamResponse.status()).toBe(200);
   expect(streamResponse.headers()['content-type']).toContain('text/event-stream');
   const requestBody = streamResponse.request().postDataJSON() as {
+    conversationId?: string;
     context?: { selection?: { ids?: string[] } };
     message?: string;
   };
   expect(requestBody.message).toBe(askAiPrompt);
+  expect(requestBody.conversationId).toBe(conversationId);
   expect(requestBody.context?.selection?.ids).toEqual([promptNodeId]);
   expect(turnRequestCount).toBe(1);
   await expect(messageByRole(page, 'user', askAiPrompt)).toBeVisible();
@@ -114,11 +126,13 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
     validatedCatalogResultCount: 1,
   });
 
-  const bindingResponse = await bindingResponsePromise;
-  expect(bindingResponse.status()).toBe(200);
   manualTurnRequestAllowed = false;
 
   await page.getByRole('button', { name: 'Закрыть ассистента' }).click();
+  await page.getByRole('button', { name: 'Open node palette' }).click();
+  await page.locator('.document-node-palette-card').filter({ hasText: 'Banner' }).click();
+  await page.getByRole('button', { name: 'Minimize node palette' }).click();
+  const bannerNode = page.locator('.production-node-banner').last();
   await bannerNode.click({ button: 'right' });
   await page.getByText('Ask AI', { exact: true }).click();
   await expect(assistantShell).toHaveAttribute('aria-hidden', 'false');
@@ -129,7 +143,7 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
 
   await page.reload();
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}$`, 'u'));
-  await page.getByRole('button', { name: 'Open assistant' }).click();
+  await page.getByRole('button', { name: /Открыть ассистента/ }).click();
   await expect(page.locator('.assistant-shell')).toHaveAttribute('aria-hidden', 'false');
   await expect(page.getByPlaceholder('Напишите задачу для ассистента...')).toBeVisible();
   await expect(messageByRole(page, 'user', askAiPrompt)).toBeVisible();

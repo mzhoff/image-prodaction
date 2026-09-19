@@ -54,7 +54,7 @@ const PIPELINE_SETTING_SCHEMAS = {
   presentation: { type: 'string', enum: ['card', 'bubble'], description: 'textPrompt uses the ordinary card. Legacy bubble is accepted but normalized to card. Section badges above text fields transfer text into a Prompt or another editable field; no new executor or AI call.' },
   presetId: { type: 'string', enum: ['universal', 'telegram-post', 'blog-article', 'markdown'] },
   prefix: { type: 'string', maxLength: 1_000 },
-  prompt: { type: 'string', maxLength: 4_000, description: 'Local image-generation/extraction prompt on node types that allow prompt. Not the canonical Text Gen field (use instruction). Node keys such as @brief are not template variables here.' },
+  prompt: { type: 'string', maxLength: 4_000, description: 'Local image-generation/extraction prompt on node types that allow prompt. Not the canonical Text Gen field (use instruction). Node keys such as @brief are not template variables here. Generate Image discovers [section] headings from connected prompt sources, not from this local field; the original prompt wire is removed after splitting. Do not set derived promptSections or promptSectionSources.' },
   quality: { type: 'string', pattern: '^\\d{1,3}$' },
   reasoning: { type: 'string', enum: ['low', 'medium', 'high'] },
   responseFormat: { type: 'string', enum: ['mp3', 'pcm'], description: 'Voice provider response format; use Audio convert for a final WAV/FLAC/Ogg file.' },

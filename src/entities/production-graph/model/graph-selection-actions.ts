@@ -1,3 +1,4 @@
+import { remapGeneratePromptSources } from './sync-generate-prompt-sections';
 import { createId } from '@/shared/lib/id';
 import { cloneSnapshot, withHistory } from './graph-history';
 import { clearGraphPersistBackups } from './graph-persistence';
@@ -110,6 +111,7 @@ export function createGraphSelectionActions(set: StoreSet, get: StoreGet): Pick<
           selectedSectionIds: [],
         }).nodes[0]!),
         id: idMap.get(node.id) ?? createId('node'),
+        data: remapGeneratePromptSources(clearCopiedNodeExecution(structuredClone(node)).data, idMap),
         position: { x: position.x + node.position.x - minX, y: position.y + node.position.y - minY },
       }));
       const nextEdges = edgesToPaste

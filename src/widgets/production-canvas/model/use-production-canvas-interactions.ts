@@ -61,7 +61,7 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
       if (event.shiftKey && event.code === 'KeyS') {
         event.preventDefault(); setCanvasTool('section'); closeContextMenu(); return;
       }
-      if (!event.shiftKey && event.code === 'KeyV') {
+      if (event.key === 'Escape' || (!event.shiftKey && event.code === 'KeyV')) {
         event.preventDefault(); setCanvasTool('select'); closeContextMenu();
       }
     };
@@ -77,7 +77,7 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
     if (event.shiftKey && target.closest('[data-canvas-section]')) return;
     closeContextMenu();
     if (canvasTool === 'section') sectionDrawing.startSectionDrawing(event);
-    else boxSelection.startSelection(event);
+    else if (canvasTool === 'select') boxSelection.startSelection(event);
   };
   const handleCanvasMouseMove = (event: ReactMouseEvent) => {
     const worldPoint = canvas.screenToWorld(event.nativeEvent);

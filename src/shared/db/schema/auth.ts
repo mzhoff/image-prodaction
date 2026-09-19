@@ -4,7 +4,8 @@ import { bigint, boolean, index, integer, pgTable, text, timestamp, uniqueIndex 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  email: text('email').notNull().unique(),
+  email: text('email').unique(),
+  identitySubject: text('identity_subject').unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
   termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }).notNull(),

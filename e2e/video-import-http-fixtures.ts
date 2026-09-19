@@ -3,17 +3,23 @@ import { PROJECT_SCHEMA_VERSION, type ProjectExport } from '../src/entities/prod
 
 export const videoQaCapability = 'qa.video.extract';
 
-/** Existing local image only, no pull/build/network/volumes. Fixture bytes stay in memory. */
-export function createVideoQaFixture() {
-  const generated = spawnSync('docker', ['run', '--rm', '--name', 'image-prodaction-video-fixture', '--pull', 'never',
+/** CI supplies ffmpeg directly; local QA can use its existing image without pull/build. */
+export function runQaFfmpeg(args: string[]) {
+  const binary = process.env.FFMPEG_PATH || 'ffmpeg';
+  const installed = spawnSync(binary, ['-version'], { stdio: 'ignore' }).status === 0;
+  const generated = spawnSync(installed ? binary : 'docker', installed ? args : ['run', '--rm', '--name', 'image-prodaction-video-fixture', '--pull', 'never',
     '--network', 'none', '--read-only', '--tmpfs', '/tmp:rw,noexec,nosuid,size=16m', '--memory', '256m', '--cpus', '1', '--pids-limit', '64',
-    '--entrypoint', 'ffmpeg', 'image-prodaction-web', '-nostdin', '-v', 'error',
+    '--entrypoint', 'ffmpeg', 'image-prodaction-web', ...args], { timeout: 30_000, maxBuffer: 1024 * 1024 });
+  if (generated.status !== 0 || !generated.stdout.length) throw new Error('Synthetic video fixture generation failed; process output omitted.');
+  return generated.stdout;
+}
+
+export function createVideoQaFixture() {
+  return runQaFfmpeg(['-nostdin', '-v', 'error',
     '-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=10:duration=2',
     '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=2', '-map', '0:v:0', '-map', '1:a:0',
     '-threads', '1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-t', '2',
-    '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1'], { timeout: 30_000, maxBuffer: 1024 * 1024 });
-  if (generated.status !== 0 || !generated.stdout.length) throw new Error('Synthetic video fixture generation failed; process output omitted.');
-  return generated.stdout;
+    '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1']);
 }
 
 export function videoQaForm(bytes: Uint8Array, workspaceId: string, documentId?: string) {

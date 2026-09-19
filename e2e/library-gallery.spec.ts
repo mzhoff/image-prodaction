@@ -72,7 +72,7 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
   try {
     await page.goto('/library');
     await expect(page.locator('.library-card')).toHaveCount(18);
-    await expect(gallery).toHaveAttribute('data-view', 'gallery');
+    await expect(page.getByRole('button', { name: 'Галерея', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await geometry();
     await expect(page.locator('.library-origin-badge, .library-card-body, .library-card-meta')).toHaveCount(0);
     await expect(card.locator('.library-card-details')).toHaveCSS('opacity', '0');
@@ -88,14 +88,14 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await page.screenshot({ path: testInfo.outputPath('library-gallery-desktop.png') });
     const beforeMode = lists;
     await page.getByRole('button', { name: 'По датам', exact: true }).click();
-    await expect(gallery).toHaveAttribute('data-view', 'dates');
+    await expect(page.getByRole('button', { name: 'По датам', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page).toHaveURL(/view=dates/);
-    await expect(page.locator('.library-date-heading')).toHaveCount(5);
+    await expect(page.locator('.pui-media-date-heading')).toHaveCount(5);
     expect(lists).toBe(beforeMode);
     await page.getByRole('button', { name: 'Показать ещё' }).click();
     await expect(page.locator('.library-card')).toHaveCount(24);
-    await expect(page.locator('.library-date-heading')).toHaveCount(6);
-    await expect(page.locator('.library-gallery-group').nth(4).locator('.library-card')).toHaveCount(4);
+    await expect(page.locator('.pui-media-date-heading')).toHaveCount(6);
+    await expect(page.locator('.pui-media-gallery-group').nth(4).locator('.library-card')).toHaveCount(4);
     await page.locator('.library-content').evaluate((element) => { element.scrollTop = 0; });
     await geometry();
     await page.screenshot({ path: testInfo.outputPath('library-gallery-dates.png') });
@@ -106,15 +106,15 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await page.getByRole('button', { name: 'Next generated image' }).click();
     await expect(page).toHaveURL(new RegExp(`${items[1]!.id}\\?view=dates`));
     await page.getByRole('button', { name: 'Close image viewer', exact: true }).last().click();
-    await expect(gallery).toHaveAttribute('data-view', 'dates');
+    await expect(page.getByRole('button', { name: 'По датам', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page).toHaveURL(`${origin.origin}/library?view=dates`);
     await page.reload();
-    await expect(gallery).toHaveAttribute('data-view', 'dates');
+    await expect(page.getByRole('button', { name: 'По датам', exact: true })).toHaveAttribute('aria-pressed', 'true');
     for (const [label, option, parameter] of [['Источник', 'Сгенерированные', 'origin=generated'], ['Тип медиа', 'Изображения', 'mediaKind=image'], ['Модель', 'qa-vision', 'modelId=qa-vision'], ['Канвас', 'Тестовый проект', 'documentId=project-qa']]) {
       await page.getByRole('button', { name: label, exact: true }).click();
       await page.getByRole('option', { name: new RegExp(option!) }).click();
       await expect(page).toHaveURL(new RegExp(parameter));
-      await expect(gallery).toHaveAttribute('data-view', 'dates');
+      await expect(page.getByRole('button', { name: 'По датам', exact: true })).toHaveAttribute('aria-pressed', 'true');
     }
     await expect(page.locator('.library-card')).toHaveCount(12);
     await page.getByRole('searchbox', { name: 'Поиск по библиотеке' }).fill('not-found');
@@ -124,7 +124,7 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await expect(page.locator('.library-card')).toHaveCount(18);
     await expect(page).toHaveURL(`${origin.origin}/library?view=dates`);
     await page.getByRole('button', { name: 'Галерея', exact: true }).click();
-    await expect(gallery).toHaveAttribute('data-view', 'gallery');
+    await expect(page.getByRole('button', { name: 'Галерея', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await card.click({ button: 'right' });
     await expect(page.locator('.context-menu').getByRole('button', { name: 'Скопировать ссылку' })).toBeVisible();
     await page.keyboard.press('Escape');

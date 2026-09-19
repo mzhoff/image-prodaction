@@ -3,6 +3,7 @@ import type { ProviderConnectionWithCredential } from '../adapters/postgres/prov
 
 export interface ProviderConnectionDto {
   canManage: boolean;
+  managedByPlatform: boolean;
   lastError: string | null;
   lastUsedAt: string | null;
   lastValidatedAt: string | null;
@@ -32,7 +33,8 @@ export function toProviderConnectionDto(
   return {
     provider: 'openrouter',
     status: record?.status ?? 'disconnected',
-    canManage,
+    canManage: canManage && !record?.providerMetadata?.platformManagedKeyHash,
+    managedByPlatform: Boolean(record?.providerMetadata?.platformManagedKeyHash),
     maskedKey: record?.maskedLabel ?? null,
     lastValidatedAt: record?.lastValidatedAt?.toISOString() ?? null,
     lastUsedAt: record?.lastUsedAt?.toISOString() ?? null,

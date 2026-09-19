@@ -9,6 +9,7 @@ import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { Plus } from '@prodactionpro/ui-core/icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
+import { useCanvasScissors } from '../model/use-canvas-scissors';
 import { CanvasEdges } from './canvas-edges';
 import { CanvasGrid } from './canvas-grid';
 import { CanvasNodeLayer } from './canvas-node-layer';
@@ -37,6 +38,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
     [chatLaunchCoordinator],
   );
   const model = useProductionCanvasModel({ onAskAiNode: askAiNode, projectId });
+  const { preview: cutPreview, ...cutHandlers } = useCanvasScissors(model.canvasTool === 'scissors', model.canvas.containerRef);
   const fragmentDrag = useTextFragmentDrag({ projectId, containerRef: model.canvas.containerRef, screenToWorld: model.canvas.screenToWorld, notify: model.showToast });
   const autoOpenedProjectRef = useRef<string | undefined>(undefined);
   const projectTitle = model.documentName
@@ -57,6 +59,9 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
 
   return (
     <div className="canvas-shell">
+      {cutPreview ? <svg className="canvas-cut-preview" data-snapshot-exclude aria-hidden="true">
+        <polyline points={cutPreview.points.map((p) => `${p.x},${p.y}`).join(' ')} />
+      </svg> : null}
       <TextFragmentDragPreview {...fragmentDrag} />
       <div className="canvas-bottom-controls" data-snapshot-exclude>
         {syncProblem && model.documentSync.message ? (
@@ -80,13 +85,14 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
       <div
         ref={model.canvas.containerRef}
         tabIndex={-1}
+        {...cutHandlers}
         className={`production-canvas ${model.connectionDraft ? 'production-canvas-connecting' : ''}`}
         onMouseDown={model.handleCanvasMouseDown}
         onMouseMove={model.handleCanvasMouseMove}
         onDragOver={model.handleCanvasDragOver}
         onDrop={model.handleCanvasDrop}
         onContextMenu={model.openCanvasMenu}
-        style={{ cursor: model.cursor }}
+        style={{ cursor: model.canvasTool === 'scissors' ? 'crosshair' : model.cursor }}
       >
         <DocumentTitleBar
           favorite={model.documentFavorite}
@@ -137,6 +143,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             selectedSectionSet={model.selectedSectionSet}
           />
           <CanvasEdges
+            cutEdgeIds={cutPreview?.hits}
             collapsedGenerateComposingNodeIds={model.collapsedGenerateComposingNodeIds}
             connectionDraft={model.connectionDraft}
             draftPathRef={model.draftPathRef}
@@ -175,6 +182,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
         />
         <AssistantShell
           open={assistantOpen}
+          notice={assistantOpen ? model.toastMessage : null}
           contextLabel={projectTitle}
           documentId={projectId}
           documentRevision={model.documentRevision === undefined

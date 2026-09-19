@@ -71,7 +71,7 @@ test('verified user persists a private image and can reset the password', async 
     const nodeAutosaveResponsePromise = waitForDocumentAutosave(page, projectId);
     await page
       .getByRole('complementary', { name: 'Document tools' })
-      .getByRole('button', { name: 'Import image' })
+      .getByRole('button', { name: 'Import', exact: true })
       .click();
 
     const importNode = page.locator('.production-node-importImage').first();
@@ -146,6 +146,14 @@ test('verified user persists a private image and can reset the password', async 
   await test.step('close settings in one action after navigating between sections', async () => {
     await page.getByRole('button', { name: owner.name }).click();
     await page.getByRole('menuitem', { name: 'Account settings' }).click();
+    await expect(page).toHaveURL('/account');
+    await expect(page.getByRole('heading', { name: 'Аккаунт Reverie' })).toBeVisible();
+    await page.getByRole('link', { name: '← Image Production', exact: true }).click();
+    await expect(page).toHaveURL('/');
+    await page.getByRole('button', { name: owner.name }).click();
+    await page.getByRole('menuitem', { name: 'Workspace settings' }).click();
+    await expect(page).toHaveURL('/settings/providers');
+    await page.getByRole('link', { name: 'Аккаунт', exact: true }).click();
     await expect(page).toHaveURL('/settings/account');
 
     await page.getByRole('link', { name: 'Безопасность' }).click();

@@ -80,7 +80,7 @@ test('voice selector identifies gender, explains missing recordings and audition
     await expect.poll(playingCount).toBe(0);
     await play.click(); await expect(play).toHaveAttribute('aria-pressed', 'true');
     const modelRow = node.locator('.setting-row').filter({ has: page.locator('span:text-is("Model")') });
-    await modelRow.getByRole('button').click(); await page.getByRole('option', { name: 'Grok Voice TTS', exact: true }).click();
+    await modelRow.getByRole('button').click(); await page.getByRole('button', { name: 'Grok Voice TTS', exact: true }).click();
     await expect.poll(playingCount).toBe(0);
     await expect(play).toHaveAttribute('aria-disabled', 'true');
     await expect(node.locator('.voice-gender-icon')).toHaveAttribute('aria-label', 'Пол голоса не подтверждён');

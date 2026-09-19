@@ -82,9 +82,10 @@ test('toolbar reports canvas scale and enforces 135% for gestures and restored v
     expect(toolbar.x + toolbar.width).toBeLessThanOrEqual(390);
     await expect(indicator).toBeVisible();
 
+    // Seed on the next document load, after the old page finishes persisting its state.
     // An empty canvas skips auto-fit. Hydration may use the default viewport;
     // neither that path nor restoring legacy data may exceed the new cap.
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       const key = 'reverie-image-production-project:v1';
       const stored = JSON.parse(localStorage.getItem(key)!);
       stored.state.nodes = [];

@@ -69,15 +69,16 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     expect(fullImage.x + fullImage.width / 2).toBeCloseTo(800, 0);
     // No letterboxing inside the interactive SVG: pointer coordinates match its square.
     const graph = sidebar.getByRole('application', { name: 'RGB tone curve' });
+    const initialPoints = 2; // The fixture starts with the black and white endpoints.
+    await expect(graph.locator('circle')).toHaveCount(initialPoints);
     const graphBox = (await graph.boundingBox())!;
     expect(graphBox.width).toBeCloseTo(graphBox.height, 0);
-    const initialPoints = await graph.locator('circle').count();
     await graph.click({ position: { x: graphBox.width * 0.45, y: graphBox.height * 0.35 } });
     await expect(graph.locator('circle')).toHaveCount(initialPoints + 1);
     await sidebar.getByRole('slider', { name: 'Curves opacity' }).focus();
     await page.keyboard.press('ArrowLeft');
     await expect(sidebar.getByRole('slider', { name: 'Curves opacity' })).toHaveValue('99');
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     const maskTools = viewer.locator('.image-editor-mask-tools');
     await expect(maskTools).toBeVisible();
     expect((await maskTools.boundingBox())!.y).toBeGreaterThanOrEqual(fullImage.y + fullImage.height);
@@ -96,10 +97,10 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     await page.mouse.up();
     const drawnMask = await maskCanvas.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
     expect(drawnMask).not.toBe(emptyMask);
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(maskTools).toHaveCount(0);
     await expect(maskCanvas).toHaveCount(1);
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(maskTools).toBeVisible();
     expect(await maskCanvas.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(drawnMask);
     await viewer.getByRole('button', { name: 'Clear mask', exact: true }).click();
@@ -164,7 +165,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     await page.setViewportSize({ width: 1600, height: 1000 });
     await card(generate.id).locator('.image-plate').click();
     await expect(sidebar).toHaveCount(0);
-    await viewer.getByRole('button', { name: 'Mask', exact: true }).click();
+    await viewer.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(viewer.locator('.image-editor-prompt')).toBeVisible();
     expect((await viewer.locator('.image-editor-input-area').boundingBox())!.y)
       .toBeGreaterThan((await stage.boundingBox())!.y + (await stage.boundingBox())!.height);

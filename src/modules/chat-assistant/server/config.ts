@@ -5,7 +5,6 @@ import {
 } from '../contracts/assistant-config';
 
 export interface ChatAssistantServerConfig extends PublicChatAssistantConfig {
-  apiKey?: string;
   approvalSecret?: string;
   attachmentBucket?: string;
   attachmentEndpoint?: string;
@@ -33,18 +32,15 @@ export interface ChatAssistantServerConfig extends PublicChatAssistantConfig {
 }
 
 export function readChatAssistantConfig(): ChatAssistantServerConfig {
-  const apiKey = readOptionalString('CHAT_OPENROUTER_API_KEY');
   const approvalSecret = readOptionalString('CHAT_TOOL_APPROVAL_SECRET');
   const attachmentBucket = readOptionalString('S3_BUCKET');
   const requestedEnabled = process.env.CHAT_ASSISTANT_ENABLED === 'true';
   const missingSettings = [
-    ...(!apiKey ? ['CHAT_OPENROUTER_API_KEY'] : []),
     ...(!approvalSecret || approvalSecret.length < 32 ? ['CHAT_TOOL_APPROVAL_SECRET'] : []),
     ...(!attachmentBucket ? ['S3_BUCKET'] : []),
   ];
 
   return {
-    apiKey,
     approvalSecret,
     attachmentBucket,
     attachmentEndpoint: readOptionalString('CHAT_ATTACHMENT_S3_ENDPOINT') ?? readOptionalString('S3_ENDPOINT'),

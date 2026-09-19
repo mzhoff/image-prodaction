@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { convertAudioBytes, forEachAudioChunk, inspectAudioBytes } from './audio-processor';
 import { runAudioProgram, withAudioWork } from './audio-process';
 
@@ -11,6 +11,15 @@ const ffmpeg = process.env.FFMPEG_PATH || 'ffmpeg';
 const ffprobe = process.env.FFPROBE_PATH || 'ffprobe';
 const available = spawnSync(ffmpeg, ['-version'], { stdio: 'ignore' }).status === 0 && spawnSync(ffprobe, ['-version'], { stdio: 'ignore' }).status === 0;
 const skip = !available && process.env.AUDIO_CODEC_TESTS_REQUIRED !== '1';
+// Other test files run in parallel processes; their temporary files are not leaks here.
+const originalTmpdir = process.env.TMPDIR;
+const suiteTmpdir = await mkdtemp(join(tmpdir(), 'image-production-codec-suite-'));
+process.env.TMPDIR = suiteTmpdir;
+after(async () => {
+  if (originalTmpdir === undefined) delete process.env.TMPDIR;
+  else process.env.TMPDIR = originalTmpdir;
+  await rm(suiteTmpdir, { recursive: true, force: true });
+});
 
 function wav(seconds = 2, channels = 1) {
   const sampleRate = 16000;

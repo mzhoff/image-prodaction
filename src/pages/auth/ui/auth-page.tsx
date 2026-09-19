@@ -1,5 +1,6 @@
 'use client';
 
+import { IdentityActions } from '@reverie/identity-client/react';
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 import { Button } from '@prodactionpro/ui-core/button';
 
@@ -19,9 +20,11 @@ type AuthMode = 'login' | 'register';
 interface AuthPageProps {
   mode: AuthMode;
   allowRegistration?: boolean;
+  identityEnabled?: boolean;
+  identityEmailEnabled?: boolean;
 }
 
-export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
+export function AuthPage({ mode, allowRegistration = true, identityEnabled = false, identityEmailEnabled = true }: AuthPageProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -107,6 +110,8 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
           <p>{subtitle}</p>
         </div>
 
+        {identityEnabled ? <IdentityActions authPath="/api/auth" methods={identityEmailEnabled ? ['email', 'telegram'] : ['telegram']} /> : null}
+        {mode === "login" || !identityEnabled ? <details open={!identityEnabled} className="auth-legacy-entry"><summary>Войти в прежний аккаунт Image Production</summary>
         <form className="auth-form" onSubmit={handleSubmit}>
           {mode === 'register' ? (
             <label>
@@ -139,7 +144,7 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
           <label>
             <span className="auth-label-row">
               <span>Пароль</span>
-              {mode === 'login' ? <Link href="/forgot-password">Забыли пароль?</Link> : null}
+              {mode === 'login' && (!identityEnabled || identityEmailEnabled) ? <Link href="/forgot-password">Забыли пароль?</Link> : null}
             </span>
             <div className="auth-password-field">
               <input
@@ -184,11 +189,15 @@ export function AuthPage({ mode, allowRegistration = true }: AuthPageProps) {
             {pending ? 'Подождите…' : submitLabel}
           </Button>
         </form>
+        </details> : null}
 
         {mode === 'register' || allowRegistration ? (
           <div className="auth-switch">
             <span>{switchPrompt}</span>
-            <Link href={switchHref}>{switchAction}</Link>
+            <Link href={switchHref} onClick={(event) => {
+              const next = new URLSearchParams(window.location.search).get('next');
+              if (next) { event.preventDefault(); router.push(`${switchHref}?next=${encodeURIComponent(getSafePostAuthPath(next))}`); }
+            }}>{switchAction}</Link>
           </div>
         ) : null}
       </div>

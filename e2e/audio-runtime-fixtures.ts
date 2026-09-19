@@ -9,6 +9,7 @@ export const audioQaCapability = 'qa.audio.convert';
 /** Native fetch keeps secrets outside Playwright request/trace diagnostics. */
 export class AudioQaHttp {
   private readonly cookies = new Map<string, string>();
+  private readonly clientIp = `10.${[...randomBytes(3)].join('.')}`;
   constructor(readonly origin: string, private readonly token?: string) {}
 
   /** Test-only transfer into the matching local browser context; never log the result. */
@@ -19,6 +20,11 @@ export class AudioQaHttp {
   async request(path: string, options: { method?: string; json?: unknown; form?: FormData; key?: string } = {}) {
     if (!path.startsWith('/') || path.startsWith('//')) throw new Error('QA requests must use a local relative path.');
     const headers = new Headers({ origin: this.origin });
+    // Independent QA users must not share the five-signups/minute production bucket.
+    const target = new URL(this.origin);
+    if (target.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(target.hostname)) {
+      headers.set('x-forwarded-for', this.clientIp);
+    }
     if (this.token) headers.set('authorization', `Bearer ${this.token}`);
     else if (this.cookies.size) headers.set('cookie', [...this.cookies].map(([key, value]) => `${key}=${value}`).join('; '));
     if (options.key) headers.set('idempotency-key', options.key);

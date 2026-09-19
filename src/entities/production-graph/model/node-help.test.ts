@@ -168,3 +168,15 @@ test('all model selectors explain account scope, independent tabs, favorite orde
     assert.match(help.limitations.join(' '), /не являются settings ноды/);
   }
 });
+
+test('image generation help explains automatic section routing and source-name media badges', () => {
+  const help = NODE_HELP_METADATA.generateImage;
+  assert.match(help.capabilities.join(' '), /Prompt → Reference → Settings → Generate → Result/);
+  assert.match(help.capabilities.join(' '), /\[любой тег\].*автоматически|автоматически.*\[любой тег\]/);
+  assert.match(help.capabilities.join(' '), /один раз в Studio и runtime/);
+  assert.match(help.portRules.join(' '), /prompt-section:.*text/);
+  assert.match(help.capabilities.join(' '), /основная связь Prompt удаляется/);
+  assert.match(help.capabilities.join(' '), /Ножницы.*Ctrl\+Z/);
+  assert.match(help.capabilities.join(' '), /крестик/);
+  assert.match(NODE_HELP_METADATA.generateVideo.capabilities.join(' '), /название ноды-источника.*голубой/);
+});

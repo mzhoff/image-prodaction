@@ -161,7 +161,7 @@ export const imageProductionTools: AgentToolDefinition[] = [
                 type: 'string',
                 minLength: 1,
                 maxLength: 80,
-                description: 'Exact scalar string ID of the target input port from node_catalog.',
+                description: 'Exact scalar string ID of the target input port from node_catalog. For tagged Generate Image text, connect to prompt once; the graph derives section ports and connections automatically and removes the original prompt connection; only the tagged blocks are passed.',
               },
             },
           },

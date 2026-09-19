@@ -1,3 +1,4 @@
+import { remapGeneratePromptSources } from './sync-generate-prompt-sections';
 import { createId } from '@/shared/lib/id';
 import { createDefaultNode } from './create-default-node';
 import { appendGenerationResult } from './generation-history';
@@ -113,6 +114,7 @@ export function createGraphNodeActions(set: StoreSet): Pick<
         const duplicatedNode = {
           ...clearCopiedNodeExecution(JSON.parse(JSON.stringify(node)) as ProductionNode),
           id: createId('node'),
+          data: remapGeneratePromptSources(clearCopiedNodeExecution(structuredClone(node)).data, new Map()),
           locked: false,
           position: {
             x: node.position.x + 36,
