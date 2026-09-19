@@ -31,11 +31,21 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   });
   expect(connected.ok()).toBe(true);
 
+  // The document owns a durable conversation as soon as it opens, before its first turn.
+  const bindingResponsePromise = page.waitForResponse((response) => (
+    response.request().method() === 'GET'
+    && /^\/api\/product-chat\/documents\/[^/]+\/conversation$/u.test(new URL(response.url()).pathname)
+  ));
   await expect(page.getByRole('button', { name: 'Create New' }).first()).toBeEnabled();
   await page.getByRole('button', { name: 'Create New' }).first().click();
   await expect(page).toHaveURL(/\/projects\/[^/?#]+$/u);
   const projectId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
   expect(projectId).not.toBe('');
+  const bindingResponse = await bindingResponsePromise;
+  expect(bindingResponse.status()).toBe(200);
+  expect(new URL(bindingResponse.url()).pathname).toBe(`/api/product-chat/documents/${projectId}/conversation`);
+  const { conversationId } = await bindingResponse.json() as { conversationId: string };
+  expect(conversationId).toBeTruthy();
 
   const composer = page.getByPlaceholder('Напишите задачу для ассистента...');
   await expect(composer).toBeVisible();
@@ -83,11 +93,6 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
     response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/chat/v1/turn/stream'
   ));
-  const bindingResponsePromise = page.waitForResponse((response) => (
-    response.request().method() === 'PUT'
-    && new URL(response.url()).pathname === `/api/product-chat/documents/${projectId}/conversation`
-  ));
-
   await composer.fill(askAiPrompt);
   manualTurnRequestAllowed = true;
   await composer.press('Enter');
@@ -96,10 +101,12 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   expect(streamResponse.status()).toBe(200);
   expect(streamResponse.headers()['content-type']).toContain('text/event-stream');
   const requestBody = streamResponse.request().postDataJSON() as {
+    conversationId?: string;
     context?: { selection?: { ids?: string[] } };
     message?: string;
   };
   expect(requestBody.message).toBe(askAiPrompt);
+  expect(requestBody.conversationId).toBe(conversationId);
   expect(requestBody.context?.selection?.ids).toEqual([promptNodeId]);
   expect(turnRequestCount).toBe(1);
   await expect(messageByRole(page, 'user', askAiPrompt)).toBeVisible();
@@ -119,8 +126,6 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
     validatedCatalogResultCount: 1,
   });
 
-  const bindingResponse = await bindingResponsePromise;
-  expect(bindingResponse.status()).toBe(200);
   manualTurnRequestAllowed = false;
 
   await page.getByRole('button', { name: 'Закрыть ассистента' }).click();
