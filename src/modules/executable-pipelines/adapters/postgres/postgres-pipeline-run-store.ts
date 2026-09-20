@@ -61,6 +61,8 @@ export function createPostgresPipelineRunStore(): PostgresPipelineRunStore {
 
       const [created] = await getDb().insert(pipelineRun).values({
         id: input.id,
+        initiatorType: input.sessionUserId ? 'workspace-user' : 'service',
+        initiatorId: input.sessionUserId ?? null,
         workspaceId: input.workspaceId,
         pipelineId: input.pipelineId,
         pipelineVersionId: version.id,

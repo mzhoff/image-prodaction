@@ -1,3 +1,4 @@
+import { pipelineExecutionActor } from '../core/pipeline-execution-actor';
 import { createHash } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
@@ -52,7 +53,7 @@ export function createPostgresPipelineRunExecutor(): PipelineRunExecutor {
           workspaceId: run.workspaceId,
         },
         handlers: createProductionPipelineHandlerRegistry({
-          actorUserId: published.publishedByUserId,
+          actorUserId: pipelineExecutionActor(record, published.publishedByUserId),
           documentId: published.documentId ?? undefined,
         }),
         inputs: run.input,

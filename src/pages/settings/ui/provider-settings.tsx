@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { MemberBudgetsCard } from './member-budgets-card';
 import { AlertCircle, Loader2, PlugZap, RefreshCcw } from '@prodactionpro/ui-core/icons';
 import { BrandSelect } from '@/shared/ui/brand-select';
 import { useProviderSettingsModel } from '../model/use-provider-settings-model';
@@ -12,7 +14,13 @@ interface ProviderSettingsProps {
 }
 
 export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
-  const model = useProviderSettingsModel(onDirtyChange);
+  const [providerDirty, setProviderDirty] = useState(false);
+  const [budgetDirty, setBudgetDirty] = useState(false);
+  const model = useProviderSettingsModel(setProviderDirty);
+  useEffect(() => {
+    onDirtyChange(providerDirty || budgetDirty);
+    return () => onDirtyChange(false);
+  }, [providerDirty, budgetDirty, onDirtyChange]);
   return (
     <section className="settings-section settings-provider-section" aria-labelledby="settings-providers-title">
       <header className="settings-section-head settings-provider-title-row">
@@ -23,7 +31,7 @@ export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
         {model.workspaceOptions.length > 0 ? (
           <BrandSelect
             className="settings-workspace-select"
-            disabled={model.workspacesPending || model.mutation !== null}
+            disabled={model.workspacesPending || model.mutation !== null || budgetDirty}
             label="Workspace"
             value={model.selectedWorkspaceId}
             options={model.workspaceOptions}
@@ -67,6 +75,7 @@ export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
         <div className="settings-provider-stack">
           <ProviderConnectionCard model={model} />
           <ProviderUsageCard connection={model.connection} usage={model.keyUsage} />
+          <MemberBudgetsCard key={model.effectiveWorkspace.id} workspaceId={model.effectiveWorkspace.id} onDirtyChange={setBudgetDirty} />
           <LocalUsageCard usage={model.aiUsage} />
           {model.secondaryError ? (
             <p className="settings-message settings-message-error" role="alert">

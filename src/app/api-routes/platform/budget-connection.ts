@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { projectBudgetConnection } from '@/modules/provider-connections/server/platform/budget-projection';
 import { validPlatformSignature } from '@/modules/provider-connections/server/platform/request-auth';
-const payload = z.object({ issuer: z.string().url(), subject: z.string().min(1).max(200),
+const payload = z.object({ issuer: z.string().url(), subject: z.string().min(1).max(200), workspaceId: z.string().uuid(),
   apiKey: z.string().min(10).max(500), keyHash: z.string().min(1).max(256) }).strict();
 export async function handleBudgetProjection(request: Request) {
   const reply = (status: number, code: string) => Response.json({ code }, { status, headers: { 'Cache-Control': 'no-store' } });

@@ -1,3 +1,5 @@
+import { withMemberChatBudget } from '@/modules/workspace-budgets/server/chat-budget';
+import { MemberBudgetError } from '@/modules/workspace-budgets/core/member-budget-policy';
 import type { ToolCallingLanguageModelGateway } from '@prodactionpro/chat-connectors';
 import { withPaidCredential } from '@/modules/provider-connections/server/paid-request-guard';
 import { AgentTurnError, type ChatApplicationOptions } from '@prodactionpro/chat-application';
@@ -20,7 +22,8 @@ export function createWorkspaceProviderResolver(config: ChatAssistantServerConfi
   gateway: (apiKey: string) => new LimitedOpenRouterGateway({
     apiKey, appTitle: 'Reverie Image Production Assistant', baseUrl: config.openRouterBaseUrl,
     httpReferer: config.openRouterSiteUrl, maxOutputTokens: config.maxOutputTokens,
-    maxAttempts: config.providerMaxAttempts, retryDeadlineMs: config.providerRetryDeadlineMs,
+    // A retry is a separate paid admission, never a hidden call within one ledger entry.
+    maxAttempts: 1, retryDeadlineMs: config.providerRetryDeadlineMs,
     retryBaseDelayMs: config.providerRetryBaseDelayMs, timeoutMs: config.providerRequestTimeoutMs,
   }),
 }): Resolver {
@@ -39,7 +42,13 @@ export function createWorkspaceProviderResolver(config: ChatAssistantServerConfi
         connectionId: connection.id,
         providerId: 'openrouter',
         toolCallingLanguageModelGateway: {
-          completeWithTools: (input) => withPaidCredential(apiKey, () => gateway.completeWithTools(input)),
+          completeWithTools: async (input) => {
+            try { return await withPaidCredential(apiKey, () => withMemberChatBudget(principal.tenantId!,principal.userId,input.model,() => gateway.completeWithTools(input))); }
+            catch (error) {
+              if (error instanceof MemberBudgetError) throw new AgentTurnError(error.message,error.code,error.status,false);
+              throw error;
+            }
+          },
         },
       };
     } catch (error) {

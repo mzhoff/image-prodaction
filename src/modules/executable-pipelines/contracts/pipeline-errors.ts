@@ -9,6 +9,7 @@ export type PipelineErrorCode =
   | 'pipeline_handler_missing'
   | 'pipeline_idempotency_conflict'
   | 'pipeline_input_invalid'
+  | 'pipeline_initiator_required'
   | 'pipeline_node_output_missing'
   | 'pipeline_output_invalid'
   | 'pipeline_run_not_found'

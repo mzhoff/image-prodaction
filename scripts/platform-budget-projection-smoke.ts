@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import { getDb, getPostgresPool } from '../src/shared/db/client.ts';
 import { getCoordinationPool } from '../src/shared/db/coordination-pool.ts';
+import { ensurePersonalWorkspaceForUser } from '../src/modules/authentication/server/workspace-bootstrap.ts';
+import { ownedBudgetWorkspaces } from '../src/modules/provider-connections/server/platform/owned-workspaces.ts';
 import { user } from '../src/shared/db/schema/auth.ts';
 import { handleBudgetProjection } from '../src/app/api-routes/platform/budget-connection.ts';
 import { connectOpenRouterProvider, disconnectOpenRouterProvider, listWorkspaceProviderConnections, validateStoredOpenRouterProvider, resolveOpenRouterCredential } from '../src/modules/provider-connections/server/provider-connection-service.ts';
@@ -22,11 +24,16 @@ async function project(input: object, signatureValid = true) {
   }));
 }
 try {
-  const payload = { issuer, subject, apiKey, keyHash: 'managed-1' };
+  const workspace = await ensurePersonalWorkspaceForUser({ id: localId, name: 'Pilot owner', email: null });
+  const owned = await ownedBudgetWorkspaces(issuer, subject);
+  assert.equal(owned.length, 1);
+  const workspaceId = owned[0]!.id;
+  assert.ok(workspace);
+  const payload = { issuer, subject, workspaceId, apiKey, keyHash: 'managed-1' };
   assert.equal((await project(payload, false)).status, 403);
-  assert.equal((await project({ ...payload, subject: 'unknown' })).status, 409);
+  assert.equal((await project({ ...payload, workspaceId: randomUUID() })).status, 409);
   const first = await project(payload); assert.equal(first.status, 200);
-  const { workspaceId } = await first.json() as { workspaceId: string };
+  assert.equal((await first.json() as { workspaceId: string }).workspaceId, workspaceId);
   assert.ok(workspaceId);
   assert.equal((await project(payload)).status, 200);
   assert.equal((await project({ ...payload, keyHash: 'managed-2' })).status, 409);

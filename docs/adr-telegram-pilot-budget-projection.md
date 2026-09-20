@@ -7,10 +7,12 @@ OpenRouter keys, notifications and reserve monitoring. Image Production does
 not become the billing service and never receives the management key.
 
 `POST /v1/platform/budget-connection` accepts a server HMAC signed exact request,
-expires after 60 seconds, validates the configured issuer and resolves an existing
-local identitySubject. It creates/reuses the personal workspace through the existing
-owner/membership function. The first product login is required; until then the
-platform retains the approved credit and retries attachment. No cross-database writes.
+expires after 60 seconds and validates the configured issuer. As of the approved
+[Workspace budget update](workspace-budget-adr.md), it requires an explicit Workspace
+ID and resolves its current owner. It never creates a Workspace implicitly.
+`POST /v1/platform/budget-workspaces` resolves owned Workspaces by local identitySubject
+under the same service authentication. First product login is required before a
+receipt can choose a Workspace. No cross-database writes.
 
 The child credential uses the existing encrypted provider store. Repeated attachment
 of the same key is safe. A different managed key hash requires an explicit rotation
