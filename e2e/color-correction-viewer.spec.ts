@@ -71,7 +71,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     const graph = sidebar.getByRole('application', { name: 'RGB tone curve' });
     const initialPoints = 2; // The fixture starts with the black and white endpoints.
     await expect(graph.locator('circle')).toHaveCount(initialPoints);
-    const graphBox = (await graph.boundingBox())!;
+    const graphBox = await visibleBox(graph);
     expect(graphBox.width).toBeCloseTo(graphBox.height, 0);
     await graph.click({ position: { x: graphBox.width * 0.45, y: graphBox.height * 0.35 } });
     await expect(graph.locator('circle')).toHaveCount(initialPoints + 1);
@@ -182,6 +182,18 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     await owner.http.request('/api/auth/sign-out', { json: {} });
   }
 });
+
+async function visibleBox(locator: Locator) {
+  // Viewport changes can briefly detach the SVG while the responsive viewer lays out.
+  // DOM point counts do not guarantee a rendered box; retain all geometry assertions.
+  await expect(locator).toBeVisible();
+  let box = await locator.boundingBox();
+  await expect.poll(async () => {
+    box = await locator.boundingBox();
+    return Boolean(box && box.width > 0 && box.height > 0);
+  }).toBe(true);
+  return box!;
+}
 
 async function withinScreen(locator: Locator, width: number, height: number) {
   // Opening the bottom mask/prompt panel transitions its reserved height.
