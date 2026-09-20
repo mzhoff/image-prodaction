@@ -6,7 +6,6 @@ import type {
   MemberBudgetPolicy,
   MemberBudgetRow,
 } from '@/modules/workspace-budgets/contracts/member-budget';
-import { formatUsd } from '../model/provider-settings-values';
 import { MemberBudgetForm } from './member-budget-form';
 import styles from './member-budgets.module.css';
 
@@ -155,7 +154,7 @@ function MemberRow({
           <small>{member.role ? { owner: 'Владелец', admin: 'Администратор', member: 'Участник' }[member.role] : 'Бывший участник'}</small>
         </td>
         <td>
-          {formatUsd(member.spentUsd)} /{' '}
+          {member.unresolved > 0 ? '≥ ' : ''}{formatUsd(member.spentUsd)} /{' '}
           {member.limitUsd === null ? 'Без лимита' : formatUsd(member.limitUsd)}
           <br />
           <small>{member.period === 'month' ? 'Текущий месяц, UTC' : 'За всё время'}</small>
@@ -202,4 +201,8 @@ async function request(workspaceId: string, init: RequestInit) {
 }
 function message(error: unknown) {
   return error instanceof Error ? error.message : 'Не удалось обновить лимиты.';
+}
+
+function formatUsd(value: string | number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 8 }).format(Number(value));
 }
