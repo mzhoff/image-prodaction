@@ -1,3 +1,4 @@
+import { getOpenRouterBaseUrl } from '@/shared/api/openrouter-endpoint';
 import { z } from 'zod';
 import { readBoundedAudioStream } from '@/shared/media/audio-upload-request';
 import { MAX_VIDEO_OUTPUT_BYTES } from '@/shared/media/video-contracts';
@@ -5,7 +6,7 @@ import { normalizeProviderCostUsd } from '@/shared/lib/provider-cost-decimal';
 import type { VideoProviderAdapter, VideoProviderContext, VideoProviderInput, VideoProviderStatus } from '../contracts/video-provider';
 import { normalizeVideoProviderDiagnostic, VideoProviderError } from '../core/video-provider-error';
 
-const ORIGIN = 'https://openrouter.ai/api/v1/videos';
+const ORIGIN = `${getOpenRouterBaseUrl()}/videos`;
 const operationIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
 const statusSchema = z.object({
   id: operationIdSchema, status: z.enum(['pending', 'in_progress', 'completed', 'failed', 'cancelled', 'expired']),

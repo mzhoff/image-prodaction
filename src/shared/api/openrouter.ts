@@ -1,10 +1,11 @@
+import { getOpenRouterBaseUrl } from './openrouter-endpoint';
 import { getGeminiInlineRequestSizeError } from './image-request-limits';
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=all';
-const OPENROUTER_SPEECH_MODELS_URL = 'https://openrouter.ai/api/v1/models?output_modalities=speech';
-const OPENROUTER_SPEECH_URL = 'https://openrouter.ai/api/v1/audio/speech';
-const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
+const OPENROUTER_URL = `${getOpenRouterBaseUrl()}/chat/completions`;
+const OPENROUTER_MODELS_URL = `${getOpenRouterBaseUrl()}/models?output_modalities=all`;
+const OPENROUTER_SPEECH_MODELS_URL = `${getOpenRouterBaseUrl()}/models?output_modalities=speech`;
+const OPENROUTER_SPEECH_URL = `${getOpenRouterBaseUrl()}/audio/speech`;
+const OPENROUTER_KEY_URL = `${getOpenRouterBaseUrl()}/key`;
 const DEFAULT_OPENROUTER_TIMEOUT_MS = 180_000;
 interface OpenRouterFetchOptions extends RequestInit {
   next?: {

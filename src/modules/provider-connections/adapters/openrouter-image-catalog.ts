@@ -1,3 +1,4 @@
+import { getOpenRouterBaseUrl } from '@/shared/api/openrouter-endpoint';
 import { z } from 'zod';
 import {
   imageCapabilities, imageParametersSchema, normalizeImageCatalog, validateImageSettings,
@@ -19,7 +20,7 @@ export function usesOpenRouterImagesApi(modelId: string) {
   return !PREFERRED_IMAGE_MODEL_IDS.includes(modelId);
 }
 
-export function createOpenRouterImageCatalog(fetcher: CatalogFetch = fetch, baseUrl = 'https://openrouter.ai/api/v1') {
+export function createOpenRouterImageCatalog(fetcher: CatalogFetch = fetch, baseUrl = getOpenRouterBaseUrl()) {
   const cache = new Map<string, { expires: number; value: unknown }>();
   const pending = new Map<string, Promise<unknown>>();
   async function read(path: string) {

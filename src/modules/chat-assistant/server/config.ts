@@ -1,3 +1,4 @@
+import { getOpenRouterBaseUrl } from '@/shared/api/openrouter-endpoint';
 import {
   CHAT_ASSISTANT_DEFAULT_MODEL,
   CHAT_ASSISTANT_MODE,
@@ -65,7 +66,7 @@ export function readChatAssistantConfig(): ChatAssistantServerConfig {
     missingSettings: requestedEnabled ? missingSettings : ['CHAT_ASSISTANT_ENABLED'],
     mode: CHAT_ASSISTANT_MODE,
     model: readOptionalString('CHAT_ASSISTANT_MODEL') ?? CHAT_ASSISTANT_DEFAULT_MODEL,
-    openRouterBaseUrl: readOptionalString('CHAT_OPENROUTER_BASE_URL') ?? 'https://openrouter.ai/api/v1',
+    openRouterBaseUrl: readOptionalString('CHAT_OPENROUTER_BASE_URL') ?? getOpenRouterBaseUrl(),
     openRouterSiteUrl: readOptionalString('OPENROUTER_SITE_URL'),
     providerMaxAttempts: readPositiveInteger('CHAT_ASSISTANT_PROVIDER_MAX_ATTEMPTS', 3, 4),
     providerRetryBaseDelayMs: readPositiveInteger('CHAT_ASSISTANT_PROVIDER_RETRY_BASE_MS', 750, 5_000),
