@@ -144,6 +144,7 @@ jobs:
             --file compose.production.yaml \
             config --quiet
           docker compose --env-file .env.production.example -f compose.production.yaml -f compose.timeweb.yaml config --quiet
+          node scripts/check-production-network-config.mjs
           docker run --rm \
             --volume "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.10.2-alpine \
