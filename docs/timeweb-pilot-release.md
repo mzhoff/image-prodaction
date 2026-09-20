@@ -14,6 +14,14 @@ objects and workers; web joins the existing ingress network with alias
 `reverie-image-production`. The old standalone Caddy is behind an explicit profile
 and does not claim ports 80/443. Do not replace the existing Hub Compose stack.
 
+The existing edge network contains Content Hub aliases `postgres` and `minio`.
+For this stable Compose project, set the Image Production `DATABASE_URL` hostname
+to `reverie-image-production-postgres-1`, and Identity's `IDENTITY_DATABASE_URL`
+hostname to `reverie-identity-postgres-1`. The Timeweb overlay selects
+`reverie-image-production-minio-1` explicitly for web object storage. Workers have
+only the private product network and can continue to use their local `minio` alias.
+Verify actual resolved addresses against the target container networks after startup.
+
 Paid execution and credential projection use a separate PostgreSQL coordination
 pool (four connections per application process, two-second acquisition timeout).
 Long video operations cannot exhaust the ordinary auth/document database pool.

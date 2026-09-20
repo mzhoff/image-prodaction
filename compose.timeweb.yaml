@@ -4,6 +4,9 @@ services:
   caddy:
     profiles: [standalone-edge]
   web:
+    environment:
+      # The shared edge network also has Content Hub's `minio` alias.
+      S3_ENDPOINT: http://reverie-image-production-minio-1:9000
     networks:
       default: {}
       edge:
