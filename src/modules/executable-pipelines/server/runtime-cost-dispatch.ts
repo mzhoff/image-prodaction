@@ -1,3 +1,4 @@
+import { authorizeMemberDispatch } from '@/modules/workspace-budgets/server/member-budget-service';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
@@ -35,6 +36,7 @@ export async function markRuntimeProviderDispatched(input: {
     if (!job || job.status !== 'running' || job.attemptCount !== input.attemptCount
       || job.cancelRequestedAt || job.providerDispatchedAt
       || job.grantId !== run.runtimeGrantId || !job.leaseExpiresAt || job.leaseExpiresAt <= now) throw lostOwnership();
+    await authorizeMemberDispatch(transaction, job.workspaceId, job.createdByUserId);
     const reservations = await transaction.select().from(runtimeCostReservation)
       .where(eq(runtimeCostReservation.pipelineRunId, run.id));
     if (reservations.some((entry) => entry.generationJobId === job.id && entry.attemptCount === input.attemptCount)) {

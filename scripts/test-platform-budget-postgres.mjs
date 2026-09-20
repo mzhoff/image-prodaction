@@ -11,7 +11,7 @@ try {
  const env={...process.env,DATABASE_URL:url.toString(),CI:'true',AI_PROVIDER_RUNTIME:'fake',PLATFORM_PAID_REQUEST_GUARD:'true',
   REVERIE_IDENTITY_ISSUER:'https://id.example.test/api/auth',PLATFORM_PROJECTION_SECRET:'test-only-secret-test-only-secret',
   PROVIDER_CREDENTIALS_MASTER_KEY:randomBytes(32).toString('base64'),PROVIDER_CREDENTIALS_FINGERPRINT_KEY:randomBytes(32).toString('base64')};
- for(const [command,args] of [['npm',['run','db:migrate']],[process.execPath,['--experimental-strip-types','--loader','./scripts/node-test-loader.mjs','scripts/platform-budget-projection-smoke.ts']]]){
+ for(const [command,args] of [['npm',['run','db:migrate']],[process.execPath,['--experimental-strip-types','--loader','./scripts/node-test-loader.mjs','scripts/platform-budget-projection-smoke.ts']],[process.execPath,['--experimental-strip-types','--loader','./scripts/node-test-loader.mjs','scripts/workspace-member-budget-smoke.ts']]]){
   const child=spawn(command,args,{stdio:'inherit',env});
   const code=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',code=>resolve(code??1));});
   if(code){process.exitCode=code;break;}

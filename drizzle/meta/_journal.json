@@ -225,6 +225,13 @@
       "when": 1789671600000,
       "tag": "0031_reverie_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789862400000,
+      "tag": "0032_workspace_ai_budgets",
+      "breakpoints": true
     }
   ]
 }

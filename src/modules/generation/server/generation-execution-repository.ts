@@ -1,3 +1,5 @@
+import { authorizeMemberDispatch } from '@/modules/workspace-budgets/server/member-budget-service';
+import { MemberBudgetError } from '@/modules/workspace-budgets/core/member-budget-policy';
 import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
@@ -52,11 +54,15 @@ export async function markProviderCallDispatched(jobId: string, attemptCount: nu
   try {
     if (await markRuntimeProviderDispatched({ jobId, attemptCount })) return;
   } catch (error) {
-    if (error instanceof PipelineDomainError) throw executionError(error.code, error.message, false);
+    if (error instanceof PipelineDomainError || error instanceof MemberBudgetError) throw executionError(error.code, error.message, false);
     throw error;
   }
+  try { await getDb().transaction(async tx => {
+  const [job] = await tx.select().from(generationJob).where(eq(generationJob.id,jobId)).limit(1);
+  if (!job) throw attemptOwnershipError();
+  await authorizeMemberDispatch(tx,job.workspaceId,job.createdByUserId);
   const now = new Date();
-  const [updated] = await getDb().update(generationJob).set({
+  const [updated] = await tx.update(generationJob).set({
     providerDispatchedAt: now,
     providerDispatchedAttempt: attemptCount,
     updatedAt: now,
@@ -68,6 +74,10 @@ export async function markProviderCallDispatched(jobId: string, attemptCount: nu
     isNull(generationJob.providerDispatchedAt),
   )).returning({ id: generationJob.id });
   if (!updated) throw attemptOwnershipError('Generation attempt no longer owns the provider dispatch.');
+  }); } catch (error) {
+    if (error instanceof MemberBudgetError) throw executionError(error.code,error.message,false);
+    throw error;
+  }
 }
 
 export async function clearProviderCallDispatch(jobId: string, attemptCount: number) {

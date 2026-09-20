@@ -59,6 +59,7 @@ export async function createPipelinePlaygroundRun(input: {
   const run = await submitPipelineRuntimeRun({
     target,
     sourceApplication: PLAYGROUND_SOURCE_APPLICATION,
+    sessionUserId: input.userId,
     idempotencyKey: input.idempotencyKey,
     pipelineInput: input.pipelineInput,
   });

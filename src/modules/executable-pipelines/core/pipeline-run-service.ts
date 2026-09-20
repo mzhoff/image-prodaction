@@ -7,6 +7,7 @@ import type {
 import { PipelineDomainError } from '../contracts/pipeline-errors';
 
 export interface CreatePipelineRunInput {
+  sessionUserId?: string | null;
   apiKeyId?: string | null;
   consumerId?: string | null;
   id: string;
@@ -60,6 +61,7 @@ export async function requestPipelineRunCancel(
 
 function normalizeNewRun(input: CreatePipelineRunInput): NewPipelineRun {
   return {
+    sessionUserId: normalizeOptionalIdentifier(input.sessionUserId, 'Session user id'),
     apiKeyId: normalizeOptionalIdentifier(input.apiKeyId, 'API key id'),
     consumerId: normalizeOptionalIdentifier(input.consumerId, 'Consumer id'),
     id: normalizeIdentifier(input.id, 'Run id'),

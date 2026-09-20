@@ -7,6 +7,7 @@ test('projection signature binds method, route, exact body and freshness', () =>
   const signature = createHmac('sha256', secret).update(`${timestamp}\nPOST\n/v1/platform/budget-connection\n${body}`).digest('hex');
   const input = { body, timestamp, signature, secret, now: Number(timestamp) };
   assert.equal(validPlatformSignature(input), true);
+  assert.equal(validPlatformSignature({ ...input, path: '/v1/platform/budget-workspaces' }), false);
   assert.equal(validPlatformSignature({ ...input, body: '{"subject":"two"}' }), false);
   assert.equal(validPlatformSignature({ ...input, now: input.now + 60_001 }), false);
   assert.equal(validPlatformSignature({ ...input, now: input.now - 60_001 }), false);

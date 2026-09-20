@@ -209,6 +209,8 @@ export interface PipelineRunExecutor {
 }
 
 export interface NewPipelineRun {
+  /** Server-authenticated human actor; never read from public runtime input. */
+  sessionUserId?: string | null;
   apiKeyId?: string | null;
   consumerId?: string | null;
   id: string;

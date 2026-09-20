@@ -12,3 +12,4 @@ export * from './usage';
 export * from './worker';
 export * from './workspace';
 export * from './account-model-preference';
+export * from './workspace-budget';

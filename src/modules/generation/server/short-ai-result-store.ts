@@ -2,7 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '@/shared/db/client';
 import { generationJob } from '@/shared/db/schema/generation';
 import { createGenerationPayloadStore } from './generation-payload-store';
-import { markRuntimeProviderDispatched } from '@/modules/executable-pipelines/server/runtime-cost-dispatch';
+import { markProviderCallDispatched } from './generation-execution-repository';
 
 export async function saveShortAiResultCheckpoint(input: {
   attemptCount: number;
@@ -54,20 +54,7 @@ export async function markShortAiProviderDispatched(input: {
   attemptCount: number;
   jobId: string;
 }) {
-  if (await markRuntimeProviderDispatched(input)) return;
-  const now = new Date();
-  const [updated] = await getDb().update(generationJob).set({
-    providerDispatchedAt: now,
-    providerDispatchedAttempt: input.attemptCount,
-    updatedAt: now,
-  }).where(and(
-    eq(generationJob.id, input.jobId),
-    eq(generationJob.status, 'running'),
-    eq(generationJob.attemptCount, input.attemptCount),
-    isNull(generationJob.cancelRequestedAt),
-    isNull(generationJob.providerDispatchedAt),
-  )).returning({ id: generationJob.id });
-  if (!updated) throw new Error('Short AI job lost ownership before provider dispatch.');
+  await markProviderCallDispatched(input.jobId,input.attemptCount);
 }
 
 export async function readShortAiResultCheckpoint(resultObjectKey: string) {

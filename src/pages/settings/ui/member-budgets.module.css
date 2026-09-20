@@ -1,0 +1,10 @@
+.card > p, .card form p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pui-semantic-text-secondary);
+}
+.card .table { font-size: 12px; }
+.card .table th { font-size: 10px; }
+.card .table th:first-child, .card .table td:first-child { width: auto; }
+.card form { border-top: 1px solid var(--pui-semantic-border-default); padding-top: 18px; }
+.card legend { padding: 0 0 14px; font-size: 14px; font-weight: 600; }

@@ -22,6 +22,7 @@ export interface PipelineRuntimeExecutionTarget {
 }
 
 export async function submitPipelineRuntimeRun(input: {
+  sessionUserId?: string | null;
   apiKeyId?: string | null;
   consumerId?: string | null;
   idempotencyKey: string;
@@ -36,6 +37,7 @@ export async function submitPipelineRuntimeRun(input: {
   );
 
   return createPipelineRun({
+    sessionUserId: input.sessionUserId,
     apiKeyId: input.apiKeyId,
     consumerId: input.consumerId,
     id: createUuidV7(),
@@ -45,6 +47,7 @@ export async function submitPipelineRuntimeRun(input: {
     sourceApplication: input.sourceApplication,
     idempotencyKey: input.idempotencyKey,
     requestFingerprint: fingerprintPipelineRunRequest({
+      ...(input.sessionUserId ? { sessionUserId: input.sessionUserId } : {}),
       input: input.pipelineInput,
       pipelineId: input.target.pipelineId,
       pipelineVersion: input.target.pipelineVersion,
