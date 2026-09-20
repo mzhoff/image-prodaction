@@ -1,0 +1,20 @@
+# Add to the existing production + Timeweb overlays after the SSH tunnel is healthy.
+services:
+  web:
+    environment: &provider_environment
+      OPENROUTER_BASE_URL: http://172.30.89.1:3188/openrouter/api/v1
+      CHAT_OPENROUTER_BASE_URL: http://172.30.89.1:3188/openrouter/api/v1
+    networks:
+      provider_egress: {}
+  worker:
+    environment: *provider_environment
+    networks:
+      provider_egress: {}
+  pipeline-worker:
+    environment: *provider_environment
+    networks:
+      provider_egress: {}
+networks:
+  provider_egress:
+    external: true
+    name: reverie-provider-egress

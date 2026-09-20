@@ -1,3 +1,4 @@
+import { getOpenRouterBaseUrl } from '@/shared/api/openrouter-endpoint';
 import {
   EMPTY_PROVIDER_USAGE,
   type ProviderAdapter,
@@ -33,7 +34,7 @@ import {
   uniqueModalities,
 } from './openrouter-value-readers';
 
-const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
+const DEFAULT_BASE_URL = getOpenRouterBaseUrl();
 const DEFAULT_TIMEOUT_MS = 180_000;
 const PROVIDER = 'openrouter';
 

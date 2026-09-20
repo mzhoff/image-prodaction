@@ -1,3 +1,4 @@
+import { getOpenRouterBaseUrl } from '@/shared/api/openrouter-endpoint';
 import { z } from 'zod';
 import { getVideoModelDisplayName, type VideoModelCapabilities } from '@/shared/media/video-generation-contracts';
 
@@ -34,7 +35,7 @@ let cache: { expires: number; models: VideoModelCapabilities[] } | undefined;
 let pending: Promise<VideoModelCapabilities[]> | undefined;
 export async function loadVideoCatalog(): Promise<VideoModelCapabilities[]> {
   if (cache && cache.expires > Date.now()) return cache.models;
-  pending ??= fetch('https://openrouter.ai/api/v1/videos/models', { signal: AbortSignal.timeout(15_000), redirect: 'error' })
+  pending ??= fetch(`${getOpenRouterBaseUrl()}/videos/models`, { signal: AbortSignal.timeout(15_000), redirect: 'error' })
     .then(async (response) => {
       if (!response.ok) throw new Error('Каталог видеомоделей временно недоступен.');
       const models = normalizeVideoCatalog(await response.json());
