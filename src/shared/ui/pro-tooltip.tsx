@@ -10,6 +10,7 @@ interface ProTooltipProps {
   offset?: number;
   shortcut?: string;
   side?: 'top' | 'bottom';
+  wrap?: boolean;
 }
 
 interface TooltipPosition {
@@ -17,7 +18,7 @@ interface TooltipPosition {
   top: number;
 }
 
-export function ProTooltip({ children, label, offset = 8, shortcut, side = 'top' }: ProTooltipProps) {
+export function ProTooltip({ children, label, offset = 8, shortcut, side = 'top', wrap = false }: ProTooltipProps) {
   const triggerRef = useRef<HTMLSpanElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -65,7 +66,9 @@ export function ProTooltip({ children, label, offset = 8, shortcut, side = 'top'
         <div
           ref={tooltipRef}
           className="pro-tooltip"
-          style={position ? { left: position.left, top: position.top } : { visibility: 'hidden' }}
+          role="tooltip"
+          style={{ ...(position ? { left: position.left, top: position.top } : { visibility: 'hidden' as const }),
+            ...(wrap ? { maxWidth: 'min(320px, calc(100vw - 16px))', whiteSpace: 'normal', lineHeight: 1.5 } : {}) }}
         >
           <span>{label}</span>
           {shortcut ? <kbd>{shortcut}</kbd> : null}

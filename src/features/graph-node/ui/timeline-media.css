@@ -18,7 +18,7 @@
 .timeline-editor-toolbar img { display: block; width: 14px; height: 14px; }
 .timeline-editor-clock { display: flex; flex-direction: column; min-width: 63px; padding-inline: 3px; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .timeline-editor-clock strong { color: var(--pui-semantic-text-secondary); font: 600 14px/1.1 var(--pui-font-family-sans); white-space: nowrap; }
-.timeline-editor-clock strong span, .timeline-editor-clock small { color: var(--pui-semantic-text-tertiary, var(--pui-semantic-text-secondary)); opacity: .55; }
+.timeline-editor-clock strong span, .timeline-editor-clock small { color: var(--pui-semantic-text-secondary); opacity: .55; }
 .timeline-editor-clock small { margin-top: 1px; font-size: 9px; }
 .timeline-editor-shot-range { margin: 9px 0 10px; text-align: center; font-size: 10px; color: var(--pui-semantic-text-secondary); font-variant-numeric: tabular-nums; }
 .timeline-editor-rail-wrap { margin-bottom: 10px; }

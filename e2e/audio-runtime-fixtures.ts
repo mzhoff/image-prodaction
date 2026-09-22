@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { CURRENT_TERMS_VERSION } from '../src/shared/auth/terms-contract';
 import { PROJECT_SCHEMA_VERSION, type ProjectExport } from '../src/entities/production-graph/model/project-schema';
 import { waitForEmailLink } from '../scripts/mailpit-client';
+import type { OnboardingState } from '../src/shared/onboarding/contract';
+import { completedQaOnboarding } from './release-user-fixture';
+import type { AssetDto } from '../src/entities/asset/server/asset-service-contracts';
 
 export const audioQaCapability = 'qa.audio.convert';
 
@@ -14,10 +17,14 @@ export class AudioQaHttp {
 
   /** Test-only transfer into the matching local browser context; never log the result. */
   browserSessionCookies() {
-    return [...this.cookies].map(([name, value]) => ({ name, value, url: this.origin, httpOnly: true, sameSite: 'Lax' as const }));
+    return [
+      ...[...this.cookies].map(([name, value]) => ({ name, value, url: this.origin, httpOnly: true, sameSite: 'Lax' as const })),
+      // The API questionnaire chooses Russian; mirror that preference in its browser.
+      { name: 'production_locale', value: 'ru', url: this.origin, httpOnly: false, sameSite: 'Lax' as const },
+    ];
   }
 
-  async request(path: string, options: { method?: string; json?: unknown; form?: FormData; key?: string } = {}) {
+  async request(path: string, options: { method?: string; json?: unknown; form?: FormData; key?: string; accountId?: string } = {}) {
     if (!path.startsWith('/') || path.startsWith('//')) throw new Error('QA requests must use a local relative path.');
     const headers = new Headers({ origin: this.origin });
     // Independent QA users must not share the five-signups/minute production bucket.
@@ -28,6 +35,7 @@ export class AudioQaHttp {
     if (this.token) headers.set('authorization', `Bearer ${this.token}`);
     else if (this.cookies.size) headers.set('cookie', [...this.cookies].map(([key, value]) => `${key}=${value}`).join('; '));
     if (options.key) headers.set('idempotency-key', options.key);
+    if (options.accountId) headers.set('x-account-id', options.accountId);
     if (options.json !== undefined) headers.set('content-type', 'application/json');
     let response: Response;
     try {
@@ -46,7 +54,37 @@ export class AudioQaHttp {
   }
 }
 
-export async function parseQaJson<T>(response: Response, expected: number | number[], schema: z.ZodType<T>): Promise<T> {
+/** New media is usable only after the durable ingest job finishes, not after its 202 acceptance. */
+export async function awaitQaAssetIngest(http: AudioQaHttp, response: Pick<Response, 'status' | 'json'>): Promise<{ asset: AssetDto }> {
+  const accepted = await parseQaJson(response, 202, z.object({
+    asset: z.object({ id: z.uuid(), status: z.literal('pending') }),
+    job: z.object({ id: z.uuid() }), statusUrl: z.string(),
+  }));
+  const path = `/api/generation-jobs/${accepted.job.id}`;
+  if (accepted.statusUrl !== path) throw new Error('Upload returned an invalid local job URL.');
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    const current = await http.request(path);
+    if (current.status !== 200) throw new Error(`Upload job lookup returned HTTP ${current.status}.`);
+    const payload = await current.json() as {
+      job?: { id?: string; status?: string; error?: { retryable?: boolean } }; asset?: AssetDto;
+    };
+    if (payload.job?.id !== accepted.job.id) throw new Error('Upload job identity changed.');
+    if (payload.job.status === 'succeeded') {
+      if (payload.asset?.id !== accepted.asset.id || payload.asset.status !== 'ready') {
+        throw new Error('Completed upload did not return its ready asset.');
+      }
+      return { asset: payload.asset };
+    }
+    if (payload.job.status === 'canceled' || (payload.job.status === 'failed' && !payload.job.error?.retryable)) {
+      throw new Error('Synthetic asset processing failed; response body omitted.');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error('Synthetic asset processing did not finish within 60 seconds.');
+}
+
+export async function parseQaJson<T>(response: Pick<Response, 'status' | 'json'>, expected: number | number[], schema: z.ZodType<T>): Promise<T> {
   const accepted = Array.isArray(expected) ? expected : [expected];
   if (!accepted.includes(response.status)) {
     throw new Error(`Audio QA expected HTTP ${accepted.join('/')} but received ${response.status}; body omitted.`);
@@ -57,6 +95,10 @@ export async function parseQaJson<T>(response: Response, expected: number | numb
 }
 
 export async function createAudioQaOwner(origin: string, label: string) {
+  const target = new URL(origin);
+  if (target.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(target.hostname)) {
+    throw new Error('Audio QA application must be loopback-only.');
+  }
   const http = new AudioQaHttp(origin);
   const email = `audio-runtime-${randomBytes(8).toString('hex')}@example.test`;
   const password = `${randomBytes(20).toString('base64url')}!Aa1`;
@@ -71,13 +113,25 @@ export async function createAudioQaOwner(origin: string, label: string) {
     if (mailpit.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(mailpit.hostname)) throw new Error('Audio QA Mailpit must be loopback-only.');
     const link = new URL(await waitForEmailLink({ mailpitUrl: mailpit.origin, recipient: email,
       subjectIncludes: 'Подтвердите email', pathIncludes: '/api/auth/verify-email' }));
-    if (!['localhost', '127.0.0.1'].includes(link.hostname) || link.port !== '3004'
+    if (link.protocol !== target.protocol || !['localhost', '127.0.0.1'].includes(link.hostname) || link.port !== target.port
       || link.pathname !== '/api/auth/verify-email') throw new Error('Audio QA verification link is not the local application.');
     const verification = await http.request(`${link.pathname}${link.search}`);
     if (![200, 302, 303, 307].includes(verification.status)) throw new Error('Audio QA email verification failed.');
     spaces = await http.request('/api/workspaces');
   }
   const payload = await parseQaJson(spaces, 200, z.object({ workspaces: z.array(z.object({ id: z.uuid() })).min(1) }));
+  const questionnaire = await http.request('/api/account/onboarding');
+  if (questionnaire.status !== 200) throw new Error('Audio QA could not read the required onboarding.');
+  const state = await questionnaire.json() as OnboardingState;
+  if (!state.userId || !Number.isInteger(state.revision) || state.completedAt !== null || state.legacyExempt) {
+    throw new Error('Audio QA expected a new account with an incomplete questionnaire.');
+  }
+  const completed = await http.request('/api/account/onboarding', {
+    method: 'PATCH', accountId: state.userId, json: completedQaOnboarding(state),
+  });
+  await parseQaJson(completed, 200, z.object({
+    userId: z.literal(state.userId), completedAt: z.string().min(1), legacyExempt: z.literal(false),
+  }));
   return { http, workspaceId: payload.workspaces[0]!.id };
 }
 

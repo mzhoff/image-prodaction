@@ -1,8 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useTranslations } from '@/shared/i18n/use-translations';
+import { useEffectEvent, useEffect, useState } from 'react';
 import type { UsageDashboardData } from '@/modules/usage/contracts/usage-dashboard';
 
 export function useUsageDashboard(workspaceId: string, from: string, to: string, timezone: string, refresh: number) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const key = JSON.stringify([workspaceId, from, to, timezone, refresh]);
   const [state, setState] = useState<{ key: string; data?: UsageDashboardData; error?: string }>({ key: '' });
   useEffect(() => {
@@ -14,11 +17,11 @@ export function useUsageDashboard(workspaceId: string, from: string, to: string,
           credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
         });
         const body = await response.json();
-        if (!response.ok) throw new Error(response.status === 403 ? 'Нет доступа к статистике этого Workspace.' : body.error?.message || 'Не удалось загрузить статистику.');
-        if (body.workspaceId !== workspaceId || !Array.isArray(body.rows) || !Array.isArray(body.comparison?.rows)) throw new Error('Сервер вернул некорректную статистику.');
+        if (!response.ok) throw new Error(response.status === 403 ? tEffect("Нет доступа к статистике этого Workspace.") : body.error?.message || tEffect("Не удалось загрузить статистику."));
+        if (body.workspaceId !== workspaceId || !Array.isArray(body.rows) || !Array.isArray(body.comparison?.rows)) throw new Error(tEffect("Сервер вернул некорректную статистику."));
         if (!controller.signal.aborted) setState({ key, data: body });
       } catch (error) {
-        if (!controller.signal.aborted) setState({ key, error: error instanceof Error ? error.message : 'Не удалось загрузить статистику.' });
+        if (!controller.signal.aborted) setState({ key, error: error instanceof Error ? error.message : tEffect("Не удалось загрузить статистику.") });
       }
     })();
     return () => controller.abort();

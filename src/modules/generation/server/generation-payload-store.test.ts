@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   createGenerationPayloadStore,
   GenerationPayloadInvalidError,
+  GenerationPayloadTooLargeError,
+  serializeGenerationPayload,
 } from './generation-payload-store';
 import type {
   AssetObjectLocation,
@@ -34,6 +36,19 @@ test('generation payload store rejects keys outside the generation prefix', asyn
     store.read('workspaces/other/credentials.json'),
     GenerationPayloadInvalidError,
   );
+});
+
+test('generation payload preflight and storage both enforce serialized UTF-8 bytes before writing', async () => {
+  const payload = { prompt: 'привет', references: ['data:image/png;base64,AQID'] };
+  assert.deepEqual(serializeGenerationPayload(payload), new TextEncoder().encode(JSON.stringify(payload)));
+  // The source string fits 32 MiB as characters, but its actual UTF-8 JSON exceeds the limit.
+  const oversized = { prompt: 'я'.repeat(16 * 1024 * 1024) };
+  assert.throws(() => serializeGenerationPayload(oversized), GenerationPayloadTooLargeError);
+  const objects = new Map<string, Uint8Array>();
+  const store = createGenerationPayloadStore(createFakeStore(objects), 'private-bucket');
+  await assert.rejects(store.write({ workspaceId: '01900000-0000-7000-8000-000000000001',
+    jobId: '01900000-0000-7000-8000-000000000002', kind: 'request', payload: oversized }), GenerationPayloadTooLargeError);
+  assert.equal(objects.size, 0);
 });
 
 test('generation payload store distinguishes a missing checkpoint from an S3 outage', async () => {

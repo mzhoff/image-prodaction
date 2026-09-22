@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
@@ -58,7 +59,7 @@ test('Import video ports and long Voice recovery use the current UI without paid
     return route.fulfill({ json: finish ? { job: { id: jobId, status: 'succeeded' }, asset: audioDto }
       : { job: { id: jobId, status: 'running' }, progress: { completedParts: 1, totalParts: 3, phase: 'generating' } } });
   });
-  await page.goto(`/projects/${document.id}`);
+  await gotoQaSection(page, `/projects/${document.id}`);
   const importedCard = page.locator(`[data-node-id="${imported.id}"]`);
   const voiceCard = page.locator(`[data-node-id="${voice.id}"]`);
   await importedCard.locator('input[type="file"]').setInputFiles({ name: 'synthetic-video.mov', mimeType: 'video/quicktime', buffer: Buffer.from('UI fixture only') });

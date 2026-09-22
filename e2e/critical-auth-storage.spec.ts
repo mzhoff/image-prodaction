@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForEmailLink } from '../scripts/mailpit-client';
+import { completeOnboardingThroughUi, createFlowFromHome, dismissSectionGuide } from './release-user-fixture';
+
+test.use({ locale: 'ru-RU' });
 
 const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 const owner = {
@@ -13,7 +16,8 @@ const onePixelPng = Buffer.from(
   'base64',
 );
 
-test('verified user persists a private image and can reset the password', async ({ page }) => {
+test('verified user persists a private image and can reset the password', async ({ page, request }) => {
+  test.setTimeout(180_000);
   let projectId = '';
   let uploadedAssetId = '';
   let workspaceId = '';
@@ -42,14 +46,11 @@ test('verified user persists a private image and can reset the password', async 
     await page.goto(verificationLink);
     await expect(page).toHaveURL(/\/verify-email(?:\?|$)/u);
     await page.getByRole('link', { name: 'Перейти в продукт' }).click();
-    await expect(page).toHaveURL('/');
+    await completeOnboardingThroughUi(page, owner.name);
   });
 
   await test.step('create a document', async () => {
-    await expect(page.getByRole('button', { name: 'Create New' }).first()).toBeEnabled();
-    await page.getByRole('button', { name: 'Create New' }).first().click();
-    await expect(page).toHaveURL(/\/projects\/[^/?#]+$/u);
-    projectId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
+    projectId = await createFlowFromHome(page);
     expect(projectId).not.toBe('');
 
     const projectResponse = await page.request.get(`/api/projects/${projectId}`);
@@ -62,7 +63,7 @@ test('verified user persists a private image and can reset the password', async 
   });
 
   await test.step('upload, autosave and reload an S3-backed image', async () => {
-    await expect(page.getByRole('textbox', { name: 'Pipeline name' })).toHaveValue('Untitled Pipeline');
+    await expect(page.getByRole('textbox', { name: 'Pipeline name' })).toHaveValue('Новый Flow');
     const closeAssistant = page.getByRole('button', { name: 'Закрыть ассистента' });
     await expect(closeAssistant).toBeVisible();
     await closeAssistant.click();
@@ -90,10 +91,11 @@ test('verified user persists a private image and can reset the password', async 
     });
 
     const uploadResponse = await uploadResponsePromise;
-    expect(uploadResponse.status()).toBe(201);
-    const uploadPayload = await uploadResponse.json() as { asset?: { id?: string; status?: string } };
-    uploadedAssetId = uploadPayload.asset?.id ?? '';
-    expect(uploadPayload.asset?.status).toBe('ready');
+    expect(uploadResponse.status()).toBe(202);
+    const uploadPayload = await uploadResponse.json() as AcceptedImageUpload;
+    uploadedAssetId = uploadPayload.asset.id;
+    expect(uploadPayload.asset.status).toBe('pending');
+    await waitForReadyImage(page, uploadPayload);
     expect(uploadedAssetId).not.toBe('');
 
     await expect(importNode.getByAltText('Reference preview')).toBeVisible();
@@ -104,12 +106,14 @@ test('verified user persists a private image and can reset the password', async 
     const contentResponse = await page.request.get(`/api/assets/${uploadedAssetId}/content`);
     expect(contentResponse.status()).toBe(200);
     expect(await contentResponse.body()).toEqual(onePixelPng);
+    // A fresh HTTP context has no owner cookie: a private file must stay inaccessible.
+    expect((await request.get(`/api/assets/${uploadedAssetId}/content`)).status()).toBe(401);
   });
 
   await test.step('sign out and sign back in', async () => {
     await signOutFromWorkspace(page);
     await signIn(page, owner.email, owner.password);
-    await expect(page.getByRole('button', { name: owner.name })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Аккаунт: ${owner.name}`, exact: true })).toBeVisible();
   });
 
   await test.step('reset the password through Mailpit and reject the old password', async () => {
@@ -140,27 +144,26 @@ test('verified user persists a private image and can reset the password', async 
     await page.locator('input[name="password"]').fill(owner.resetPassword);
     await page.getByRole('button', { name: 'Войти' }).click();
     await expect(page).toHaveURL('/');
-    await expect(page.getByRole('button', { name: owner.name })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Аккаунт: ${owner.name}`, exact: true })).toBeVisible();
   });
 
   await test.step('close settings in one action after navigating between sections', async () => {
-    await page.getByRole('button', { name: owner.name }).click();
-    await page.getByRole('menuitem', { name: 'Account settings' }).click();
-    await expect(page).toHaveURL('/account');
-    await expect(page.getByRole('heading', { name: 'Аккаунт Reverie' })).toBeVisible();
-    await page.getByRole('link', { name: '← Image Production', exact: true }).click();
-    await expect(page).toHaveURL('/');
-    await page.getByRole('button', { name: owner.name }).click();
-    await page.getByRole('menuitem', { name: 'Workspace settings' }).click();
+    await page.getByRole('button', { name: `Аккаунт: ${owner.name}`, exact: true }).click();
+    await page.getByRole('dialog', { name: 'Ваш аккаунт' }).getByRole('link', { name: /Личные данные/u }).click();
+    await expect(page).toHaveURL('/settings/account');
+    await dismissSectionGuide(page, 'settings');
+    const settings = page.getByRole('dialog', { name: 'Настройки', exact: true });
+    await expect(settings).toBeVisible();
+    const navigation = settings.getByRole('navigation', { name: 'Разделы настроек' });
+    await navigation.getByRole('link', { name: 'AI и баланс', exact: true }).click();
     await expect(page).toHaveURL('/settings/providers');
-    await page.getByRole('link', { name: 'Аккаунт', exact: true }).click();
+    await navigation.getByRole('link', { name: 'Профиль', exact: true }).click();
     await expect(page).toHaveURL('/settings/account');
-
-    await page.getByRole('link', { name: 'Безопасность' }).click();
+    await navigation.getByRole('link', { name: 'Безопасность', exact: true }).click();
     await expect(page).toHaveURL('/settings/security');
-    await page.getByRole('link', { name: 'Аккаунт' }).click();
+    await navigation.getByRole('link', { name: 'Профиль', exact: true }).click();
     await expect(page).toHaveURL('/settings/account');
-    await page.getByRole('link', { name: 'Безопасность' }).click();
+    await navigation.getByRole('link', { name: 'Безопасность', exact: true }).click();
     await expect(page).toHaveURL('/settings/security');
 
     await page.getByRole('button', { name: 'Закрыть настройки' }).click();
@@ -187,6 +190,7 @@ test('verified user persists a private image and can reset the password', async 
       workspaceId,
     });
     const rejectedTechnicalUpload = await page.request.post('/api/assets/images', {
+      headers: { Origin: new URL(page.url()).origin },
       multipart: {
         documentId: projectId,
         file: {
@@ -201,19 +205,23 @@ test('verified user persists a private image and can reset the password', async 
 
     await page.goto('/library');
     await expect(page).toHaveURL('/library');
-    await expect(page.getByRole('heading', { name: 'Библиотека' })).toBeVisible();
-    await expect(page.getByRole('searchbox', { name: 'Поиск по библиотеке' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Источник' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Тип медиа' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Модель' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Проект' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
+    await dismissSectionGuide(page, 'library');
+    await expect(page.getByRole('region', { name: 'Фильтры библиотеки' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Фильтры', exact: true }).click();
+    const filters = page.getByRole('region', { name: 'Фильтры библиотеки' });
+    for (const name of ['Источник', 'Тип медиа', 'Модель', 'Проект']) {
+      await expect(filters.getByRole('combobox', { name, exact: true })).toBeVisible();
+    }
     await expect(page.getByText('Templates', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Tutorials', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: `Открыть ${hiddenTechnicalName}` })).toHaveCount(0);
 
-    const search = page.getByRole('searchbox', { name: 'Поиск по библиотеке' });
-    await search.fill(filterPrefix);
-    await page.getByRole('button', { name: 'Найти' }).click();
+    await page.getByRole('button', { name: 'Поиск по библиотеке', exact: true }).click();
+    const search = page.getByRole('dialog', { name: 'Поиск в Workspace' });
+    await search.getByRole('searchbox', { name: 'Найти файлы в Workspace' }).fill(filterPrefix);
+    await search.getByRole('button', { name: 'Фильтры', exact: true }).click();
+    await search.getByRole('button', { name: 'Показать в библиотеке', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/library\\?q=${encodeURIComponent(filterPrefix)}$`, 'u'));
 
     const filteredLinks = page.getByRole('link', {
@@ -272,8 +280,8 @@ async function signIn(page: Page, email: string, password: string) {
 
 async function signOutFromWorkspace(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: owner.name }).click();
-  await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: `Аккаунт: ${owner.name}`, exact: true }).click();
+  await page.getByRole('dialog', { name: 'Ваш аккаунт' }).getByRole('button', { name: 'Выйти', exact: true }).click();
   await expect(page).toHaveURL(/\/login(?:\?|$)/u);
 }
 
@@ -310,17 +318,14 @@ async function uploadImageThroughApi(
   };
   multipart.origin = input.origin;
 
-  const response = await page.request.post('/api/assets/images', { multipart });
-  expect(response.status()).toBe(201);
-  const payload = await response.json() as {
-    asset?: {
-      id?: string;
-      libraryVisible?: boolean;
-      origin?: string;
-      status?: string;
-    };
-  };
-  expect(payload.asset?.status).toBe('ready');
+  const response = await page.request.post('/api/assets/images', {
+    headers: { Origin: new URL(page.url()).origin }, multipart,
+  });
+  expect(response.status()).toBe(202);
+  const accepted = await response.json() as AcceptedImageUpload;
+  expect(accepted.asset.status).toBe('pending');
+  const payload = await waitForReadyImage(page, accepted);
+  expect(payload.asset.status).toBe('ready');
   expect(payload.asset?.origin).toBe(input.origin);
   expect(payload.asset?.libraryVisible).toBe(true);
   expect(payload.asset?.id).toBeTruthy();
@@ -329,4 +334,25 @@ async function uploadImageThroughApi(
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
+interface AcceptedImageUpload {
+  asset: { id: string; status: string; origin?: string; libraryVisible?: boolean };
+  job: { id: string; status: string };
+  statusUrl: string;
+}
+
+async function waitForReadyImage(page: Page, accepted: AcceptedImageUpload) {
+  expect(accepted.job.id).toMatch(/^[0-9a-f-]{36}$/iu);
+  expect(accepted.statusUrl).toBe(`/api/generation-jobs/${accepted.job.id}`);
+  let ready: AcceptedImageUpload | undefined;
+  await expect.poll(async () => {
+    const response = await page.request.get(accepted.statusUrl);
+    expect(response.status()).toBe(200);
+    const payload = await response.json() as AcceptedImageUpload;
+    if (payload.job.status === 'succeeded') ready = payload;
+    return payload.job.status;
+  }, { timeout: 45_000, intervals: [250, 500, 1000] }).toBe('succeeded');
+  expect(ready?.asset).toMatchObject({ id: accepted.asset.id, status: 'ready' });
+  return ready!;
 }

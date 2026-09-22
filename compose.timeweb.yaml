@@ -5,8 +5,8 @@ services:
     profiles: [standalone-edge]
   web:
     environment:
-      # The shared edge network also has Content Hub's `minio` alias.
-      S3_ENDPOINT: http://reverie-image-production-minio-1:9000
+      # Keep the private MinIO alias as the default; external storage supplies its own endpoint.
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://reverie-image-production-minio-1:9000}
     networks:
       default: {}
       edge:

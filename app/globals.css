@@ -5,6 +5,7 @@
 @import "../src/app/styles/canvas-import-progress.css";
 @import "../src/app/styles/assistant-floating-button.css";
 @import "../src/app/styles/assistant-pet.css";
+@import "../src/shared/assistant/ui/assistant-window.css";
 @import "../src/app/styles/assistant-shell.css";
 @import "../src/app/styles/design-element-selection.css";
 @import "../src/app/styles/document-view.css";
@@ -30,3 +31,19 @@
 @import "../src/app/styles/reverie-theme.css";
 @import '../src/app/styles/model-selector.css';
 @import '../src/app/styles/aspect-ratio-selector.css';
+@import '../src/app/styles/production-navigation.css';
+@import '../src/app/styles/production-navigation-overlays.css';
+@import '../src/app/styles/stories.css';
+@import "../src/app/styles/production-home.css";
+@import "../src/app/styles/home-image-generation.css";
+@import "../src/app/styles/home-composer-modes.css";
+
+@import "../src/app/styles/stories-interactive.css";
+@import '../src/app/styles/production-composer.css';
+@import '../src/app/styles/production-sections.css';
+@import '../src/app/styles/workspace-discovery.css';
+@import '../src/app/styles/canvas-node-palette.css';
+@import '../src/shared/assistant/ui/assistant-window-appearance.css';
+
+@import "../src/app/styles/story-authoring.css";
+@import "../src/app/styles/story-characters.css";

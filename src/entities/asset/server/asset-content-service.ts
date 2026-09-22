@@ -1,3 +1,7 @@
+import { readStoredMediaFile } from '@/shared/media/stored-media-file';
+import { readFile } from 'node:fs/promises';
+import { MAX_VIDEO_BYTES } from '@/shared/media/video-contracts';
+import { getMaxImageUploadBytes } from './asset-storage-support';
 import type { AssetVariantPurpose } from './asset-repository';
 import { AssetRangeError, parseAssetByteRange } from '@/shared/storage/byte-range';
 import { toAssetDto } from './asset-dto';
@@ -29,12 +33,15 @@ export async function getAssetContent(
   try {
     if (purpose === 'thumbnail' && !variant && dependencies.createId) {
       const original = await dependencies.objectStore.get({ bucket: record.bucket, key: record.storageKey });
-      const bytes = new Uint8Array(await new Response(original.body).arrayBuffer());
-      const thumbnail = record.mediaKind === 'image' && dependencies.createThumbnail
-        ? await dependencies.createThumbnail(bytes)
-        : record.mediaKind === 'video' && dependencies.createVideoThumbnail
-          ? await dependencies.createVideoThumbnail(bytes)
-          : null;
+      const source = await readStoredMediaFile({ body: original.body, byteSize: record.byteSize, checksumSha256: record.checksumSha256,
+        maxBytes: record.mediaKind === 'video' ? MAX_VIDEO_BYTES : getMaxImageUploadBytes() });
+      const thumbnail = await (async () => {
+        try {
+          return record.mediaKind === 'image' && dependencies.createThumbnail
+            ? await dependencies.createThumbnail(await readFile(source.bytes.path))
+            : record.mediaKind === 'video' && dependencies.createVideoThumbnail ? await dependencies.createVideoThumbnail(source.bytes) : null;
+        } finally { await source.dispose(); }
+      })();
       if (!thumbnail) throw new AssetNotFoundError();
       await storeThumbnailVariant(record, thumbnail, {
         ...dependencies,

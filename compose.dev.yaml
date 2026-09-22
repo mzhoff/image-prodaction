@@ -1,0 +1,65 @@
+# Optional local editing profile. Keep compose.integration.yaml and the private
+# runtime overlay when recreating an existing integrated development stack.
+x-source-mounts: &source-mounts
+  - ./src:/app/src:ro
+  - ./contracts:/app/contracts:ro
+  - ./scripts:/app/scripts:ro
+  - ./drizzle:/app/drizzle:ro
+  - ./docs/assistant-knowledge:/app/docs/assistant-knowledge:ro
+
+services:
+  web:
+    command: ["node", "node_modules/next/dist/bin/next", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - ./src:/app/src:ro
+      - ./contracts:/app/contracts:ro
+      - ./scripts:/app/scripts:ro
+      - ./drizzle:/app/drizzle:ro
+      - ./docs/assistant-knowledge:/app/docs/assistant-knowledge:ro
+      - ./app:/app/app:ro
+      - ./public:/app/public:ro
+      - ./next.config.ts:/app/next.config.ts:ro
+      - ./proxy.ts:/app/proxy.ts:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./next-env.d.ts:/app/next-env.d.ts
+      # Use the exact installed Identity canary while editing the local login UI.
+      - ./node_modules/@reverie/identity-client:/app/node_modules/@reverie/identity-client:ro
+      # Match the pinned shared package family when testing localized UI.
+      - ./node_modules/@prodactionpro/chat-application:/app/node_modules/@prodactionpro/chat-application:ro
+      - ./node_modules/@prodactionpro/chat-attachments-s3:/app/node_modules/@prodactionpro/chat-attachments-s3:ro
+      - ./node_modules/@prodactionpro/chat-auth-better-auth:/app/node_modules/@prodactionpro/chat-auth-better-auth:ro
+      - ./node_modules/@prodactionpro/chat-connectors:/app/node_modules/@prodactionpro/chat-connectors:ro
+      - ./node_modules/@prodactionpro/chat-domain:/app/node_modules/@prodactionpro/chat-domain:ro
+      - ./node_modules/@prodactionpro/chat-persistence-drizzle:/app/node_modules/@prodactionpro/chat-persistence-drizzle:ro
+      - ./node_modules/@prodactionpro/chat-protocol:/app/node_modules/@prodactionpro/chat-protocol:ro
+      - ./node_modules/@prodactionpro/chat-runtime-core:/app/node_modules/@prodactionpro/chat-runtime-core:ro
+      - ./node_modules/@prodactionpro/chat-runtime-next:/app/node_modules/@prodactionpro/chat-runtime-next:ro
+      - ./node_modules/@prodactionpro/chat-runtime-react:/app/node_modules/@prodactionpro/chat-runtime-react:ro
+      - ./node_modules/@prodactionpro/chat-sdk:/app/node_modules/@prodactionpro/chat-sdk:ro
+      - ./node_modules/@prodactionpro/chat-server-core:/app/node_modules/@prodactionpro/chat-server-core:ro
+      - ./node_modules/@prodactionpro/chat-theme:/app/node_modules/@prodactionpro/chat-theme:ro
+      - ./node_modules/@prodactionpro/chat-ui:/app/node_modules/@prodactionpro/chat-ui:ro
+      - ./node_modules/@prodactionpro/ui-media:/app/node_modules/@prodactionpro/ui-media:ro
+      - ./node_modules/@prodactionpro/ui-stories-editor:/app/node_modules/@prodactionpro/ui-stories-editor:ro
+      # Keep the published onboarding package available in the live UI profile.
+      - ./node_modules/@prodactionpro/ui-onboarding:/app/node_modules/@prodactionpro/ui-onboarding:ro
+      # Streaming uploads use these exact installed packages in the editing profile.
+      - ./node_modules/busboy:/app/node_modules/busboy:ro
+      - ./node_modules/streamsearch:/app/node_modules/streamsearch:ro
+      - ./node_modules/libheif-js:/app/node_modules/libheif-js:ro
+      # A running Next server owns its cache. Host typechecks/builds must not
+      # rewrite its manifests or remove its generated routes.
+      - web-dev-cache:/app/.next
+    healthcheck:
+      start_period: 60s
+      timeout: 15s
+  worker:
+    volumes: *source-mounts
+  pipeline-worker:
+    volumes: *source-mounts
+
+volumes:
+  web-dev-cache:

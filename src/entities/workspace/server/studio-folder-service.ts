@@ -19,9 +19,13 @@ export async function requireStudioFolder(userId: string, workspaceId: string, i
   return folder;
 }
 
-export async function createStudioFolder(userId: string, workspaceId: string, name: string) {
+export async function createStudioFolder(userId: string, workspaceId: string, name: string, parentId?: string) {
   await requireWorkspaceMembership(userId, workspaceId);
-  const [folder] = await getDb().insert(studioFolder).values({ id: createUuidV7(), workspaceId, createdByUserId: userId, name }).returning();
+  if (parentId) {
+    const parent = await requireStudioFolder(userId, workspaceId, parentId);
+    if (parent.systemKey) throw new WorkspaceAccessError('System integration projects cannot contain folders.');
+  }
+  const [folder] = await getDb().insert(studioFolder).values({ id: createUuidV7(), workspaceId, createdByUserId: userId, name, parentId }).returning();
   return folder;
 }
 
@@ -38,6 +42,7 @@ export async function removeStudioFolder(userId: string, workspaceId: string, id
   if (current.systemKey) throw new WorkspaceAccessError('System integration projects cannot be removed.');
   await getDb().transaction(async (tx) => {
     // Remove organization only. Documents, snapshots, assets and pipelines survive.
+    await tx.update(studioFolder).set({ parentId: current.parentId }).where(and(eq(studioFolder.workspaceId, workspaceId), eq(studioFolder.parentId, id)));
     await tx.update(document).set({ folderId: null }).where(and(eq(document.workspaceId, workspaceId), eq(document.folderId, id)));
     await tx.delete(studioFolder).where(and(eq(studioFolder.workspaceId, workspaceId), eq(studioFolder.id, id)));
   });

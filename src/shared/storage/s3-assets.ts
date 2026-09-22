@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 
 export interface AssetObjectLocation {
@@ -17,6 +18,7 @@ export interface AssetObjectStore {
   get(location: AssetObjectLocation & { range?: { start: number; end: number } }): Promise<{ body: ReadableStream; contentLength?: number; contentType?: string }>;
   health(): Promise<void>;
   put(input: AssetObjectLocation & { body: Uint8Array; contentType: string }): Promise<void>;
+  putFile?(input: AssetObjectLocation & { path: string; contentLength: number; contentType: string; signal?: AbortSignal }): Promise<void>;
 }
 
 let cachedStore: AssetObjectStore | undefined;
@@ -50,6 +52,14 @@ export function createS3AssetStore(): AssetObjectStore {
         ContentType: input.contentType,
         ServerSideEncryption: config.endpoint ? undefined : 'AES256',
       }));
+    },
+    async putFile(input) {
+      enforceConfiguredBucket(input.bucket, config.bucket);
+      const body = createReadStream(input.path);
+      try { await client.send(new PutObjectCommand({ Bucket: input.bucket, Key: input.key, Body: body,
+        ContentLength: input.contentLength, ContentType: input.contentType,
+        ServerSideEncryption: config.endpoint ? undefined : 'AES256',
+      }), { abortSignal: input.signal }); } finally { body.destroy(); }
     },
     async get(location) {
       enforceConfiguredBucket(location.bucket, config.bucket);

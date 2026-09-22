@@ -1,3 +1,4 @@
+import { isolatePersistenceSmoke } from './smoke-isolated-persistence.ts';
 import assert from 'node:assert/strict';
 import { config } from 'dotenv';
 import { eq } from 'drizzle-orm';
@@ -28,6 +29,8 @@ import { createUuidV7 } from '@/shared/lib/id';
 
 config({ path: '.env.local' });
 config({ path: '.env' });
+
+if (await isolatePersistenceSmoke(import.meta.url)) process.exit(0);
 
 const runId = createUuidV7();
 const userId = `chat-pipeline-smoke-${runId}`;

@@ -1,3 +1,5 @@
+'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { ChevronUp } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import type { PublicationValidationReport } from '@/entities/production-graph/model/publication';
@@ -105,6 +107,7 @@ export function PublicationValidation({
   mediaOverflow: boolean;
   validation: PublicationValidationReport;
 }) {
+  const tUi = useTranslations();
   const exceedsTextLimit = messageLength > messageCharacterLimit;
   return (
     <div className="publication-node-validation">
@@ -117,8 +120,7 @@ export function PublicationValidation({
         <div className="publication-node-issues">
           {exceedsTextLimit ? (
             <div className="publication-node-issue publication-node-issue-warning">
-              Текст превысил лимит Telegram на {messageLength - messageCharacterLimit} символов. Лишнее будет обрезано перед публикацией.
-            </div>
+              {tUi("Текст превысил лимит Telegram на")}{' '}{messageLength - messageCharacterLimit} {' '}{tUi("символов. Лишнее будет обрезано перед публикацией.")}</div>
           ) : null}
           {mediaOverflow ? (
             <div className="publication-node-issue publication-node-issue-error">

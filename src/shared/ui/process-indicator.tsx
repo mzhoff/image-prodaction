@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import type { ReactNode } from 'react';
 import { AlertCircle, Check, LoaderCircle, X } from '@prodactionpro/ui-core/icons';
@@ -25,8 +26,10 @@ export interface ProcessIndicatorProps {
 
 /** Producers supply measured progress and optional estimates. */
 export function ProcessIndicator({ title, description, label, state = 'running', completed, total,
-  countLabel, progressLabel, estimatedRemainingMs, onDismiss, dismissLabel = 'Закрыть статус',
+  countLabel, progressLabel, estimatedRemainingMs, onDismiss, dismissLabel,
   actions, children, className }: ProcessIndicatorProps) {
+  const tUi = useTranslations();
+  dismissLabel ??= tUi("Закрыть статус");
   const Icon = state === 'error' ? AlertCircle : state === 'success' ? Check : LoaderCircle;
   const determinate = Number.isFinite(total) && total! > 0 && Number.isFinite(completed);
   const remaining = state === 'running' ? formatRemainingTime(estimatedRemainingMs) : undefined;
@@ -42,7 +45,7 @@ export function ProcessIndicator({ title, description, label, state = 'running',
     </div>
     <progress aria-label={progressLabel || label} aria-valuetext={countLabel}
       max={determinate ? total : undefined} value={determinate ? Math.min(total!, Math.max(0, completed!)) : undefined} />
-    {remaining ? <p className="process-indicator-estimate">{remaining}</p> : null}
+    {remaining ? <p className="process-indicator-estimate">{tUi(remaining)}</p> : null}
     {children}
     {actions ? <div className="process-indicator-actions">{actions}</div> : null}
   </section>;

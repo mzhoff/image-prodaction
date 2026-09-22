@@ -1,6 +1,7 @@
+import { dismissSectionGuide, gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
-import { createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, createAudioQaOwner } from './audio-runtime-fixtures';
 import { createUuidV7 } from '../src/shared/lib/id';
 import { emptySubjectProfile } from '../src/entities/production-graph/model/subject-profile';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -20,19 +21,25 @@ test('Library projects and one passport across form and Canvas, with access and 
   await page.route('**/api/ai/**', (route) => { if (route.request().method() === 'GET') return route.continue(); paid++; return route.abort(); });
   const folderUrl = `/api/workspaces/${owner.workspaceId}/folders`;
   const subjectUrl = `/api/workspaces/${owner.workspaceId}/subjects`;
-  await page.goto('/?scope=projects');
-  await page.getByRole('button', { name: 'Create New', exact: true }).click();
+  await gotoQaSection(page, '/folders');
+  await page.locator('.production-section-header').getByRole('button', { name: 'Новый проект', exact: true }).click();
   await page.getByRole('textbox', { name: 'Название проекта' }).fill('Content Hub QA');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page.locator('.studio-folder-card')).toContainText('Content Hub QA');
+  await expect(page.locator('.project-folder-card')).toContainText('Content Hub QA');
   const { folders } = await (await owner.http.request(folderUrl)).json();
   const folderId = folders[0].id as string;
-  await page.getByRole('button', { name: 'Свернуть Library' }).click();
-  await expect(page.getByRole('link', { name: 'Персонажи', exact: true })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Library', exact: true }).click();
+  await gotoQaSection(page, '/library');
   await expect(page).toHaveURL(/\/library$/);
-  await page.getByRole('button', { name: 'Развернуть Library' }).click();
-  await expect(page.getByRole('link', { name: 'Персонажи', exact: true })).toBeVisible();
+  const libraryNavigation = page.getByRole('navigation', { name: 'Разделы Library' });
+  for (const name of ['Медиа', 'Персонажи', 'Стили', 'Сохранённые flows', 'По проектам']) {
+    await expect(libraryNavigation.getByRole('link', { name, exact: true })).toBeVisible();
+  }
+  await expect(libraryNavigation.getByRole('link', { name: 'Медиа', exact: true })).toHaveAttribute('aria-current', 'page');
+  await libraryNavigation.getByRole('link', { name: 'Персонажи', exact: true }).click();
+  await expect(page).toHaveURL(/\/library\?section=subjects$/);
+  await expect(libraryNavigation.getByRole('link', { name: 'Персонажи', exact: true })).toHaveAttribute('aria-current', 'page');
+  await libraryNavigation.getByRole('link', { name: 'Медиа', exact: true }).click();
+  await expect(page).toHaveURL(/\/library$/);
 
   const create = await owner.http.request('/api/projects', { json: { workspaceId: owner.workspaceId, name: 'Обложка QA' } });
   expect(create.status).toBe(201); const { project } = await create.json();
@@ -43,9 +50,9 @@ test('Library projects and one passport across form and Canvas, with access and 
   const image = await sharp({ create: { width: 160, height: 240, channels: 3, background: '#aa8fa1' } }).png().toBuffer();
   const form = new FormData(); form.set('workspaceId', owner.workspaceId); form.set('documentId', project.id); form.set('origin', 'uploaded');
   form.set('file', new Blob([new Uint8Array(image)], { type: 'image/png' }), 'subject-qa.png');
-  const upload = await owner.http.request('/api/assets/images', { form }); expect(upload.status).toBe(201);
-  const { asset } = await upload.json();
-  await page.goto('/');
+  const upload = await owner.http.request('/api/assets/images', { form });
+  const { asset } = await awaitQaAssetIngest(owner.http, upload);
+  await gotoQaSection(page, '/flows');
   const card = page.locator('.workspace-project-card').filter({ hasText: 'Обложка QA' });
   await card.getByRole('button', { name: 'More actions: Обложка QA' }).click();
   await page.getByRole('button', { name: 'Переместить в проект', exact: true }).hover();
@@ -58,18 +65,19 @@ test('Library projects and one passport across form and Canvas, with access and 
   expect(after.snapshot).toEqual(before.snapshot); expect(after.revision).toBe(before.revision);
   const inFolder = await owner.http.request(`/api/assets?workspaceId=${owner.workspaceId}&folderId=${folderId}`);
   expect((await inFolder.json()).items.map((item: { id: string }) => item.id)).toContain(asset.id);
-  await page.goto(`/?folderId=${folderId}&view=list`);
+  await gotoQaSection(page, `/flows?folderId=${folderId}&view=list`);
   await expect(page.locator('.workspace-project-list')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Обложка QA' })).toBeVisible();
-  await page.goto('/library?section=pipelines');
+  await gotoQaSection(page, '/library?section=pipelines');
   await expect(page.getByRole('link', { name: 'Open Обложка QA' })).toBeVisible();
   await page.goto(`/library?folderId=${folderId}`);
-  await expect(page.getByRole('heading', { name: 'Библиотека · Content Hub QA' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
   await expect(page.locator('.library-card')).toHaveCount(1);
+  await expect(page.locator('.library-card').getByRole('link')).toHaveAttribute('href', `/library/${asset.id}?folderId=${folderId}`);
   await page.screenshot({ path: testInfo.outputPath('library-folders.png') });
 
-  await page.goto('/library?section=subjects');
-  await page.getByRole('link', { name: 'Создать персонажа' }).click();
+  await gotoQaSection(page, '/library?section=subjects');
+  await page.locator('.production-section-header').getByRole('link', { name: 'Создать персонажа', exact: true }).click();
   await page.getByRole('textbox', { name: 'Имя', exact: true }).fill('Лира QA');
   await page.getByRole('textbox', { name: 'Внешность и описание' }).fill('Рыжие волосы, зелёные глаза.');
   await page.getByRole('textbox', { name: 'Неизменные признаки' }).fill('Цвет глаз и форма лица.');
@@ -85,6 +93,7 @@ test('Library projects and one passport across form and Canvas, with access and 
   await page.screenshot({ path: testInfo.outputPath('subject-form.png') });
   await page.getByRole('button', { name: 'Открыть в Subject Builder', exact: true }).click();
   await expect(page).toHaveURL(/\/projects\//);
+  await dismissSectionGuide(page, 'canvas');
   const subjectNode = page.locator('.production-node-subjectBuilder');
   await expect(subjectNode.locator('.subject-node-name-input')).toHaveValue('Лира QA');
   await subjectNode.locator('.subject-node-name-input').fill('Лира Canvas QA');
@@ -99,8 +108,8 @@ test('Library projects and one passport across form and Canvas, with access and 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('subject-form-tablet.png') });
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.getByRole('button', { name: 'Collapse sidebar' }).click();
-  await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible();
+  await page.getByRole('button', { name: 'Свернуть меню', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Развернуть меню', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Сохранить персонажа' }).scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('subject-form-phone.png') });

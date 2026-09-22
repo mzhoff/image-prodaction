@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffectEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AssetRecord,
   ExportImageNodeData,
@@ -19,6 +20,8 @@ export function useExportImageOutput(
   data: ExportImageNodeData,
   sourceAsset: AssetRecord | undefined,
 ) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const [messageState, setMessageState] = useState<{ signature?: string; text: string }>({ text: '' });
   const assets = useProductionGraphStore((state) => state.assets);
   const addAsset = useProductionGraphStore((state) => state.addAsset);
@@ -61,7 +64,7 @@ export function useExportImageOutput(
         setMessageState({ signature, text: '' });
         setNodeStatus(nodeId, 'running');
         const sourceBlob = await loadAssetBlob(sourceAsset);
-        if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+        if (!sourceBlob) throw new Error(tEffect("Не удалось прочитать изображение из локального хранилища."));
         const exported = await exportImageBlob(sourceBlob, options);
         if (cancelled || processingRef.current !== runId) return;
         const asset = await saveTransientImageAsset(new File(
@@ -89,7 +92,7 @@ export function useExportImageOutput(
         if (cancelled || processingRef.current !== runId) return;
         setMessageState({
           signature,
-          text: error instanceof Error ? error.message : 'Не удалось подготовить изображение.',
+          text: error instanceof Error ? error.message : tEffect("Не удалось подготовить изображение."),
         });
         settled = true;
         setNodeStatus(nodeId, 'error');
@@ -101,19 +104,7 @@ export function useExportImageOutput(
       window.clearTimeout(timer);
       if (!settled && processingRef.current === runId) setNodeStatus(nodeId, 'idle');
     };
-  }, [
-    addAsset,
-    data.resultAssetId,
-    data.resultSignature,
-    data.sourceAssetId,
-    nodeId,
-    options,
-    resultAsset,
-    setNodeStatus,
-    signature,
-    sourceAsset,
-    updateNodeDataSilent,
-  ]);
+  }, [addAsset, data.resultAssetId, data.resultSignature, data.sourceAssetId, nodeId, options, resultAsset, setNodeStatus, signature, sourceAsset, updateNodeDataSilent]);
 
   return {
     message: messageState.signature === signature ? messageState.text : '',

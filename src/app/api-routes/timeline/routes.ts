@@ -28,6 +28,6 @@ function timelineError(error: unknown) {
   if (error instanceof VideoProcessingError || error instanceof AudioProcessingError) return apiError(error.code, error.message, error.status);
   if (error instanceof GenerationJobNotFoundError) return apiError('timeline_job_not_found', 'Timeline job not found.', 404);
   if (error instanceof GenerationIdempotencyConflictError) return apiError('timeline_request_conflict', 'This request key belongs to different settings.', 409);
-  if (error instanceof ProviderConnectionNotConfiguredError) return apiError('provider_not_configured', 'Connect OpenRouter in Workspace settings to describe shots.', 422);
+  if (error instanceof ProviderConnectionNotConfiguredError) return apiError(error.code, error.message, 409);
   return toAssetApiErrorResponse(error);
 }

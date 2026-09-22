@@ -33,6 +33,7 @@ export async function generateTimeline(input: {
   await input.assertActive();
   if (request.action === 'analyze') await input.onProgress?.({ phase: 'reading', processedFrames: 0, totalFrames: null, processedMs: 0, totalMs: 0, elapsedMs: 0, estimatedRemainingMs: null });
   const source = await dependencies.readSource({ assetId: request.assetId, workspaceId: request.workspaceId, signal: input.signal });
+  try {
   if (source.asset.checksumSha256 !== input.payload.sourceChecksum) throw new VideoProcessingError('timeline_source_changed', 'The source video changed; analyze it again.');
   if (source.video.durationSeconds * 1000 > MAX_TIMELINE_DURATION_MS) throw new VideoProcessingError('timeline_duration_limit', 'Timeline Handoff supports videos up to 5 minutes.');
   if (request.action === 'analyze') {
@@ -60,7 +61,7 @@ export async function generateTimeline(input: {
     result.shots = [...previous.shots];
   }
   if (result.shots.length === request.shots.length) return result;
-  return dependencies.withFrames({ bytes: source.bytes, signal: input.signal }, async (extract) => {
+  return await dependencies.withFrames({ bytes: source.bytes, signal: input.signal }, async (extract) => {
     for (const shot of request.shots) {
     input.signal.throwIfAborted();
     await input.assertActive();
@@ -75,7 +76,7 @@ export async function generateTimeline(input: {
     }
     await input.assertActive();
     const description = await dependencies.describe({ shot, images, model: request.model, language: request.language,
-      actorUserId: input.payload.userId, documentId: request.documentId, workspaceId: request.workspaceId,
+      actorUserId: input.payload.userId, documentId: request.documentId ?? undefined, workspaceId: request.workspaceId,
       parentJobId: input.jobId, signal: input.signal });
     await input.assertActive();
     result.shots.push({ ...description, frames });
@@ -83,4 +84,5 @@ export async function generateTimeline(input: {
     }
     return result;
   });
+  } finally { await source.dispose?.(); }
 }

@@ -702,6 +702,13 @@
   overflow: hidden;
 }
 
+.dark-select-option-copy { display: grid; min-width: 0; gap: 3px; }
+.dark-select-option-copy > small { font-size: 11px; line-height: 15px; font-weight: 400; color: var(--pui-semantic-text-muted); white-space: normal; overflow-wrap: anywhere; }
+.dark-select-option-copy > .mini-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dark-select-option-copy-captioned { text-align: left; }
+.dark-select-option-copy-captioned > small { font-size: 10px; line-height: 12px; }
+.dark-select-item:focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: -2px; }
+
 .video-model-logo {
   display: inline-grid;
   width: 20px;
@@ -752,7 +759,9 @@
   overflow-y: auto;
   border: 1px solid var(--pui-semantic-border-default);
   border-radius: 12px;
-  background: var(--pui-semantic-surface-primary);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent);
+  -webkit-backdrop-filter: var(--production-popup-backdrop-filter);
+  backdrop-filter: var(--production-popup-backdrop-filter);
   color: var(--pui-semantic-text-primary);
   padding: 6px;
   box-shadow: 0 22px 54px color-mix(in srgb, var(--pui-semantic-shadow-color) 16%, transparent);

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { BookmarkCheck, Loader2 } from '@prodactionpro/ui-core/icons';
 import { useEffect, useState } from 'react';
@@ -19,6 +20,7 @@ export function SaveToLibraryButton({
   onSave,
   saved = false,
 }: SaveToLibraryButtonProps) {
+  const tUi = useTranslations();
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(saved);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function SaveToLibraryButton({
     } catch (caughtError) {
       setError(caughtError instanceof Error
         ? caughtError.message
-        : 'Не удалось сохранить. Попробуйте ещё раз.');
+        : tUi("Не удалось сохранить. Попробуйте ещё раз."));
     } finally {
       setPending(false);
     }
@@ -53,9 +55,9 @@ export function SaveToLibraryButton({
         onClick={() => void handleSave()}
       >
         {pending ? <Loader2 className="spin" size={15} /> : <BookmarkCheck size={15} />}
-        {pending ? 'Сохраняем…' : complete ? 'Сохранено в библиотеку' : 'Сохранить в библиотеку'}
+        {pending ? tUi("Сохраняем…") : complete ? tUi("Сохранено в библиотеку") : tUi("Сохранить в библиотеку")}
       </button>
-      {error ? <small role="alert">{error}</small> : null}
+      {error ? <small role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</small> : null}
     </span>
   );
 }

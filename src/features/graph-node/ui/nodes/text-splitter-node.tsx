@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { ProductionNode } from '@/entities/production-graph/model/types';
@@ -17,6 +18,7 @@ interface TextSplitterNodeProps {
 }
 
 export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodeProps) {
+  const tUi = useTranslations();
   const model = useTextSplitterNodeModel(node);
   const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
   const collapsedOutputPorts = getCollapsedTextSplitterOutputPorts(model.items.length);
@@ -79,8 +81,8 @@ export function TextSplitterNode({ node, onStartConnection }: TextSplitterNodePr
             ) : null}
             {model.items.map((item, index) => (
               <div className="text-split-output-row" key={`item-${index}`}>
-                <div className="text-split-item-box" data-empty={!item || undefined} title={item || 'Раздел отсутствует во входе. Связь сохранена; текст не передаётся.'}>
-                  {item || `${model.itemLabels[index] ?? `Item ${index + 1}`} — нет во входе`}
+                <div className="text-split-item-box" data-empty={!item || undefined} title={item || tUi("Раздел отсутствует во входе. Связь сохранена; текст не передаётся.")}>
+                  {item || tUi("{p1} — нет во входе", { p1: model.itemLabels[index] ?? `Item ${index + 1}` })}
                 </div>
                 <PortButton
                   nodeId={node.id}

@@ -1,3 +1,6 @@
+'use client';
+import { useFormatLocale } from '@/shared/i18n/use-format-locale';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { Activity, CircleDollarSign } from '@prodactionpro/ui-core/icons';
 import type {
   OpenRouterKeyUsage,
@@ -17,6 +20,8 @@ export function ProviderUsageCard({ connection, usage }: {
   connection: ProviderConnectionDto | null;
   usage: OpenRouterKeyUsage | null;
 }) {
+  const language = useFormatLocale();
+  const tUi = useTranslations();
   const available = connection && connection.status !== 'disconnected';
   return (
     <section className="settings-card settings-usage-card" aria-labelledby="provider-usage-title">
@@ -24,30 +29,30 @@ export function ProviderUsageCard({ connection, usage }: {
         <div className="settings-card-title">
           <span><CircleDollarSign size={18} /></span>
           <div>
-            <h3 id="provider-usage-title">Лимиты OpenRouter key</h3>
-            <p>Данные провайдера относятся к подключённому API key, а не ко всему аккаунту.</p>
+            <h3 id="provider-usage-title">{tUi("Баланс AI")}</h3>
+            <p>{tUi("Баланс подключённого ключа этого пространства.")}</p>
           </div>
         </div>
-        <small>{usage ? `Обновлено ${formatDateTime(usage.updatedAt)}` : 'Нет синхронизации'}</small>
+        <small>{usage ? tUi("Обновлено {p1}", { p1: tUi(formatDateTime(usage.updatedAt, language)) }) : tUi("Нет синхронизации")}</small>
       </div>
-      {!available ? <p className="settings-empty">Подключите OpenRouter, чтобы увидеть лимиты key.</p> : null}
-      {available && !usage ? <p className="settings-empty">OpenRouter пока не вернул сведения о лимитах.</p> : null}
+      {!available ? <p className="settings-empty">{tUi("Подключите AI, чтобы увидеть баланс.")}</p> : null}
+      {available && !usage ? <p className="settings-empty">{tUi("OpenRouter пока не вернул сведения о лимитах.")}</p> : null}
       {usage ? (
         <>
           <div className="settings-provider-limit-grid">
-            <UsageMetric label="Лимит key" value={formatUsd(usage.limit)} />
-            <UsageMetric label="Осталось" value={formatUsd(usage.limitRemaining)} />
-            <UsageMetric label="Использовано" value={formatUsd(usage.usage)} />
+            <UsageMetric label={tUi("Лимит")} value={tUi(formatUsd(usage.limit))} />
+            <UsageMetric label={tUi("Осталось")} value={tUi(formatUsd(usage.limitRemaining))} />
+            <UsageMetric label={tUi("Использовано")} value={tUi(formatUsd(usage.usage))} />
           </div>
           <div className="settings-provider-period-grid">
-            <UsageMetric label="Сегодня" value={formatUsd(usage.usageDaily)} />
-            <UsageMetric label="7 дней" value={formatUsd(usage.usageWeekly)} />
-            <UsageMetric label="30 дней" value={formatUsd(usage.usageMonthly)} />
-            <UsageMetric label="Всё время" value={formatUsd(usage.usageTotal)} />
+            <UsageMetric label={tUi("Сегодня")} value={tUi(formatUsd(usage.usageDaily))} />
+            <UsageMetric label={tUi("7 дней")} value={tUi(formatUsd(usage.usageWeekly))} />
+            <UsageMetric label={tUi("30 дней")} value={tUi(formatUsd(usage.usageMonthly))} />
+            <UsageMetric label={tUi("Всё время")} value={tUi(formatUsd(usage.usageTotal))} />
           </div>
           <p className="settings-provider-usage-note">
-            <span>{formatKeyTier(usage.isFreeTier)}</span>
-            <span>{formatLimitReset(usage.limitReset)}</span>
+            <span>{tUi(formatKeyTier(usage.isFreeTier))}</span>
+            <span>{tUi(formatLimitReset(usage.limitReset, language))}</span>
             {usage.label ? <span>{usage.label}</span> : null}
           </p>
         </>
@@ -57,29 +62,31 @@ export function ProviderUsageCard({ connection, usage }: {
 }
 
 export function LocalUsageCard({ usage }: { usage: WorkspaceAiUsage | null }) {
+  const language = useFormatLocale();
+  const tUi = useTranslations();
   return (
     <section className="settings-card settings-usage-card" aria-labelledby="local-usage-title">
       <div className="settings-card-head">
         <span><Activity size={18} /></span>
         <div>
-          <h3 id="local-usage-title">Использование в Reverie</h3>
-          <p>Локальный журнал выполненных AI-операций за последние 30 дней.</p>
+          <h3 id="local-usage-title">{tUi("Использование в Reverie")}</h3>
+          <p>{tUi("За последние 30 дней.")}</p>
         </div>
       </div>
-      {!usage ? <p className="settings-empty">Статистика пока недоступна или ещё не накоплена.</p> : (
+      {!usage ? <p className="settings-empty">{tUi("Статистика пока недоступна или ещё не накоплена.")}</p> : (
         <>
           <div className="settings-provider-period-grid">
-            <UsageMetric label="Задачи" value={formatInteger(usage.summary.jobs)} />
-            <UsageMetric label="Input tokens" value={formatInteger(usage.summary.inputTokens)} />
-            <UsageMetric label="Output tokens" value={formatInteger(usage.summary.outputTokens)} />
-            <UsageMetric label="Стоимость" value={formatUsd(usage.summary.providerCostUsd)} />
+            <UsageMetric label={tUi("Задачи")} value={formatInteger(usage.summary.jobs, language)} />
+            <UsageMetric label={tUi("Входящие токены")} value={formatInteger(usage.summary.inputTokens, language)} />
+            <UsageMetric label={tUi("Исходящие токены")} value={formatInteger(usage.summary.outputTokens, language)} />
+            <UsageMetric label={tUi("Стоимость")} value={tUi(formatUsd(usage.summary.providerCostUsd))} />
           </div>
           <div className="settings-usage-breakdowns">
-            <UsageBreakdown title="По моделям" labelHeading="Модель" rows={usage.byModel.map((item) => ({
+            <UsageBreakdown title={tUi("По моделям")} labelHeading={tUi("Модель")} rows={usage.byModel.map((item) => ({
               id: item.modelId, label: item.modelId, jobs: item.jobs,
               totalTokens: item.totalTokens, providerCostUsd: item.providerCostUsd,
             }))} />
-            <UsageBreakdown title="По операциям" labelHeading="Операция" rows={usage.byOperation.map((item) => ({
+            <UsageBreakdown title={tUi("По операциям")} labelHeading={tUi("Операция")} rows={usage.byOperation.map((item) => ({
               id: item.operation, label: formatOperation(item.operation), jobs: item.jobs,
               totalTokens: item.totalTokens, providerCostUsd: item.providerCostUsd,
             }))} />
@@ -107,18 +114,20 @@ function UsageBreakdown({ labelHeading, rows, title }: {
   rows: UsageBreakdownRow[];
   title: string;
 }) {
+  const language = useFormatLocale();
+  const tUi = useTranslations();
   return (
     <div className="settings-usage-table-wrap">
       <h4>{title}</h4>
-      {rows.length === 0 ? <p className="settings-empty">Данных пока нет.</p> : (
+      {rows.length === 0 ? <p className="settings-empty">{tUi("Данных пока нет.")}</p> : (
         <table className="settings-usage-table">
-          <thead><tr><th>{labelHeading}</th><th>Задачи</th><th>Tokens</th><th>Стоимость</th></tr></thead>
+          <thead><tr><th>{labelHeading}</th><th>{tUi("Задачи")}</th><th>Tokens</th><th>{tUi("Стоимость")}</th></tr></thead>
           <tbody>{rows.map((item) => (
             <tr key={item.id}>
               <td title={item.label}>{item.label}</td>
-              <td>{formatInteger(item.jobs)}</td>
-              <td>{formatInteger(item.totalTokens)}</td>
-              <td>{formatUsd(item.providerCostUsd)}</td>
+              <td>{formatInteger(item.jobs, language)}</td>
+              <td>{formatInteger(item.totalTokens, language)}</td>
+              <td>{tUi(formatUsd(item.providerCostUsd))}</td>
             </tr>
           ))}</tbody>
         </table>

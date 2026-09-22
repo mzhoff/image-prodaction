@@ -1,3 +1,4 @@
+import type { MediaSource } from './media-source';
 import { readFile, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { AudioProcessingError } from './audio-contracts';
@@ -86,7 +87,7 @@ async function inspectTimelineHeader(container: VideoContainer, source: string, 
   return { originSeconds, fallbackEndMs };
 }
 
-export async function analyzeTimelineVideo(input: { bytes: Uint8Array; signal?: AbortSignal; threshold?: number; onProgress?: (value: TimelineAnalysisProgress) => Promise<void> }): Promise<TimelineVideoAnalysis> {
+export async function analyzeTimelineVideo(input: { bytes: MediaSource; signal?: AbortSignal; threshold?: number; onProgress?: (value: TimelineAnalysisProgress) => Promise<void> }): Promise<TimelineVideoAnalysis> {
   const threshold = input.threshold ?? 10;
   if (!Number.isFinite(threshold) || threshold < 1 || threshold > 60) throw new VideoProcessingError('invalid_timeline_threshold', 'Cut threshold must be between 1 and 60.', 400);
   const container = validateVideoEnvelope(input.bytes);
@@ -153,7 +154,7 @@ async function readTimelineFrame(container: VideoContainer, source: string, dire
 }
 
 /** One source/probe per batch, one JPEG at a time. Callers supply the durable job's cancellation signal. */
-export async function withTimelineFrameReader<T>(input: { bytes: Uint8Array; signal?: AbortSignal }, work: (readFrame: (timeMs: number) => Promise<Uint8Array>) => Promise<T>): Promise<T> {
+export async function withTimelineFrameReader<T>(input: { bytes: MediaSource; signal?: AbortSignal }, work: (readFrame: (timeMs: number) => Promise<Uint8Array>) => Promise<T>): Promise<T> {
   const container = validateVideoEnvelope(input.bytes);
   return translateProcessingError(() => withAudioWork(input.bytes, input.signal, async (directory, source) => {
     const header = await inspectTimelineHeader(container, source, directory, input.signal);
@@ -173,7 +174,7 @@ export async function withTimelineFrameReader<T>(input: { bytes: Uint8Array; sig
 }
 
 /** Accurate input seeking decodes the preceding keyframe, then discards frames before this PTS. */
-export async function extractTimelineFrameBytes(input: { bytes: Uint8Array; timeMs: number; signal?: AbortSignal }): Promise<Uint8Array> {
+export async function extractTimelineFrameBytes(input: { bytes: MediaSource; timeMs: number; signal?: AbortSignal }): Promise<Uint8Array> {
   if (!Number.isFinite(input.timeMs) || input.timeMs < 0 || input.timeMs >= MAX_TIMELINE_DURATION_MS) throw new VideoProcessingError('invalid_timeline_frame', 'Choose a frame within the five-minute timeline.', 400);
   const signal = AbortSignal.any([...(input.signal ? [input.signal] : []), AbortSignal.timeout(120_000)]);
   return withTimelineFrameReader({ bytes: input.bytes, signal }, (readFrame) => readFrame(input.timeMs));

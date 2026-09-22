@@ -1,11 +1,12 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import { createAudioQaOwner } from './audio-runtime-fixtures';
-import { selectTheme } from './theme-control-fixture';
+import { openAccountPreferences, selectTheme } from './theme-control-fixture';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
 
-test.use({ channel: 'chrome', trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1440, height: 1000 } });
+test.use({ channel: 'chrome', locale: 'ru-RU', trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1440, height: 1000 } });
 
 test('Shared Reverie theme: persistence, forms, menus, canvas and content isolation', async ({ page, context, baseURL }, info) => {
   const origin = new URL(baseURL ?? 'http://localhost:3004');
@@ -59,12 +60,16 @@ test('Shared Reverie theme: persistence, forms, menus, canvas and content isolat
     '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#2b4670"/><circle cx="400" cy="300" r="180" fill="#fc9"/></svg>',
   }));
 
-  await page.goto('/library');
+  await gotoQaSection(page, '/library');
+  // A new account imports the theme chosen in its completed questionnaire.
+  await expect(page.locator('html')).toHaveAttribute('data-pui-preference', 'light');
+  await selectTheme(page, 'dark');
   const theme = page.getByRole('combobox', { name: 'Тема оформления' });
-  await expect(theme).toHaveText('Тёмная');
+  await expect(theme).toHaveCount(0);
   await expect(page.locator('.workspace-sidebar')).toHaveCSS('color', 'rgb(250, 250, 250)');
-  await page.getByRole('button', { name: 'Источник', exact: true }).click();
-  await expect(page.locator('.brand-select-menu')).toBeVisible();
+  await page.getByRole('button', { name: 'Фильтры', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Источник', exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveClass(/production-filter-menu/);
   await page.screenshot({ path: info.outputPath('reverie-library-dark.png') });
   await page.keyboard.press('Escape');
   const card = page.locator('.library-card').first();
@@ -84,7 +89,10 @@ test('Shared Reverie theme: persistence, forms, menus, canvas and content isolat
   await selectTheme(page, 'light');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.reload();
-  await expect(theme).toHaveText('Светлая');
+  const account = await openAccountPreferences(page);
+  await expect(account.getByRole('button', { name: 'Светлая', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await account.getByRole('button', { name: 'Закрыть аккаунт', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.screenshot({ path: info.outputPath('reverie-library-light.png') });
   await selectTheme(page, 'system');
   await page.emulateMedia({ colorScheme: 'dark' });
@@ -93,14 +101,14 @@ test('Shared Reverie theme: persistence, forms, menus, canvas and content isolat
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await selectTheme(page, 'dark');
 
-  await page.goto('/settings/account');
+  await gotoQaSection(page, '/settings/account');
   await expect(theme).toHaveCount(1);
   await selectTheme(page, 'light');
   await expect(theme).toHaveText('Светлая');
   await selectTheme(page, 'dark');
   await expect(page.locator('.settings-section input[name=name]')).toHaveClass(/pui-input/);
   await page.screenshot({ path: info.outputPath('reverie-settings-dark.png') });
-  await page.goto(`/projects/${project.id}`);
+  await gotoQaSection(page, `/projects/${project.id}`);
   await expect(page.locator('.production-node')).toHaveCount(3);
   await expect(page.locator('.production-node').first()).toHaveCSS('background-color', 'rgb(24, 24, 27)');
   await expect.poll(() => page.evaluate(() => {
@@ -125,7 +133,7 @@ test('Shared Reverie theme: persistence, forms, menus, canvas and content isolat
   await page.getByRole('button', { name: /Открыть ассистента/ }).click();
   await expect(page.locator('.image-production-chat')).toBeVisible();
   await expect(page.locator('.assistant-shell')).toHaveCSS('opacity', '1');
-  await expect(page.locator('.assistant-shell')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+  await expect(page.locator('.assistant-shell')).toHaveCSS('transform', 'none');
   await page.screenshot({ path: info.outputPath('reverie-assistant-dark.png') });
   await expect(page.locator('.image-production-chat')).toHaveCSS('color', 'rgb(250, 250, 250)');
   await page.getByRole('button', { name: 'Закрыть ассистента', exact: true }).click();
@@ -148,4 +156,36 @@ test('Shared Reverie theme: persistence, forms, menus, canvas and content isolat
   await page.screenshot({ path: info.outputPath('reverie-canvas-phone.png') });
   expect(paid).toBe(0);
   expect(errors).toEqual([]);
+});
+
+test('a new account imports its own appearance after the previous account signs out', async ({ page, context, baseURL }) => {
+  const origin = new URL(baseURL ?? 'http://localhost:3004');
+  const authOrigin = new URL(process.env.REVERIE_QA_AUTH_ORIGIN ?? origin.origin);
+  const first = await createAudioQaOwner(authOrigin.origin, 'theme-first-account');
+  await context.addCookies(first.http.browserSessionCookies());
+  await gotoQaSection(page, '/library');
+  await expect(page.getByRole('button', { name: 'Аккаунт: Audio Runtime QA theme-first-account', exact: true })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-pui-preference', 'light');
+  await selectTheme(page, 'dark');
+  const account = await openAccountPreferences(page);
+  await account.getByRole('button', { name: 'Выйти', exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/u);
+  await expect(page.locator('html')).toHaveAttribute('data-pui-preference', 'dark');
+
+  // Transfer a separately verified fixture session, keeping the same browser
+  // preferences. The product must hydrate the incoming account's questionnaire.
+  const second = await createAudioQaOwner(authOrigin.origin, 'theme-second-account');
+  expect(second.workspaceId).not.toBe(first.workspaceId);
+  await context.addCookies(second.http.browserSessionCookies());
+  const secondPage = await context.newPage();
+  await gotoQaSection(secondPage, '/library');
+  await expect(secondPage.getByRole('button', { name: 'Аккаунт: Audio Runtime QA theme-second-account', exact: true })).toBeVisible();
+  await expect(secondPage.getByRole('button', { name: 'Аккаунт: Audio Runtime QA theme-first-account', exact: true })).toHaveCount(0);
+  await expect(secondPage.locator('html')).toHaveAttribute('data-pui-preference', 'light');
+  const secondAccount = await openAccountPreferences(secondPage);
+  await expect(secondAccount.getByRole('button', { name: 'Светлая', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await secondAccount.getByRole('button', { name: 'Закрыть аккаунт', exact: true }).click();
+  await secondPage.reload();
+  await expect(secondPage.locator('html')).toHaveAttribute('data-pui-preference', 'light');
+  await secondPage.close();
 });

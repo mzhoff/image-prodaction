@@ -1,4 +1,5 @@
 import { ProductionCanvas } from '@/widgets/production-canvas/ui/production-canvas';
+import { SectionOnboardingProvider } from '@/features/section-onboarding/ui/section-onboarding-provider';
 
 interface ProductionEditorPageProps {
   projectId?: string;
@@ -7,7 +8,7 @@ interface ProductionEditorPageProps {
 export function ProductionEditorPage({ projectId }: ProductionEditorPageProps) {
   return (
     <main className="editor-page">
-      <ProductionCanvas projectId={projectId} />
+      <SectionOnboardingProvider><ProductionCanvas key={projectId ?? 'local'} projectId={projectId} /></SectionOnboardingProvider>
     </main>
   );
 }

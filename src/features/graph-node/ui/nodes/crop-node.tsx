@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Crop as CropIcon, Link2, Loader2, RotateCcw } from '@prodactionpro/ui-core/icons';
 import { Button } from '@prodactionpro/ui-core/button';
@@ -14,6 +15,7 @@ import { CropEditor } from '../crop-editor';
 import { NodeTitle } from '../node-title';
 
 export function CropNode({ node }: { node: ProductionNode }) {
+  const tUi = useTranslations();
   const model = useCropImageNodeModel(node);
   const sourceUrl = useAssetUrl(model.sourceAsset?.id, 'thumbnail');
   const videoUrl = useAssetUrl(model.video.result?.id);
@@ -31,8 +33,8 @@ export function CropNode({ node }: { node: ProductionNode }) {
         onCropChange={model.handleCropChange}
         onCropDragStart={model.handleCropDragStart}
         url={sourceUrl ?? undefined}
-        emptyText={model.hasVideoInput ? 'Ожидаем видео' : 'Connect image or video'}
-        sourceLabel={model.hasVideoInput ? 'Кадр видео для обрезки' : 'Crop source'}
+        emptyText={model.hasVideoInput ? tUi("Ожидаем видео") : 'Connect image or video'}
+        sourceLabel={model.hasVideoInput ? tUi("Кадр видео для обрезки") : 'Crop source'}
       />
       <CollapsibleSection title="Settings">
         <div className="crop-setting-row">
@@ -91,10 +93,10 @@ export function CropNode({ node }: { node: ProductionNode }) {
             onClick={() => void model.video.prepare()}
             icon={model.video.busy ? <Loader2 size={16} /> : <CropIcon size={16} />}
           >
-            {model.video.busy ? 'Обрезаем видео…' : model.video.result ? 'Видео готово' : 'Обрезать видео'}
+            {model.video.busy ? tUi("Обрезаем видео…") : model.video.result ? tUi("Видео готово") : tUi("Обрезать видео")}
           </PrimaryActionButton>
-          {model.video.busy ? <Button appearance="outline" intent="neutral" size="sm" onClick={model.video.cancel}>Отменить обработку</Button> : null}
-          {videoUrl ? <video key={model.video.result?.id} src={videoUrl} poster={videoPoster ?? undefined} controls playsInline preload="metadata" aria-label="Обрезанное видео" /> : null}
+          {model.video.busy ? <Button appearance="outline" intent="neutral" size="sm" onClick={model.video.cancel}>{tUi("Отменить обработку")}</Button> : null}
+          {videoUrl ? <video key={model.video.result?.id} src={videoUrl} poster={videoPoster ?? undefined} controls playsInline preload="metadata" aria-label={tUi("Обрезанное видео")} /> : null}
         </div>
       ) : null}
       {model.message ? <div className="node-note node-note-compact" role={model.video.error ? 'alert' : 'status'}>{model.message}</div> : null}

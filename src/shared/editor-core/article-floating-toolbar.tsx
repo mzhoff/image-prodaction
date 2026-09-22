@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link';
@@ -30,6 +31,7 @@ type ToolbarFormat = (typeof toolbarItems)[number]['format'];
 type ToolbarListType = 'bullet' | 'number';
 
 export function FloatingSelectionToolbar({ fullscreen }: { fullscreen: boolean }) {
+  const tUi = useTranslations();
   const [editor] = useLexicalComposerContext();
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const [activeFormats, setActiveFormats] = useState<Partial<Record<ToolbarFormat, boolean>>>({});
@@ -111,7 +113,7 @@ export function FloatingSelectionToolbar({ fullscreen }: { fullscreen: boolean }
   });
   const toggleLink = () => {
     const rawUrl = window.prompt(isLinkActive
-      ? 'Введите новую ссылку или оставьте пустой, чтобы снять ссылку.' : 'Введите ссылку.');
+      ? tUi("Введите новую ссылку или оставьте пустой, чтобы снять ссылку.") : tUi("Введите ссылку."));
     if (rawUrl !== null) editor.dispatchCommand(TOGGLE_LINK_COMMAND,
       normalizeEditorUrl(rawUrl) || null);
   };

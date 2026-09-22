@@ -1,114 +1,52 @@
+'use client';
+import { useFormatLocale } from '@/shared/i18n/use-format-locale';
+import { useUiCatalog } from '@/shared/i18n/use-ui-catalog';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 import { TextareaControl as PuiTextarea } from '@prodactionpro/ui-core/textarea-control';
-import Image from 'next/image';
-import { CheckCircle2, LoaderCircle, Upload } from '@prodactionpro/ui-core/icons';
-import type { PipelinePlaygroundDescriptor,
-  PipelinePlaygroundField } from '@/modules/executable-pipelines/contracts/pipeline-playground-contracts';
+import { Check, Code2 } from '@prodactionpro/ui-core/icons';
+import type { PipelinePlaygroundField } from '@/modules/executable-pipelines/contracts/pipeline-playground-contracts';
 import type { PipelinePlaygroundDraft } from '../model/pipeline-playground-inputs';
-import { isArtifactReference } from '../model/pipeline-playground-values';
+import { PIPELINE_KIND_LABELS, pipelineSchemaExample } from '../model/pipeline-field-presentation';
+import { playgroundMediaKind } from '../model/pipeline-playground-media';
+import { PipelineMediaInput } from './pipeline-media-input';
 
-export function PipelineSummary({ descriptor }: { descriptor: PipelinePlaygroundDescriptor }) {
-  return (
-    <div className="playground-pipeline-summary">
-      <div>
-        <CheckCircle2 size={18} />
-        <div><strong>{descriptor.name}</strong><span>Executable · v{descriptor.version}</span></div>
-      </div>
-      <code>{descriptor.publicId}</code>
-    </div>
-  );
-}
-
-export function PipelineInputField({ draft, error, field, onChange, onUpload, uploading }: {
-  draft: PipelinePlaygroundDraft;
-  error?: string;
-  field: PipelinePlaygroundField;
-  onChange: (value: PipelinePlaygroundDraft) => void;
-  onUpload: (files: File[]) => void;
-  uploading: boolean;
+export function PipelineInputField({ draft, error, field, onChange, onUpload, uploading, pendingNames = [], disabled = false }: {
+  draft: PipelinePlaygroundDraft; error?: string; field: PipelinePlaygroundField;
+  onChange(value: PipelinePlaygroundDraft): void; onUpload(files: File[]): void;
+  uploading: boolean; pendingNames?: string[]; disabled?: boolean;
 }) {
+  const language = useFormatLocale();
+  const tUi = useTranslations();
+  const ui_PIPELINE_KIND_LABELS = useUiCatalog(PIPELINE_KIND_LABELS, tUi);
   const fieldId = `playground-input-${field.name}`;
-  const descriptionId = `${fieldId}-description`;
-  const errorId = `${fieldId}-error`;
-  const describedBy = [field.description ? descriptionId : '', error ? errorId : '']
-    .filter(Boolean).join(' ') || undefined;
-  return (
-    <div className={`playground-field ${error ? 'playground-field-error' : ''}`}>
-      <div className="playground-field-label">
-        <label htmlFor={fieldId}>{field.label}</label>
-        <span>{field.kind}{field.required ? ' · Required' : ' · Optional'}</span>
-      </div>
-      {field.description ? <p id={descriptionId}>{field.description}</p> : null}
-      <InputControl describedBy={describedBy} draft={draft} field={field} fieldId={fieldId}
-        onChange={onChange} onUpload={onUpload} uploading={uploading} />
-      {error ? <span className="playground-field-error-text" id={errorId}>{error}</span> : null}
-    </div>
-  );
-}
-
-function InputControl({ describedBy, draft, field, fieldId, onChange, onUpload, uploading }: {
-  describedBy?: string;
-  draft: PipelinePlaygroundDraft;
-  field: PipelinePlaygroundField;
-  fieldId: string;
-  onChange: (value: PipelinePlaygroundDraft) => void;
-  onUpload: (files: File[]) => void;
-  uploading: boolean;
-}) {
-  if (field.kind === 'image' || field.kind === 'image_collection') {
-    const artifacts = Array.isArray(draft) ? draft : isArtifactReference(draft) ? [draft] : [];
-    return (
-      <div className="playground-upload-control">
-        {artifacts.length > 0 ? (
-          <div className="playground-uploaded-images">{artifacts.map((artifact) => (
-            <div className="playground-uploaded-image" key={artifact.assetId}>
-              <Image alt="" height={artifact.height ?? 160}
-                src={`/api/assets/${encodeURIComponent(artifact.assetId)}/content`}
-                unoptimized width={artifact.width ?? 240} />
-              <span>{typeof artifact.originalName === 'string'
-                ? artifact.originalName : 'Uploaded image'}</span>
-            </div>
-          ))}</div>
-        ) : null}
-        <label className="playground-upload-button" htmlFor={fieldId}>
-          {uploading ? <LoaderCircle className="playground-spinner" size={16} /> : <Upload size={16} />}
-          {uploading ? 'Uploading…' : artifacts.length > 0 ? 'Replace image' : 'Upload image'}
-        </label>
-        <input accept="image/*" aria-describedby={describedBy} disabled={uploading} id={fieldId}
-          multiple={field.kind === 'image_collection'}
-          onChange={(event) => onUpload(Array.from(event.target.files ?? []))} type="file" />
-      </div>
-    );
-  }
-  if (field.kind === 'boolean') {
-    return (
-      <select aria-describedby={describedBy} id={fieldId}
-        onChange={(event) => onChange(event.target.value === ''
-          ? undefined : event.target.value === 'true')}
-        value={typeof draft === 'boolean' ? String(draft) : ''}>
-        {!field.required ? <option value="">Not set</option> : null}
-        <option value="true">True</option><option value="false">False</option>
-      </select>
-    );
-  }
-  if (field.kind === 'number') {
-    return <PuiInput aria-describedby={describedBy} id={fieldId} inputMode="decimal"
-      onChange={(event) => onChange(event.target.value)} placeholder="0" type="number"
-      value={typeof draft === 'string' ? draft : ''} />;
-  }
-  if (field.kind === 'audio' || field.kind === 'video') {
-    return <div className="playground-unsupported-input">
-      {field.kind === 'video' ? 'Video upload is available in Studio Import. Playground upload is not available yet; Runtime API accepts a managed Workspace video asset reference.'
-        : 'Audio upload is available through the Runtime API. Playground audio upload is not available yet.'}
-    </div>;
-  }
+  const describedBy = [`${fieldId}-hint`, field.description ? `${fieldId}-description` : '', error ? `${fieldId}-error` : ''].filter(Boolean).join(' ');
+  const mediaKind = playgroundMediaKind(field.kind);
   const jsonLike = field.kind === 'json' || field.kind === 'publication';
-  return (
-    <PuiTextarea aria-describedby={describedBy} id={fieldId}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={jsonLike ? '{\n  "key": "value"\n}'
-        : field.kind === 'text_collection' ? 'One value per line' : 'Enter text…'}
-      rows={jsonLike ? 7 : 6} spellCheck={!jsonLike}
-      value={typeof draft === 'string' ? draft : ''} />
-  );
+  const example = JSON.stringify(pipelineSchemaExample(field.schema, 0, tUi("Ваш текст")), null, 2);
+  return <div className={`playground-field ${error ? 'playground-field-error' : ''}`} data-kind={field.kind}>
+    <div className="playground-field-label"><label htmlFor={fieldId}>{field.label}</label><span>{field.required ? tUi("Обязательно") : tUi("Необязательно")}</span></div>
+    <span className="playground-field-kind" id={`${fieldId}-hint`}>{ui_PIPELINE_KIND_LABELS[field.kind]}</span>
+    {field.description ? <p id={`${fieldId}-description`}>{field.description}</p> : null}
+    {mediaKind ? <PipelineMediaInput field={field} fieldId={fieldId} describedBy={describedBy} draft={draft} disabled={disabled}
+      uploading={uploading} pendingNames={pendingNames} invalid={Boolean(error)} onChange={onChange} onUpload={onUpload} />
+      : field.kind === 'boolean' ? <div className="playground-choice-group" id={fieldId} role="group" aria-label={field.label} aria-describedby={describedBy}>
+        {(!field.required ? [undefined, true, false] : [true, false]).map((value) => <button type="button" key={String(value)} disabled={disabled}
+          aria-pressed={draft === value} onClick={() => onChange(value)}>{draft === value ? <Check size={14} /> : null}{value === undefined ? tUi("Не задано") : value ? tUi("Да") : tUi("Нет")}</button>)}
+      </div>
+      : field.kind === 'number' ? <PuiInput aria-describedby={describedBy} aria-invalid={Boolean(error)} disabled={disabled} id={fieldId} inputMode="decimal"
+        type="number" step="any" placeholder={tUi("Введите число")} value={typeof draft === 'string' ? draft : ''} onChange={(event) => onChange(event.target.value)} />
+      : <>
+        <PuiTextarea aria-describedby={describedBy} aria-invalid={Boolean(error)} disabled={disabled} id={fieldId}
+          onChange={(event) => onChange(event.target.value)} rows={jsonLike ? 7 : 5} spellCheck={!jsonLike}
+          placeholder={jsonLike ? example : field.kind === 'text_collection' ? tUi("Каждый текст — с новой строки") : field.description || tUi("Введите {p1}…", { p1: field.label.toLocaleLowerCase(language) })}
+          value={typeof draft === 'string' ? draft : ''} />
+        {field.kind === 'text_collection' ? <small>{tUi("Одна строка — один элемент списка.")}</small> : null}
+        {jsonLike ? <details className="playground-format-hint"><summary><Code2 size={14} />{tUi("Формат данных")}</summary>
+          <p>{field.documentFormat ? tUi("Нужен JSON-документ Stories v1.") : field.schema ? tUi("Используйте структуру, заданную автором pipeline.") : field.kind === 'publication' ? tUi("Введите JSON-объект публикации.") : tUi("Введите JSON-объект или массив.")}</p>
+          {field.schema ? <pre>{example}</pre> : null}
+        </details> : null}
+      </>}
+    {error ? <span className="playground-field-error-text" id={`${fieldId}-error`} role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</span> : null}
+  </div>;
 }

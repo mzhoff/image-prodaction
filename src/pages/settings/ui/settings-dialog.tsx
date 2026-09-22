@@ -1,4 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { SectionOnboardingProvider } from '@/features/section-onboarding/ui/section-onboarding-provider';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +19,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 export function SettingsDialog({ section }: { section: SettingsSection }) {
+  const tUi = useTranslations();
   const router = useRouter();
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -23,11 +27,11 @@ export function SettingsDialog({ section }: { section: SettingsSection }) {
   const [dirty, setDirty] = useState(false);
 
   const close = useCallback(() => {
-    if (dirty && !window.confirm('Есть несохранённые изменения. Закрыть настройки без сохранения?')) {
+    if (dirty && !window.confirm(tUi("Есть несохранённые изменения. Закрыть настройки без сохранения?"))) {
       return;
     }
     router.back();
-  }, [dirty, router]);
+  }, [tUi, dirty, router]);
 
   useEffect(() => {
     const appRoot = document.getElementById('app-root');
@@ -49,6 +53,7 @@ export function SettingsDialog({ section }: { section: SettingsSection }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || dialogRef.current?.closest('[inert]')) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         close();
@@ -85,11 +90,12 @@ export function SettingsDialog({ section }: { section: SettingsSection }) {
   }
 
   return (
-    <div className="settings-overlay" ref={overlayRef} onMouseDown={handleOverlayClick}>
+    <SectionOnboardingProvider><div className="settings-overlay" ref={overlayRef} onMouseDown={handleOverlayClick}>
       <div
         className="settings-dialog"
         ref={dialogRef}
         role="dialog"
+        data-section-guide-surface
         aria-modal="true"
         aria-labelledby="settings-title"
         tabIndex={-1}
@@ -101,6 +107,6 @@ export function SettingsDialog({ section }: { section: SettingsSection }) {
           onDirtyChange={setDirty}
         />
       </div>
-    </div>
+    </div></SectionOnboardingProvider>
   );
 }

@@ -19,6 +19,7 @@ type BoxSelection = ReturnType<typeof useCanvasBoxSelection>;
 type SectionDrawing = ReturnType<typeof useSectionDrawing>;
 
 interface CanvasInteractionOptions {
+  enabled: boolean;
   boxSelection: BoxSelection;
   canvas: CanvasNavigation;
   canvasTool: CanvasTool;
@@ -41,12 +42,13 @@ interface CanvasInteractionOptions {
 }
 
 export function useProductionCanvasInteractions(options: CanvasInteractionOptions) {
-  const { boxSelection, canvas, canvasTool, closeContextMenu, createFavoriteNode, createNode,
+  const { enabled, boxSelection, canvas, canvasTool, closeContextMenu, createFavoriteNode, createNode,
     createTemplateNode, getFallbackPastePosition, importImageFiles, lastPointerWorldRef, nodesById,
     sectionDrawing, setCanvasTool, showToast,
     toggleCollapsedStateForSelectedNodes } = options;
 
   useEffect(() => {
+    if (!enabled) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA'
@@ -67,7 +69,7 @@ export function useProductionCanvasInteractions(options: CanvasInteractionOption
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeContextMenu, setCanvasTool, toggleCollapsedStateForSelectedNodes]);
+  }, [enabled, closeContextMenu, setCanvasTool, toggleCollapsedStateForSelectedNodes]);
 
   const handleCanvasMouseDown = (event: ReactMouseEvent) => {
     if (event.button !== 0) return;

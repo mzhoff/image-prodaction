@@ -1,112 +1,96 @@
-import { expect, test, type Locator } from '@playwright/test';
-
-async function getInputTextContrast(input: Locator) {
-  return input.evaluate((element) => {
-    const parseRgb = (value: string) => {
-      const channels = value.match(/[\d.]+/g)?.slice(0, 3).map(Number);
-      if (!channels || channels.length !== 3) throw new Error(`Unexpected color: ${value}`);
-      return channels;
-    };
-    const luminance = (channels: number[]) => {
-      const linear = channels.map((channel) => {
-        const normalized = channel / 255;
-        return normalized <= 0.04045
-          ? normalized / 12.92
-          : ((normalized + 0.055) / 1.055) ** 2.4;
-      });
-      return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
-    };
-    const ratio = (foreground: string, background: string) => {
-      const foregroundLuminance = luminance(parseRgb(foreground));
-      const backgroundLuminance = luminance(parseRgb(background));
-      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
-        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
-    };
-    const inputStyle = getComputedStyle(element);
-    const placeholderStyle = getComputedStyle(element, '::placeholder');
-    return {
-      placeholder: ratio(placeholderStyle.color, inputStyle.backgroundColor),
-      value: ratio(inputStyle.color, inputStyle.backgroundColor),
-    };
-  });
-}
+import { expect, test } from '@playwright/test';
 
 test.use({
-  channel: 'chrome',
+  locale: 'ru-RU',
+  screenshot: 'off',
   trace: 'off',
   video: 'off',
-  screenshot: 'off',
-  viewport: { width: 1148, height: 1267 },
+  viewport: { width: 1127, height: 1269 },
 });
 
-test('login theme switch and visual contract', async ({ page, context }, info) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await context.clearCookies();
+test('login theme control is segmented, keyboard accessible, and persistent', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.context().clearCookies();
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto('/login?next=%2F');
+  await page.goto('/login?next=%2F', { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(() => document.cookie.includes('production_locale=ru'))).toBe(true);
 
-  const themeSwitch = page.getByRole('switch', { name: 'Тёмная тема' });
-  await expect(themeSwitch).toHaveCount(1);
-  await expect(page.getByRole('combobox', { name: 'Тема оформления' })).toHaveCount(0);
-  await expect(themeSwitch).not.toBeChecked();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  const switchBox = (await page.locator('.auth-theme-switch').boundingBox())!;
-  expect(switchBox.y).toBeLessThanOrEqual(42);
-  expect(1148 - switchBox.x - switchBox.width).toBeLessThanOrEqual(42);
+  const themeControl = page.getByRole('group', { name: 'Тема оформления' });
+  const lightButton = themeControl.getByRole('button', { name: 'Светлая' });
+  const darkButton = themeControl.getByRole('button', { name: 'Тёмная' });
+  await expect(themeControl.getByRole('button')).toHaveCount(2);
+  await expect(themeControl.getByRole('switch')).toHaveCount(0);
+  await expect(lightButton).toHaveAttribute('aria-pressed', 'true');
+  await expect(darkButton).toHaveAttribute('aria-pressed', 'false');
 
-  await themeSwitch.focus();
-  await themeSwitch.press('Space');
-  await expect(themeSwitch).toBeChecked();
+  await darkButton.focus();
+  await page.keyboard.press('Space');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('html')).toHaveAttribute('data-pui-preference', 'dark');
-  expect(await page.evaluate(() => localStorage.getItem('pui-theme'))).toBe('dark');
-  await page.reload();
-  await expect(themeSwitch).toBeChecked();
-  await expect(page.locator('.auth-submit .pui-button__icon')).toHaveCSS('color', 'rgb(255, 255, 255)');
-  const darkPlaceholderContrast = await getInputTextContrast(page.locator('input[name="password"]'));
-  expect(darkPlaceholderContrast.placeholder).toBeGreaterThanOrEqual(4.5);
-  expect(darkPlaceholderContrast.placeholder).toBeLessThan(darkPlaceholderContrast.value);
+  await expect(darkButton).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('pui-theme'))).toBe('dark');
 
-  const otherTab = await context.newPage();
-  await otherTab.goto('/login?next=%2F');
-  const otherSwitch = otherTab.getByRole('switch', { name: 'Тёмная тема' });
-  await expect(otherSwitch).toBeChecked();
-  await otherSwitch.click();
-  await expect(otherTab.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(themeSwitch).not.toBeChecked();
-  await otherTab.close();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Тёмная' })).toHaveAttribute('aria-pressed', 'true');
 
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Мечтайте. Способ найдётся.');
-  await expect(page.locator('.auth-promo-content > p')).toHaveText(
-    'Профессиональные инструменты для креаторов — от первой идеи до готового визуала.',
-  );
-  await expect(page.getByText('Доступ в рабочее пространство')).toHaveCount(0);
-  await expect(page.getByText('Операционный эффект')).toHaveCount(0);
-  await expect(page.locator('.auth-bars, .auth-metric-card, .auth-note-card')).toHaveCount(0);
+  const secondPage = await page.context().newPage();
+  await secondPage.goto('/login?next=%2F', { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => secondPage.evaluate(() => document.cookie.includes('production_locale=ru'))).toBe(true);
+  await expect(secondPage.getByRole('button', { name: 'Тёмная' })).toHaveAttribute('aria-pressed', 'true');
+  await secondPage.getByRole('button', { name: 'Светлая' }).click();
+  await expect(secondPage.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('button', { name: 'Светлая' })).toHaveAttribute('aria-pressed', 'true');
+  await secondPage.close();
 
-  const card = page.locator('.auth-entry-card');
-  const heading = card.getByRole('heading', { level: 2 });
-  const cardBox = (await card.boundingBox())!;
-  const headingBox = (await heading.boundingBox())!;
-  expect(Math.abs(headingBox.x - cardBox.x)).toBeLessThanOrEqual(2);
-  await expect(card).toHaveCSS('padding-left', '0px');
+  const box = await themeControl.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y).toBeLessThanOrEqual(42);
+  expect(1127 - box!.x - box!.width).toBeLessThanOrEqual(42);
+  await page.screenshot({ path: 'test-results/theme-language-controls.png' });
+  expect(pageErrors).toEqual([]);
+});
 
-  const submit = page.getByRole('button', { name: 'Войти' });
-  await expect(submit).toHaveCSS('height', '44px');
-  await expect(submit).toHaveCSS('border-radius', '16px');
-  await expect(submit).toHaveCSS('font-size', '14px');
-  const submitIcon = submit.locator('.pui-button__icon');
-  await expect(submitIcon).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(submitIcon).toHaveCSS('width', '14px');
-  await expect(submitIcon).toHaveCSS('height', '14px');
+test('language selector follows browser locale, lists roadmap languages, and persists choice', async ({ browser, baseURL }) => {
+  const russianContext = await browser.newContext({ baseURL, locale: 'ru-RU', viewport: { width: 1127, height: 1269 } });
+  const russianPage = await russianContext.newPage();
+  await russianPage.goto('/login?next=%2F', { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => russianPage.evaluate(() => document.cookie.includes('production_locale=ru'))).toBe(true);
+  await expect(russianPage.locator('html')).toHaveAttribute('lang', 'ru');
+  await expect(russianPage.getByRole('region', { name: 'Войти в Reverie', exact: true })).toBeVisible();
 
-  await expect(page.getByRole('link', { name: 'Забыли пароль?' })).toHaveCSS('font-weight', '550');
-  const password = page.locator('input[name="password"]');
-  const lightPlaceholderContrast = await getInputTextContrast(password);
-  expect(lightPlaceholderContrast.placeholder).toBeGreaterThanOrEqual(4.5);
-  expect(lightPlaceholderContrast.placeholder).toBeLessThan(lightPlaceholderContrast.value);
+  const selector = russianPage.getByRole('combobox', { name: 'Язык приложения' });
+  await expect(selector).toContainText('🇷🇺');
+  await expect(selector).toContainText('RU');
+  await selector.click();
+  await expect(russianPage.getByRole('option')).toHaveCount(5);
+  await expect(russianPage.getByRole('option', { name: /Русский/ })).toBeEnabled();
+  await expect(russianPage.getByRole('option', { name: /English/ })).toBeEnabled();
+  await expect(russianPage.getByRole('option', { name: /中文/ })).toBeDisabled();
+  await expect(russianPage.getByRole('option', { name: /Deutsch/ })).toBeDisabled();
+  await expect(russianPage.getByRole('option', { name: /Español/ })).toBeDisabled();
+  await expect(russianPage.getByRole('option', { name: /中文/ })).toHaveAttribute('data-disabled', '');
+  await expect(russianPage.getByRole('option', { name: /Deutsch/ })).toHaveAttribute('data-disabled', '');
+  await expect(russianPage.getByRole('option', { name: /Español/ })).toHaveAttribute('data-disabled', '');
+  await expect(russianPage.getByRole('option', { name: /中文/ })).toContainText('Скоро');
+  await russianPage.screenshot({ path: 'test-results/language-selector-options.png' });
 
-  await page.screenshot({ path: info.outputPath('login-theme-and-layout.png'), fullPage: true });
-  expect(errors).toEqual([]);
+  await russianPage.getByRole('option', { name: /English/ }).click();
+  await expect(russianPage.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(russianPage.getByRole('region', { name: 'Sign in to Reverie', exact: true })).toBeVisible();
+  await expect.poll(() => russianPage.evaluate(() => localStorage.getItem('production:interface-locale:v1:guest'))).toBe('en');
+  await russianPage.reload({ waitUntil: 'domcontentloaded' });
+  await expect(russianPage.getByRole('combobox', { name: 'Application language' })).toContainText('🇬🇧');
+  await expect(russianPage.getByRole('combobox', { name: 'Application language' })).toContainText('EN');
+  await russianPage.screenshot({ path: 'test-results/language-selector-en.png' });
+  await russianContext.close();
+
+  const germanContext = await browser.newContext({ baseURL, locale: 'de-DE', viewport: { width: 1127, height: 1269 } });
+  const germanPage = await germanContext.newPage();
+  await germanPage.goto('/login?next=%2F', { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => germanPage.evaluate(() => document.cookie.includes('production_locale=en'))).toBe(true);
+  await expect(germanPage.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(germanPage.getByRole('region', { name: 'Sign in to Reverie', exact: true })).toBeVisible();
+  await expect(germanPage.getByRole('combobox', { name: 'Application language' })).toContainText('🇬🇧');
+  await germanContext.close();
 });

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
@@ -19,6 +20,7 @@ export function LibraryProjectMenu({ anchor, workspaceId, onClose, onSelect }: {
   onClose: () => void;
   onSelect: (projectId: string) => void;
 }) {
+  const tUi = useTranslations();
   const workspace = useWorkspaceShell();
   const rootRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -91,7 +93,7 @@ export function LibraryProjectMenu({ anchor, workspaceId, onClose, onSelect }: {
   }, [anchor, close]);
 
   return createPortal(
-    <div ref={rootRef} className="context-menu library-project-menu" role="region" aria-label="Отправить в проект"
+    <div ref={rootRef} className="context-menu library-project-menu" role="region" aria-label={tUi("Отправить в проект")}
       data-floating-context-menu="true" data-placement={position?.placement}
       style={{ left: position?.left, top: position?.top, width: position?.width, maxHeight: position?.maxHeight, visibility: position ? 'visible' : 'hidden' }}
       onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}
@@ -110,12 +112,12 @@ export function LibraryProjectMenu({ anchor, workspaceId, onClose, onSelect }: {
         }
       }}>
       <label className="library-project-search"><Search size={16} /><PuiInput ref={searchRef} type="search"
-        aria-label="Найти проект" placeholder="Найти проект" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-      <div className="library-project-menu-label">Отправить в проект</div>
-      <div className="library-project-list" id={LIBRARY_PROJECT_MENU_ID} role="menu" aria-label="Проекты">
-        {workspace.error ? <p role="alert">Не удалось обновить список. <button type="button" onClick={() => void workspace.refresh()}>Повторить</button></p> : null}
-        {!workspace.hydrated ? <p>Загружаем проекты…</p> : null}
-        {workspace.hydrated && !projects.length ? <p role="status">{search ? 'Проекты не найдены.' : 'Нет доступных проектов в этом рабочем пространстве.'}</p> : null}
+        aria-label={tUi("Найти проект")} placeholder={tUi("Найти проект")} value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+      <div className="library-project-menu-label">{tUi("Отправить в проект")}</div>
+      <div className="library-project-list" id={LIBRARY_PROJECT_MENU_ID} role="menu" aria-label={tUi("Проекты")}>
+        {workspace.error ? <p role="alert">{tUi("Не удалось обновить список.")}{' '} <button type="button" onClick={() => void workspace.refresh()}>{tUi("Повторить")}</button></p> : null}
+        {!workspace.hydrated ? <p>{tUi("Загружаем проекты…")}</p> : null}
+        {workspace.hydrated && !projects.length ? <p role="status">{search ? tUi("Проекты не найдены.") : tUi("Нет доступных проектов в этом рабочем пространстве.")}</p> : null}
         {projects.map((project) => <button key={project.id} type="button" role="menuitem" className="context-menu-item"
           title={project.name} onClick={() => onSelect(project.id)}><FolderInput size={16} /><span className="context-menu-label">{project.name}</span></button>)}
       </div>

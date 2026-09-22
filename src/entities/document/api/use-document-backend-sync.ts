@@ -1,6 +1,6 @@
 'use client';
-
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from '@/shared/i18n/use-translations';
+import { useEffectEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useDocumentMetadata } from './use-document-metadata';
 import { activateAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
@@ -15,25 +15,16 @@ import {
   saveDocumentProjectSnapshot,
 } from './document-api';
 import {
+  captureDocumentRecoverySnapshot,
   clearDocumentRecoverySnapshot,
   recoverDocumentAfterLoadFailure,
   loadDocumentRecoverySnapshot,
   saveDocumentRecoverySnapshot,
 } from './document-recovery';
 import { classifyDocumentSyncFailure, createDebouncedAction, DOCUMENT_AUTOSAVE_DELAY_MS } from './document-sync';
-import type { DocumentSyncState } from './document-sync';
+import type { DocumentSyncState, UseDocumentBackendSyncOptions } from './document-sync';
 import { retainDocumentExitSave, waitForDocumentExitSave } from './document-exit-tasks';
-
-interface UseDocumentBackendSyncOptions {
-  exportSnapshot: () => ProjectExport;
-  importSnapshot: (snapshot: unknown, expectedKind: 'projectSnapshot') => unknown;
-  projectId?: string;
-  resetProject: () => void;
-  subscribeToProjectChanges: (
-    listener: (change?: { thumbnailRelevant?: boolean }) => void,
-  ) => () => void;
-}
-
+import { createDocumentOpenTracker } from './document-open-tracker';
 export function useDocumentBackendSync({
   exportSnapshot,
   importSnapshot,
@@ -41,23 +32,26 @@ export function useDocumentBackendSync({
   resetProject,
   subscribeToProjectChanges,
 }: UseDocumentBackendSyncOptions) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const [thumbnailMode, setThumbnailMode] = useState<'auto' | 'manual'>('auto');
   const [thumbnailAvailable, setThumbnailAvailable] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>();
   const [revision, setRevision] = useState<number>();
+  const [loadedDocumentId, setLoadedDocumentId] = useState<string>();
   const [reloadSequence, setReloadSequence] = useState(0);
   const [saveSequence, setSaveSequence] = useState(0);
   const [syncState, setSyncState] = useState<DocumentSyncState>({ phase: projectId ? 'loading' : 'idle' });
   const discardCandidateRef = useRef<string | null>(null);
   const { documentName, favorite, documentStatus, setDocumentName, setFavorite, setDocumentStatus,
     renameDocument, setDocumentFavorite, moveDocumentToTrash } = useDocumentMetadata(projectId, discardCandidateRef);
-  const loadedProjectIdRef = useRef<string | undefined>(undefined);
+  const [documentOpen] = useState(createDocumentOpenTracker);
   const exitRef = useRef<(() => Promise<number>) | null>(null);
   const prepareExit = useCallback(() => exitRef.current?.() ?? Promise.reject(new Error('Document is not ready.')), []);
 
   useEffect(() => {
     if (!projectId) {
-      loadedProjectIdRef.current = undefined;
+      documentOpen.select(undefined);
       discardCandidateRef.current = null;
       setDocumentName(undefined);
       setFavorite(false);
@@ -66,14 +60,14 @@ export function useDocumentBackendSync({
       setThumbnailAvailable(false);
       setWorkspaceId(undefined);
       setRevision(undefined);
+      setLoadedDocumentId(undefined);
       setSaveSequence(0);
       setSyncState({ phase: 'idle' });
       return undefined;
     }
     const documentId = projectId;
     discardCandidateRef.current = null;
-    if (loadedProjectIdRef.current !== documentId) {
-      loadedProjectIdRef.current = documentId;
+    if (documentOpen.select(documentId)) {
       setWorkspaceId(undefined);
     }
 
@@ -95,12 +89,7 @@ export function useDocumentBackendSync({
     let saveFailure: unknown;
 
     const persistRecovery = () => {
-      if (!dirty) return;
-      try {
-        saveDocumentRecoverySnapshot(documentId, exportSnapshot());
-      } catch {
-        // Export validation can fail for a partial editor mutation; the graph persistence remains available.
-      }
+      if (dirty) captureDocumentRecoverySnapshot(documentId, exportSnapshot);
     };
 
     const performSave = async () => {
@@ -183,9 +172,7 @@ export function useDocumentBackendSync({
       debouncedSave.schedule();
     };
 
-    const handleBeforeUnload = () => {
-      persistRecovery();
-    };
+    const handleBeforeUnload = persistRecovery;
 
     const discardIfUntouched = () => {
       if (discardCandidateRef.current !== documentId) return;
@@ -207,6 +194,7 @@ export function useDocumentBackendSync({
 
     async function load() {
       setSyncState({ phase: 'loading' });
+      setLoadedDocumentId(undefined);
       try {
         await waitForDocumentExitSave(documentId);
         if (!active) return;
@@ -228,6 +216,7 @@ export function useDocumentBackendSync({
         }
         revision = project.revision;
         loaded = true;
+        setLoadedDocumentId(documentId);
         setRevision(project.revision);
         releaseAssetScope();
         releaseAssetScope = activateAssetScope({
@@ -243,15 +232,25 @@ export function useDocumentBackendSync({
         if (recoverySnapshot) {
           setSyncState({
             phase: 'recovery',
-            message: 'Восстановлены локальные изменения, которые не успели сохраниться перед закрытием страницы.',
+            message: tEffect("Восстановлены локальные изменения, которые не успели сохраниться перед закрытием страницы."),
           });
         } else {
           clearDocumentRecoverySnapshot(documentId);
           setSyncState({ phase: 'saved' });
         }
+        documentOpen.loaded(documentId);
       } catch {
         if (!active || controller.signal.aborted) return;
-        setSyncState(recoverDocumentAfterLoadFailure(documentId, importSnapshot));
+        const recovered = recoverDocumentAfterLoadFailure(documentId, importSnapshot);
+        setSyncState(recovered);
+        if (recovered.phase !== 'recovery') return;
+        setLoadedDocumentId(documentId);
+        // Without the server revision, keep edits locally until this document is reloaded.
+        halted = true;
+        unsubscribe = subscribeToProjectChanges(() => {
+          saveDocumentRecoverySnapshot(documentId, exportSnapshot());
+        });
+        return;
       }
 
       if (!active) return;
@@ -278,10 +277,11 @@ export function useDocumentBackendSync({
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
     };
-  }, [exportSnapshot, importSnapshot, projectId, reloadSequence, resetProject, setDocumentName, setDocumentStatus, setFavorite, subscribeToProjectChanges]);
+  }, [documentOpen, exportSnapshot, importSnapshot, projectId, reloadSequence, resetProject, setDocumentName, setDocumentStatus, setFavorite, subscribeToProjectChanges]);
 
   return {
     documentName,
+    documentReady: !projectId || loadedDocumentId === projectId,
     prepareExit,
     documentStatus,
     favorite,

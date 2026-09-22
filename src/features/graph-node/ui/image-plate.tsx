@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import Image from 'next/image';
 import {
@@ -72,6 +73,7 @@ export function ImagePlate({
   viewerMedia,
   mediaKind = 'image',
 }: ImagePlateProps) {
+  const tUi = useTranslations();
   const historyAssetIds = assetIds?.length ? assetIds : assetId ? [assetId] : [];
   const currentIndex = getSafeIndex(activeIndex, historyAssetIds.length);
   const currentAssetId = historyAssetIds[currentIndex] ?? assetId;
@@ -104,7 +106,7 @@ export function ImagePlate({
     try {
       await persistAssetToLibrary(asset);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : `Не удалось сохранить ${mediaKind === 'video' ? 'видео' : 'изображение'} в библиотеку.`);
+      setSaveError(error instanceof Error ? error.message : tUi("Не удалось сохранить {p1} в библиотеку.", { p1: mediaKind === 'video' ? 'видео' : 'изображение' }));
     } finally {
       setSavingToLibrary(false);
     }

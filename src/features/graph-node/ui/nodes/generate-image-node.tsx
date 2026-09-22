@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Loader2, Maximize2, Minimize2, Sparkles } from '@prodactionpro/ui-core/icons';
 import type { PointerEvent as ReactPointerEvent } from 'react';
@@ -33,6 +34,7 @@ export function GenerateImageNode({
   onComposingOpenChange,
   onStartConnection,
 }: GenerateImageNodeProps) {
+  const tUi = useTranslations();
   const model = useGenerateImageNodeModel({ node, composingOpen, onComposingOpenChange });
 
   return (
@@ -113,8 +115,8 @@ export function GenerateImageNode({
           getResolution={(ratio) => getImageOutputResolution(model.selectedModel, ratio, model.selectedSize)} />}
         {(!model.capabilities || model.capabilities.parameters.resolution) && <SettingRow label="Size" value={model.selectedSize} options={model.sizeOptions} onChange={model.handleSizeChange} />}
         {model.capabilities && <ImageGenerationSettings capabilities={model.capabilities} value={model.data} onChange={model.handleImageSettingsChange} />}
-        {model.catalogError && <div className="node-note node-note-compact">{model.catalogError}</div>}
-        {model.modelUnavailable && !model.loading && <div className="node-note node-note-compact">Выбранная модель недоступна. Обновите каталог или выберите другую модель.</div>}
+        {model.catalogError && <div className="node-note node-note-compact">{typeof (model.catalogError) === 'string' ? tUi((model.catalogError) as string) : (model.catalogError)}</div>}
+        {model.modelUnavailable && !model.loading && <div className="node-note node-note-compact">{tUi("Выбранная модель недоступна. Обновите каталог или выберите другую модель.")}</div>}
       </CollapsibleSection>
       <PrimaryActionButton
         icon={node.status === 'running' ? <Loader2 className="spin" size={17} /> : <Sparkles size={17} />}

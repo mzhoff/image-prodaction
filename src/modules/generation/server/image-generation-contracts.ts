@@ -5,7 +5,9 @@ import type { ImageGenerationOptions } from '@/shared/media/image-generation-set
 
 export interface QueuedGenerateImagePayload extends ImageGenerationOptions {
   aspectRatio: string;
-  documentId: string;
+  documentId: string | null;
+  homeConversationId?: string;
+  storyCharacter?: { storyId: string; characterId: string; revision: number };
   inputs: GenerateLayerInputs;
   locationInputs: string[];
   model: string;

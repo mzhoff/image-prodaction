@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { ClipboardCopy, Copy, Download, HelpCircle, Layers3, LayoutTemplate, Lock, Pencil,
   Maximize2, RotateCcw, Star, Trash2, Unlock, Upload } from '@prodactionpro/ui-core/icons';
@@ -57,6 +58,7 @@ interface ProductionCanvasMenusOptions {
 }
 
 export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) {
+  const tUi = useTranslations();
   const { canvas, closeContextMenu, contextMenu, copyAssetToClipboard, createNode, downloadAssets,
     favoriteNodes, graph, importPipelineTemplateAt, openImageViewer,
     nodeTemplates, onAskAiNode, showToast } = options;
@@ -97,7 +99,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
     const extractLimit = 5;
     const selectedImageSources = selectedNodes.filter((item) => getNodePorts(item).some((port) => port.side === 'output' && port.kind === 'image'));
     const sendToExtractReason = selectedImageSources.length > extractLimit
-      ? `Extract принимает не больше ${extractLimit} изображений за один анализ. Выделено: ${selectedImageSources.length}.`
+      ? tUi("Extract принимает не больше {p1} изображений за один анализ. Выделено: {p2}.", { p1: extractLimit, p2: selectedImageSources.length })
       : undefined;
     const createExtractForSelection = () => {
       const position = {
@@ -122,7 +124,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
           y: position.y + Math.max(0, (Math.min(selectedImageSources.length, extractLimit) - 1) * 175),
         });
       });
-      showToast(`Extract создан и подключён к ${Math.min(selectedImageSources.length, extractLimit)} изображениям.`);
+      showToast(tUi("Extract создан и подключён к {p1} изображениям.", { p1: Math.min(selectedImageSources.length, extractLimit) }));
     };
     const addConnectedNodes = (type: ProductionNodeType, direction: BatchConnectionDirection) => {
       const plan = getBatchConnectionPlan(selectedNodes, type, direction, graph.edges, graph.nodes);
@@ -143,7 +145,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
         });
         arrangeNodePairs(graph, pairs, direction);
       });
-      showToast(`${plan.length} нод добавлено ${direction === 'output' ? 'на выход' : 'на вход'} выделенных.`);
+      showToast(tUi("{p1} нод добавлено {p2} выделенных.", { p1: plan.length, p2: direction === 'output' ? 'на выход' : 'на вход' }));
     };
     const getConnectedNodeActions = (direction: BatchConnectionDirection): ContextMenuAction[] => (
       addNodeMenu.filter(({ type }) => getBatchConnectionPlan(selectedNodes, type, direction, graph.edges, graph.nodes))
@@ -180,7 +182,7 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
         onSelect: () => { void onAskAiNode(node)
           .then((result) => { const notice = getNodeAskAiLaunchNotice(result);
             if (notice) showToast(notice); })
-          .catch(() => showToast('Не удалось открыть Ask AI. Повторите попытку.')); } },
+          .catch(() => showToast(tUi("Не удалось открыть Ask AI. Повторите попытку."))); } },
       { id: 'rename-node', label: 'Rename', icon: <Pencil size={14} />,
         onSelect: () => requestNodeTitleRename(node.id) },
       { id: 'copy-node', label: 'Duplicate', icon: <Copy size={14} />,
@@ -231,14 +233,14 @@ export function useProductionCanvasMenus(options: ProductionCanvasMenusOptions) 
       ? baseActions.filter((action) => action.id !== 'rename-node')
       : baseActions;
     const batchActions: ContextMenuAction[] = hasSelection ? [
-      { id: 'add-node-to-output', kind: 'submenu', label: 'Add to output', icon: <Upload size={14} />, disabled: addToOutputActions.length === 0, disabledReason: 'Для всех выделенных нод нет общей совместимой ноды для выхода.', actions: addToOutputActions },
-      { id: 'add-node-to-input', kind: 'submenu', label: 'Add to input', icon: <Download size={14} />, disabled: addToInputActions.length === 0, disabledReason: 'Для всех выделенных нод нет общей совместимой ноды для входа.', actions: addToInputActions },
-      { id: 'send-selection-to-extract', label: 'Send to Extract', icon: <NodeIcon nodeType="imageToText" size={14} />, disabled: selectedImageSources.length === 0 || Boolean(sendToExtractReason), disabledReason: sendToExtractReason ?? 'Выдели хотя бы одно изображение.', onSelect: createExtractForSelection },
+      { id: 'add-node-to-output', kind: 'submenu', label: 'Add to output', icon: <Upload size={14} />, disabled: addToOutputActions.length === 0, disabledReason: tUi("Для всех выделенных нод нет общей совместимой ноды для выхода."), actions: addToOutputActions },
+      { id: 'add-node-to-input', kind: 'submenu', label: 'Add to input', icon: <Download size={14} />, disabled: addToInputActions.length === 0, disabledReason: tUi("Для всех выделенных нод нет общей совместимой ноды для входа."), actions: addToInputActions },
+      { id: 'send-selection-to-extract', label: 'Send to Extract', icon: <NodeIcon nodeType="imageToText" size={14} />, disabled: selectedImageSources.length === 0 || Boolean(sendToExtractReason), disabledReason: sendToExtractReason ?? tUi("Выдели хотя бы одно изображение."), onSelect: createExtractForSelection },
     ] : [];
     return [...visibleBaseActions, ...batchActions, ...imageActions, ...generationActions,
       { id: 'delete-node', label: 'Delete', icon: <Trash2 size={14} />,
         destructive: true, separatorBefore: true, onSelect: graph.deleteSelected }];
-  }, [copyAssetToClipboard, createNode, downloadAssets, favoriteNodes, graph, nodeTemplates,
+  }, [tUi, copyAssetToClipboard, createNode, downloadAssets, favoriteNodes, graph, nodeTemplates,
     onAskAiNode, openImageViewer, showToast]);
 
   const openCanvasMenu = useCallback((event: ReactMouseEvent) => {

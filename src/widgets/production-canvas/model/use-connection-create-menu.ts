@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import type { useProductionCanvasStore } from './use-production-canvas-store';
@@ -20,6 +21,7 @@ export function useConnectionCreateMenu({ contextMenu, createNode, graph, showTo
   showToast: (message: string) => void;
   setPendingConnectionMenu: Dispatch<SetStateAction<ConnectionDropOnEmpty | null>>;
 }) {
+  const tUi = useTranslations();
   return useCallback((drop: ConnectionDropOnEmpty) => {
     const source = drop.sourceNodeId ? graph.nodesById.get(drop.sourceNodeId) : undefined;
     const target = drop.targetNodeId ? graph.nodesById.get(drop.targetNodeId) : undefined;
@@ -42,14 +44,14 @@ export function useConnectionCreateMenu({ contextMenu, createNode, graph, showTo
         const mode = getVideoConnectCreateMode(drop.sourceNodeId, drop.sourcePortId, before);
         if (mode) {
           try {
-            showToast('Подбираем видеомодель для подключения…');
+            showToast(tUi("Подбираем видеомодель для подключения…"));
             videoPreparation = prepareVideoConnectCreate(mode, await loadVideoModels());
             const latest = useProductionGraphStore.getState();
             if (getActiveAssetScopeSnapshot() !== scope || getVideoConnectCreateMode(drop.sourceNodeId, drop.sourcePortId, latest) !== mode) {
-              throw new Error('Источник изменился. Протяните подключение ещё раз.');
+              throw new Error(tUi("Источник изменился. Протяните подключение ещё раз."));
             }
           } catch (error) {
-            showToast(error instanceof Error ? error.message : 'Не удалось подготовить подключение к видео.');
+            showToast(error instanceof Error ? error.message : tUi("Не удалось подготовить подключение к видео."));
             setPendingConnectionMenu(null);
             return;
           }
@@ -76,9 +78,9 @@ export function useConnectionCreateMenu({ contextMenu, createNode, graph, showTo
           ? graph.connect(nodeId, sourcePortId, drop.targetNodeId, drop.targetPortId)
           : { ok: false as const, reason: 'Could not create an upstream connection.' };
       if (!result.ok) showToast(result.reason);
-      else if (videoPreparation) showToast('Видео подключено. Добавьте задание и проверьте настройки перед генерацией.');
+      else if (videoPreparation) showToast(tUi("Видео подключено. Добавьте задание и проверьте настройки перед генерацией."));
       setPendingConnectionMenu(null);
     }));
-  }, [contextMenu, createNode, graph, setPendingConnectionMenu, showToast]);
+  }, [tUi, contextMenu, createNode, graph, setPendingConnectionMenu, showToast]);
 
 }

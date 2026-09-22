@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
@@ -12,6 +13,7 @@ import { textSplitterModeOptions } from './text-workflow-options';
 import { arraysEqual, clampIndex } from './text-workflow-values';
 
 export function useTextSplitterNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as TextSplitterNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -30,7 +32,7 @@ export function useTextSplitterNodeModel(node: ProductionNode) {
     .map((edge) => getTextSplitterItemPortIndex(edge.sourcePortId))), [items, data, edges, node.id]);
   const visibleItems = slots.items;
   const message = slots.overflowCount > 0
-    ? `Не помещается фрагментов: ${slots.overflowCount}. Лимит — ${TEXT_SPLITTER_MAX_ITEMS} выходов, включая сохранённые связи. Используйте ещё один Splitter.`
+    ? tUi("Не помещается фрагментов: {p1}. Лимит — {p2} выходов, включая сохранённые связи. Используйте ещё один Splitter.", { p1: slots.overflowCount, p2: TEXT_SPLITTER_MAX_ITEMS })
     : '';
   const activeItemIndex = clampIndex(data.activeItemIndex ?? 0, visibleItems.length);
   const result = visibleItems[activeItemIndex] ?? '';

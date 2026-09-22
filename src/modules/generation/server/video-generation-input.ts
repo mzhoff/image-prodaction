@@ -4,7 +4,7 @@ import { readBoundedAudioStream } from '@/shared/media/audio-upload-request';
 import type { VideoGenerationRequest } from '@/shared/media/video-generation-contracts';
 import type { VideoProviderInput } from '@/modules/provider-connections/contracts/video-provider';
 
-export interface QueuedVideoPayload { workspaceId: string; documentId: string; request: VideoGenerationRequest }
+export interface QueuedVideoPayload { workspaceId: string; documentId: string | null; homeConversationId?: string; request: VideoGenerationRequest }
 export async function validateVideoAssets(request: VideoGenerationRequest, userId: string, workspaceId: string) {
   const images = [request.firstFrame, request.lastFrame, ...request.references].filter((image) => image !== undefined);
   for (const image of images) {

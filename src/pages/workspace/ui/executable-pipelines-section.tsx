@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
@@ -9,6 +10,7 @@ import type { ExecutablePipelineCatalogItem } from '@/modules/executable-pipelin
 import type { PipelineValueKind } from '@/modules/executable-pipelines/contracts/pipeline-contracts';
 import type { StudioPipelineBoundary } from '@/modules/executable-pipelines/contracts/pipeline-publication-contracts';
 import { useWorkspacePipelines } from '../model/use-workspace-pipelines';
+import { ProductionEmptyState } from '@/shared/ui/production-empty-state';
 
 interface ExecutablePipelinesSectionProps {
   workspaceId?: string;
@@ -17,6 +19,7 @@ interface ExecutablePipelinesSectionProps {
 const integerFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 export function ExecutablePipelinesSection({ workspaceId }: ExecutablePipelinesSectionProps) {
+  const tUi = useTranslations();
   const catalog = useWorkspacePipelines(workspaceId);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
@@ -69,7 +72,7 @@ export function ExecutablePipelinesSection({ workspaceId }: ExecutablePipelinesS
           </label>
         </div>
 
-        {catalog.error ? <p className="workspace-pipelines-error" role="alert">{catalog.error}</p> : null}
+        {catalog.error ? <p className="workspace-pipelines-error" role="alert">{typeof (catalog.error) === 'string' ? tUi((catalog.error) as string) : (catalog.error)}</p> : null}
 
         {catalog.loading ? (
           <div className="workspace-pipelines-loading" role="status">Loading executable pipelines…</div>
@@ -104,17 +107,10 @@ export function ExecutablePipelinesSection({ workspaceId }: ExecutablePipelinesS
           </div>
         ) : null}
 
-        {!catalog.loading && visiblePipelines.length === 0 ? (
-          <div className="workspace-pipelines-empty">
-            <Route size={28} />
-            <strong>{catalog.pipelines.length === 0 ? 'No executable pipelines yet' : 'No matching pipelines'}</strong>
-            <span>
-              {catalog.pipelines.length === 0
-                ? 'Open a document, right-click a section and choose Make executable.'
-                : 'Try another search query.'}
-            </span>
-          </div>
-        ) : null}
+        {!catalog.loading && !catalog.error && visiblePipelines.length === 0 ? <ProductionEmptyState kind="flows"
+          title={searchQuery ? tUi("Пайплайны не найдены") : tUi("Подготовьте Flow к запуску")}
+          description={searchQuery ? tUi("Попробуйте другое название или очистите поиск.") : tUi("Откройте Flow и выберите Make executable в меню секции, чтобы подготовить исполняемый пайплайн.")}
+          action={searchQuery ? { label: tUi("Сбросить поиск"), onClick: () => setSearchQuery('') } : { label: tUi("Открыть Flows"), href: '/flows' }} /> : null}
       </section>
     </div>
   );

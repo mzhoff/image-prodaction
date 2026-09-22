@@ -1,3 +1,4 @@
+import { awaitAssetUpload } from '@/shared/api/asset-upload-response';
 import { z } from 'zod';
 import { videoMetadataSchema, MAX_VIDEO_BYTES, type VideoDeriveOptions } from '@/shared/media/video-contracts';
 import type { AssetRecord } from '../model/types';
@@ -18,10 +19,11 @@ export function mapRemoteVideoAsset(asset: z.infer<typeof remoteVideoAssetSchema
 }
 
 export async function uploadRemoteVideoAsset(file: File, scope: ActiveAssetScope, request: typeof fetch = fetch) {
-  if (file.size > MAX_VIDEO_BYTES) throw new Error('Video must be 100 MiB or smaller.');
+  if (file.size > MAX_VIDEO_BYTES) throw new Error('Video must be 1 GiB or smaller.');
   const body = new FormData();
   body.set('file', file); body.set('workspaceId', scope.workspaceId); body.set('documentId', scope.documentId);
-  const response = await request('/api/assets/video', { method: 'POST', credentials: 'same-origin', body });
+  let response = await request('/api/assets/video', { method: 'POST', credentials: 'same-origin', body });
+  response = await awaitAssetUpload(response, request);
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new AssetClientError(response.status, payload);
   return mapRemoteVideoAsset(remoteVideoAssetSchema.parse(payload?.asset));

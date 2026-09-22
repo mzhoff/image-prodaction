@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import { createDefaultNode } from '@/entities/production-graph/model/create-default-node';
 import { initialProject } from '@/entities/production-graph/model/initial-project';
-import { createEmptyProjectUiState, type ProjectExport } from '@/entities/production-graph/model/project-schema';
+import { createEmptyProjectUiState, createProjectExport, type ProjectExport } from '@/entities/production-graph/model/project-schema';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import type { TextToSpeechNodeData } from '@/entities/production-graph/model/types';
 import { validateDocumentSnapshot } from '../server/document-validation';
@@ -82,4 +82,18 @@ test('same-document restore rejects templates and normalizes malformed job ident
   };
   store.restoreDocumentSnapshot(snapshot);
   assert.equal(voiceData().speechRequest, undefined);
+});
+
+
+test('opening an empty document cannot bring back the previous graph through undo', () => {
+  const store = useProductionGraphStore.getState();
+  store.updateNodeData('voice', { text: 'Previous document' });
+  store.restoreDocumentSnapshot(createProjectExport(initialProject, createEmptyProjectUiState()));
+  store.undo();
+  const next = useProductionGraphStore.getState();
+  assert.deepEqual(next.nodes, []);
+  assert.deepEqual(next.edges, []);
+  assert.deepEqual(next.assets, []);
+  assert.deepEqual(next.historyPast, []);
+  assert.deepEqual(next.historyFuture, []);
 });

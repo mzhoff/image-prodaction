@@ -39,7 +39,7 @@ function fixture() {
       poll: async (id) => { assert.equal(id, 'paid-1'); events.push('poll'); return { operationId: id, status: 'completed', usage }; },
       download: async (id) => { assert.equal(id, 'paid-1'); events.push('download'); return new Uint8Array([1]); },
     },
-    inspect: async (bytes) => ({ video, bytes, byteSize: bytes.length, checksumSha256: 'hash', extension: 'mp4', contentType: 'video/mp4' }),
+    inspect: async (bytes) => ({ video, bytes, byteSize: bytes.byteLength, checksumSha256: 'hash', extension: 'mp4', contentType: 'video/mp4' }),
     persist: async (input) => { assert.equal(input.generationJobId, 'job'); assert.equal(input.workspaceId, 'workspace'); events.push('persist'); return asset; },
     wait: async () => undefined,
   };
@@ -115,4 +115,19 @@ test('semantic model key can differ from gateway route ID; changed routes fail b
   const changed = fixture(); changed.deps.catalog = f.deps.catalog;
   await assert.rejects(changed.run(), { code: 'video_route_changed', retryable: false });
   assert.deepEqual(changed.events, []);
+});
+
+test('Home video uses the same checkpointed executor and persists conversation attribution without a document', async () => {
+  const f = fixture();
+  const homePayload = { ...payload, documentId: null, homeConversationId: 'home:test' };
+  f.record.documentId = null;
+  f.record.metadata = { requestHash: createHash('sha256').update(JSON.stringify(homePayload)).digest('hex') };
+  f.deps.readPayload = async () => homePayload;
+  f.deps.persist = async (input) => {
+    assert.equal(input.documentId, null); assert.equal(input.libraryVisible, true);
+    assert.equal(input.metadata?.homeConversationId, 'home:test'); assert.equal(input.metadata?.source, 'home-chat');
+    return { ...asset, documentId: null };
+  };
+  await createVideoGenerationExecutor(f.deps).execute({ job: { ...job, documentId: null }, signal: new AbortController().signal });
+  assert.equal(f.events.filter((event) => event === 'submit').length, 1);
 });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { emptyUsage, groupUsage, sumUsage, usageDays, usagePeriod } from './usage-dashboard';
+import { averageUsageCost, emptyUsage, groupUsage, sumUsage, usageDays, usagePeriod } from './usage-dashboard';
 import type { UsageDashboardRow } from '../contracts/usage-dashboard';
 
 test('calendar periods include both dates, respect Moscow midnight and fill empty days', () => {
@@ -48,4 +48,19 @@ test('exact decimals and large token counts reconcile without turning missing us
   assert.equal(sumUsage([rows[2]!]).costUsd, null);
   assert.equal(sumUsage([]).costUsd, '0');
   assert.equal(sumUsage([{ ...emptyUsage(), images: 1 }]).requests, 0);
+});
+
+
+test('average cost divides the filtered total by all physical requests without floating point loss', () => {
+  const average = (costUsd: string | null, requests: number, unknownCostRequests = 0) => averageUsageCost({ costUsd, requests, unknownCostRequests });
+  assert.equal(average('1.50000000', 6), '0.250000000000');
+  assert.equal(average('0.25000000', 4), '0.062500000000');
+  assert.equal(average('1', 3), '0.333333333333');
+  assert.equal(average('2', 3), '0.666666666667');
+  assert.equal(average('0.00000001', 3), '0.000000003333');
+  assert.equal(average('9007199254740993.00000001', 1), '9007199254740993.000000010000');
+  assert.equal(average('0', 2), '0.000000000000');
+  assert.equal(average('0', 0), null);
+  assert.equal(average(null, 2, 2), null);
+  assert.equal(average('3', 3, 1), null);
 });

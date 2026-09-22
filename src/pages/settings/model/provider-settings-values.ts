@@ -7,11 +7,11 @@ export function roleLabel(role: WorkspaceSettingsRole) {
   return 'Только просмотр';
 }
 
-export function formatDateTime(value?: string | null) {
+export function formatDateTime(value?: string | null, language = 'ru-RU') {
   if (!value) return 'Нет данных';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Нет данных';
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat(language, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -32,10 +32,10 @@ export function formatUsd(value: number | string | null) {
   }).format(parsed);
 }
 
-export function formatInteger(value: number | string) {
+export function formatInteger(value: number | string, language = 'ru-RU') {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return '0';
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(parsed);
+  return new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(parsed);
 }
 
 export function formatOperation(value: string) {
@@ -48,11 +48,11 @@ export function formatKeyTier(value?: boolean | null) {
   return 'Тариф key не предоставлен';
 }
 
-export function formatLimitReset(value?: string | null) {
+export function formatLimitReset(value?: string | null, language = 'ru-RU') {
   if (!value) return 'Reset policy не предоставлена';
   const resetAt = new Date(value);
   if (Number.isNaN(resetAt.getTime())) return `Reset: ${value}`;
-  return `Reset: ${formatDateTime(value)}`;
+  return `Reset: ${formatDateTime(value, language)}`;
 }
 
 export function readErrorMessage(error: unknown) {

@@ -27,3 +27,24 @@ test('Ask AI resolves user/workspace separately each turn, observes key rotation
   await assert.rejects(async () => resolve(input('one', 'empty')), /AI-бюджет/);
   await assert.rejects(async () => resolve(input('one', '')), /пространство недоступно/);
 });
+
+
+test('Flow accepts supported composer models and rejects an arbitrary model without a paid call', async () => {
+  const config = readChatAssistantConfig();
+  const resolve = createWorkspaceProviderResolver(config, {
+    resolve: async () => ({ apiKey: 'test-only', connection: { id: 'workspace' } }),
+    markUsed: async () => {},
+    gateway: () => ({ completeWithTools: async () => { throw new Error('no paid call in test'); } }),
+  });
+  type Input = Parameters<typeof resolve>[0];
+  const input = (mode: string, model: string) => ({
+    principal: { userId: 'member', tenantId: 'workspace', productId: CHAT_ASSISTANT_PRODUCT_ID },
+    request: { mode, model },
+  }) as Input;
+  assert.equal((await resolve(input('product-copilot', 'google/gemini-2.5-flash'))).providerId, 'openrouter');
+  assert.equal((await resolve(input('product-copilot', config.model))).providerId, 'openrouter');
+  await assert.rejects(async () => resolve(input('product-copilot', 'unapproved/model')), /Выберите модель/);
+  // Home text still requires its persisted settings, knowledge mode keeps its fixed model.
+  await assert.rejects(async () => resolve(input('general-chat', 'google/gemini-2.5-flash')), /Выберите модель/);
+  await assert.rejects(async () => resolve(input('knowledge-base', 'google/gemini-2.5-flash')), /Выберите модель/);
+});

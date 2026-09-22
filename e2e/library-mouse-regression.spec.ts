@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import sharp from 'sharp';
 import { createAudioQaOwner } from './audio-runtime-fixtures';
@@ -33,7 +34,7 @@ for (const scenario of ['mouse', 'window'] as const) {
     const dock = page.locator('.image-viewer-dock');
     const idle = () => expect(page.locator('.image-viewer-content')).not.toHaveClass(/image-viewer-content-moving/);
     try {
-      await page.goto('/library');
+      await gotoQaSection(page, '/library');
       await page.getByRole('link', { name: `Открыть Mouse QA ${scenario === 'mouse' ? 50 : 0}`, exact: true }).click();
       await expect(carousel).toBeVisible();
       await idle();

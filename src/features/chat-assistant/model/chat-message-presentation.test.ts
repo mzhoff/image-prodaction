@@ -29,3 +29,21 @@ test('an earlier answer does not restart its animation while the user is last', 
 
   assert.equal(prepared[0]?.metadata?.animate, undefined);
 });
+
+test('access refusal is presented once outside history, preserving persisted user turns', () => {
+  const persisted = createTextMessage({ role: 'user', content: 'Сохранённый запрос' });
+  const optimistic = createTextMessage({ role: 'user', content: 'Новый запрос' });
+  optimistic.metadata = { optimistic: true };
+  const refusal = createTextMessage({ role: 'assistant', content: 'AI-бюджет не активирован' });
+  refusal.metadata = { runtimeError: true, errorCode: 'CHAT_WORKSPACE_PROVIDER_REQUIRED' };
+  assert.deepEqual(prepareChatMessagesForPresentation([persisted, optimistic, refusal]), [persisted]);
+  assert.deepEqual(prepareChatMessagesForPresentation([persisted, refusal]), [persisted]);
+});
+
+test('ordinary connection failures remain visible and do not erase the user message', () => {
+  const user = createTextMessage({ role: 'user', content: 'Сохраните запрос' });
+  user.metadata = { optimistic: true };
+  const failure = createTextMessage({ role: 'assistant', content: 'Соединение прервано' });
+  failure.metadata = { runtimeError: true, errorCode: 'CHAT_STREAM_FAILED' };
+  assert.equal(prepareChatMessagesForPresentation([user, failure]).length, 2);
+});

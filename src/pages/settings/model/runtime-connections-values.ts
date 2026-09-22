@@ -38,8 +38,8 @@ export function runtimeRepinInput(revision: number, version: RuntimeV2Version): 
   };
 }
 
-export function readableRuntimeDate(value: string | null) {
-  return value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : 'Ещё не использован';
+export function readableRuntimeDate(value: string | null, language = 'ru-RU') {
+  return value ? new Date(value).toLocaleString(language, { dateStyle: 'short', timeStyle: 'short' }) : 'Ещё не использован';
 }
 
 export function runtimeErrorMessage(error: unknown) {

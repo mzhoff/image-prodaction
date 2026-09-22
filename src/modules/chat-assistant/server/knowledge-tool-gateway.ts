@@ -1,3 +1,7 @@
+import { STORY_WRITING_TOOLS } from '../contracts/story-authoring';
+import { ASSISTANT_QUESTION_TOOL } from '../contracts/assistant-question';
+import { callAssistantQuestion } from './assistant-question-tool';
+import { callStoryTool, prepareStoryBlueprint } from './story-authoring-tools';
 import type { McpToolGateway, ToolExecutionContext } from '@prodactionpro/chat-connectors';
 import type { ConversationStore } from '@prodactionpro/chat-application';
 import { requireWorkspaceMembership, WorkspaceAccessError } from '@/entities/workspace/server/workspace-service';
@@ -25,16 +29,27 @@ import {
 import type { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
 import { createDesignElementSelection } from './design-element-selection-service';
 import { readDesignSelectionContinuation } from './design-selection-continuation';
+import type { HomeGenerationService } from './home-generation-service';
+import { HOME_GENERATE_IMAGE_TOOL, HOME_IMAGE_MODELS_TOOL } from '../contracts/home-generation';
 
 export class ImageProductionToolGateway implements McpToolGateway {
   constructor(
     private readonly attachmentAssetBridge?: ChatAttachmentAssetBridge,
     private readonly conversations?: ConversationStore,
+    private readonly homeGeneration?: HomeGenerationService,
   ) {}
 
   async prepareTool(request: Parameters<NonNullable<McpToolGateway['prepareTool']>>[0], context: ToolExecutionContext) {
     const accessFailure = await verifyToolContext(context);
     if (accessFailure) throw new Error(accessFailure.safeError.message);
+    if (context.verifiedContext?.timeline) throw new Error('Помощник Timeline пока даёт рекомендации. Изменения выполняются в редакторе.');
+    if (context.verifiedContext?.storyBlueprint) {
+      if (STORY_WRITING_TOOLS.includes(request.toolName)) return prepareStoryBlueprint(request, context);
+      throw new Error('Этот инструмент недоступен в истории.');
+    }
+    if (STORY_WRITING_TOOLS.includes(request.toolName)) throw new Error('Откройте историю, чтобы продолжить.');
+    if (request.toolName === HOME_GENERATE_IMAGE_TOOL && this.homeGeneration) return this.homeGeneration.prepare(request, context);
+    if (context.verifiedContext?.homeConversation) throw new Error('Этот инструмент доступен только внутри Flow.');
     if (request.toolName !== PIPELINE_BUILD_TOOL && request.toolName !== PIPELINE_UPDATE_TOOL) {
       throw new Error('This tool does not support a preparation phase.');
     }
@@ -57,10 +72,26 @@ export class ImageProductionToolGateway implements McpToolGateway {
     const accessFailure = await verifyToolContext(context);
     if (accessFailure) return accessFailure;
 
+    if (context.verifiedContext?.timeline) return { ok: false, safeError: {
+      code: 'TIMELINE_TOOL_UNAVAILABLE', message: 'Помощник Timeline пока даёт рекомендации. Изменения выполняются в редакторе.', retryable: false,
+    } };
+
+    if (context.verifiedContext?.storyBlueprint) return callStoryTool(request, context);
+    if (request.toolName === HOME_GENERATE_IMAGE_TOOL && this.homeGeneration) return this.homeGeneration.execute(request, context);
+    if (request.toolName === HOME_IMAGE_MODELS_TOOL && context.verifiedContext?.homeConversation) {
+      return { ok: true, output: await readImageGenerationModelCatalog() };
+    }
+    if (context.verifiedContext?.homeConversation) return {
+      ok: false, safeError: { code: 'HOME_TOOL_UNAVAILABLE', message: 'Этот инструмент доступен только внутри Flow.', retryable: false },
+    };
+
     if (request.toolName === KNOWLEDGE_SEARCH_TOOL) {
       const query = readString(request.input.query);
       const maxResults = readInteger(request.input.maxResults) ?? 3;
       return { ok: true, output: await searchAssistantKnowledge(query, maxResults) };
+    }
+    if (request.toolName === ASSISTANT_QUESTION_TOOL) {
+      return callAssistantQuestion(request, context, this.conversations);
     }
     if (request.toolName === NODE_CATALOG_TOOL) {
       const query = readOptionalString(request.input.query);

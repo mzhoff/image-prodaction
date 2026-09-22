@@ -1,4 +1,9 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { useAiAccessGate } from '@/features/ai-access/ui/ai-access-boundary';
+
+import { trackBehavior } from '@/shared/analytics/client';
 
 import type { ChatActionSelection } from '@prodactionpro/chat-domain';
 import { useChatRuntime, useChatRuntimeState } from '@prodactionpro/chat-runtime-react';
@@ -21,8 +26,10 @@ import {
 } from '../model/design-element-selection';
 
 export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToolRendererContext) {
+  const tUi = useTranslations();
   const result = readDesignElementSelectionResult(safeResult);
   const runtime = useChatRuntime();
+  const accessGate = useAiAccessGate();
   const runtimeState = useChatRuntimeState();
   const initialDraft = useMemo(
     () => result ? createRecommendedDesignElementSelection(result) : undefined,
@@ -49,11 +56,11 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
 
   if (submitted) {
     return (
-      <section className="design-selection-card design-selection-card-submitted" aria-label="Выбранные элементы макета">
-        <span className="design-selection-eyebrow">Настройки макета переданы</span>
+      <section className="design-selection-card design-selection-card-submitted" aria-label={tUi("Выбранные элементы макета")}>
+        <span className="design-selection-eyebrow">{tUi("Настройки макета переданы")}</span>
         <strong>{formatBaseImageStrategy(submitted.baseImageStrategy)}</strong>
         <span>{formatTextStrategy(submitted.textStrategy)}</span>
-        <span>{submitted.selectedElementIds.length + submitted.customElements.length} элементов отдельно</span>
+        <span>{submitted.selectedElementIds.length + submitted.customElements.length}  {' '}{tUi("элементов отдельно")}</span>
       </section>
     );
   }
@@ -95,7 +102,7 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
     const submission = createDesignElementSelectionSubmission(result!, normalized);
     const selectedAction: ChatActionSelection = {
       id: `design-selection:${result!.interactionId}`,
-      label: 'Продолжить с выбранными элементами',
+      label: tUi("Продолжить с выбранными элементами"),
       message: submission.message,
       payload: { ...submission.payload },
       source: {
@@ -106,6 +113,8 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
     };
     setSending(true);
     try {
+      if (!await accessGate.ensure()) return;
+      trackBehavior('ip_assistant_message_sent');
       await runtime.submit(submission.message, { selectedAction });
     } finally {
       setSending(false);
@@ -113,23 +122,21 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
   }
 
   return (
-    <section className="design-selection-card" aria-label="Настройка редактируемого макета">
+    <section className="design-selection-card" aria-label={tUi("Настройка редактируемого макета")}>
       <div className="design-selection-heading">
-        <span className="design-selection-eyebrow">Разбор референса</span>
-        <strong>Я разобрал референс и могу собрать похожий макет.</strong>
+        <span className="design-selection-eyebrow">{tUi("Разбор референса")}</span>
+        <strong>{tUi("Я разобрал референс и могу собрать похожий макет.")}</strong>
         <p>
-          Выберите, чем вы хотите управлять отдельно. Остальное я объединю в основной арт,
-          чтобы быстрее получить рабочий результат.
-        </p>
-        <small className="design-selection-intent">Задача: {result.intentSummary}</small>
+          {tUi("Выберите, чем вы хотите управлять отдельно. Остальное я объединю в основной арт, чтобы быстрее получить рабочий результат.")}</p>
+        <small className="design-selection-intent">{tUi("Задача:")}{' '} {result.intentSummary}</small>
       </div>
 
       <fieldset className="design-selection-section">
-        <legend>Как собирать изображение</legend>
+        <legend>{tUi("Как собирать изображение")}</legend>
         <StrategyOption
           checked={baseImageStrategy === 'single-image'}
-          description="Быстрее: фон, герой и декор создаются одним изображением."
-          label="Цельная основа"
+          description={tUi("Быстрее: фон, герой и декор создаются одним изображением.")}
+          label={tUi("Цельная основа")}
           name={`${result.interactionId}:base`}
           onChange={() => {
             setBaseImageStrategy('single-image');
@@ -142,19 +149,19 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
         />
         <StrategyOption
           checked={baseImageStrategy === 'layered'}
-          description="Больше контроля: части можно двигать, заменять и перегенерировать отдельно."
-          label="Раздельные слои"
+          description={tUi("Больше контроля: части можно двигать, заменять и перегенерировать отдельно.")}
+          label={tUi("Раздельные слои")}
           name={`${result.interactionId}:base`}
           onChange={() => setBaseImageStrategy('layered')}
         />
       </fieldset>
 
       <fieldset className="design-selection-section">
-        <legend>Как работать с текстом</legend>
+        <legend>{tUi("Как работать с текстом")}</legend>
         <StrategyOption
           checked={textStrategy === 'embedded'}
-          description="Самый простой первый вариант: текст создаётся прямо в изображении."
-          label="Текст внутри изображения"
+          description={tUi("Самый простой первый вариант: текст создаётся прямо в изображении.")}
+          label={tUi("Текст внутри изображения")}
           name={`${result.interactionId}:text`}
           onChange={() => {
             setTextStrategy('embedded');
@@ -165,15 +172,15 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
         />
         <StrategyOption
           checked={textStrategy === 'separate'}
-          description="Надписи можно менять, двигать и оформлять независимо."
-          label="Текст отдельными слоями"
+          description={tUi("Надписи можно менять, двигать и оформлять независимо.")}
+          label={tUi("Текст отдельными слоями")}
           name={`${result.interactionId}:text`}
           onChange={() => setTextStrategy('separate')}
         />
       </fieldset>
 
       <fieldset className="design-selection-section design-selection-elements">
-        <legend>Что менять отдельно</legend>
+        <legend>{tUi("Что менять отдельно")}</legend>
         {result.elements.map((element) => {
           const checked = normalized.selectedElementIds.includes(element.id);
           const locked = element.role === 'qr';
@@ -189,14 +196,14 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
                 <b>{element.label}</b>
                 {element.observedContent ? <small>{element.observedContent}</small> : null}
               </span>
-              {locked ? <em>всегда отдельно</em> : null}
+              {locked ? <em>{tUi("всегда отдельно")}</em> : null}
             </label>
           );
         })}
       </fieldset>
 
       <div className="design-selection-custom">
-        <label htmlFor={`${result.interactionId}:custom`}>Добавить свой элемент</label>
+        <label htmlFor={`${result.interactionId}:custom`}>{tUi("Добавить свой элемент")}</label>
         <div>
           <input
             id={`${result.interactionId}:custom`}
@@ -207,12 +214,11 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
               event.preventDefault();
               addCustomElement();
             }}
-            placeholder="Например, плашка партнёра"
+            placeholder={tUi("Например, плашка партнёра")}
             value={customDraft}
           />
           <button disabled={!customDraft.trim() || customElements.length >= 8} onClick={addCustomElement} type="button">
-            Добавить
-          </button>
+            {tUi("Добавить")}</button>
         </div>
         {customElements.length ? (
           <ul>
@@ -220,7 +226,7 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
               <li key={element}>
                 <span>{element}</span>
                 <button
-                  aria-label={`Убрать ${element}`}
+                  aria-label={tUi("Убрать {p1}", { p1: element })}
                   onClick={() => setCustomElements(customElements.filter((item) => item !== element))}
                   type="button"
                 >×</button>
@@ -232,12 +238,12 @@ export function DesignElementSelectionToolCard({ safeResult, toolCall }: ChatToo
 
       <p className="design-selection-reason">{result.recommendationReason}</p>
       <div className="design-selection-actions">
-        <button disabled={busy} onClick={applyRecommended} type="button">Рекомендованные</button>
-        <button disabled={busy} onClick={applyAll} type="button">Выбрать всё</button>
+        <button disabled={busy} onClick={applyRecommended} type="button">{tUi("Рекомендованные")}</button>
+        <button disabled={busy} onClick={applyAll} type="button">{tUi("Выбрать всё")}</button>
         <button className="design-selection-continue" disabled={busy} onClick={() => void continueWithSelection()} type="button">
           {sending
-            ? 'Передаю выбор…'
-            : `Продолжить · ${normalized.selectedElementIds.length + normalized.customElements.length} отдельно`}
+            ? tUi("Передаю выбор…")
+            : tUi("Продолжить · {p1} отдельно", { p1: normalized.selectedElementIds.length + normalized.customElements.length })}
         </button>
       </div>
     </section>

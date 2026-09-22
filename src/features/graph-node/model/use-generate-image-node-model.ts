@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useGenerateImageRecovery } from './use-generate-image-recovery';
 import { getGenerateImageSelection, getGenerateImageModelChange } from './generate-image-selection';
@@ -25,6 +26,7 @@ import {
 import type { GenerationWaitingPhase } from '@/features/generation-waiting/model/waiting-visuals';
 import { notifyAssistantNotice } from '@/features/assistant-pet/model/assistant-pet-notices';
 import { recordDocumentAssistantActivity } from '@/modules/chat-assistant/adapters/client/document-activity-client';
+import { trackBehavior } from '@/shared/analytics/client';
 
 interface UseGenerateImageNodeModelParams {
   composingOpen: boolean;
@@ -37,6 +39,7 @@ export function useGenerateImageNodeModel({
   node,
   onComposingOpenChange,
 }: UseGenerateImageNodeModelParams) {
+  const tUi = useTranslations();
   const data = node.data as GenerateImageNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -111,7 +114,7 @@ export function useGenerateImageNodeModel({
         size: selectedSize,
         prompt,
       };
-      if (!selectedImageModel) throw new Error('Выбранная модель недоступна. Обновите каталог или выберите другую модель.');
+      if (!selectedImageModel) throw new Error(tUi("Выбранная модель недоступна. Обновите каталог или выберите другую модель."));
       if (selectedImageModel.imageCapabilities) {
         const error = validateImageSettings(requestPayload, payload.referenceImages.length, selectedImageModel.imageCapabilities);
         if (error) throw new Error(error);
@@ -123,6 +126,7 @@ export function useGenerateImageNodeModel({
       updateNodeDataSilent(node.id, {
         generationRequest: { fingerprint, idempotencyKey },
       });
+      trackBehavior('ip_generation_requested', { source: 'editor', node_type: 'generateImage', operation: 'generate_image' });
       const result = await requestGenerateImage(
         { ...requestPayload, idempotencyKey },
         {
@@ -162,8 +166,8 @@ export function useGenerateImageNodeModel({
       notifyAssistantNotice({
         id: `image-generated:${asset.id}`,
         status: 'success',
-        title: 'Изображение готово',
-        subtitle: 'Ровер закончил задачу. Открой чат, чтобы найти источник.',
+        title: tUi("Изображение готово"),
+        subtitle: tUi("Ровер закончил задачу. Открой чат, чтобы найти источник."),
         nodeId: node.id,
       });
       void recordDocumentAssistantActivity({
@@ -226,7 +230,7 @@ export function useGenerateImageNodeModel({
     capabilities: selectedImageModel?.imageCapabilities,
     handleImageSettingsChange: (settings: Partial<ImageGenerationOptions>) => updateNodeData(node.id, settings),
     modelOptions: modelSelectOptions(selectedImageModel ? imageModels : [
-      { id: selectedModel, label: `${selectedModel} (недоступна)`, name: selectedModel, inputModalities: [], outputModalities: [], supportedParameters: [] },
+      { id: selectedModel, label: tUi("{p1} (недоступна)", { p1: selectedModel }), name: selectedModel, inputModalities: [], outputModalities: [], supportedParameters: [] },
       ...imageModels,
     ]),
     promptOpen,

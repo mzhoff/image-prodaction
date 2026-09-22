@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { expect, test } from '@playwright/test';
@@ -77,7 +78,7 @@ for (const mode of ['frames', 'references'] as const) test(`local Crop and Expor
     await route.fulfill({ json: { project: document } });
   });
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     const node = page.locator(`[data-node-id="${video.id}"]`), generate = node.getByRole('button', { name: 'Generate video', exact: true });
     await expect(generate).toBeEnabled();
     expect(uploaded).toHaveLength(0); expect(submitCount).toBe(0);

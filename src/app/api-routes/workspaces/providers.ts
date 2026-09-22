@@ -107,7 +107,7 @@ function invalidWorkspaceId() {
 function toProviderConnectionApiError(error: unknown) {
   if (error instanceof ManagedProviderConnectionError) return apiError('platform_managed_connection', error.message, 409);
   if (error instanceof ProviderConnectionNotConfiguredError) {
-    return apiError('provider_not_configured', error.message, 409);
+    return apiError(error.code, error.message, 409);
   }
   if (error instanceof ProviderCredentialValidationError) {
     const descriptor = error.providerError.descriptor;

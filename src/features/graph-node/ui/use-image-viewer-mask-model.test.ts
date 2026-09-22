@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DEFAULT_IMAGE_MODEL } from '@/shared/api/openrouter-models';
-import { getEditDefaultModel } from './use-image-viewer-mask-model';
+import { getEditDefaultModel } from '../lib/image-viewer-edit-model';
 
 test('the edit model defaults to the model recorded on the selected result', () => {
   assert.equal(getEditDefaultModel('provider/legacy-image-model'), 'provider/legacy-image-model');

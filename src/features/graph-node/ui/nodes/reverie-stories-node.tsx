@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useRef, useState, type PointerEvent } from 'react';
 import { Button } from '@prodactionpro/ui-core/button';
@@ -22,6 +23,7 @@ import './reverie-stories-node.css';
 interface Props { node: ProductionNode; onStartConnection: (nodeId: string, portId: string, event: PointerEvent<HTMLButtonElement>) => void }
 
 export function ReverieStoriesNode({ node, onStartConnection }: Props) {
+  const tUi = useTranslations();
   const model = useReverieStoriesNodeModel(node);
   const { isCollapsed, setCollapsed } = useNodeDisplayState(node.id);
   const [editor, setEditor] = useState<{ document: StoryDocumentDraftV1; media: EditorMedia[]; scope: ActiveAssetScope }>();
@@ -41,7 +43,7 @@ export function ReverieStoriesNode({ node, onStartConnection }: Props) {
     return <div className="reverie-stories-node-field" key={field}>
       <textarea aria-label={label} aria-describedby={hintId} className={`prompt-box reverie-stories-node-input${field === 'text' ? ' reverie-stories-node-input-body' : ''}`} rows={field === 'text' ? 3 : 2} value={value} readOnly={hasConnection || Boolean(node.locked)} aria-invalid={count > limit}
         onChange={(event) => model.updateData({ [field]: event.target.value })} />
-      <small id={hintId} className={`reverie-stories-node-field-hint${count > limit ? ' reverie-stories-node-error' : ''}`} role={count > limit ? 'alert' : undefined}>{count > limit ? `Сократите текст на ${count - limit} симв. — он не поместится в Stories.` : `${count} / ${limit}${hasConnection ? ' · Из входа' : ''}`}</small>
+      <small id={hintId} className={`reverie-stories-node-field-hint${count > limit ? ' reverie-stories-node-error' : ''}`} role={count > limit ? 'alert' : undefined}>{count > limit ? tUi("Сократите текст на {p1} симв. — он не поместится в Stories.", { p1: count - limit }) : `${count} / ${limit}${hasConnection ? tUi(" · Из входа") : ''}`}</small>
     </div>;
   };
   const renderPort = (port: (typeof ports)[number]) => <PortButton nodeId={node.id} portId={port.id} side={port.side} kind={port.kind} label={port.label}
@@ -49,42 +51,42 @@ export function ReverieStoriesNode({ node, onStartConnection }: Props) {
   return <>
     <NodeTitle title={model.data.title} nodeType="reverieStories" muted action={<TextNodeTitleActions collapsed={isCollapsed} count={model.data.document ? String(model.data.document.slides.length) : undefined} onCollapsedChange={setCollapsed} />} />
     {isCollapsed ? ports.map((port) => <div key={port.id} className="reverie-stories-node-collapsed-port"><span>{port.label}</span><PortButton nodeId={node.id} portId={port.id} side={port.side} kind={port.kind} label={port.label} onStartConnection={onStartConnection} style={{ top: 12 }} /></div>) : <>
-      <fieldset className="reverie-stories-node-settings" disabled={node.locked} aria-label="Настройки Stories" data-node-interactive onPointerDown={(event) => event.stopPropagation()}>
-        <SettingRow label="Режим" value={model.data.storyMode ?? 'slide'} options={[{ value: 'slide', label: 'Слайд' }, { value: 'sequence', label: 'Собрать историю' }]}
+      <fieldset className="reverie-stories-node-settings" disabled={node.locked} aria-label={tUi("Настройки Stories")} data-node-interactive onPointerDown={(event) => event.stopPropagation()}>
+        <SettingRow label={tUi("Режим")} value={model.data.storyMode ?? 'slide'} options={[{ value: 'slide', label: tUi("Слайд") }, { value: 'sequence', label: tUi("Собрать историю") }]}
           onChange={(value) => { if (!node.locked) model.updateData({ storyMode: value as ReverieStoriesNodeData['storyMode'] }); }} wide />
-        <input ref={profileInput} type="file" accept="application/json,.json" hidden aria-label="Файл стиля приложения" onChange={async (event) => {
+        <input ref={profileInput} type="file" accept="application/json,.json" hidden aria-label={tUi("Файл стиля приложения")} onChange={async (event) => {
           const file = event.target.files?.[0]; event.target.value = ''; if (!file || node.locked) return;
           const scope = getActiveAssetScope();
           try {
-            if (file.size > 256 * 1024) throw new Error('Файл слишком большой. Выберите сохранённый стиль приложения.');
+            if (file.size > 256 * 1024) throw new Error(tUi("Файл слишком большой. Выберите сохранённый стиль приложения."));
             const value: unknown = JSON.parse(await file.text());
             const active = getActiveAssetScope();
-            if (active?.documentId !== scope?.documentId || active?.workspaceId !== scope?.workspaceId) throw new Error('Документ изменился. Загрузите стиль заново.');
+            if (active?.documentId !== scope?.documentId || active?.workspaceId !== scope?.workspaceId) throw new Error(tUi("Документ изменился. Загрузите стиль заново."));
             model.importAuthoringProfile(parseStoriesAuthoringProfileBundle(value)); setProfileError('');
-          } catch (error) { setProfileError(error instanceof SyntaxError ? 'Не удалось прочитать стиль. Выберите файл из Content Hub.' : error instanceof Error ? error.message : 'Не удалось загрузить стиль.'); }
+          } catch (error) { setProfileError(error instanceof SyntaxError ? tUi("Не удалось прочитать стиль. Выберите файл из Content Hub.") : error instanceof Error ? error.message : tUi("Не удалось загрузить стиль.")); }
         }} />
-        <Button type="button" intent="neutral" appearance="outline" size="md" leadingIcon={<Upload size={15} />} className="secondary-node-button" disabled={node.locked} onClick={() => profileInput.current?.click()}>Загрузить стиль приложения</Button>
-        {model.data.authoringProfileBundle ? <p className="reverie-stories-node-hint">Стиль: {model.data.authoringProfileBundle.styleProfile.name}</p> : <p className="reverie-stories-node-hint">Сохраните стиль приложения в Content Hub и загрузите сюда для точного предпросмотра.</p>}
-        {profileError ? <p className="reverie-stories-node-hint reverie-stories-node-error" role="alert">{profileError}</p> : null}
-        <p className="node-note reverie-stories-node-hint">{sequence ? 'Подключите готовые слайды по порядку. Они станут одной историей.' : 'Тексты и фон образуют слайд. Объедините несколько таких нод в историю.'}</p>
+        <Button type="button" intent="neutral" appearance="outline" size="md" leadingIcon={<Upload size={15} />} className="secondary-node-button" disabled={node.locked} onClick={() => profileInput.current?.click()}>{tUi("Загрузить стиль приложения")}</Button>
+        {model.data.authoringProfileBundle ? <p className="reverie-stories-node-hint">{tUi("Стиль:")}{' '} {model.data.authoringProfileBundle.styleProfile.name}</p> : <p className="reverie-stories-node-hint">{tUi("Сохраните стиль приложения в Content Hub и загрузите сюда для точного предпросмотра.")}</p>}
+        {profileError ? <p className="reverie-stories-node-hint reverie-stories-node-error" role="alert">{typeof (profileError) === 'string' ? tUi((profileError) as string) : (profileError)}</p> : null}
+        <p className="node-note reverie-stories-node-hint">{sequence ? tUi("Подключите готовые слайды по порядку. Они станут одной историей.") : tUi("Тексты и фон образуют слайд. Объедините несколько таких нод в историю.")}</p>
       </fieldset>
       {ports.filter((port) => port.side === 'input').map((port) => <CollapsibleSection key={port.id} title={port.label} className="text-node-section" sidePort={renderPort(port)} dropTarget={{ nodeId: node.id, portId: port.id }}>
         <div className="reverie-stories-node-section" data-node-interactive onPointerDown={(event) => event.stopPropagation()}>
-          {!sequence && port.id === 'title' ? copy('storyTitle', 'Заголовок', model.connectedTitle, STORY_CONTENT_LIMITS_V1.title) : null}
-          {!sequence && port.id === 'subtitle' ? copy('subtitle', 'Подзаголовок', model.connectedSubtitle, STORY_CONTENT_LIMITS_V1.subtitle) : null}
-          {!sequence && port.id === 'text' ? copy('text', 'Текст', model.connectedText, STORY_CONTENT_LIMITS_V1.text) : null}
-          {port.id === 'image' ? <p className="reverie-stories-node-hint">{model.image?.name ?? 'Изображение из библиотеки'}</p> : null}
-          {port.id === 'video' ? <p className="reverie-stories-node-hint">{model.video?.name ?? 'Видео MP4 H.264'}</p> : null}
-          {port.id === 'poster' ? <p className="reverie-stories-node-hint">{model.poster?.name ?? 'Обложка на случай недоступности видео'}</p> : null}
-          {port.id === 'poll' ? <p className="reverie-stories-node-hint">Вопрос и варианты ответа</p> : null}
-          {port.id.startsWith('document') ? <p className="reverie-stories-node-hint">Готовые слайды из предыдущего шага</p> : null}
+          {!sequence && port.id === 'title' ? copy('storyTitle', tUi("Заголовок"), model.connectedTitle, STORY_CONTENT_LIMITS_V1.title) : null}
+          {!sequence && port.id === 'subtitle' ? copy('subtitle', tUi("Подзаголовок"), model.connectedSubtitle, STORY_CONTENT_LIMITS_V1.subtitle) : null}
+          {!sequence && port.id === 'text' ? copy('text', tUi("Текст"), model.connectedText, STORY_CONTENT_LIMITS_V1.text) : null}
+          {port.id === 'image' ? <p className="reverie-stories-node-hint">{model.image?.name ?? tUi("Изображение из библиотеки")}</p> : null}
+          {port.id === 'video' ? <p className="reverie-stories-node-hint">{model.video?.name ?? tUi("Видео MP4 H.264")}</p> : null}
+          {port.id === 'poster' ? <p className="reverie-stories-node-hint">{model.poster?.name ?? tUi("Обложка на случай недоступности видео")}</p> : null}
+          {port.id === 'poll' ? <p className="reverie-stories-node-hint">{tUi("Вопрос и варианты ответа")}</p> : null}
+          {port.id.startsWith('document') ? <p className="reverie-stories-node-hint">{tUi("Готовые слайды из предыдущего шага")}</p> : null}
         </div>
       </CollapsibleSection>)}
       {ports.filter((port) => port.side === 'output').map((port) => <CollapsibleSection key={port.id} title="Stories" className="text-node-section" sidePort={renderPort(port)}>
         <div className="reverie-stories-node-section reverie-stories-node-actions" data-node-interactive onPointerDown={(event) => event.stopPropagation()} aria-busy={model.preparing}>
-          <p className="reverie-stories-node-hint">{model.data.document ? `В черновике слайдов: ${model.data.document.slides.length}` : 'Откройте редактор, чтобы проверить структуру, фон и текст.'}</p>
-          <PrimaryActionButton disabled={model.preparing || node.locked} icon={model.preparing ? <Loader2 size={15} className="node-button-spinner" /> : <Maximize2 size={15} />} onClick={() => void open()}>{model.preparing ? 'Подготовка…' : 'Открыть редактор'}</PrimaryActionButton>
-          {model.data.document ? <Button type="button" intent="neutral" appearance="outline" size="md" leadingIcon={<RefreshCw size={15} />} className="secondary-node-button" disabled={model.preparing || node.locked} onClick={() => void open(true)}>Собрать заново из входов</Button> : null}
+          <p className="reverie-stories-node-hint">{model.data.document ? tUi("В черновике слайдов: {p1}", { p1: model.data.document.slides.length }) : tUi("Откройте редактор, чтобы проверить структуру, фон и текст.")}</p>
+          <PrimaryActionButton disabled={model.preparing || node.locked} icon={model.preparing ? <Loader2 size={15} className="node-button-spinner" /> : <Maximize2 size={15} />} onClick={() => void open()}>{model.preparing ? tUi("Подготовка…") : tUi("Открыть редактор")}</PrimaryActionButton>
+          {model.data.document ? <Button type="button" intent="neutral" appearance="outline" size="md" leadingIcon={<RefreshCw size={15} />} className="secondary-node-button" disabled={model.preparing || node.locked} onClick={() => void open(true)}>{tUi("Собрать заново из входов")}</Button> : null}
           {model.message ? <p className="node-note reverie-stories-node-hint reverie-stories-node-error" role="alert">{model.message}</p> : null}
         </div>
       </CollapsibleSection>)}

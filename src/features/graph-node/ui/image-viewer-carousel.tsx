@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from '@prodactionpro/ui-core/icons';
@@ -19,6 +20,7 @@ export function ImageViewerCarousel({ assetIds, currentIndex, itemsById, url, on
   onSelect: (index: number) => void;
   onMovingChange: (moving: boolean) => void;
 }) {
+  const tUi = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const dockTrackRef = useRef<HTMLDivElement>(null);
@@ -83,7 +85,7 @@ export function ImageViewerCarousel({ assetIds, currentIndex, itemsById, url, on
   return <>
     <ImageViewerDock assetIds={assetIds} itemsById={itemsById} motion={motion} width={size.width} trackRef={dockTrackRef} />
     <div ref={viewportRef} className="image-viewer-viewport image-viewer-carousel" role="region"
-      aria-roledescription="карусель" aria-label="Просмотр изображений — перетащите для выбора"
+      aria-roledescription={tUi("карусель")} aria-label={tUi("Просмотр изображений — перетащите для выбора")}
       tabIndex={0} {...gesture}>
       <div ref={trackRef} className="image-viewer-carousel-track">
         {entries.map(({ assetId, index }) => {
@@ -109,6 +111,6 @@ export function ImageViewerCarousel({ assetIds, currentIndex, itemsById, url, on
       </> : null}
     </div>
     <div className="image-viewer-version-badge" aria-live="off">{motion.previewIndex + 1}/{assetIds.length}</div>
-    <span className="image-viewer-carousel-status" aria-live="polite" aria-atomic="true">Изображение {currentIndex + 1} из {assetIds.length}</span>
+    <span className="image-viewer-carousel-status" aria-live="polite" aria-atomic="true">{tUi("Изображение")}{' '} {currentIndex + 1}  {' '}{tUi("из")}{' '} {assetIds.length}</span>
   </>;
 }

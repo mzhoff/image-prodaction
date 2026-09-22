@@ -53,3 +53,13 @@ export function groupUsage(rows: readonly UsageDashboardRow[], key: (row: UsageD
   for (const row of rows) { const id = key(row); const group = groups.get(id) ?? []; group.push(row); groups.set(id, group); }
   return [...groups].map(([id, values]) => ({ id, ...sumUsage(values) }));
 }
+
+/** Derived on each filtered aggregate; unknown prices cannot produce an exact average. */
+export function averageUsageCost(measures: Pick<UsageMeasures, 'costUsd' | 'requests' | 'unknownCostRequests'>): string | null {
+  if (!measures.requests || measures.costUsd === null || measures.unknownCostRequests) return null;
+  const [whole, fraction = ''] = measures.costUsd.split('.');
+  const units = BigInt(whole) * BigInt(100_000_000) + BigInt(fraction.padEnd(8, '0').slice(0, 8));
+  const divisor = BigInt(measures.requests), scale = BigInt(1_000_000_000_000);
+  const average = (units * BigInt(10_000) + divisor / BigInt(2)) / divisor;
+  return `${average / scale}.${String(average % scale).padStart(12, '0')}`;
+}

@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
@@ -34,7 +35,7 @@ test('Transcribe shares Voice controls and Prompt styling without changing trans
   for (const endpoint of ['transcribe-audio', 'generate-speech']) await page.route(`**/api/ai/${endpoint}`, (route) => {
     paidRequests++; return route.abort('blockedbyclient');
   });
-  await page.goto(`/projects/${document.id}`);
+  await gotoQaSection(page, `/projects/${document.id}`);
   const card = page.locator(`[data-node-id="${transcribe.id}"]`);
   const voiceCard = page.locator(`[data-node-id="${voice.id}"]`);
   const modelButton = card.getByRole('button', { name: 'Gemini 3.1 Flash Lite', exact: true });

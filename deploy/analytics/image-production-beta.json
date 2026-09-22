@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "profile": "image-production-beta",
+  "composeProject": "reverie-image-production",
+  "counter": {
+    "id": 112833712,
+    "name": "REVERIE Production",
+    "origin": "https://production.apption.space",
+    "verifiedOn": "2026-09-22"
+  },
+  "goals": [
+    {
+      "event": "ip_app_opened",
+      "goalId": 651324643
+    },
+    {
+      "event": "ip_document_opened",
+      "goalId": 651324838
+    },
+    {
+      "event": "ip_document_created",
+      "goalId": 651324839
+    },
+    {
+      "event": "ip_document_imported",
+      "goalId": 651324840
+    },
+    {
+      "event": "ip_document_exported",
+      "goalId": 651324841
+    },
+    {
+      "event": "ip_node_added",
+      "goalId": 651324842
+    },
+    {
+      "event": "ip_generation_requested",
+      "goalId": 651324843
+    },
+    {
+      "event": "ip_assistant_opened",
+      "goalId": 651324844
+    },
+    {
+      "event": "ip_assistant_message_sent",
+      "goalId": 651324845
+    },
+    {
+      "event": "ip_login_viewed",
+      "goalId": 661652935
+    },
+    {
+      "event": "ip_login_method_clicked",
+      "goalId": 661652936
+    },
+    {
+      "event": "ip_telegram_open_clicked",
+      "goalId": 661652937
+    },
+    {
+      "event": "ip_login_challenge_ready",
+      "goalId": 661652938
+    },
+    {
+      "event": "ip_login_terms_viewed",
+      "goalId": 661652939
+    },
+    {
+      "event": "ip_login_terms_accepted",
+      "goalId": 661652940
+    },
+    {
+      "event": "ip_login_succeeded",
+      "goalId": 661652942
+    },
+    {
+      "event": "ip_login_failed",
+      "goalId": 661652943
+    },
+    {
+      "event": "ip_login_expired",
+      "goalId": 661652944
+    },
+    {
+      "event": "ip_login_restarted",
+      "goalId": 661652945
+    },
+    {
+      "event": "ip_questionnaire_step_viewed",
+      "goalId": 661652946
+    },
+    {
+      "event": "ip_questionnaire_step_completed",
+      "goalId": 661652947
+    },
+    {
+      "event": "ip_questionnaire_validation_failed",
+      "goalId": 661652949
+    },
+    {
+      "event": "ip_questionnaire_save_failed",
+      "goalId": 661652950
+    },
+    {
+      "event": "ip_questionnaire_back",
+      "goalId": 661652951
+    },
+    {
+      "event": "ip_questionnaire_completed",
+      "goalId": 661652952
+    },
+    {
+      "event": "ip_questionnaire_left",
+      "goalId": 661652953
+    },
+    {
+      "event": "ip_tour_opened",
+      "goalId": 661652954
+    },
+    {
+      "event": "ip_tour_step_viewed",
+      "goalId": 661652988
+    },
+    {
+      "event": "ip_tour_completed",
+      "goalId": 661652989
+    },
+    {
+      "event": "ip_tour_skipped",
+      "goalId": 661652990
+    },
+    {
+      "event": "ip_topup_clicked",
+      "goalId": 661652991
+    },
+    {
+      "event": "ip_topup_viewed",
+      "goalId": 661652992
+    },
+    {
+      "event": "ip_topup_amount_selected",
+      "goalId": 661652993
+    },
+    {
+      "event": "ip_topup_instructions_viewed",
+      "goalId": 661652994
+    },
+    {
+      "event": "ip_topup_telegram_clicked",
+      "goalId": 661652995
+    },
+    {
+      "event": "ip_topup_handoff_created",
+      "goalId": 661652996
+    },
+    {
+      "event": "ip_topup_handoff_failed",
+      "goalId": 661652997
+    }
+  ],
+  "dashboards": [
+    {
+      "name": "Бета: активность",
+      "id": "83e60568-e13f-4e48-b0dd-cfd505a66a42",
+      "widgets": 1
+    },
+    {
+      "name": "Первый пользовательский путь",
+      "id": "b5039dde-1f07-47c2-b6c7-e316f70b876e",
+      "widgets": 5
+    },
+    {
+      "name": "Документы и экспорт",
+      "id": "2a6b5e59-1952-4457-beed-2fe35b5c8149",
+      "widgets": 1
+    },
+    {
+      "name": "Возможности студии",
+      "id": "1a62ab05-d6ad-4d5e-8341-14611bb74e46",
+      "widgets": 1
+    },
+    {
+      "name": "Возвращаемость",
+      "id": "e588965b-604d-4233-9cdb-0a2c81334ec5",
+      "widgets": 2
+    }
+  ],
+  "generationFunnel": {
+    "reportId": "928ef4bb-eec4-437d-8b21-ed20c12abe1b",
+    "windowHours": 24,
+    "steps": [
+      "ip_app_opened",
+      "ip_document_opened",
+      "ip_node_added",
+      "ip_generation_requested"
+    ]
+  },
+  "collectionStatus": {
+    "analyticsStartedAt": null,
+    "publicDeliveryVerified": false
+  },
+  "verifiedCounterPrivacy": {
+    "autogoals_enabled": false,
+    "visor": 1,
+    "clickmap": 0,
+    "ecommerce": 0,
+    "ytm": false,
+    "webvisor": {
+      "wv_forms": 0
+    }
+  },
+  "serverGoals": [
+    {
+      "event": "ip_bot_login_started",
+      "name": "Бот: начат вход",
+      "goalId": 661652998
+    },
+    {
+      "event": "ip_bot_login_approved",
+      "name": "Бот: вход подтверждён",
+      "goalId": 661652999
+    },
+    {
+      "event": "ip_bot_login_denied",
+      "name": "Бот: вход отклонён",
+      "goalId": 661653000
+    },
+    {
+      "event": "ip_bot_topup_clicked",
+      "name": "Бот: нажать пополнение",
+      "goalId": 661653001
+    },
+    {
+      "event": "ip_bot_topup_created",
+      "name": "Бот: заявка создана",
+      "goalId": 661653002
+    },
+    {
+      "event": "ip_bot_topup_opened",
+      "name": "Бот: пополнение открыто",
+      "goalId": 661653003
+    },
+    {
+      "event": "ip_bot_receipt_received",
+      "name": "Бот: квитанция получена",
+      "goalId": 661653004
+    },
+    {
+      "event": "ip_payment_approved",
+      "name": "Оплата: поступление подтверждено",
+      "goalId": 661653005
+    },
+    {
+      "event": "ip_balance_credited",
+      "name": "Баланс: средства доступны",
+      "goalId": 661653006
+    }
+  ],
+  "serverCollection": {
+    "measurementProtocolEnabled": true,
+    "secretStorage": "macOS private Reverie/analytics/production.env",
+    "deliveryVerified": false
+  },
+  "activationFunnels": [
+    {
+      "name": "Активация: вход → запуск генерации · 7 дн",
+      "reportId": "281cf1dc-07c4-4a7a-a097-d30469b841fe",
+      "windowHours": 168,
+      "steps": [
+        "ip_login_viewed",
+        "ip_login_succeeded",
+        "ip_questionnaire_completed",
+        "ip_app_opened",
+        "ip_generation_requested"
+      ]
+    },
+    {
+      "name": "Telegram: вход → анкета · 7 дней",
+      "reportId": "7f4fae53-d497-43cc-9323-f13eaac80378",
+      "windowHours": 168,
+      "steps": [
+        "ip_login_method_clicked",
+        "ip_telegram_open_clicked",
+        "ip_bot_login_started",
+        "ip_bot_login_approved",
+        "ip_login_succeeded",
+        "ip_questionnaire_completed"
+      ]
+    },
+    {
+      "name": "Баланс: пополнение с сайта · 7 дней",
+      "reportId": "6a05acf4-be7a-4722-88ec-0894595e6206",
+      "windowHours": 168,
+      "steps": [
+        "ip_topup_clicked",
+        "ip_topup_viewed",
+        "ip_topup_instructions_viewed",
+        "ip_topup_handoff_created",
+        "ip_bot_topup_opened",
+        "ip_bot_receipt_received",
+        "ip_payment_approved",
+        "ip_balance_credited"
+      ]
+    }
+  ],
+  "replay": {
+    "allowedPath": "/onboarding",
+    "allowQuery": false,
+    "allowHash": false,
+    "bodyMaskedByDefault": true,
+    "freeTextMasked": true,
+    "publicDeliveryVerified": false
+  },
+  "audience": {
+    "profileSchema": 1,
+    "endpoint": "/api/account/analytics-profile",
+    "identity": "ip_<internal product user id>",
+    "namespace": "reverie",
+    "visitSnapshot": "audience",
+    "segmentsRegistry": "activation-segments.json",
+    "publicDeliveryVerified": false
+  }
+}

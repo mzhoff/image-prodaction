@@ -7,13 +7,23 @@ retention_days=7
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 destination="$backup_root/$timestamp"
 
-install -d -m 700 "$destination"
 cd "$deploy_root"
 
 set -a
 # shellcheck disable=SC1091
 source .env.production
 set +a
+
+# Legacy MinIO backup must never silently claim to back up an external bucket.
+case "${S3_ENDPOINT:-http://minio:9000}" in
+  http://minio:9000|http://reverie-image-production-minio-1:9000) ;;
+  *)
+    echo 'External S3 requires the storage-backup operation; see docs/external-s3-storage.md.' >&2
+    exit 1
+    ;;
+esac
+
+install -d -m 700 "$destination"
 
 docker compose \
   --env-file .env.production \
@@ -23,12 +33,13 @@ docker compose \
   pg_dump --format=custom --no-owner --username "$POSTGRES_USER" "$POSTGRES_DB" \
   > "$destination/postgres.dump"
 
+MC_HOST_reverie="http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@minio:9000" \
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   --env HOME=/tmp \
   --network reverie-stage_default \
   --volume "$destination:/backup" \
-  --env "MC_HOST_reverie=http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@minio:9000" \
+  --env MC_HOST_reverie \
   quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z \
   mirror --overwrite "reverie/${S3_BUCKET}" /backup/minio
 

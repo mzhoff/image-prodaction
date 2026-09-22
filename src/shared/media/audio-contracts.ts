@@ -1,3 +1,4 @@
+import type { MediaSource } from './media-source-contracts';
 import { z } from 'zod';
 
 export const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
@@ -24,8 +25,8 @@ export const audioConvertOptionsSchema = z.object({
   message: 'Ogg/Opus supports 16, 24 or 48 kHz; select 48 kHz instead of 44.1 kHz.', path: ['sampleRateHz'],
 });
 export type AudioConvertOptions = z.infer<typeof audioConvertOptionsSchema>;
-export interface ValidatedAudio {
-  bytes: Uint8Array;
+export interface ValidatedAudio<T extends MediaSource = Uint8Array> {
+  bytes: T;
   audio: AudioMetadata;
   byteSize: number;
   checksumSha256: string;

@@ -1,12 +1,15 @@
+'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import type { ChatToolRendererContext } from '@prodactionpro/chat-ui';
 
 export function PipelineBuildConfirmation({ safePreview }: ChatToolRendererContext) {
+  const tUi = useTranslations();
   const preview = readPipelinePresentation(safePreview);
   if (!preview) return null;
   return (
     <div className="pipeline-build-tool-card">
       <strong>{preview.summary}</strong>
-      {preview.documentName ? <span>Документ: {preview.documentName}</span> : null}
+      {preview.documentName ? <span>{tUi("Документ:")}{' '} {preview.documentName}</span> : null}
       <span>{formatPresentationCounts(preview)}</span>
       {preview.nodes.length ? (
         <ul>
@@ -31,11 +34,12 @@ export function PipelineBuildConfirmation({ safePreview }: ChatToolRendererConte
 }
 
 export function PipelineBuildResult({ safeResult }: ChatToolRendererContext) {
+  const tUi = useTranslations();
   const result = readPipelinePresentation(safeResult);
   if (!result) return null;
   return (
     <div className="pipeline-build-tool-card pipeline-build-tool-card-success">
-      <strong>{result.action === 'update-pipeline' ? 'Пайплайн обновлён' : 'Пайплайн создан'}</strong>
+      <strong>{result.action === 'update-pipeline' ? tUi("Пайплайн обновлён") : tUi("Пайплайн создан")}</strong>
       {result.documentName ? <span>{result.documentName}</span> : null}
       <span>{formatPresentationCounts(result)}</span>
     </div>

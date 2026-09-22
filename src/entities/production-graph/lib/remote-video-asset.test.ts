@@ -45,9 +45,9 @@ test('video upload sends explicit Workspace/document multipart scope with same-o
 test('client video cap rejects oversized files before fetch and accepts the exact boundary', async () => {
   let calls = 0;
   const request: typeof fetch = async () => { calls += 1; return Response.json({ asset: videoDto() }); };
-  // File size is overridden to exercise the boundary without allocating 100 MiB fixtures.
+  // File size is overridden to exercise the boundary without allocating 1 GiB fixtures.
   const oversized = new File(['x'], 'large.mp4', { type: 'video/mp4' }); Object.defineProperty(oversized, 'size', { value: MAX_VIDEO_BYTES + 1 });
-  await assert.rejects(uploadRemoteVideoAsset(oversized, scope, request), /100 MiB/); assert.equal(calls, 0);
+  await assert.rejects(uploadRemoteVideoAsset(oversized, scope, request), /1 GiB/); assert.equal(calls, 0);
   const boundary = new File(['x'], 'allowed.mp4', { type: 'video/mp4' }); Object.defineProperty(boundary, 'size', { value: MAX_VIDEO_BYTES });
   await uploadRemoteVideoAsset(boundary, scope, request); assert.equal(calls, 1);
 });

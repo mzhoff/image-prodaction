@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useMemo } from 'react';
 import {
@@ -55,6 +56,7 @@ export interface TelegramPreviewMediaItem {
 }
 
 export function useTelegramPublicationNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as TelegramPublicationNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -215,7 +217,7 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
 
   const handleFormatMessage = useCallback(async () => {
     if (!messageText.trim()) {
-      updateNodeData(node.id, { message: 'Добавь или подключи текст перед форматированием.' });
+      updateNodeData(node.id, { message: tUi("Добавь или подключи текст перед форматированием.") });
       return;
     }
 
@@ -241,7 +243,7 @@ export function useTelegramPublicationNodeModel(node: ProductionNode) {
         message: error instanceof Error ? error.message : 'OpenRouter Telegram formatting failed',
       });
     }
-  }, [connectedMessageText, messageText, node.id, setNodeStatus, updateNodeData, updateNodeDataSilent]);
+  }, [tUi, connectedMessageText, messageText, node.id, setNodeStatus, updateNodeData, updateNodeDataSilent]);
 
   return {
     artifact,

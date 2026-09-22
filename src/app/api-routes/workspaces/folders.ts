@@ -6,6 +6,7 @@ import { isUuidV7, isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
 const nameSchema = z.object({ name: z.string().trim().min(1).max(120) }).strict();
+const createSchema = nameSchema.extend({ parentId: z.string().uuid().optional() });
 
 export async function folderRequest(request: Request, workspaceId: string, folderId?: string) {
   try {
@@ -16,11 +17,11 @@ export async function folderRequest(request: Request, workspaceId: string, folde
       await removeStudioFolder(session.user.id, workspaceId, folderId);
       return new Response(null, { status: 204 });
     }
-    const parsed = nameSchema.safeParse(await request.json().catch(() => null));
+    const parsed = (folderId ? nameSchema : createSchema).safeParse(await request.json().catch(() => null));
     if (!parsed.success) return apiError('invalid_name', 'Название проекта: от 1 до 120 символов.', 400);
     const folder = folderId
       ? await updateStudioFolder(session.user.id, workspaceId, folderId, parsed.data.name)
-      : await createStudioFolder(session.user.id, workspaceId, parsed.data.name);
+      : await createStudioFolder(session.user.id, workspaceId, parsed.data.name, 'parentId' in parsed.data ? parsed.data.parentId as string : undefined);
     return Response.json({ folder }, { status: folderId ? 200 : 201 });
   } catch (error) { return toApiErrorResponse(error); }
 }

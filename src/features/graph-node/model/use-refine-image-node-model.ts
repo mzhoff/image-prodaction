@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { appendGenerationResult, getGenerationHistory, selectGenerationResult } from '@/entities/production-graph/model/generation-history';
@@ -29,6 +30,7 @@ export const refinePreserveStrengthOptions: DarkSelectOption[] = [
 ];
 
 export function useRefineImageNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as RefineImageNodeData;
   const [processing, setProcessing] = useState(false);
   const edges = useProductionGraphStore((state) => state.edges);
@@ -103,7 +105,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
 
   const handleRefine = useCallback(async () => {
     if (!sourceAsset) {
-      updateNodeData(node.id, { message: 'Подключи image output к входу Refine.' });
+      updateNodeData(node.id, { message: tUi("Подключи image output к входу Refine.") });
       return;
     }
 
@@ -112,7 +114,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
     updateNodeDataSilent(node.id, { message: '' });
     try {
       const sourceBlob = await loadAssetBlob(sourceAsset);
-      if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+      if (!sourceBlob) throw new Error(tUi("Не удалось прочитать изображение из локального хранилища."));
 
       const scope = getActiveAssetScope();
       if (!scope) throw new Error('Document generation storage is not ready. Reload the document and try again.');
@@ -166,7 +168,7 @@ export function useRefineImageNodeModel(node: ProductionNode) {
     } finally {
       setProcessing(false);
     }
-  }, [
+  }, [tUi,
     addAsset,
     data,
     node.id,

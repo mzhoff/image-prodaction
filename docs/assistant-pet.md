@@ -3,6 +3,12 @@
 The pet is a presentation layer for the existing assistant. It does not own the
 chat, provider balance, generation execution, or document permissions.
 
+As of 2026-09-21, the character is temporarily hidden at the owner's request.
+`ASSISTANT_CHARACTER_AVAILABLE` in `assistant-pet-contract.ts` is `false`:
+both Canvas and Workspace use the compact button, and character selection is
+hidden in settings. Saved presentation preferences, assets, notices, and chat
+history are preserved. Re-enabling the flag restores the saved presentation.
+
 ## Character contract
 
 `AssistantPetCharacter` has a stable `id`, `name`, an SVG fallback and optional

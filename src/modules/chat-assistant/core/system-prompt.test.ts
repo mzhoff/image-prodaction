@@ -2,6 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildImageProductionSystemPrompt } from './system-prompt.ts';
 
+test('clarifications use interactive choices and continue Extract authoring in the next turn', () => {
+  const prompt = buildImageProductionSystemPrompt({ mode: 'product-copilot', principal: { productId: 'image-production', userId: 'user' } });
+  assert.match(prompt, /assistant_ask_question.*ровно двумя/u);
+  assert.match(prompt, /assistant-answer.*продолжает исходную задачу/u);
+  assert.match(prompt, /После выбора пользователя в этом же ходе.*pipeline_build или pipeline_update/u);
+  assert.match(prompt, /imageToText\.image-0/u);
+  assert.match(prompt, /без вложения не теряет предыдущий референс/u);
+  assert.match(prompt, /не отменяет штатное UI-подтверждение графа/u);
+});
+
 test('optional layout examples cannot create QR requirements and known briefs must populate real settings', () => {
   const prompt = buildImageProductionSystemPrompt({
     mode: 'product-copilot', principal: { productId: 'image-production', userId: 'user-1' },

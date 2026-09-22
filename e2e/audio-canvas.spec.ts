@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
@@ -38,7 +39,7 @@ test('audio canvas uploads, plays and seeks managed audio, converts it, connects
   // This scenario uses only local conversion. Unexpected paid operations are blocked explicitly.
   await page.route('**/api/ai/transcribe-audio', (route) => route.abort('blockedbyclient'));
   await page.route('**/api/ai/generate-speech', (route) => route.abort('blockedbyclient'));
-  await page.goto(`/projects/${document.id}`);
+  await gotoQaSection(page, `/projects/${document.id}`);
   await expect(page.getByRole('textbox', { name: 'Pipeline name', exact: true })).toHaveValue('Audio canvas local QA');
   const importCard = page.locator(`[data-node-id="${imported.id}"]`);
   const convertCard = page.locator(`[data-node-id="${convert.id}"]`);

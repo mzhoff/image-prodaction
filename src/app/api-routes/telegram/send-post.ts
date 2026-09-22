@@ -1,3 +1,8 @@
+import { openAsBlob } from 'node:fs';
+import { withStreamingMultipart } from '@/shared/media/streaming-upload';
+import { AuthenticationRequiredError, requireApiSession } from '@/modules/authentication/server/auth-session';
+import { readAuthServerConfig } from '@/shared/auth/config';
+import { AudioProcessingError } from '@/shared/media/audio-contracts';
 import { z } from 'zod';
 import { normalizeChatId, TELEGRAM_MAX_MEDIA_ITEMS } from './telegram-bot';
 import {
@@ -19,7 +24,11 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
+  try {
+  if (!readAuthServerConfig().trustedOrigins.includes(request.headers.get('origin') ?? '')) return Response.json({ error: 'Invalid origin' }, { status: 403 });
+  await requireApiSession(request);
+  return await withStreamingMultipart(request, { maxBytes: 100 * 1024 * 1024, maxFiles: TELEGRAM_MAX_MEDIA_ITEMS,
+    fileField: 'media', fields: ['media', 'channel', 'contentHtml', 'disableWebPagePreview'], fieldBytes: 64 * 1024 }, async ({ files, form: formData }) => {
   const parsed = requestSchema.safeParse({
     channel: formData.get('channel'),
     contentHtml: formData.get('contentHtml') ?? '',
@@ -30,8 +39,7 @@ export async function POST(request: Request) {
   const contentHtml = parsed.data.contentHtml.trim()
     ? sanitizeTelegramHtml(parsed.data.contentHtml.trim())
     : '';
-  const media = formData.getAll('media')
-    .filter((item): item is File => item instanceof File && item.size > 0);
+  const media = await Promise.all(files.map(async (file) => new File([await openAsBlob(file.path, { type: file.type })], file.name, { type: file.type })));
   if (media.length === 0 && !contentHtml.trim()) {
     return Response.json({ error: 'Message text is required when no media is attached.' }, { status: 400 });
   }
@@ -54,4 +62,6 @@ export async function POST(request: Request) {
       error: error instanceof Error ? error.message : 'Telegram send failed',
     }, { status: 400 });
   }
+  });
+  } catch (error) { return Response.json({ error: error instanceof Error ? error.message : 'Upload failed' }, { status: error instanceof AuthenticationRequiredError ? 401 : error instanceof AudioProcessingError ? error.status : 400 }); }
 }

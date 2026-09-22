@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffectEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { FrequencyRetouchNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
@@ -31,6 +32,8 @@ const defaultFrequencyRetouchValues: FrequencyRetouchValues = {
 };
 
 export function useFrequencyRetouchNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const data = node.data as FrequencyRetouchNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -118,7 +121,7 @@ export function useFrequencyRetouchNodeModel(node: ProductionNode) {
       } catch (error) {
         if (processingRef.current !== runId) return;
         updateNodeDataSilent(node.id, {
-          message: error instanceof Error ? error.message : 'Не удалось выполнить frequency retouch.',
+          message: error instanceof Error ? error.message : tEffect("Не удалось выполнить frequency retouch."),
         });
         setNodeStatus(node.id, 'error');
       }

@@ -1,3 +1,8 @@
+import { storyAuthoringTools } from '../contracts/story-authoring';
+import { assistantQuestionTool } from '../contracts/assistant-question';
+import { buildStorySystemPrompt } from '../core/story-system-prompt';
+import { buildTimelineSystemPrompt } from '../core/timeline-system-prompt';
+import { PREFERRED_ANALYSIS_MODEL_IDS } from '@/shared/api/openrouter-models';
 import {
   ChatAttachmentApplicationService,
   ChatConversationApplicationService,
@@ -35,7 +40,15 @@ import { createWorkspaceProviderResolver } from './workspace-provider';
 import { admitChatTurn } from './turn-admission';
 import { resolveVerifiedChatContext } from './verified-context';
 import { ChatAttachmentAssetBridge } from './chat-attachment-asset-bridge';
+import { CHAT_COMPOSER_MIME_TYPES } from '../contracts/composer-attachments';
+import { createComposerAttachmentDelivery, verifyComposerAttachment } from './composer-attachment-delivery';
 import { getChatConversationInfrastructure } from './conversation-infrastructure';
+import { homeGenerationTools } from '../contracts/home-generation';
+import { HomeGenerationService } from './home-generation-service';
+import { buildHomeSystemPrompt } from '../core/home-system-prompt';
+import { effectiveHomeRequestMode } from './home-conversation-mode';
+import { withProductionChatTitle } from './production-chat-title';
+import { assertProductionChatWritable } from './production-chat-service';
 
 export { getChatConversationInfrastructure } from './conversation-infrastructure';
 
@@ -77,17 +90,23 @@ function createComposition() {
     {
       maxFileBytes: config.attachmentMaxBytes,
       maxFilesPerMessage: config.attachmentMaxCount,
+      allowedMimeTypes: CHAT_COMPOSER_MIME_TYPES,
     },
     {
+      contentVerifier: verifyComposerAttachment,
       modelDelivery: {
+        resolver: createComposerAttachmentDelivery(s3AttachmentStorage, config.attachmentMaxBytes, config.attachmentModelDelivery),
         defaultImageDelivery: config.attachmentModelDelivery,
         maxInlineBytes: config.attachmentMaxBytes,
       },
     },
   );
+  const homeGeneration = new HomeGenerationService(store, attachmentService);
+  const workspaceProvider = createWorkspaceProviderResolver(config);
   const toolGateway = new ImageProductionToolGateway(
     new ChatAttachmentAssetBridge(store, attachmentService),
     store,
+    homeGeneration,
   );
   const options: ChatApplicationOptions = {
     agent: {
@@ -99,20 +118,27 @@ function createComposition() {
         maxAttempts: 2,
         multipleCalls: 'request-single',
       },
-      tools: [...imageProductionTools, designElementSelectionTool],
+      tools: [...imageProductionTools, designElementSelectionTool, assistantQuestionTool, ...homeGenerationTools, ...storyAuthoringTools],
     },
     allowedModelIdsByMode: {
       'knowledge-base': [config.model],
-      'product-copilot': [config.model],
+      'product-copilot': [...new Set([config.model, ...PREFERRED_ANALYSIS_MODEL_IDS])],
+      'general-chat': [...new Set([config.model, ...PREFERRED_ANALYSIS_MODEL_IDS])],
+      'image-generation': [config.model],
     },
-    assistantProviderResolver: createWorkspaceProviderResolver(config),
+    assistantProviderResolver: async (input) => {
+      const provider = await workspaceProvider({ ...input,
+        request: { ...input.request, mode: await effectiveHomeRequestMode(input, store) } });
+      return { ...provider, toolCallingLanguageModelGateway: provider.toolCallingLanguageModelGateway
+        ? withProductionChatTitle(provider.toolCallingLanguageModelGateway, input.principal, input.conversationId) : undefined };
+    },
     attachmentMessageCoordinator: store,
     attachmentService,
     capabilities: {
       attachments: true,
-      imageGeneration: false,
-      models: [config.model],
-      modes: ['knowledge-base', 'product-copilot'],
+      imageGeneration: true,
+      models: [...new Set([config.model, ...PREFERRED_ANALYSIS_MODEL_IDS])],
+      modes: ['knowledge-base', 'product-copilot', 'general-chat', 'image-generation'],
       supportHandoff: false,
       toolCalls: true,
       voiceInput: false,
@@ -124,17 +150,26 @@ function createComposition() {
       maxAttachments: config.attachmentMaxCount,
       maxContextAttachments: config.attachmentMaxContextImages,
       maxContextMessages: 20,
-      maxMessageCharacters: 4_000,
+      maxMessageCharacters: 20_000,
       maxTotalAttachmentBytes: config.attachmentMaxBytes * config.attachmentMaxCount,
     },
     modelCapabilitiesById: {
+      ...Object.fromEntries(PREFERRED_ANALYSIS_MODEL_IDS.map((id) => [id, {
+        inputModalities: ['text', 'image', 'document', 'file'], supportsImageInputWithTools: true, toolCalling: true,
+      }])),
       [config.model]: {
-        inputModalities: ['text', 'image'],
+        inputModalities: ['text', 'image', 'document', 'file'],
         supportsImageInputWithTools: true,
         toolCalling: true,
       },
     },
-    systemPromptBuilder: buildImageProductionSystemPrompt,
+    systemPromptBuilder: (input) => input.requestContext?.timeline
+      ? buildTimelineSystemPrompt(input.requestContext.timeline, input.requestContext.timelineHasUnsavedChanges === true)
+      : input.requestContext?.storyBlueprint
+      ? buildStorySystemPrompt(input.requestContext.storyBlueprint, input.requestContext.focusedStoryCharacterId)
+      : input.requestContext?.homeConversation
+      ? buildHomeSystemPrompt(input.requestContext.homeMode === 'general-chat' ? 'general-chat' : 'image-generation', input.requestContext.homeImageSettings)
+      : buildImageProductionSystemPrompt(input),
     toolCallingLanguageModelGateway: undefined,
     toolExecution: {
       allowReadWithoutApproval: true,
@@ -150,7 +185,10 @@ function createComposition() {
       },
     },
     toolGateway,
-    turnAdmissionHook: admitChatTurn,
+    turnAdmissionHook: async (input) => {
+      await admitChatTurn(input);
+      if (input.conversationId) await assertProductionChatWritable(input.principal, input.conversationId);
+    },
     verifiedContextResolver: resolveVerifiedChatContext,
   };
   const backend = new ToolCallingChatAgent(store, options);
@@ -170,6 +208,8 @@ function createComposition() {
 
   return {
     config,
+    homeGeneration,
+    attachmentService,
     store,
     eventBus,
     routes: {

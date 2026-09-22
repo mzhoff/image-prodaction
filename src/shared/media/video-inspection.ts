@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto';
+import { mediaHeader, mediaChecksum, type MediaSource } from './media-source';
 import { dirname } from 'node:path';
 import { runAudioProgram } from './audio-process';
-import { MAX_VIDEO_BYTES, MAX_VIDEO_DURATION_SECONDS, MAX_VIDEO_OUTPUT_BYTES, videoMetadataSchema, VideoProcessingError, type ValidatedVideo, type VideoContainer, type VideoInspectionOptions, type VideoMetadata } from './video-contracts';
+import { MAX_VIDEO_BYTES, MAX_VIDEO_DURATION_SECONDS, videoMetadataSchema, VideoProcessingError, type ValidatedVideo, type VideoContainer, type VideoInspectionOptions, type VideoMetadata } from './video-contracts';
 
 type ProbeStream = {
   index?: number; codec_type?: string; codec_name?: string; width?: number; height?: number; pix_fmt?: string;
@@ -13,8 +13,8 @@ const types = { mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' } a
 const videoCodecs = { mp4: ['h264', 'hevc', 'mpeg4'], mov: ['h264', 'hevc', 'mpeg4', 'prores'], webm: ['vp8', 'vp9'] };
 const audioCodecs = { mp4: ['aac', 'mp3', 'alac', 'opus', 'ac3', 'eac3'], mov: ['aac', 'mp3', 'alac', 'pcm_s16le', 'pcm_s24le', 'pcm_s32le', 'ac3'], webm: ['opus', 'vorbis'] };
 
-export function detectVideoContainer(bytes: Uint8Array): VideoContainer {
-  const header = Buffer.from(bytes.buffer, bytes.byteOffset, Math.min(bytes.byteLength, 4096));
+export function detectVideoContainer(bytes: MediaSource): VideoContainer {
+  const header = Buffer.from(mediaHeader(bytes).subarray(0, 4096));
   if (header.length < 16) throw new VideoProcessingError('unsupported_video', 'A nonempty MP4, MOV or WebM video is required.', 415);
   if (header.toString('ascii', 4, 8) === 'ftyp') {
     const brand = header.toString('ascii', 8, 12);
@@ -25,8 +25,8 @@ export function detectVideoContainer(bytes: Uint8Array): VideoContainer {
   throw new VideoProcessingError('unsupported_video', 'Supported video containers: MP4, MOV and WebM.', 415);
 }
 
-export function validateVideoEnvelope(bytes: Uint8Array, options: VideoInspectionOptions = {}) {
-  const limit = Math.min(options.maxBytes ?? MAX_VIDEO_BYTES, MAX_VIDEO_OUTPUT_BYTES);
+export function validateVideoEnvelope(bytes: MediaSource, options: VideoInspectionOptions = {}) {
+  const limit = Math.min(options.maxBytes ?? MAX_VIDEO_BYTES, MAX_VIDEO_BYTES);
   if (!Number.isSafeInteger(limit) || limit < 1 || bytes.byteLength < 1 || bytes.byteLength > limit) throw new VideoProcessingError('file_too_large', 'Video must be nonempty and within the configured byte limit.', 413);
   const container = detectVideoContainer(bytes);
   const claimed = options.claimedContentType?.split(';')[0]?.trim().toLowerCase();
@@ -65,7 +65,7 @@ export function parseVideoProbe(probe: { streams?: ProbeStream[]; format?: { dur
   return result.data;
 }
 
-export async function inspectVideoFile(bytes: Uint8Array, source: string, options: VideoInspectionOptions, container = detectVideoContainer(bytes)): Promise<ValidatedVideo> {
+export async function inspectVideoFile<T extends MediaSource>(bytes: T, source: string, options: VideoInspectionOptions, container = detectVideoContainer(bytes)): Promise<ValidatedVideo<T>> {
   const raw = await runAudioProgram('ffprobe', ['-v', 'error', ...videoInputArguments(container, source), '-show_streams', '-show_format', '-of', 'json'], dirname(source), options.signal);
   let probe: Parameters<typeof parseVideoProbe>[0];
   try { probe = JSON.parse(raw); } catch { throw new VideoProcessingError('invalid_video', 'Video metadata is invalid.'); }
@@ -77,5 +77,5 @@ export async function inspectVideoFile(bytes: Uint8Array, source: string, option
   const duration = Math.max(0, ...[...progress.matchAll(/^out_time_us=(\d+)$/gm)].map((match) => Number(match[1]) / 1_000_000));
   if (!duration || duration > MAX_VIDEO_DURATION_SECONDS || Math.abs(duration - video.durationSeconds) > 1) throw new VideoProcessingError('invalid_video_duration', 'The video timeline does not match its metadata or limit.');
   await runAudioProgram('ffmpeg', ['-nostdin', '-v', 'error', '-xerror', ...videoInputArguments(container, source), '-map', '0:v:0', '-frames:v', '1', '-an', '-sn', '-dn', '-threads', '1', '-f', 'null', '-'], dirname(source), options.signal);
-  return { bytes, video, byteSize: bytes.byteLength, checksumSha256: createHash('sha256').update(bytes).digest('hex'), contentType: video.contentType, extension: container };
+  return { bytes, video, byteSize: bytes.byteLength, checksumSha256: mediaChecksum(bytes), contentType: video.contentType, extension: container };
 }

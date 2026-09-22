@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AssetRecord, GraphPoint, ImportImageNodeData } from '@/entities/production-graph/model/types';
@@ -23,6 +24,7 @@ export function useCanvasImageImport({
   pasteImageAsset,
   showToast,
 }: UseCanvasImageImportParams) {
+  const tUi = useTranslations();
   const imageImportInFlightRef = useRef(false);
   const generation = useRef(0);
   const [importProgressStore] = useState(createCanvasImportProgress);
@@ -38,7 +40,7 @@ export function useCanvasImageImport({
 
   const importImageFiles = useCallback(async (files: readonly File[], position?: GraphPoint, targetNodeId?: string) => {
     if (imageImportInFlightRef.current) {
-      showToast('Импорт уже идёт. Дождитесь завершения текущей загрузки.');
+      showToast(tUi("Импорт уже идёт. Дождитесь завершения текущей загрузки."));
       return;
     }
     if (files.length === 0) return;
@@ -83,7 +85,7 @@ export function useCanvasImageImport({
     } finally {
       imageImportInFlightRef.current = false;
     }
-  }, [getFallbackPastePosition, importProgressStore, pasteImageAsset, showToast]);
+  }, [tUi, getFallbackPastePosition, importProgressStore, pasteImageAsset, showToast]);
 
   const importImageFile = useCallback((file: File, position?: GraphPoint, targetNodeId?: string) => (
     importImageFiles([file], position, targetNodeId)

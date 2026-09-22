@@ -1,0 +1,29 @@
+.layout { display: grid; flex: 1; min-height: 0; min-width: 0; grid-template-columns: minmax(200px, var(--library-width)) 8px minmax(200px, 1fr) 8px minmax(260px, var(--tools-width)); grid-template-rows: minmax(160px, 1fr) 12px minmax(150px, var(--track-height)); grid-template-areas: 'library left stage right tools' 'divider divider divider divider divider' 'timeline timeline timeline timeline timeline'; }
+.layout[data-library-open=false] { grid-template-columns: 0 0 minmax(200px, 1fr) 8px minmax(260px, var(--tools-width)); }
+.layout[data-tools-open=false] { grid-template-columns: minmax(200px, var(--library-width)) 8px minmax(200px, 1fr) 0 0; }
+.layout[data-library-open=false][data-tools-open=false] { grid-template-columns: 0 0 minmax(0, 1fr) 0 0; }
+.layout[data-layout=right] { grid-template-areas: 'library left stage right tools' 'divider divider divider right tools' 'timeline timeline timeline right tools'; }
+.layout[data-layout=columns] { grid-template-areas: 'library left stage right tools' 'library left divider right tools' 'library left timeline right tools'; }
+.layout[data-tracks-open=false] { grid-template-rows: minmax(160px, 1fr) 0 0; }
+.library { grid-area: library; min-width: 0; min-height: 0; overflow: hidden; border-radius: 16px; }
+.stage { grid-area: stage; }
+.tools { grid-area: tools; }
+.lower { grid-area: timeline; }
+.bottomDivider { grid-area: divider; display: flex; min-height: 0; }
+.bottomDivider > * { flex: 1; }
+.leftDivider, .rightDivider { display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; min-height: 0; }
+.leftDivider { grid-area: left; }
+.rightDivider { grid-area: right; }
+.leftDivider > span, .rightDivider > span { width: 2px; height: 32px; border-radius: 2px; background: transparent; }
+.leftDivider:hover > span, .rightDivider:hover > span, .leftDivider:focus-visible > span, .rightDivider:focus-visible > span { background: var(--ink-soft); }
+.leftDivider:focus-visible, .rightDivider:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: 4px; }
+.tools :global(.assistant-window-docked) { border: 0; border-radius: 16px; box-shadow: none; width: 100%; height: 100%; position: relative; inset: auto; }
+
+@media (max-width: 760px) {
+  .layout[data-layout] { display: flex; flex-direction: column; flex: none; gap: 8px; }
+  .leftDivider, .rightDivider, .bottomDivider { display: none; }
+  .stage { order: 0; flex: none; }
+  .lower { order: 1; flex: none; }
+  .library { order: 2; height: 280px; flex: none; }
+  .tools { order: 3; max-height: 500px; flex: none; }
+}

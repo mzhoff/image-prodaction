@@ -1,10 +1,11 @@
 import type {
   PipelineInputs,
   PipelineValueKind,
+  PipelineValueContract,
 } from './pipeline-contracts';
 import type { PipelineRuntimeRun } from './pipeline-runtime-contracts';
 
-export interface PipelinePlaygroundField {
+export interface PipelinePlaygroundField extends Pick<PipelineValueContract, 'schema' | 'defaultValue' | 'documentFormat' | 'documentSchemaChecksum'> {
   description: string | null;
   kind: PipelineValueKind;
   label: string;

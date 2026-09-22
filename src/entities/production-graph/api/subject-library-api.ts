@@ -1,10 +1,12 @@
+import { awaitAssetUpload } from '@/shared/api/asset-upload-response';
 import { mapRemoteImageAsset, type RemoteImageAssetDto } from '../lib/remote-asset';
 import type { LibrarySubjectProfile, SubjectProfileFields } from '../model/subject-profile';
 import { subjectFieldsToNode } from '../model/subject-profile';
 import { hydrateNodeTemplateAssets } from './node-template-assets';
 
 export async function subjectLibraryRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin', ...init });
+  let response = await fetch(url, { cache: 'no-store', credentials: 'same-origin', ...init });
+  if (url === '/api/assets/images') response = await awaitAssetUpload(response, fetch, init?.signal ?? undefined);
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.error?.message || 'Не удалось загрузить библиотеку персонажей.');
   return payload as T;

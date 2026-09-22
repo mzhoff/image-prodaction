@@ -1,0 +1,7 @@
+.transport { --pui-button-ghost-neutral-content-default: var(--ink); --pui-button-solid-neutral-surface-default: var(--ink); --pui-button-solid-neutral-content-default: var(--pui-semantic-surface-primary); --pui-button-solid-neutral-border-default: var(--ink); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; flex: none; padding-top: 4px; }
+.buttons { display: flex; align-items: center; gap: 2px; }
+.separator { height: 18px; width: 1px; margin: 0 5px; background: var(--line); }
+.clock { color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clock span { color: var(--ink-soft); }
+
+.sceneIcon { display: block; width: 14px; height: 14px; background: currentColor; mask-size: contain; mask-position: center; mask-repeat: no-repeat; }

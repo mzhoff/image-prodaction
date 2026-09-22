@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import type { MediaViewerModule } from '@prodactionpro/ui-media';
 import { Brush, Eraser, Loader2, Mic, RotateCcw, WandSparkles } from '@prodactionpro/ui-core/icons';
@@ -16,6 +17,7 @@ type MaskModuleOptions = Parameters<typeof useImageViewerMaskModel>[0] & {
 
 /** The drawing canvas, prompt, model selection and paid edit callback belong to IP. */
 export function useImageViewerMaskModule({ busy, width, height, ...options }: MaskModuleOptions) {
+  const tUi = useTranslations();
   const model = useImageViewerMaskModel(options);
   const descriptor: MediaViewerModule | undefined = model.canMaskEdit ? {
     id: 'image-production-mask',
@@ -55,7 +57,7 @@ export function useImageViewerMaskModule({ busy, width, height, ...options }: Ma
     </>,
     body: model.maskOpen && !model.localMaskMode ? <div className="image-editor-input-area">
       <textarea className="image-editor-prompt" value={model.prompt}
-        placeholder="Что необходимо изменить в выделенном фрагменте?"
+        placeholder={tUi("Что необходимо изменить в выделенном фрагменте?")}
         onChange={(event) => model.setPrompt(event.target.value)} />
       <div className="image-editor-input-toolbar">
         <ModelSelector modality="image" className="image-editor-model-button" value={model.selectedEditModel} options={model.modelOptions} onChange={model.setEditModel} />

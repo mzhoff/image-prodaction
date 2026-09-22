@@ -232,6 +232,62 @@
       "when": 1789862400000,
       "tag": "0032_workspace_ai_budgets",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790006400000,
+      "tag": "0033_story_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790006460000,
+      "tag": "0034_home_chat_generation",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790006520000,
+      "tag": "0035_story_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790006580000,
+      "tag": "0036_home_image_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790006640000,
+      "tag": "0037_production_chats",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790006700000,
+      "tag": "0038_home_text_and_folder_tree",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790006760000,
+      "tag": "0039_video_style_presets",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790006820000,
+      "tag": "0040_user_onboarding",
+      "breakpoints": true
     }
   ]
 }

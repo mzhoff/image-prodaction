@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Fingerprint, Loader2, Sparkles } from '@prodactionpro/ui-core/icons';
 import Link from 'next/link';
@@ -26,6 +27,7 @@ interface SubjectBuilderNodeProps {
 }
 
 export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNodeProps) {
+  const tUi = useTranslations();
   const model = useSubjectBuilderNodeModel(node);
   const { isCollapsed: collapsed, setCollapsed } = useNodeDisplayState(node.id);
 
@@ -77,8 +79,8 @@ export function SubjectBuilderNode({ node, onStartConnection }: SubjectBuilderNo
             <button type="button" disabled={model.libraryBusy} className="secondary-node-button subject-node-library-button" onClick={model.handlePublishSubject} data-node-interactive>
               {model.libraryBusy ? 'Saving…' : model.data.librarySubjectId ? 'Update Library' : 'Publish Subject'}
             </button>
-            <Link className="node-note" href="/library?section=subjects" data-node-interactive>Library → Персонажи</Link>
-            {model.libraryError ? <div className="node-note" role="alert">{model.libraryError}<button type="button" onClick={() => void model.reloadLibrary()}>Повторить</button></div> : null}
+            <Link className="node-note" href="/library?section=subjects" data-node-interactive>{tUi("Library → Персонажи")}</Link>
+            {model.libraryError ? <div className="node-note" role="alert">{typeof (model.libraryError) === 'string' ? tUi((model.libraryError) as string) : (model.libraryError)}<button type="button" onClick={() => void model.reloadLibrary()}>{tUi("Повторить")}</button></div> : null}
           </CollapsibleSection>
           <CollapsibleSection title="Inputs" className="text-node-section subject-node-inputs-section">
             <EntityBuilderInputRow

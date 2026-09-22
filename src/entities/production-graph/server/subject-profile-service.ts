@@ -7,7 +7,8 @@ import { requireWorkspaceMembership } from '@/entities/workspace/server/workspac
 import { buildLibrarySubject, subjectProfileFields, type SubjectProfileFields } from '../model/subject-profile';
 
 export class SubjectProfileError extends Error {
-  constructor(message: string, readonly status: 404 | 409 | 422) { super(message); }
+  readonly status: 404 | 409 | 422;
+  constructor(message: string, status: 404 | 409 | 422) { super(message); this.status = status; }
 }
 
 export async function listSubjectProfiles(userId: string, workspaceId: string) {
@@ -15,6 +16,7 @@ export async function listSubjectProfiles(userId: string, workspaceId: string) {
   // The catalog does not download every long passport. Fetch the complete record only on open/load.
   const rows = await getDb().select({ id: subjectProfile.id, workspaceId: subjectProfile.workspaceId,
     name: sql<string>`${subjectProfile.payload}->>'name'`,
+    subjectType: sql<string>`${subjectProfile.payload}->>'subjectType'`,
     identitySummary: sql<string>`left(${subjectProfile.payload}->>'identitySummary', 400)`,
     imageAssetIds: sql<string[]>`${subjectProfile.payload}->'imageAssetIds'`,
   }).from(subjectProfile).where(eq(subjectProfile.workspaceId, workspaceId))

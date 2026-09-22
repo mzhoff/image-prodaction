@@ -55,3 +55,31 @@ test('playground input parses lines, numbers and JSON into runtime values', () =
     options: { enabled: true },
   });
 });
+
+test('media inputs accept the declared kind only, including optional fields', () => {
+  for (const kind of ['image', 'video', 'audio'] as const) {
+    const field: PipelinePlaygroundField = { name: 'media', label: 'Media', description: null, kind, required: true };
+    const media = { kind, assetId: 'asset-ready' };
+    assert.deepEqual(buildPipelinePlaygroundInput([field], { media }).input, { media });
+    assert.equal(buildPipelinePlaygroundInput([field], { media }, new Set(['media'])).ready, false);
+    assert.equal(buildPipelinePlaygroundInput([{ ...field, required: false }], {}).ready, true);
+    const wrong = { kind: kind === 'image' ? 'video' as const : 'image' as const, assetId: 'wrong-kind' };
+    assert.equal(buildPipelinePlaygroundInput([{ ...field, required: false }], { media: wrong }).ready, false);
+  }
+});
+
+test('a required image collection cannot contain non-images or be empty', () => {
+  const field: PipelinePlaygroundField = { name: 'refs', label: 'References', description: null, kind: 'image_collection', required: true };
+  assert.equal(buildPipelinePlaygroundInput([field], { refs: [] }).ready, false);
+  assert.equal(buildPipelinePlaygroundInput([field], { refs: [{ kind: 'audio', assetId: 'a' }] }).ready, false);
+  assert.equal(buildPipelinePlaygroundInput([field], { refs: [{ kind: 'image', assetId: 'a' }] }).ready, true);
+});
+
+test('JSON must satisfy the published schema, not just parse successfully', () => {
+  const field: PipelinePlaygroundField = { name: 'config', label: 'Config', description: null, kind: 'json', required: true,
+    schema: { type: 'object', properties: { count: { type: 'integer', minimum: 1, maximum: 3 } }, required: ['count'], additionalProperties: false } };
+  for (const invalid of ['null', 'true', '"hello"', '{}', '{"count":0}', '{"count":1.5}', '{"count":2,"extra":true}']) {
+    assert.equal(buildPipelinePlaygroundInput([field], { config: invalid }).ready, false, invalid);
+  }
+  assert.equal(buildPipelinePlaygroundInput([field], { config: '{"count":2}' }).ready, true);
+});

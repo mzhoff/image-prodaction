@@ -26,10 +26,7 @@ export function createGenerationPayloadStore(
   return {
     async write(input) {
       const key = createGenerationPayloadKey(input);
-      const body = new TextEncoder().encode(JSON.stringify(input.payload));
-      if (body.byteLength > MAX_GENERATION_PAYLOAD_BYTES) {
-        throw new GenerationPayloadTooLargeError();
-      }
+      const body = serializeGenerationPayload(input.payload);
       await objectStore.put({
         bucket,
         key,
@@ -54,6 +51,13 @@ export function createGenerationPayloadStore(
       await objectStore.delete({ bucket, key });
     },
   };
+}
+
+/** Shared preflight and object-store boundary: count actual UTF-8 JSON, including base64 references. */
+export function serializeGenerationPayload(payload: unknown): Uint8Array {
+  const body = new TextEncoder().encode(JSON.stringify(payload));
+  if (body.byteLength > MAX_GENERATION_PAYLOAD_BYTES) throw new GenerationPayloadTooLargeError();
+  return body;
 }
 
 export class GenerationPayloadTooLargeError extends Error {

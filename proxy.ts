@@ -6,6 +6,7 @@ import {
   isPublicPagePath,
 } from '@/shared/auth/route-policy';
 import { getRequestSession } from '@/modules/authentication/server/auth-session';
+import { needsOnboarding } from '@/modules/user-onboarding/server/onboarding-repository';
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -28,7 +29,17 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (session?.user.id) return continueRequest(requestHeaders, requestId);
+  if (session?.user.id) {
+    if (!pathname.startsWith('/api/') && pathname !== '/onboarding' && pathname !== '/account'
+      && await needsOnboarding(session.user.id)) {
+      const target = new URL('/onboarding', request.url);
+      target.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
+      const response = NextResponse.redirect(target);
+      response.headers.set('x-request-id', requestId);
+      return response;
+    }
+    return continueRequest(requestHeaders, requestId);
+  }
 
   if (pathname.startsWith('/api/')) {
     const response = NextResponse.json({
@@ -46,7 +57,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\..*).*)'],
+  // Upload routes authenticate themselves. Running proxy would clone/buffer their bodies.
+  matcher: ['/((?!api/telegram/send-post$|api/assets/(?:images|audio|video)$|api/projects/[^/]+/thumbnail$|api/chat/v1/references/convert$|v2/runtime/assets/audio$|_next/static|_next/image|favicon.ico|icon.svg|.*\\..*).*)'],
 };
 
 function continueRequest(requestHeaders: Headers, requestId: string) {

@@ -122,8 +122,8 @@ export function DocumentTitleBar({
   ];
 
   return (
-    <div className="document-title-pill" data-canvas-ui data-snapshot-exclude>
-      <Link className="document-title-back" href="/" onNavigate={onExit} aria-label="Back to My Files" title="Back to My Files">
+    <div className="document-title-pill" data-onboarding-target="canvas-title" data-canvas-ui data-snapshot-exclude>
+      <Link className="document-title-back" href="/flows" onNavigate={onExit} aria-label="Back to Flows" title="Back to Flows">
         <ArrowLeft size={16} />
       </Link>
       <button

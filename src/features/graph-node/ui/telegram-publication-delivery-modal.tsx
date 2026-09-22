@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { CheckCircle2, ExternalLink, Loader2, Plus, Send, X } from '@prodactionpro/ui-core/icons';
 import { useEffect } from 'react';
@@ -54,16 +55,16 @@ export function TelegramPublicationDeliveryModal(props: Props) {
 type DeliveryModel = ReturnType<typeof useTelegramPublicationDelivery>;
 
 function ChannelSelectStep({ delivery }: { delivery: DeliveryModel }) {
+  const tUi = useTranslations();
   return (
     <div className="telegram-publication-modal-body">
       <p className="telegram-publication-modal-description">
-        Выбери подключенный канал или добавь новый, если бот еще не добавлен.
-      </p>
-      {delivery.channels.length > 0 ? <div className="telegram-publication-channel-list" role="listbox" aria-label="Список каналов">
+        {tUi("Выбери подключенный канал или добавь новый, если бот еще не добавлен.")}</p>
+      {delivery.channels.length > 0 ? <div className="telegram-publication-channel-list" role="listbox" aria-label={tUi("Список каналов")}>
         {delivery.channels.map((channel) => {
           const isSelected = channel.chatId === delivery.selectedChannelId;
           const subtitle = [channel.username ? `@${channel.username}` : channel.chatId,
-            channel.membersCount ? `${channel.membersCount} уч.` : ''].filter(Boolean).join(' · ');
+            channel.membersCount ? tUi("{p1} уч.", { p1: channel.membersCount }) : ''].filter(Boolean).join(' · ');
           return <button
             key={channel.chatId}
             type="button"
@@ -78,7 +79,7 @@ function ChannelSelectStep({ delivery }: { delivery: DeliveryModel }) {
             <div className="telegram-publication-channel-item-main">
               <span className="telegram-publication-channel-item-title">{channel.title}</span>
               <span className="telegram-publication-channel-item-subtitle">{subtitle}</span>
-              {!channel.botIsAdmin ? <span className="telegram-publication-channel-item-warning">Нет прав администратора</span> : null}
+              {!channel.botIsAdmin ? <span className="telegram-publication-channel-item-warning">{tUi("Нет прав администратора")}</span> : null}
             </div>
             {isSelected ? <CheckCircle2 size={16} /> : null}
           </button>;
@@ -86,22 +87,21 @@ function ChannelSelectStep({ delivery }: { delivery: DeliveryModel }) {
       </div> : null}
       <button type="button" className="telegram-publication-secondary-button" onClick={() => {
         delivery.setStep('add');
-        delivery.setInfo('Убедитесь, что бот добавлен в канал администратором.');
+        delivery.setInfo(tUi("Убедитесь, что бот добавлен в канал администратором."));
       }}>
-        <Plus size={16} /> Добавить канал
-      </button>
+        <Plus size={16} /> {' '}{tUi("Добавить канал")}</button>
     </div>
   );
 }
 
 function ChannelAddStep({ delivery }: { delivery: DeliveryModel }) {
+  const tUi = useTranslations();
   return (
     <div className="telegram-publication-modal-body">
-      <p className="telegram-publication-modal-description">Добавь бота в канал/группу как админа, после чего добавь канал здесь.</p>
-      <p className="telegram-publication-modal-description">Формат: @channel, t.me/channel или ссылка на канал.</p>
+      <p className="telegram-publication-modal-description">{tUi("Добавь бота в канал/группу как админа, после чего добавь канал здесь.")}</p>
+      <p className="telegram-publication-modal-description">{tUi("Формат: @channel, t.me/channel или ссылка на канал.")}</p>
       <label className="telegram-publication-form-row" htmlFor="telegram-channel-input">
-        Идентификатор канала
-        <input
+        {tUi("Идентификатор канала")}<input
           id="telegram-channel-input"
           className="telegram-publication-channel-input"
           value={delivery.inputChannel}
@@ -118,25 +118,25 @@ function ChannelAddStep({ delivery }: { delivery: DeliveryModel }) {
       </label>
       <button type="button" className="telegram-publication-primary-button" onClick={delivery.handleAddChannel} disabled={delivery.isVerifying || !delivery.inputChannel.trim()}>
         {delivery.isVerifying ? <Loader2 className="spin" size={16} /> : <CheckCircle2 size={16} />}
-        {delivery.isVerifying ? 'Проверяем…' : 'Проверить и добавить'}
+        {delivery.isVerifying ? tUi("Проверяем…") : tUi("Проверить и добавить")}
       </button>
       <button type="button" className="telegram-publication-secondary-button" onClick={() => {
         delivery.setStep('select');
         delivery.setStatus(null);
-      }} disabled={delivery.isVerifying}>Назад</button>
+      }} disabled={delivery.isVerifying}>{tUi("Назад")}</button>
     </div>
   );
 }
 
 function DeliveryFooter({ delivery }: { delivery: DeliveryModel }) {
+  const tUi = useTranslations();
   return (
     <footer className="telegram-publication-modal-footer">
       {delivery.status ? <p className={`telegram-publication-modal-status telegram-publication-modal-status-${delivery.status.severity}`}>
         {delivery.status.message}
       </p> : null}
       {delivery.postUrl ? <a className="telegram-publication-modal-link" href={delivery.postUrl} rel="noopener noreferrer" target="_blank" onClick={(event) => event.stopPropagation()}>
-        <ExternalLink size={14} /> Открыть пост
-      </a> : null}
+        <ExternalLink size={14} /> {' '}{tUi("Открыть пост")}</a> : null}
       {delivery.isSelectStep ? <div className="telegram-publication-modal-actions">
         {delivery.selectedChannel ? <button
           type="button"
@@ -145,18 +145,18 @@ function DeliveryFooter({ delivery }: { delivery: DeliveryModel }) {
           onClick={delivery.handlePublish}
         >
           {delivery.isPublishing ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-          {delivery.isPublishing ? 'Публикуем…' : 'Отправить'}
+          {delivery.isPublishing ? tUi("Публикуем…") : tUi("Отправить")}
         </button> : null}
         {delivery.selectedChannel ? <button
           type="button"
           className="telegram-publication-secondary-button"
           onClick={() => delivery.handleDeleteChannel(delivery.selectedChannel!.chatId)}
           disabled={delivery.isPublishing || delivery.isVerifying}
-        >Удалить канал</button> : null}
+        >{tUi("Удалить канал")}</button> : null}
       </div> : <button type="button" className="telegram-publication-secondary-button" onClick={() => {
         delivery.setStep('select');
-        if (delivery.channels.length === 0) delivery.setInfo('Сначала добавь канал и проверь его.');
-      }} disabled={delivery.isVerifying}>К списку каналов</button>}
+        if (delivery.channels.length === 0) delivery.setInfo(tUi("Сначала добавь канал и проверь его."));
+      }} disabled={delivery.isVerifying}>{tUi("К списку каналов")}</button>}
     </footer>
   );
 }

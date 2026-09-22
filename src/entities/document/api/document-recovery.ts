@@ -3,6 +3,14 @@ import type { ProjectExport } from '@/entities/production-graph/model/project-sc
 
 const RECOVERY_KEY_PREFIX = 'reverie-document-recovery:v1:';
 
+export function captureDocumentRecoverySnapshot(projectId: string, exportSnapshot: () => ProjectExport) {
+  try {
+    saveDocumentRecoverySnapshot(projectId, exportSnapshot());
+  } catch {
+    // Export validation can fail for a partial editor mutation; graph persistence remains available.
+  }
+}
+
 export function loadDocumentRecoverySnapshot(projectId: string): ProjectExport | undefined {
   try {
     const raw = window.localStorage.getItem(getRecoveryKey(projectId));
@@ -41,12 +49,16 @@ export function recoverDocumentAfterLoadFailure(
   if (recoverySnapshot) {
     try {
       importSnapshot(recoverySnapshot, 'projectSnapshot');
+      return {
+        phase: 'recovery',
+        message: 'Сервер недоступен. Открыта копия этого Flow с устройства. Подключитесь снова, чтобы продолжить сохранение.',
+      };
     } catch {
-      // Keep the graph store's already rehydrated fallback if this recovery snapshot is invalid.
+      // An unrelated global graph is never a recovery copy of this document.
     }
   }
   return {
-    phase: 'recovery',
-    message: 'Сервер недоступен. Открыта локальная аварийная копия; автосохранение повторится после следующего изменения.',
+    phase: 'error',
+    message: 'Не удалось открыть Flow. Проверьте подключение и попробуйте ещё раз.',
   };
 }

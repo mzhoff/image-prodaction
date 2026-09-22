@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
@@ -12,6 +13,7 @@ export function useStudioPipelinePublications(input: {
   exportSnapshot: () => ProjectExport;
   projectId?: string;
 }) {
+  const tUi = useTranslations();
   const { exportSnapshot, projectId } = input;
   const [publications, setPublications] = useState<StudioPipelinePublication[]>([]);
   const [publishingSectionIds, setPublishingSectionIds] = useState<Set<string>>(() => new Set());
@@ -31,7 +33,7 @@ export function useStudioPipelinePublications(input: {
   }, [projectId]);
 
   const publishSection = useCallback(async (sectionId: string) => {
-    if (!projectId) throw new Error('Сначала сохрани документ в рабочем пространстве.');
+    if (!projectId) throw new Error(tUi("Сначала сохрани документ в рабочем пространстве."));
     setPublishingSectionIds((current) => new Set(current).add(sectionId));
     try {
       const publication = await publishStudioPipelineSection(
@@ -51,7 +53,7 @@ export function useStudioPipelinePublications(input: {
         return next;
       });
     }
-  }, [exportSnapshot, projectId]);
+  }, [tUi, exportSnapshot, projectId]);
 
   const publicationsBySectionId = useMemo(() => new Map(
     publications.map((publication) => [publication.sectionId, publication]),

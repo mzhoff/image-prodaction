@@ -1,9 +1,10 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import sharp from 'sharp';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
-import { audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
 
 test.use({ trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1440, height: 1000 } });
 const key = 'reverie-image-production-project:v1';
@@ -27,12 +28,10 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
   });
   const bytes = await sharp({ create: { width: 1600, height: 900, channels: 3, background: '#6754ac' } }).png().toBuffer();
   const upload = await owner.http.request('/api/assets/images', { form: audioQaForm(bytes, owner.workspaceId, true) });
-  expect(upload.status).toBe(201);
-  const asset = (await upload.json()).asset;
+  const { asset } = await awaitQaAssetIngest(owner.http, upload);
   const secondBytes = await sharp({ create: { width: 900, height: 1600, channels: 3, background: '#339c91' } }).png().toBuffer();
   const secondUpload = await owner.http.request('/api/assets/images', { form: audioQaForm(secondBytes, owner.workspaceId, true) });
-  expect(secondUpload.status).toBe(201);
-  const secondAsset = (await secondUpload.json()).asset;
+  const { asset: secondAsset } = await awaitQaAssetIngest(owner.http, secondUpload);
   const link = `${origin.origin}/api/assets/${asset.id}/content`;
   const targets: string[] = [];
   for (const name of ['Library QA — existing board', 'Library QA — send target']) {
@@ -71,7 +70,7 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
     await page.getByRole('button', { name: 'Previous generated image' }).click();
     await expect(page).toHaveURL(`${origin.origin}/library/${asset.id}`);
     await toolbar.getByRole('button', { name: 'Скопировать ссылку' }).click();
-    await expect(page.getByRole('status')).toContainText('Ссылка скопирована');
+    await expect(page.getByRole('status').filter({ hasText: 'Ссылка скопирована' })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
 
     // The anchored picker owns keyboard input without making the viewer modal/inert.
@@ -132,7 +131,7 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
     await page.screenshot({ path: testInfo.outputPath('library-project-dropdown-mobile.png') });
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto(`/projects/${targets[0]}`);
+    await gotoQaSection(page, `/projects/${targets[0]}`);
     await expect(page.locator('[data-node-id="existing-prompt"]')).toBeVisible();
     // A focused text editor keeps normal paste behavior, without creating an Import.
     const editor = page.locator('[data-node-id="existing-prompt"] .text-prompt-variable-content');
@@ -166,7 +165,7 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
     await expect(imports()).toHaveCount(3);
     await expect(page.locator('[data-node-id="existing-prompt"]')).toContainText('Keep this existing text.');
 
-    await page.goto('/library');
+    await gotoQaSection(page, '/library');
     const card = page.locator('.library-card').filter({ has: page.locator(`a[href="/library/${asset.id}"]`) });
     await expect(card).toBeVisible();
     await card.locator('a').click();
@@ -193,7 +192,7 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
     await expect(page.locator('[data-node-id="existing-prompt"]')).toContainText('Keep this existing text.');
     const insertedId = await imports().getAttribute('data-node-id');
     await expect.poll(async () => (await (await owner.http.request(`/api/projects/${targets[1]}`)).json()).project.snapshot.project.nodes.length).toBe(2);
-    await page.goto(`/projects/${targets[1]}?importAsset=${asset.id}&importRequest=${insertedId!.replace('library-import-', '')}`);
+    await gotoQaSection(page, `/projects/${targets[1]}?importAsset=${asset.id}&importRequest=${insertedId!.replace('library-import-', '')}`);
     await expect(imports()).toHaveCount(1);
     await expect(page).toHaveURL(`${origin.origin}/projects/${targets[1]}`);
     await page.reload();
@@ -226,7 +225,7 @@ test('Library viewer, system clipboard, grid actions and project delivery reuse 
     await focusCanvas(page);
     await page.keyboard.press('ControlOrMeta+v');
     await expect.poll(() => started).toBe(true);
-    await page.goto(`/projects/${targets[0]}`);
+    await gotoQaSection(page, `/projects/${targets[0]}`);
     release();
     await expect(imports()).toHaveCount(3);
     await page.unroute(metadataPattern);

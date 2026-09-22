@@ -1,3 +1,4 @@
+import { completeSmokeOnboarding } from './smoke-onboarding.ts';
 import assert from 'node:assert/strict';
 import { config } from 'dotenv';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -272,7 +273,10 @@ async function register(input: typeof owner) {
   });
   const registrationCookie = readResponseCookie(response);
 
-  if (registrationCookie && !requireEmailVerification) return registrationCookie;
+  if (registrationCookie && !requireEmailVerification) {
+    await completeSmokeOnboarding(baseUrl, registrationCookie, input.name);
+    return registrationCookie;
+  }
   if (requireEmailVerification) {
     assert.equal(
       registrationCookie,
@@ -324,6 +328,7 @@ async function register(input: typeof owner) {
   });
   const verifiedCookie = readResponseCookie(signInResponse);
   assert.ok(verifiedCookie, 'Verified sign-in did not create a server session cookie.');
+  await completeSmokeOnboarding(baseUrl, verifiedCookie, input.name);
   return verifiedCookie;
 }
 
@@ -339,12 +344,26 @@ async function uploadAsset(
   formData.set('documentId', documentId);
   formData.set('origin', origin);
   formData.set('file', new File([onePixelPng], name, { type: 'image/png' }));
-  const payload = await requestJson('/api/assets/images', {
-    body: formData,
-    cookie,
-    expectedStatus: 201,
-    method: 'POST',
+  const response = await request('/api/assets/images', {
+    body: formData, cookie, expectedStatus: 202, method: 'POST',
   });
+  const accepted = await response.json();
+  assert.equal(accepted.asset.status, 'pending');
+  assert.equal(accepted.job.operation, 'asset_ingest');
+  assert.equal(accepted.statusUrl, `/api/generation-jobs/${accepted.job.id}`);
+  assert.equal(response.headers.get('location'), accepted.statusUrl);
+  let payload: Record<string, any> | undefined;
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const current = await requestJson(accepted.statusUrl, { cookie, expectedStatus: 200 });
+    assert.equal(current.job.id, accepted.job.id);
+    if (current.job.status === 'succeeded') { payload = current; break; }
+    assert.notEqual(current.job.status, 'canceled', 'Asset ingest must not be canceled.');
+    assert.ok(current.job.status !== 'failed' || current.job.error?.retryable,
+      `Asset ingest failed: ${JSON.stringify(current.job.error)}`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  assert.ok(payload, 'Accepted asset ingest must finish before the smoke timeout.');
+  assert.equal(payload.asset.id, accepted.asset.id);
   assert.equal(payload.asset.status, 'ready');
   assert.equal(payload.asset.origin, origin);
   assert.equal(payload.asset.libraryVisible, true);

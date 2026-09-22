@@ -78,5 +78,5 @@ export function ImageViewer({ asset, assetId, assetMetadata, busy, currentIndex,
 }
 
 function renderViewerImage(props: MediaImageProps) {
-  return <Image {...props} alt={props.alt} unoptimized />;
+  return <Image {...props} alt={props.alt} unoptimized draggable={false} />;
 }

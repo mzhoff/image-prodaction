@@ -4,5 +4,5 @@
 .voice-preview-button { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border: 0; border-radius: 8px; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-secondary); cursor: pointer; }
 .voice-preview-button:hover:not([aria-disabled="true"]) { background: var(--pui-semantic-surface-hover); }
 .voice-preview-button[aria-disabled="true"] { opacity: .42; cursor: not-allowed; }
-.voice-preview-button[aria-pressed="true"] { color: var(--pui-semantic-text-accent, #204aff); }
+.voice-preview-button[aria-pressed="true"] { color: var(--production-voice-preview-accent, #204aff); }
 .voice-preview-button:focus-visible { outline: 2px solid var(--pui-semantic-border-focus, #204aff); outline-offset: 2px; }

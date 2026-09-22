@@ -4,7 +4,7 @@ import { isUuidV7, isUuid } from '@/shared/lib/id';
 import { MAX_TIMELINE_SHOTS, timelineShotSchema } from './timeline-contracts';
 
 const scope = {
-  workspaceId: z.string().refine(isUuid), documentId: z.string().refine(isUuid),
+  workspaceId: z.string().refine(isUuid), documentId: z.string().refine(isUuid).nullable(),
   assetId: z.string().refine(isUuidV7), idempotencyKey: z.string().trim().min(1).max(180),
 };
 export const timelineAnalyzeRequestSchema = z.object({

@@ -1,3 +1,4 @@
+import type { MediaSource } from '@/shared/media/media-source';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { getDocument } from '@/entities/document/server/document-service';
@@ -150,6 +151,6 @@ async function createLibraryThumbnail(bytes: Uint8Array): Promise<ThumbnailImage
   };
 }
 
-async function createVideoLibraryThumbnail(bytes: Uint8Array, signal?: AbortSignal) {
+async function createVideoLibraryThumbnail(bytes: MediaSource, signal?: AbortSignal) {
   return createLibraryThumbnail(await extractVideoPosterFrame(bytes, signal));
 }

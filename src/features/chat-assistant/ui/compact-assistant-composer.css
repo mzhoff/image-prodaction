@@ -1,0 +1,28 @@
+/* Same surface and upload lifecycle as Home; a single compact bottom row. */
+.production-compact-composer .home-image-form { min-width: 0; border: 0; border-radius: 20px; padding: 5px; background: var(--pui-semantic-surface-primary); }
+.production-compact-composer .home-image-form-inner { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 10px 6px; padding: 8px; border: 0; border-radius: 15px; background: var(--pui-semantic-surface-secondary); }
+.production-compact-composer .home-image-prompt-area { display: contents; }
+.production-compact-composer .home-image-form-inner textarea { grid-column: 1 / -1; min-height: 64px; max-height: 220px; padding: 4px; font-size: 13px; line-height: 1.5; }
+.production-compact-composer .home-image-parameters { min-width: 0; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; height: 32px; }
+.production-compact-composer .production-composer-parameters { display: flex; flex: 1; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+.production-compact-composer .home-image-tools { width: auto; height: 32px; margin: 0; gap: 0; }
+.production-compact-composer .home-image-parameters .home-image-upload,
+.production-compact-composer .production-composer-parameters > button:not(.mini-select),
+.production-compact-composer .home-image-tools .home-image-generate { display: flex; flex: 0 0 32px; align-items: center; justify-content: center; box-sizing: border-box; width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 10px; box-shadow: none; }
+.production-compact-composer .home-image-parameters button:not(.mini-select) { background: color-mix(in srgb, var(--pui-semantic-surface-primary) 65%, transparent); color: var(--pui-semantic-text-secondary); }
+.production-compact-composer .home-image-parameters button:not(.mini-select):hover:not(:disabled) { background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); }
+.production-compact-composer .production-composer-parameters > button > :is(strong, small),
+.production-compact-composer .home-image-generate > :is(strong, small) { display: none; }
+.production-compact-composer .production-composer-parameters > .home-material-trigger > span { width: 20px; height: 20px; margin: 0; background: transparent; }
+.production-compact-composer .home-image-parameters .home-image-model { display: flex; flex: 1; min-width: 0; max-width: 220px; height: 32px; min-height: 32px; padding: 5px 8px; box-sizing: border-box; }
+.production-compact-composer .home-image-model .dark-select-option-content { min-width: 0; }
+.production-compact-composer .home-image-model .mini-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.production-compact-composer .home-image-generate { background: var(--pui-semantic-surface-inverse); color: var(--pui-semantic-text-on-inverse); }
+.production-compact-composer .home-image-generate:hover:not(:disabled) { background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 90%, black); }
+.production-compact-composer .home-material-groups { max-height: none; overflow: visible; padding: 7px 7px 10px; gap: 8px; }
+.production-compact-composer .home-material-group + .home-material-group { border: 0; padding: 0; }
+.production-compact-composer .home-image-attachments { flex-wrap: wrap; }
+.production-compact-composer .home-image-attachments > li { width: 56px; height: 56px; border: 0; border-radius: 10px; }
+.production-compact-composer .home-image-attachments > li[data-kind='file'] { width: 140px; height: auto; min-height: 56px; }
+.production-compact-composer .production-composer-materials { overflow: visible; }
+.production-compact-composer .production-composer-file-hint { margin: 5px 4px 0; font-size: 10px; }

@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
@@ -6,7 +7,7 @@ import { initialProject } from '../src/entities/production-graph/model/initial-p
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
 import { getGeneratePromptSectionPortId } from '../src/entities/production-graph/model/generate-image-prompt-sections';
 import type { AssetRecord } from '../src/entities/production-graph/model/types';
-import { audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
 
 test.use({ trace: 'off', video: 'off', screenshot: 'only-on-failure', viewport: { width: 1500, height: 1250 } });
 test('image sections detach Prompt; scissors and reference badges disconnect with undo and persistence', async ({ page, context, baseURL }) => {
@@ -16,8 +17,7 @@ test('image sections detach Prompt; scissors and reference badges disconnect wit
   await context.addCookies(owner.http.browserSessionCookies());
   const bytes = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#3498db' } }).png().toBuffer();
   const uploaded = await owner.http.request('/api/assets/images', { form: audioQaForm(bytes, owner.workspaceId, true) });
-  expect(uploaded.status).toBe(201);
-  const asset = (await uploaded.json()).asset;
+  const { asset } = await awaitQaAssetIngest(owner.http, uploaded);
   const source = createDefaultNode('textPrompt', { x: 30, y: 20 });
   source.data = { ...source.data, text: 'A plain prompt', title: 'Описание сцены' };
   const reference = createDefaultNode('importImage', { x: 30, y: 380 });
@@ -52,7 +52,7 @@ test('image sections detach Prompt; scissors and reference badges disconnect wit
   const sectionPort = (label: string) => card.locator(`button.node-port[data-port-id="${getGeneratePromptSectionPortId(label)}"]`);
   const sourceEditor = sourceCard.getByRole('textbox').first();
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     await expect(card.locator('.composing-row')).toHaveCount(0);
     await expect(card.locator('.node-section-title strong')).toHaveText(['Prompt', 'Reference', 'Settings', 'Result']);
     const generateY = (await card.getByRole('button', { name: 'Generate', exact: true }).boundingBox())!.y;

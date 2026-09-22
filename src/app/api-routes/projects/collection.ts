@@ -7,6 +7,7 @@ import { isUuidV7, isUuid } from '@/shared/lib/id';
 import { toApiErrorResponse } from '../error-response';
 
 const createDocumentBody = z.object({
+  creationId: z.string().refine(isUuidV7).optional(),
   workspaceId: z.string().refine(isUuid, 'workspaceId must be UUID'),
   name: z.string().trim().max(120).optional(),
   folderId: z.string().refine(isUuidV7).nullable().optional(),

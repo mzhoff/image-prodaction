@@ -1,3 +1,4 @@
+import type { MediaSource } from '@/shared/media/media-source';
 import { createHash } from 'node:crypto';
 import { AssetNotFoundError, getAssetContent, getAssetMetadata, uploadImageAsset } from '@/entities/asset/server/asset-service';
 import { getWorkspaceVideoAsset, readWorkspaceVideoAsset } from '@/entities/asset/server/video-asset-service';
@@ -12,7 +13,7 @@ export function timelineFrameAssetId(workspaceId: string, userId: string, source
 }
 
 /** Private, immutable still cache. Caller has authorized the Workspace. No user URL is fetched. */
-export async function getTimelineFrame(input: { userId: string; workspaceId: string; assetId: string; timeMs: number; signal?: AbortSignal; sourceBytes?: Uint8Array; extract?: (timeMs: number) => Promise<Uint8Array> }) {
+export async function getTimelineFrame(input: { userId: string; workspaceId: string; assetId: string; timeMs: number; signal?: AbortSignal; sourceBytes?: MediaSource; extract?: (timeMs: number) => Promise<Uint8Array> }) {
   const source = await getWorkspaceVideoAsset(input);
   if (!Number.isFinite(input.timeMs) || input.timeMs < 0 || input.timeMs >= source.video.durationSeconds * 1000
     || source.video.durationSeconds * 1000 > MAX_TIMELINE_DURATION_MS) throw new VideoProcessingError('invalid_timeline_frame', 'Choose a frame inside a video of up to 5 minutes.');
@@ -24,8 +25,13 @@ export async function getTimelineFrame(input: { userId: string; workspaceId: str
     const content = await getAssetContent(input.userId, assetId);
     return { assetId, bytes: await readBoundedBytes(new Response(content.object.body), 4 * 1024 * 1024, input.signal) };
   } catch (error) { if (!(error instanceof AssetNotFoundError)) throw error; }
-  const bytes = input.extract ? await input.extract(input.timeMs) : await extractTimelineFrameBytes({
-    bytes: input.sourceBytes ?? (await readWorkspaceVideoAsset(input)).bytes, timeMs: input.timeMs, signal: input.signal });
+  let loaded: Awaited<ReturnType<typeof readWorkspaceVideoAsset>> | undefined;
+  let bytes: Uint8Array;
+  try {
+    if (!input.extract && !input.sourceBytes) loaded = await readWorkspaceVideoAsset(input);
+    bytes = input.extract ? await input.extract(input.timeMs) : await extractTimelineFrameBytes({
+      bytes: input.sourceBytes ?? loaded!.bytes, timeMs: input.timeMs, signal: input.signal });
+  } finally { await loaded?.dispose?.(); }
   input.signal?.throwIfAborted();
   const asset = await uploadImageAsset({ userId: input.userId, workspaceId: input.workspaceId, documentId: source.documentId,
     bytes, maxBytes: 4 * 1024 * 1024, claimedContentType: 'image/jpeg', originalName: 'timeline-frame.jpg', requestedAssetId: assetId,

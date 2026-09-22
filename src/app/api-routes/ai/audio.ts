@@ -26,11 +26,13 @@ export async function postTranscribeAudio(request: Request) {
     const input = transcribeSchema.parse(await readAudioRequest(request));
     await assertAudioScope(session.user.id, input);
     const source = await readWorkspaceAudioAsset({ assetId: input.audioAssetId, workspaceId: input.workspaceId, signal: request.signal });
+    try {
     const text = await transcribeAudio({
       ...input, actorUserId: session.user.id, bytes: source.bytes, signal: request.signal,
       metadata: { sourceAssetId: source.asset.id },
     });
     return Response.json({ text }, { headers: { 'Cache-Control': 'no-store' } });
+    } finally { await source.dispose(); }
   } catch (error) { return audioErrorResponse(error); }
 }
 
@@ -40,6 +42,7 @@ export async function postConvertAudio(request: Request) {
     const input = convertSchema.parse(await readAudioRequest(request));
     await assertAudioScope(session.user.id, input);
     const source = await readWorkspaceAudioAsset({ assetId: input.audioAssetId, workspaceId: input.workspaceId, signal: request.signal });
+    try {
     const options = audioConvertOptionsSchema.parse({ format: input.format,
       ...(input.bitrateKbps === undefined ? {} : { bitrateKbps: input.bitrateKbps }),
       ...(input.sampleRateHz === undefined ? {} : { sampleRateHz: input.sampleRateHz }),
@@ -55,6 +58,7 @@ export async function postConvertAudio(request: Request) {
       metadata: { sourceAssetId: source.asset.id }, userId: session.user.id, workspaceId: input.workspaceId,
     });
     return Response.json({ asset }, { headers: { 'Cache-Control': 'no-store' } });
+    } finally { await source.dispose(); }
   } catch (error) { return audioErrorResponse(error); }
 }
 

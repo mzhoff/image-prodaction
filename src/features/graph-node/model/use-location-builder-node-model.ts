@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useMemo, useState } from 'react';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
@@ -17,6 +18,7 @@ import { DEFAULT_ANALYSIS_MODEL } from '@/shared/api/openrouter-models';
 import { prepareImageForOpenRouter } from '@/shared/lib/image-data-url';
 
 export function useLocationBuilderNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as LocationBuilderNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -81,7 +83,7 @@ export function useLocationBuilderNodeModel(node: ProductionNode) {
   const handleDescribeLocation = async () => {
     if (describing) return;
     if (sourceCount === 0) {
-      updateNodeData(node.id, { message: 'Подключи image refs или text notes к Location Builder, чтобы сгенерировать описание.' });
+      updateNodeData(node.id, { message: tUi("Подключи image refs или text notes к Location Builder, чтобы сгенерировать описание.") });
       return;
     }
 
@@ -91,9 +93,9 @@ export function useLocationBuilderNodeModel(node: ProductionNode) {
       updateNodeDataSilent(node.id, { message: '' });
       const imageDataUrls = await Promise.all(imageAssetIds.slice(0, 4).map(async (assetId) => {
         const asset = assets.find((item) => item.id === assetId);
-        if (!asset) throw new Error('Один из image refs не найден в локальном графе.');
+        if (!asset) throw new Error(tUi("Один из image refs не найден в локальном графе."));
         const blob = await loadAssetBlob(asset);
-        if (!blob) throw new Error(`Не удалось прочитать image ref "${asset.name}" из локального хранилища.`);
+        if (!blob) throw new Error(tUi("Не удалось прочитать image ref \"{p1}\" из локального хранилища.", { p1: asset.name }));
         return prepareImageForOpenRouter(blob);
       }));
       const response = await requestDescribeLocation({

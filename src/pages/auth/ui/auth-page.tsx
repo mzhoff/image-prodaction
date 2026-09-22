@@ -1,19 +1,24 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { IdentityActions } from '@reverie/identity-client/react';
+import { IdentityActions, restartIdentityLogin } from '@reverie/identity-client/react';
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 import { Button } from '@prodactionpro/ui-core/button';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Eye, EyeOff } from '@prodactionpro/ui-core/icons';
-import { useState } from 'react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from '@prodactionpro/ui-core/icons';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient, signIn, signUp } from '@/shared/auth/client';
 import { formatAuthError } from '@/shared/auth/error-message';
 import { getSafePostAuthPath } from '@/shared/auth/route-policy';
 import { CURRENT_TERMS_VERSION } from '@/shared/auth/terms-contract';
 import { AuthShell } from './auth-shell';
+import { IdentityTerms } from './identity-terms';
+
+import { getBehaviorAttribution, trackBehavior } from '@/shared/analytics/client';
+import { useJourney } from '@/shared/analytics/use-journey';
 
 type AuthMode = 'login' | 'register';
 
@@ -22,9 +27,54 @@ interface AuthPageProps {
   allowRegistration?: boolean;
   identityEnabled?: boolean;
   identityEmailEnabled?: boolean;
+  identityTermsMethod?: 'telegram' | 'email';
 }
 
-export function AuthPage({ mode, allowRegistration = true, identityEnabled = false, identityEmailEnabled = true }: AuthPageProps) {
+export function AuthPage(props: AuthPageProps) {
+  const tUi = useTranslations();
+  const journey = useJourney('login');
+  const journeyRef = useRef(journey); journeyRef.current = journey;
+  useEffect(() => { const timer = setTimeout(() => journeyRef.current.event('ip_login_viewed'), 0); return () => clearTimeout(timer); }, []);
+  const onLoginEvent = useCallback((event: { type: string; method: 'telegram' | 'email' }) => {
+    const goals = { method_clicked: 'ip_login_method_clicked', challenge_ready: 'ip_login_challenge_ready',
+      telegram_open: 'ip_telegram_open_clicked', terms_viewed: 'ip_login_terms_viewed', terms_accepted: 'ip_login_terms_accepted',
+      succeeded: 'ip_login_succeeded', failed: 'ip_login_failed', expired: 'ip_login_expired' } as const;
+    const goal = goals[event.type as keyof typeof goals];
+    if (goal) journeyRef.current.event(goal, { method: event.method });
+    if (event.type === 'succeeded') journeyRef.current.finish();
+  }, []);
+  const [identityStage, setIdentityStage] = useState('choose');
+  const [identityBusy, setIdentityBusy] = useState(false);
+  const [resetPending, setResetPending] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const updateIdentityStage = useCallback((stage: string, busy: boolean) => {
+    setIdentityStage(stage); setIdentityBusy(busy);
+  }, []);
+  async function restart() {
+    setResetPending(true); setResetError('');
+    try { trackBehavior('ip_login_restarted'); await restartIdentityLogin('/api/auth'); }
+    catch { setResetPending(false); setResetError(tUi('Не удалось сбросить вход. Попробуйте ещё раз.')); }
+  }
+  if (props.identityEnabled) {
+    return (
+      <AuthShell ariaLabel={tUi("Войти в Reverie")} backAction={props.identityTermsMethod || identityStage !== 'choose' ? <button className="auth-back-link auth-restart-link" type="button" disabled={identityBusy || resetPending || identityStage === 'loading'} onClick={() => void restart()}><ArrowLeft size={16} aria-hidden="true" />{tUi('Выбрать другой способ входа')}</button> : undefined}>
+        <div className="auth-card auth-entry-card auth-method-card">
+          <div className="auth-card-head auth-card-head-no-badge"><h2>{tUi("Добро пожаловать")}</h2>{!props.identityTermsMethod && identityStage === 'choose' ? <p>{tUi("Войдите, чтобы создавать и сохранять свои проекты. В первый раз — познакомимся и настроим пространство под ваши задачи.")}</p> : null}</div>
+          {props.identityTermsMethod ? <IdentityTerms method={props.identityTermsMethod} onPendingChange={setIdentityBusy} /> : <IdentityActions onLoginEvent={onLoginEvent} getAnalyticsContext={getBehaviorAttribution} translate={tUi} authPath="/api/auth" telegramMode="embedded" onEmbeddedStateChange={updateIdentityStage} showRestartAction={false} renderTerms={renderTelegramTerms} methods={props.identityEmailEnabled === false ? ['telegram'] : ['telegram', 'email']} />}
+          {resetError ? <p className="auth-consent-error" role="alert">{resetError}</p> : null}
+        </div>
+      </AuthShell>
+    );
+  }
+  return <EmailAuthPage {...props} />;
+}
+
+function renderTelegramTerms(continueLogin: () => Promise<void>) {
+  return <IdentityTerms method="telegram" onContinue={continueLogin} />;
+}
+
+function EmailAuthPage({ mode, allowRegistration = true }: AuthPageProps) {
+  const tUi = useTranslations();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -33,26 +83,27 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const title = mode === 'login' ? 'Войти в Reverie' : 'Создать аккаунт';
+  const title = mode === 'login' ? tUi("Войти в Reverie") : tUi("Создать аккаунт");
   const subtitle = mode === 'login'
-    ? 'Войдите в рабочее пространство и откройте продукт.'
-    : 'Создайте доступ к рабочему пространству и сразу переходите в продукт.';
-  const submitLabel = mode === 'login' ? 'Войти' : 'Зарегистрироваться';
+    ? tUi("Войдите в рабочее пространство и откройте продукт.")
+    : tUi("Создайте доступ к рабочему пространству и сразу переходите в продукт.");
+  const submitLabel = mode === 'login' ? tUi("Войти") : tUi("Зарегистрироваться");
   const switchHref = mode === 'login' ? '/register' : '/login';
-  const switchPrompt = mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?';
-  const switchAction = mode === 'login' ? 'Зарегистрироваться' : 'Войти';
+  const switchPrompt = mode === 'login' ? tUi("Нет аккаунта?") : tUi("Уже есть аккаунт?");
+  const switchAction = mode === 'login' ? tUi("Зарегистрироваться") : tUi("Войти");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mode === 'register' && !name.trim()) {
-      setError('Укажите имя и фамилию.');
+      setError(tUi("Укажите имя и фамилию."));
       return;
     }
     if (mode === 'register' && !acceptedTerms) {
-      setError('Подтвердите согласие с условиями сервиса.');
+      setError(tUi("Подтвердите согласие с условиями сервиса."));
       return;
     }
 
+    trackBehavior('ip_login_method_clicked', { method: 'email' });
     setPending(true);
     setError(null);
 
@@ -69,6 +120,7 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
         });
 
       if (result.error) {
+        trackBehavior('ip_login_failed', { method: 'email' });
         if (mode === 'login' && readAuthErrorCode(result.error) === 'EMAIL_NOT_VERIFIED') {
           try {
             await authClient.sendVerificationEmail({
@@ -90,12 +142,14 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
         return;
       }
 
+      trackBehavior('ip_login_succeeded', { method: 'email' });
       const requestedPath = typeof window === 'undefined'
         ? null
         : new URLSearchParams(window.location.search).get('next');
       router.replace(getSafePostAuthPath(requestedPath));
       router.refresh();
     } catch (caughtError) {
+      trackBehavior('ip_login_failed', { method: 'email' });
       setError(formatAuthError(caughtError));
     } finally {
       setPending(false);
@@ -106,22 +160,20 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
     <AuthShell ariaLabel={title}>
       <div className="auth-card auth-entry-card">
         <div className="auth-card-head auth-card-head-no-badge">
-          <h2>{mode === 'login' ? 'Войти' : title}</h2>
+          <h2>{mode === 'login' ? tUi("Войти") : title}</h2>
           <p>{subtitle}</p>
         </div>
 
-        {identityEnabled ? <IdentityActions authPath="/api/auth" methods={identityEmailEnabled ? ['email', 'telegram'] : ['telegram']} /> : null}
-        {mode === "login" || !identityEnabled ? <details open={!identityEnabled} className="auth-legacy-entry"><summary>Войти в прежний аккаунт Image Production</summary>
         <form className="auth-form" onSubmit={handleSubmit}>
           {mode === 'register' ? (
             <label>
-              <span>Имя и фамилия</span>
+              <span>{tUi("Имя и фамилия")}</span>
               <PuiInput
                 type="text"
                 name="name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Иван Петров"
+                placeholder={tUi("Иван Петров")}
                 autoComplete="name"
                 disabled={pending}
                 required
@@ -143,8 +195,8 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
           </label>
           <label>
             <span className="auth-label-row">
-              <span>Пароль</span>
-              {mode === 'login' && (!identityEnabled || identityEmailEnabled) ? <Link href="/forgot-password">Забыли пароль?</Link> : null}
+              <span>{tUi("Пароль")}</span>
+              {mode === 'login' ? <Link href="/forgot-password">{tUi("Забыли пароль?")}</Link> : null}
             </span>
             <div className="auth-password-field">
               <input
@@ -152,7 +204,7 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
                 name="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Минимум 8 символов"
+                placeholder={tUi("Минимум 8 символов")}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 minLength={8}
                 maxLength={128}
@@ -162,7 +214,7 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
-                aria-label="Показать или скрыть пароль"
+                aria-label={tUi("Показать или скрыть пароль")}
                 disabled={pending}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -179,17 +231,16 @@ export function AuthPage({ mode, allowRegistration = true, identityEnabled = fal
                 disabled={pending}
                 required
               />
-              <span>Соглашаюсь с условиями сервиса и политикой конфиденциальности.</span>
+              <span>{tUi("Соглашаюсь с условиями сервиса и политикой конфиденциальности.")}</span>
             </label>
           ) : null}
 
-          {error ? <p className="auth-form-error" role="alert">{error}</p> : null}
+          {error ? <p className="auth-form-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
 
           <Button className="auth-submit" type="submit" intent="accent" size="md" disabled={pending} trailingIcon={<ArrowRight size={14} />}>
-            {pending ? 'Подождите…' : submitLabel}
+            {pending ? tUi("Подождите…") : submitLabel}
           </Button>
         </form>
-        </details> : null}
 
         {mode === 'register' || allowRegistration ? (
           <div className="auth-switch">

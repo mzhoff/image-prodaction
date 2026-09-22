@@ -1,9 +1,10 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
-import { audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
 
 test.use({ trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1600, height: 1100 } });
 
@@ -25,7 +26,7 @@ test('canvas drag/arrow stay transient; thumbnails use small assets; Back drains
     workspaceId: owner.workspaceId, name: 'QA Canvas performance',
   } })).json()).project;
   const bytes = await sharp({ create: { width: 3200, height: 1800, channels: 3, background: '#3388bb' } }).png().toBuffer();
-  const asset = (await (await owner.http.request('/api/assets/images', { form: audioQaForm(bytes, owner.workspaceId, true) })).json()).asset;
+  const { asset } = await awaitQaAssetIngest(owner.http, await owner.http.request('/api/assets/images', { form: audioQaForm(bytes, owner.workspaceId, true) }));
   const input = createDefaultNode('importImage', { x: 0, y: 0 });
   input.data = { ...input.data, assetId: asset.id };
   const prompt = createDefaultNode('textPrompt', { x: 470, y: 0 });
@@ -56,7 +57,7 @@ test('canvas drag/arrow stay transient; thumbnails use small assets; Back drains
   const inputCard = page.locator(`[data-node-id="${input.id}"]`);
   const targetCard = page.locator(`[data-node-id="${target.id}"]`);
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     await expect(card).toBeVisible();
     await expect(inputCard.locator('img').first()).toHaveAttribute('src', /variant=thumbnail/);
     await expect.poll(() => inputCard.locator('img').first().evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(560);
@@ -121,8 +122,8 @@ test('canvas drag/arrow stay transient; thumbnails use small assets; Back drains
     await expect.poll(() => held).toBe(true);
     await card.getByRole('textbox', { name: 'Write prompt. Type @ to insert a variable.' }).fill('QA final text before Back');
     const start = Date.now();
-    await page.getByRole('link', { name: 'Back to My Files' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await page.getByRole('link', { name: 'Back to Flows', exact: true }).click();
+    await expect(page).toHaveURL(/\/flows$/);
     expect(Date.now() - start).toBeLessThan(2_000);
     release();
     await expect.poll(async () => (await readProject()).snapshot.project.nodes.find((node: { id: string }) => node.id === prompt.id).data.text).toBe('QA final text before Back');

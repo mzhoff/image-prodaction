@@ -1,7 +1,8 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffectEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AlertTriangle, Loader2, X } from '@prodactionpro/ui-core/icons';
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
@@ -17,6 +18,8 @@ interface LibraryPreviewProps {
 }
 
 export function LibraryPreview({ assetId: initialAssetId, mode }: LibraryPreviewProps) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const router = useRouter();
   const pathname = usePathname();
   const pathAssetId = /^\/library\/([^/]+)$/.exec(pathname ?? '')?.[1];
@@ -44,7 +47,7 @@ export function LibraryPreview({ assetId: initialAssetId, mode }: LibraryPreview
       if (library.nextCursor || library.loadingMore) return;
       setFallbackItem(null);
       setFallbackPending(false);
-      setFallbackError('Объект не входит в текущую отфильтрованную выдачу.');
+      setFallbackError(tEffect("Объект не входит в текущую отфильтрованную выдачу."));
       return;
     }
     const controller = new AbortController();
@@ -54,24 +57,17 @@ export function LibraryPreview({ assetId: initialAssetId, mode }: LibraryPreview
     fetchLibraryAsset(assetId, controller.signal)
       .then((item) => {
         setFallbackItem(item);
-        if (!item) setFallbackError('Объект не найден или больше недоступен.');
+        if (!item) setFallbackError(tEffect("Объект не найден или больше недоступен."));
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === 'AbortError') return;
-        setFallbackError(error instanceof Error ? error.message : 'Не удалось открыть объект.');
+        setFallbackError(error instanceof Error ? error.message : tEffect("Не удалось открыть объект."));
       })
       .finally(() => {
         if (!controller.signal.aborted) setFallbackPending(false);
       });
     return () => controller.abort();
-  }, [
-    assetId,
-    currentFromCollection,
-    library.filterQuery,
-    library.loading,
-    library.loadingMore,
-    library.nextCursor,
-  ]);
+  }, [assetId, currentFromCollection, library.filterQuery, library.loading, library.loadingMore, library.nextCursor]);
 
   const current = currentFromCollection ?? fallbackItem;
   const sequence = useMemo(() => {
@@ -113,7 +109,7 @@ export function LibraryPreview({ assetId: initialAssetId, mode }: LibraryPreview
     return (
       <PreviewState onClose={close}>
         <Loader2 className="spin" size={24} />
-        <strong>Открываем оригинал…</strong>
+        <strong>{tUi("Открываем оригинал…")}</strong>
       </PreviewState>
     );
   }
@@ -122,8 +118,8 @@ export function LibraryPreview({ assetId: initialAssetId, mode }: LibraryPreview
     return (
       <PreviewState onClose={close}>
         <AlertTriangle size={24} />
-        <strong>Не удалось открыть объект</strong>
-        <span>{fallbackError || 'Объект отсутствует в текущей выдаче.'}</span>
+        <strong>{tUi("Не удалось открыть объект")}</strong>
+        <span>{fallbackError || tUi("Объект отсутствует в текущей выдаче.")}</span>
       </PreviewState>
     );
   }

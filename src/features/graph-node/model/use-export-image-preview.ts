@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffectEvent, useEffect, useMemo, useState } from 'react';
 import { deleteAssetBlob, loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
 import { createExportImageResultSignature } from '@/entities/production-graph/model/export-image-result';
 import type { AssetRecord, ExportImageNodeData } from '@/entities/production-graph/model/types';
@@ -9,6 +10,8 @@ import { exportImageBlob, getExportFileName } from '../lib/export-image';
 
 /** A local viewer cache. Browsing never changes Export's canonical output. */
 export function useExportImagePreview(data: ExportImageNodeData, sourceAsset?: AssetRecord) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const addAsset = useProductionGraphStore((state) => state.addAsset);
   const [cache, setCache] = useState<Array<{ signature: string; assetId: string }>>([]);
   const [failure, setFailure] = useState<{ signature: string; message: string }>();
@@ -24,7 +27,7 @@ export function useExportImagePreview(data: ExportImageNodeData, sourceAsset?: A
       try {
         const blob = await loadAssetBlob(sourceAsset);
         if (cancelled) return;
-        if (!blob) throw new Error('Не удалось прочитать изображение для просмотра.');
+        if (!blob) throw new Error(tEffect("Не удалось прочитать изображение для просмотра."));
         const converted = await exportImageBlob(blob, options);
         if (cancelled) return;
         const asset = await saveTransientImageAsset(new File([converted.blob],
@@ -39,7 +42,7 @@ export function useExportImagePreview(data: ExportImageNodeData, sourceAsset?: A
         setCache((current) => [...current.filter((entry) => entry.signature !== signature).slice(-19),
           { signature, assetId: asset.id }]);
       } catch (error) {
-        if (!cancelled) setFailure({ signature, message: error instanceof Error ? error.message : 'Не удалось подготовить просмотр.' });
+        if (!cancelled) setFailure({ signature, message: error instanceof Error ? error.message : tEffect("Не удалось подготовить просмотр.") });
       }
     }, 180);
     return () => { cancelled = true; window.clearTimeout(timer); };

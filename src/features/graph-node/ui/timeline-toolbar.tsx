@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Eraser, ImagePlus, Pause, Play, Scissors } f
 import { formatTimelineTime } from '../model/timeline-node-values';
 
 function FigmaIcon({ name }: { name: 'shot-start' | 'shot-end' | 'set-start' | 'set-end' }) {
-  return <img src={`/figma/timeline-handoff/${name}.svg`} width={14} height={14} alt="" aria-hidden />;
+  return <img src={`/figma/timeline-handoff/${name}.svg`} width={14} height={14} alt="" aria-hidden draggable={false} />;
 }
 
 export function TimelineToolbar({ time, duration, playing, disabled, atStart, atEnd, canSetStart, canSetEnd, canSplit, canMerge, canAddFrame,

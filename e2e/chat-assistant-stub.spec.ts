@@ -6,7 +6,10 @@ import {
   type Page,
 } from '@playwright/test';
 import { waitForEmailLink } from '../scripts/mailpit-client';
+import { completeOnboardingThroughApi, createFlowFromHome } from './release-user-fixture';
 import { buildNodeAskAiDraft } from '../src/entities/production-graph/model/node-help';
+
+test.use({ locale: 'ru-RU' });
 
 const expectedAssistantReply = 'CHATMODULE_CI_OK';
 const stubGateEnabled = process.env.E2E_CHAT_STUB === 'true';
@@ -27,27 +30,27 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   const { workspaces } = await spaces.json() as { workspaces: Array<{ id: string }> };
   expect(workspaces.length).toBeGreaterThan(0);
   const connected = await page.request.post(`/api/workspaces/${workspaces[0].id}/providers/openrouter`, {
+    headers: { Origin: new URL(page.url()).origin },
     data: { apiKey: process.env.FAKE_AI_PROVIDER_CREDENTIAL ?? 'fake-valid-credential' },
   });
   expect(connected.ok()).toBe(true);
+  // Configure the test provider before Home reads and caches its AI access state.
+  await page.goto('/');
+  await expect(page).toHaveURL('/');
 
-  // The document owns a durable conversation as soon as it opens, before its first turn.
+  // Opening a document reads its binding but must not create an empty conversation.
   const bindingResponsePromise = page.waitForResponse((response) => (
     response.request().method() === 'GET'
     && /^\/api\/product-chat\/documents\/[^/]+\/conversation$/u.test(new URL(response.url()).pathname)
   ));
-  await expect(page.getByRole('button', { name: 'Create New' }).first()).toBeEnabled();
-  await page.getByRole('button', { name: 'Create New' }).first().click();
-  await expect(page).toHaveURL(/\/projects\/[^/?#]+$/u);
-  const projectId = new URL(page.url()).pathname.split('/').at(-1) ?? '';
+  const projectId = await createFlowFromHome(page);
   expect(projectId).not.toBe('');
   const bindingResponse = await bindingResponsePromise;
   expect(bindingResponse.status()).toBe(200);
   expect(new URL(bindingResponse.url()).pathname).toBe(`/api/product-chat/documents/${projectId}/conversation`);
-  const { conversationId } = await bindingResponse.json() as { conversationId: string };
-  expect(conversationId).toBeTruthy();
+  expect(await bindingResponse.json()).toEqual({});
 
-  const composer = page.getByPlaceholder('Напишите задачу для ассистента...');
+  const composer = page.getByRole('textbox', { name: 'Сообщение ассистенту', exact: true });
   await expect(composer).toBeVisible();
   await page.getByRole('button', { name: 'Закрыть ассистента' }).click();
 
@@ -63,7 +66,10 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   let manualTurnRequestAllowed = false;
   let turnRequestCount = 0;
   let unexpectedTurnRequestCount = 0;
+  let startRequestCount = 0;
   page.on('request', (request) => {
+    if (request.method() === 'POST'
+      && new URL(request.url()).pathname === '/api/product-chat/start') startRequestCount += 1;
     if (request.method() === 'POST'
       && new URL(request.url()).pathname === '/api/chat/v1/turn/stream') {
       turnRequestCount += 1;
@@ -72,12 +78,13 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   });
   await openNodeAskAiFromOptions(page, promptNode);
   const askAiPrompt = buildNodeAskAiDraft('textPrompt');
-  await expect(assistantShell).toHaveAttribute('aria-hidden', 'false');
+  await expect(assistantShell).toHaveAttribute('data-open', 'true');
   await expect(composer).toBeVisible();
   await expect(composer).toHaveValue(askAiPrompt);
   await expect(messageByRole(page, 'user', askAiPrompt)).toHaveCount(0);
   await page.waitForTimeout(300);
   expect(turnRequestCount).toBe(0);
+  expect(startRequestCount).toBe(0);
   expect(unexpectedTurnRequestCount).toBe(0);
 
   const manualDraft = `Мой незавершённый черновик ${runId}`;
@@ -87,16 +94,29 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   await expect(composer).toHaveValue(manualDraft);
   await expect(page.getByText('Ask AI ничего не заменил.', { exact: false })).toBeVisible();
   expect(turnRequestCount).toBe(0);
+  expect(startRequestCount).toBe(0);
   expect(unexpectedTurnRequestCount).toBe(0);
 
   const streamResponsePromise = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/chat/v1/turn/stream'
   ));
+  const startResponsePromise = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/product-chat/start'
+  ));
   await composer.fill(askAiPrompt);
   manualTurnRequestAllowed = true;
   await composer.press('Enter');
 
+  const startResponse = await startResponsePromise;
+  expect(startResponse.status()).toBe(200);
+  expect(startResponse.request().postDataJSON()).toMatchObject({
+    target: { kind: 'flow', id: projectId }, message: askAiPrompt, hasAttachments: false,
+  });
+  const { conversationId } = await startResponse.json() as { conversationId: string };
+  expect(conversationId).toBeTruthy();
+  expect(startRequestCount).toBe(1);
   const streamResponse = await streamResponsePromise;
   expect(streamResponse.status()).toBe(200);
   expect(streamResponse.headers()['content-type']).toContain('text/event-stream');
@@ -111,6 +131,11 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   expect(turnRequestCount).toBe(1);
   await expect(messageByRole(page, 'user', askAiPrompt)).toBeVisible();
   await expect(messageByRole(page, 'assistant', expectedAssistantReply)).toBeVisible();
+  const savedBinding = await page.request.get(`/api/product-chat/documents/${projectId}/conversation`, {
+    headers: { 'x-workspace-id': workspaces[0].id },
+  });
+  expect(savedBinding.status()).toBe(200);
+  expect(await savedBinding.json()).toEqual({ conversationId });
   await expect(page.getByLabel(/^AI action:/u)).toHaveCount(0);
   await expect.poll(async () => {
     const stats = await readStubStats(request);
@@ -135,20 +160,24 @@ test('Ask AI drafts a node question, sends manually and restores the turn', asyn
   const bannerNode = page.locator('.production-node-banner').last();
   await bannerNode.click({ button: 'right' });
   await page.getByText('Ask AI', { exact: true }).click();
-  await expect(assistantShell).toHaveAttribute('aria-hidden', 'false');
+  await expect(assistantShell).toHaveAttribute('data-open', 'true');
   await expect(composer).toHaveValue(buildNodeAskAiDraft('banner'));
   await page.waitForTimeout(300);
   expect(turnRequestCount).toBe(1);
+  expect(startRequestCount).toBe(1);
   expect(unexpectedTurnRequestCount).toBe(0);
 
   await page.reload();
-  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}$`, 'u'));
-  await page.getByRole('button', { name: /Открыть ассистента/ }).click();
-  await expect(page.locator('.assistant-shell')).toHaveAttribute('aria-hidden', 'false');
-  await expect(page.getByPlaceholder('Напишите задачу для ассистента...')).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}(?:\\?assistant=1)?$`, 'u'));
+  // Flow creation keeps ?assistant=1, so the restored document opens its assistant itself.
+  await expect(page.locator('.assistant-shell')).toHaveAttribute('data-open', 'true');
+  await expect(page.getByRole('textbox', { name: 'Сообщение ассистенту', exact: true })).toBeVisible();
   await expect(messageByRole(page, 'user', askAiPrompt)).toBeVisible();
   await expect(messageByRole(page, 'assistant', expectedAssistantReply)).toBeVisible();
   await expect(page.getByLabel(/^AI action:/u)).toHaveCount(0);
+  expect(startRequestCount).toBe(1);
+  expect(turnRequestCount).toBe(1);
+  expect(unexpectedTurnRequestCount).toBe(0);
 });
 
 async function openNodeAskAiFromOptions(page: Page, node: Locator) {
@@ -173,7 +202,8 @@ async function registerAndVerify(page: Page) {
   await page.goto(verificationLink);
   await expect(page).toHaveURL(/\/verify-email(?:\?|$)/u);
   await page.getByRole('link', { name: 'Перейти в продукт' }).click();
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL(/\/onboarding(?:\?|$)/u);
+  await completeOnboardingThroughApi(page);
 }
 
 function messageByRole(page: Page, role: 'assistant' | 'user', text: string) {

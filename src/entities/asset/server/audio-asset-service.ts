@@ -1,10 +1,11 @@
+import { putMediaObject } from './media-object';
+import { type MediaSource } from '@/shared/media/media-source';
 import { and, eq } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
 import { getDb } from '@/shared/db/client';
 import { asset as assetTable } from '@/shared/db/schema/asset';
 import { audioMetadataSchema, AudioProcessingError, MAX_AUDIO_OUTPUT_BYTES, type AudioMetadata, type ValidatedAudio } from '@/shared/media/audio-contracts';
 import { inspectAudioBytes } from '@/shared/media/audio-processor';
-import { readBoundedAudioStream } from '@/shared/media/audio-upload-request';
+import { readStoredMediaFile } from '@/shared/media/stored-media-file';
 import { createAssetObjectKey, getAssetObjectStore } from '@/shared/storage/s3-assets';
 import { AssetNotFoundError, AssetProvenanceError, AssetStorageError, type AssetDto, type AssetUploadDependencies, type UploadImageAssetInput } from './asset-service-contracts';
 import { createDefaultUploadDependencies, logStorageFailure } from './asset-storage-support';
@@ -12,9 +13,9 @@ import { normalizeAssetProvenance, normalizeOriginalName } from './asset-normali
 import { toAssetDto } from './asset-dto';
 
 export type AudioAssetDto = AssetDto & { mediaKind: 'audio'; audio: AudioMetadata };
-export interface UploadAudioAssetInput extends UploadImageAssetInput { maxDurationSeconds?: number; signal?: AbortSignal }
+export interface UploadAudioAssetInput<T extends MediaSource = Uint8Array> extends Omit<UploadImageAssetInput, 'bytes'> { bytes: T; maxDurationSeconds?: number; signal?: AbortSignal }
 
-export async function uploadAudioAsset(input: UploadAudioAssetInput, dependencies = createDefaultUploadDependencies()): Promise<AudioAssetDto> {
+export async function uploadAudioAsset(input: UploadAudioAssetInput<MediaSource>, dependencies = createDefaultUploadDependencies()): Promise<AudioAssetDto> {
   await dependencies.assertAccess({ documentId: input.documentId ?? null, userId: input.userId, workspaceId: input.workspaceId });
   const inspected = await inspectAudioBytes(input.bytes, { maxBytes: input.maxBytes, maxDurationSeconds: input.maxDurationSeconds, claimedContentType: input.claimedContentType, signal: input.signal });
   return persistAuthorizedAudioAsset(input, inspected, dependencies);
@@ -22,7 +23,7 @@ export async function uploadAudioAsset(input: UploadAudioAssetInput, dependencie
 
 /** Server-only primitive. Caller MUST resolve session/client/run authorization before calling.
  * userId is audit attribution, never a substitute for service-client authorization. */
-export async function persistAuthorizedAudioAsset(input: UploadAudioAssetInput, inspected: ValidatedAudio, dependencies: AssetUploadDependencies = createDefaultUploadDependencies()): Promise<AudioAssetDto> {
+export async function persistAuthorizedAudioAsset(input: UploadAudioAssetInput<MediaSource>, inspected: ValidatedAudio<MediaSource>, dependencies: AssetUploadDependencies = createDefaultUploadDependencies()): Promise<AudioAssetDto> {
   input.signal?.throwIfAborted();
   const provenance = normalizeAssetProvenance(input);
   const id = input.requestedAssetId ?? dependencies.createId();
@@ -46,7 +47,7 @@ export async function persistAuthorizedAudioAsset(input: UploadAudioAssetInput, 
     pending = await dependencies.repository.resetPending(pending.id);
   }
   try {
-    await dependencies.objectStore.put({ bucket: pending.bucket, key: pending.storageKey, body: inspected.bytes, contentType: inspected.contentType });
+    await putMediaObject(dependencies.objectStore, pending, inspected.bytes, inspected.contentType, input.signal);
     input.signal?.throwIfAborted();
     return asAudioDto(toAssetDto(await dependencies.repository.markReady(pending.id)));
   } catch (error) {
@@ -63,9 +64,8 @@ export async function readWorkspaceAudioAsset(input: { assetId: string; workspac
   const parsed = audioMetadataSchema.safeParse(record.metadata?.audio);
   if (!parsed.success || parsed.data.contentType !== record.contentType) throw new AudioProcessingError('invalid_audio_metadata', 'Stored audio metadata is invalid.');
   const object = await getAssetObjectStore().get({ bucket: record.bucket, key: record.storageKey });
-  const bytes = await readBoundedAudioStream(object.body, MAX_AUDIO_OUTPUT_BYTES, input.signal);
-  if (bytes.length !== record.byteSize || createHash('sha256').update(bytes).digest('hex') !== record.checksumSha256) throw new AudioProcessingError('audio_checksum_mismatch', 'Stored audio does not match its checksum.');
-  return { asset: asAudioDto(toAssetDto(record)), bytes, audio: parsed.data };
+  const source = await readStoredMediaFile({ body: object.body, byteSize: record.byteSize, checksumSha256: record.checksumSha256, maxBytes: MAX_AUDIO_OUTPUT_BYTES, signal: input.signal });
+  return { asset: asAudioDto(toAssetDto(record)), ...source, audio: parsed.data };
 }
 
 function asAudioDto(value: AssetDto): AudioAssetDto {

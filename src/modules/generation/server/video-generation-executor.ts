@@ -101,7 +101,8 @@ export function createVideoGenerationExecutor(overrides: Partial<typeof defaults
           workspaceId: job.workspaceId, documentId: job.documentId, userId: record.createdByUserId,
           generationJobId: job.id, operation: 'generate_video', origin: 'generated', libraryVisible: true,
           originalName: `video-${job.id}.${inspected.extension}`, modelId: job.modelId, provider: 'openrouter',
-          metadata: { videoOperationId: operationId, duration: payload.request.duration, mode: payload.request.mode },
+          metadata: { videoOperationId: operationId, duration: payload.request.duration, mode: payload.request.mode,
+            ...(payload.homeConversationId ? { homeConversationId: payload.homeConversationId, source: 'home-chat' } : {}) },
         }, inspected);
         return { assetId: asset.id, usage: usageMissingFromJobLedger(record, result) };
       }

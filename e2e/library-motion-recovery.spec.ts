@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
 import { createAudioQaOwner } from './audio-runtime-fixtures';
@@ -45,7 +46,7 @@ for (const scenario of ['pagination', 'interruption', 'acceleration'] as const) 
     };
     try {
       // Real grid -> intercepted viewer, not only a direct asset URL.
-      await page.goto('/library');
+      await gotoQaSection(page, '/library');
       await page.getByRole('link', { name: 'Открыть Motion QA 5', exact: true }).click();
       await expect(dock).toBeVisible();
       await selected(5);

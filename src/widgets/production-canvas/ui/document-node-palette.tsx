@@ -2,7 +2,7 @@
 
 import { Minus } from '@prodactionpro/ui-core/icons';
 import type { DragEvent, ReactNode } from 'react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { FavoriteNodePreset } from '@/entities/production-graph/model/favorite-node-preset';
 import type { NodeTemplatePreset } from '@/entities/production-graph/model/node-template-preset';
 import { getNodeDefinition } from '@/entities/production-graph/model/node-registry';
@@ -48,17 +48,31 @@ export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favorit
   nodeTemplates, nodeTemplatesError, nodeTemplatesLoading, onClose, onCreateFavoriteNode,
   onCreateNode, onCreateTemplateNode, open }: DocumentNodePaletteProps) {
   const [activeTab, setActiveTab] = useState<PaletteTab>('tools');
+  const paletteId = useId();
   const handleWheel = useScrollableWheel<HTMLDivElement>();
 
   return (
-    <aside className={`document-node-palette ${open ? 'document-node-palette-open' : ''}`} aria-hidden={!open} aria-label="Document tools" data-snapshot-exclude>
+    <aside className={`document-node-palette ${open ? 'document-node-palette-open' : ''}`} aria-hidden={!open} inert={!open} aria-label="Document tools" data-snapshot-exclude>
       <div className="document-node-palette-tabs" role="tablist" aria-label="Palette sections">
         {paletteTabs.map((tab) => (
           <button
             aria-selected={activeTab === tab.id}
+            aria-controls={`${paletteId}-panel`}
+            id={`${paletteId}-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             className={`document-node-palette-tab ${activeTab === tab.id ? 'document-node-palette-tab-active' : ''}`}
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(event) => {
+              const index = paletteTabs.findIndex((item) => item.id === tab.id);
+              const next = event.key === 'ArrowRight' ? (index + 1) % paletteTabs.length
+                : event.key === 'ArrowLeft' ? (index + paletteTabs.length - 1) % paletteTabs.length
+                  : event.key === 'Home' ? 0 : event.key === 'End' ? paletteTabs.length - 1 : -1;
+              if (next < 0) return;
+              event.preventDefault();
+              setActiveTab(paletteTabs[next].id);
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+            }}
             role="tab"
             type="button"
           >
@@ -69,8 +83,8 @@ export function DocumentNodePalette({ favoriteNodes, favoriteNodesError, favorit
           <Minus size={16} />
         </button>
       </div>
-      <div className="document-node-palette-divider" />
-      <div className="document-node-palette-scroll" onWheelCapture={handleWheel}>
+      <div className="document-node-palette-scroll" onWheelCapture={handleWheel}
+        role="tabpanel" id={`${paletteId}-panel`} aria-labelledby={`${paletteId}-${activeTab}`} tabIndex={0}>
         {activeTab === 'tools' ? (
           addNodeMenuGroups.map((group) => (
             <section className="document-node-palette-group" key={group.id}>
@@ -147,10 +161,12 @@ function FavoritePaletteCard({ favorite, onCreateFavoriteNode }: {
       type="button"
     >
       <span className="document-node-palette-favorite-preview">
-        <NodeIcon nodeType={favorite.snapshot.nodeType} size={14} />
-        <strong>{presetTitle}</strong>
+        <span className="document-node-palette-icon"><NodeIcon nodeType={favorite.snapshot.nodeType} size={20} /></span>
+        <span className="document-node-palette-favorite-copy">
+          <strong>{presetTitle}</strong>
+          <span className="document-node-palette-favorite-type">{definition.menuLabel}</span>
+        </span>
       </span>
-      <span className="document-node-palette-favorite-type">{definition.menuLabel}</span>
     </button>
   );
 }
@@ -182,8 +198,8 @@ function NodePaletteCard({
       }}
       onDragStart={handleDragStart}
     >
-      {item.icon}
-      <span>{item.label}</span>
+      <span className="document-node-palette-icon">{item.icon}</span>
+      <span className="document-node-palette-label">{item.label}</span>
     </button>
   );
 }

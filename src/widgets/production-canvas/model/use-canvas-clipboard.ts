@@ -15,6 +15,7 @@ interface NodeClipboard {
 }
 
 interface UseCanvasClipboardParams {
+  enabled: boolean;
   deleteSelected: () => void;
   importImageFile: (file: File, position?: GraphPoint, targetNodeId?: string) => Promise<void> | void;
   importLibraryImage: (assetId: string) => Promise<boolean>;
@@ -25,6 +26,7 @@ interface UseCanvasClipboardParams {
 }
 
 export function useCanvasClipboard({
+  enabled,
   deleteSelected,
   importImageFile,
   importLibraryImage,
@@ -36,6 +38,7 @@ export function useCanvasClipboard({
   const [clipboard, setClipboard] = useState<NodeClipboard | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
@@ -62,9 +65,10 @@ export function useCanvasClipboard({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteSelected, redo, undo]);
+  }, [enabled, deleteSelected, redo, undo]);
 
   useEffect(() => {
+    if (!enabled) return;
     const handleCopy = (event: ClipboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('input,textarea,[contenteditable="true"],dialog') || window.getSelection()?.toString()) return;
@@ -79,9 +83,10 @@ export function useCanvasClipboard({
     };
     window.addEventListener('copy', handleCopy);
     return () => window.removeEventListener('copy', handleCopy);
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     const handlePaste = (event: ClipboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
@@ -114,5 +119,5 @@ export function useCanvasClipboard({
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [clipboard, importImageFile, importLibraryImage, lastPointerWorldRef, pasteNodes]);
+  }, [enabled, clipboard, importImageFile, importLibraryImage, lastPointerWorldRef, pasteNodes]);
 }

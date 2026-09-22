@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Folder, ImageIcon, Square, Type } from '@prodactionpro/ui-core/icons';
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react';
@@ -15,6 +16,7 @@ export function CompositionLayerTree({
   model: CompositionModel;
   onHoverLayer: (layerId: string | undefined) => void;
 }) {
+  const tUi = useTranslations();
   const [dragItem, setDragItem] = useState<CompositionLayerTreeDragItem | undefined>();
   const [dropTarget, setDropTarget] = useState<CompositionLayerTreeDropTarget | undefined>();
   const [detachLayer, setDetachLayer] = useState<CompositionLayerView | undefined>();
@@ -211,9 +213,9 @@ export function CompositionLayerTree({
       {model.layerTreeItems.map((item) => renderTreeItem(item))}
       {detachLayer ? (
         <CompositionConfirmDialog
-          title="Разорвать связь"
-          message={`Слой "${detachLayer.name}" станет локальным в композиции. Текущий контент останется, но будущие изменения исходной ноды больше не будут сюда попадать.`}
-          confirmLabel="Разорвать"
+          title={tUi("Разорвать связь")}
+          message={tUi("Слой \"{p1}\" станет локальным в композиции. Текущий контент останется, но будущие изменения исходной ноды больше не будут сюда попадать.", { p1: detachLayer.name })}
+          confirmLabel={tUi("Разорвать")}
           onCancel={() => setDetachLayer(undefined)}
           onConfirm={() => {
             model.detachLayerSource(detachLayer.id);

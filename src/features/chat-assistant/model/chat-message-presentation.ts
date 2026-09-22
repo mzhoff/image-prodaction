@@ -1,9 +1,21 @@
+import { isWorkspaceAiAccessError } from '@/modules/chat-assistant/adapters/client/workspace-ai-access-store';
 import type { ChatBlock, ChatMessage } from '@prodactionpro/chat-domain';
 
 export function prepareChatMessagesForPresentation(
   messages: ChatMessage[],
 ): ChatMessage[] {
-  return messages.map((message, index) => {
+  // Access refusal is an action dialog, not a conversation reply. Only omit its
+  // local optimistic message; never delete a persisted user turn or other errors.
+  const hidden = new Set<string>();
+  messages.forEach((message, index) => {
+    if (message.metadata?.runtimeError && isWorkspaceAiAccessError({ code: message.metadata.errorCode })) {
+      hidden.add(message.id);
+      const previous = messages[index - 1];
+      if (previous?.role === 'user' && previous.metadata?.optimistic === true) hidden.add(previous.id);
+    }
+  });
+  const visible = messages.filter((message) => !hidden.has(message.id));
+  return visible.map((message, index) => {
     if (message.role !== 'assistant') return message;
 
     return {
@@ -11,7 +23,7 @@ export function prepareChatMessagesForPresentation(
       blocks: message.blocks.map(toMarkdownBlock),
       metadata: {
         ...message.metadata,
-        ...(index === messages.length - 1 && message.metadata?.animate !== false ? { animate: true } : {}),
+        ...(index === visible.length - 1 && message.metadata?.animate !== false ? { animate: true } : {}),
       },
     };
   });

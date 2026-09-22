@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import Image from 'next/image';
 import { useRef, type RefObject } from 'react';
@@ -15,6 +16,7 @@ export function ImageViewerDock({ assetIds, itemsById, motion, width, trackRef }
   width: number;
   trackRef: RefObject<HTMLDivElement | null>;
 }) {
+  const tUi = useTranslations();
   const stripRef = useRef<HTMLDivElement>(null);
   const gesture = useImageViewerGesture(stripRef, motion, (position) => position * IMAGE_DOCK_PITCH, (offset) => offset / IMAGE_DOCK_PITCH, {
     selectTappedThumbnail: true,
@@ -22,7 +24,7 @@ export function ImageViewerDock({ assetIds, itemsById, motion, width, trackRef }
   const entries = getImageViewerThumbnailWindow(assetIds, motion.previewIndex, dockWindowSize(width));
   return (
     <div ref={stripRef} className="image-viewer-dock" role="region"
-      aria-label="Лента изображений — перетащите для выбора" tabIndex={0} {...gesture}>
+      aria-label={tUi("Лента изображений — перетащите для выбора")} tabIndex={0} {...gesture}>
       <div ref={trackRef} className="image-viewer-dock-track">
         {entries.map(({ assetId, index }) => {
           const item = itemsById.get(assetId);
@@ -30,7 +32,7 @@ export function ImageViewerDock({ assetIds, itemsById, motion, width, trackRef }
             <div key={assetId} className="image-viewer-dock-tile" data-dock-index={index}
               style={{ left: `calc(50% + ${index * IMAGE_DOCK_PITCH}px)` }}>
               <button type="button" className="image-viewer-dock-button"
-                aria-label={`Открыть изображение ${index + 1}: ${item?.name ?? ''}`}
+                aria-label={tUi("Открыть изображение {p1}: {p2}", { p1: index + 1, p2: item?.name ?? '' })}
                 aria-current={index === motion.previewIndex ? 'true' : undefined}
                 tabIndex={index === motion.previewIndex ? 0 : -1}
                 onClick={() => motion.select(index)}>

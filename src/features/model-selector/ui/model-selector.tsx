@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { Check, ChevronDown, X } from '@prodactionpro/ui-core/icons';
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -14,8 +15,10 @@ export const MODEL_TAB_LABELS: Record<ModelTab, string> = { all: 'All', popular:
 export interface ModelSelectorProps {
   modality: ModelModality; value: string; options: DarkSelectOption[]; onChange: (value: string) => void;
   wide?: boolean; disabled?: boolean; ariaLabel?: string; className?: string;
+  surface?: 'default' | 'liquid';
 }
-export function ModelSelector({ modality, value, options: rawOptions, onChange, wide, disabled, ariaLabel = 'Model', className }: ModelSelectorProps) {
+export function ModelSelector({ modality, value, options: rawOptions, onChange, wide, disabled, ariaLabel = 'Model', className, surface = 'default' }: ModelSelectorProps) {
+  const tUi = useTranslations();
   const options = rawOptions.map((option) => ({ ...option, icon: option.icon ?? (modality === 'video' ? <VideoModelLogo modelKey={option.value} /> : <ImageModelLogo modelId={option.value} />) }));
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -28,7 +31,7 @@ export function ModelSelector({ modality, value, options: rawOptions, onChange, 
   const preference = state.data.preferences[modality];
   const items = selectModels(options, preference.tab, preference.favorites, state.data.popularity[modality], query);
   const selected = options.find((option) => option.value === value && value !== 'openrouter/auto');
-  const label = selected?.label ?? (value === 'openrouter/auto' ? 'Выберите модель' : value);
+  const label = selected?.label ?? (value === 'openrouter/auto' ? tUi("Выберите модель") : value);
   const close = useCallback(() => { setOpen(false); trigger.current?.focus(); }, []);
   const position = useCallback(() => {
     const rect = trigger.current?.getBoundingClientRect();
@@ -79,11 +82,11 @@ export function ModelSelector({ modality, value, options: rawOptions, onChange, 
     </button>
     {open && anchor && !disabled && createPortal(<>
       <div className="dark-select-backdrop" data-node-interactive onPointerDown={(event) => { event.stopPropagation(); close(); }} />
-      <div ref={popup} id={id} className="model-selector-menu" data-placement={anchor.placement}
+      <div ref={popup} id={id} className={cn('model-selector-menu', surface === 'liquid' && 'home-liquid-menu')} data-placement={anchor.placement}
         style={{ top: anchor.top, left: anchor.left, width: anchor.width, height: anchor.height }} role="dialog" aria-label={ariaLabel}
         data-node-interactive onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()} onKeyDown={keyboard}>
-        <div className="model-selector-tabs" role="tablist" aria-label="Список моделей">
+        <div className="model-selector-tabs" role="tablist" aria-label={tUi("Список моделей")}>
           {MODEL_TABS.map((tab, index) => <button key={tab} type="button" role="tab" id={`${id}-${tab}`} aria-controls={`${id}-list`}
             aria-selected={preference.tab === tab} tabIndex={preference.tab === tab ? 0 : -1} disabled={!state.ready}
             onKeyDown={(event) => {
@@ -95,26 +98,26 @@ export function ModelSelector({ modality, value, options: rawOptions, onChange, 
           </button>)}
         </div>
         <div className="model-selector-search">
-          <input ref={search} aria-label="Найти модель" placeholder="Найти" value={query} onChange={(event) => setQuery(event.target.value)} />
-          {query && <button type="button" aria-label="Очистить поиск" onClick={() => { setQuery(''); search.current?.focus(); }}><X size={14} /></button>}
+          <input ref={search} aria-label={tUi("Найти модель")} placeholder={tUi("Найти")} value={query} onChange={(event) => setQuery(event.target.value)} />
+          {query && <button type="button" aria-label={tUi("Очистить поиск")} onClick={() => { setQuery(''); search.current?.focus(); }}><X size={14} /></button>}
         </div>
-        {state.error && <div className="model-selector-message" role="alert">{state.error} <button type="button" onClick={() => void state.reload()}>Повторить</button></div>}
+        {state.error && <div className="model-selector-message" role="alert">{typeof (state.error) === 'string' ? tUi((state.error) as string) : (state.error)} <button type="button" onClick={() => void state.reload()}>{tUi("Повторить")}</button></div>}
         <div className="model-selector-list" id={`${id}-list`} role="tabpanel" aria-labelledby={`${id}-${preference.tab}`}>
           {/* A list of separate action buttons supports favorites without nesting a button in a listbox option. */}
-          <ul aria-label="Модели">
+          <ul aria-label={tUi("Модели")}>
             {items.map((item) => <li key={item.value} className={cn('model-selector-row', item.value === value && 'is-selected')}>
               <button type="button" data-model-choice aria-pressed={item.value === value} title={item.label}
                 onClick={() => { onChange(item.value); close(); }}>
-                <span className="dark-select-option-content">{item.icon}<span>{item.label}</span></span>
+                <span className="dark-select-option-content"><span className="model-selector-option-icon">{item.icon}</span><span>{item.label}</span></span>
               </button>
               <FavoriteButton label={item.label} favorite={preference.favorites.includes(item.value)} disabled={!state.ready || state.pending}
                 onClick={() => state.change({ modality, action: 'favorite', modelId: item.value, favorite: !preference.favorites.includes(item.value) })} />
               <span className="model-selector-check" aria-hidden="true">{item.value === value && <Check size={14} />}</span>
             </li>)}
           </ul>
-          {!items.length && <p className="model-selector-empty">{query ? 'Модели не найдены' : !state.ready ? 'Загружаем настройки…'
-            : preference.tab === 'favorites' ? 'Добавьте модели в избранное во вкладке All или в настройках аккаунта.'
-              : preference.tab === 'popular' ? 'Пока нет успешных запусков доступных здесь моделей.' : 'Нет доступных моделей.'}</p>}
+          {!items.length && <p className="model-selector-empty">{query ? tUi("Модели не найдены") : !state.ready ? tUi("Загружаем настройки…")
+            : preference.tab === 'favorites' ? tUi("Добавьте модели в избранное во вкладке All или в настройках аккаунта.")
+              : preference.tab === 'popular' ? tUi("Пока нет успешных запусков доступных здесь моделей.") : tUi("Нет доступных моделей.")}</p>}
         </div>
       </div>
     </>, document.body)}

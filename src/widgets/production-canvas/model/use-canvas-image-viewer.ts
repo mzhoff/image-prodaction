@@ -1,3 +1,5 @@
+'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { useCallback, useMemo, useState } from 'react';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
 import {
@@ -19,6 +21,7 @@ interface UseCanvasImageViewerOptions {
 }
 
 export function useCanvasImageViewer({ assets, nodesById, showToast }: UseCanvasImageViewerOptions) {
+  const tUi = useTranslations();
   const [contextImageViewer, setContextImageViewer] = useState<{ nodeId: string; index: number } | null>(null);
   const imageViewerNode = contextImageViewer ? nodesById.get(contextImageViewer.nodeId) : undefined;
   const imageViewerAssetIds = useMemo(() => getNodeImageAssetIds(imageViewerNode), [imageViewerNode]);
@@ -41,10 +44,10 @@ export function useCanvasImageViewer({ assets, nodesById, showToast }: UseCanvas
     setContextImageViewer((viewer) => (viewer ? { ...viewer, index: wrapImageIndex(viewer.index + 1, imageViewerAssetIds.length) } : viewer));
   }, [imageViewerAssetIds.length]);
   const saveImageViewerAssetToLibrary = useCallback(async () => {
-    if (!imageViewerAsset) throw new Error('Активное изображение не найдено.');
+    if (!imageViewerAsset) throw new Error(tUi("Активное изображение не найдено."));
     await persistAssetToLibrary(imageViewerAsset);
     showToast('Image saved to Library.');
-  }, [imageViewerAsset, showToast]);
+  }, [tUi, imageViewerAsset, showToast]);
 
   const copyAssetToClipboard = useCallback((assetId: string) => {
     const asset = assets.find((candidate) => candidate.id === assetId);

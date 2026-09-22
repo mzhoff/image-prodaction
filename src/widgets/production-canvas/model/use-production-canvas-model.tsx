@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { ProductionNode, ProductionNodeType } from '@/entities/production-graph/model/types';
+import { DEFAULT_PROJECT_VIEWPORT } from '@/entities/production-graph/model/project-schema';
 import type { NodeAskAiLaunchResult } from '@/features/chat-assistant/model/node-ask-ai';
 import { useCanvasBoxSelection } from '@/shared/ui/use-canvas-box-selection';
 import { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
@@ -39,9 +40,10 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
   const { onAskAiNode, projectId } = options;
   const contextMenu = useContextMenu();
   const graph = useProductionCanvasStore();
+  const initialViewport = projectId ? DEFAULT_PROJECT_VIEWPORT : graph.uiState.viewport;
   const canvas = useCanvasNavigation({
-    initialPan: { x: graph.uiState.viewport.x, y: graph.uiState.viewport.y },
-    initialZoom: graph.uiState.viewport.zoom,
+    initialPan: { x: initialViewport.x, y: initialViewport.y },
+    initialZoom: initialViewport.zoom,
   });
   const { showToast, toastMessage } = useCanvasToast();
   const [canvasTool, setCanvasTool] = useState<CanvasTool>('select');
@@ -97,6 +99,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     showToast,
   });
   useCanvasClipboard({
+    enabled: documentSync.documentReady,
     deleteSelected: graph.deleteSelected,
     importImageFile,
     importLibraryImage,
@@ -188,6 +191,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     });
   const { cursor, handleCanvasDragOver, handleCanvasDrop, handleCanvasMouseDown,
     handleCanvasMouseMove } = useProductionCanvasInteractions({
+    enabled: documentSync.documentReady,
     boxSelection, canvas, canvasTool, closeContextMenu,
     createFavoriteNode: favoriteNodes.createFavoriteNode, createNode,
     createTemplateNode: nodeTemplates.createTemplateNode,
@@ -255,6 +259,7 @@ export function useProductionCanvasModel(options: ProductionCanvasModelOptions) 
     renameSection: graph.renameSection,
     deleteSelected: graph.deleteSelected,
     documentName: documentSync.documentName,
+    documentReady: documentSync.documentReady,
     documentFavorite: documentSync.favorite,
     documentStatus: documentSync.documentStatus,
     documentThumbnailMode: documentThumbnail.thumbnailMode,

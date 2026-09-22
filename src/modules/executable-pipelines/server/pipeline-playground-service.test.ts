@@ -70,3 +70,23 @@ test('playground descriptor keeps Studio labels and compiled input requirements'
     { name: 'result', label: 'Short description', kind: 'text' },
   ]);
 });
+
+test('descriptor exposes the published schema and defaults for typed Playground inputs', () => {
+  const schema = { type: 'object' as const, properties: { count: { type: 'integer' as const, minimum: 1 } }, required: ['count'], additionalProperties: false as const };
+  const descriptor = mapPipelinePlaygroundDescriptor({
+    compiledPlan: { definition: { schemaVersion: 1, inputs: {
+      options: { kind: 'json', required: true, schema, defaultValue: { count: 1 } },
+      enabled: { kind: 'boolean', required: true, defaultValue: false },
+      count: { kind: 'number', required: false, defaultValue: 0 },
+      clip: { kind: 'video', required: true, description: 'Видео для монтажа' },
+    }, nodes: [], outputs: {} }, executionLevels: [] },
+    endpointPublicId: 'pln_019fb9e98e757364b4c34ca908554584', executionPolicy: {}, name: 'Media',
+    pipelineId: 'pipeline-1', pipelineVersion: 3, sourceMetadata: null, workspaceId: 'workspace-1',
+  });
+  assert.deepEqual(descriptor.inputs[0]?.schema, schema);
+  assert.deepEqual(descriptor.inputs[0]?.defaultValue, { count: 1 });
+  assert.equal(descriptor.inputs[1]?.defaultValue, false);
+  assert.equal(descriptor.inputs[2]?.defaultValue, 0);
+  assert.equal(descriptor.inputs[3]?.kind, 'video');
+  assert.equal(descriptor.inputs[3]?.description, 'Видео для монтажа');
+});

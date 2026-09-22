@@ -55,6 +55,7 @@ export async function deriveWorkspaceVideoAsset(input: DeriveWorkspaceVideoInput
   if (active.size >= 2) throw new VideoProcessingError('video_busy', 'Video processing is busy. Retry shortly.', 503);
   const work = (async () => {
     const loaded = await dependencies.readSource({ assetId: source.id, workspaceId: input.workspaceId, signal: input.signal });
+    try {
     if (loaded.asset.checksumSha256 !== source.checksumSha256) throw new AssetProvenanceError('Video source changed during derivation.');
     const result = await dependencies.derive({ bytes: loaded.bytes, options: { ...options, ...(track === undefined ? {} : { audioTrackIndex: track }) }, signal: input.signal });
     const persistence = {
@@ -63,7 +64,8 @@ export async function deriveWorkspaceVideoAsset(input: DeriveWorkspaceVideoInput
       origin: 'unknown' as const, operation: `video_${options.kind}`, libraryVisible: false,
       metadata: { sourceAssetId: source.id, sourceChecksumSha256: source.checksumSha256, derivationVersion: 1, ...(track === undefined ? {} : { audioTrackIndex: track }), ...(options.crop ? { crop: options.crop } : {}), ...(options.range ? { range: options.range } : {}) },
     };
-    return 'video' in result ? dependencies.persistVideo(persistence, result) : dependencies.persistAudio(persistence, result);
+    return await ('video' in result ? dependencies.persistVideo(persistence, result) : dependencies.persistAudio(persistence, result));
+    } finally { await loaded.dispose?.(); }
   })();
   active.set(id, work);
   try { return await work; } finally { active.delete(id); }

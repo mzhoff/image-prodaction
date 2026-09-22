@@ -43,10 +43,12 @@ export async function persistGeneratedImage(input: {
     claimedContentType: image.contentType,
     documentId: input.payload.documentId,
     generationJobId: input.job.id,
-    libraryVisible: false,
+    libraryVisible: input.payload.documentId === null && Boolean(input.payload.homeConversationId || input.payload.storyCharacter),
     maxBytes: getMaxImageUploadBytes(),
     metadata: {
       ...pickImageGenerationOptions(input.payload),
+      ...(input.payload.homeConversationId ? { homeConversationId: input.payload.homeConversationId, source: 'home-chat' } : {}),
+      ...(input.payload.storyCharacter ? { ...input.payload.storyCharacter, source: 'story-character' } : {}),
       aspectRatio: input.payload.aspectRatio,
       generationId: input.result.providerOperationId,
       responseModel: input.result.modelId,

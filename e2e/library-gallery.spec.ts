@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
 import { createAudioQaOwner } from './audio-runtime-fixtures';
@@ -70,7 +71,7 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     }
   };
   try {
-    await page.goto('/library');
+    await gotoQaSection(page, '/library');
     await expect(page.locator('.library-card')).toHaveCount(18);
     await expect(page.getByRole('button', { name: 'Галерея', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await geometry();
@@ -84,7 +85,7 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await page.mouse.move(10, 10);
     await card.locator('a').focus();
     await expect(card.locator('.library-card-details')).toHaveCSS('opacity', '1');
-    await page.getByRole('heading', { name: 'Библиотека' }).click();
+    await page.getByRole('heading', { name: 'Library', exact: true }).click();
     await page.screenshot({ path: testInfo.outputPath('library-gallery-desktop.png') });
     const beforeMode = lists;
     await page.getByRole('button', { name: 'По датам', exact: true }).click();
@@ -96,7 +97,7 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await expect(page.locator('.library-card')).toHaveCount(24);
     await expect(page.locator('.pui-media-date-heading')).toHaveCount(6);
     await expect(page.locator('.pui-media-gallery-group').nth(4).locator('.library-card')).toHaveCount(4);
-    await page.locator('.library-content').evaluate((element) => { element.scrollTop = 0; });
+    await page.locator('.library-section .production-section-body').evaluate((element) => { element.scrollTop = 0; });
     await geometry();
     await page.screenshot({ path: testInfo.outputPath('library-gallery-dates.png') });
 
@@ -110,16 +111,20 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await expect(page).toHaveURL(`${origin.origin}/library?view=dates`);
     await page.reload();
     await expect(page.getByRole('button', { name: 'По датам', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Фильтры', exact: true }).click();
     for (const [label, option, parameter] of [['Источник', 'Сгенерированные', 'origin=generated'], ['Тип медиа', 'Изображения', 'mediaKind=image'], ['Модель', 'qa-vision', 'modelId=qa-vision'], ['Канвас', 'Тестовый проект', 'documentId=project-qa']]) {
-      await page.getByRole('button', { name: label, exact: true }).click();
+      await page.getByRole('combobox', { name: label, exact: true }).click();
       await page.getByRole('option', { name: new RegExp(option!) }).click();
       await expect(page).toHaveURL(new RegExp(parameter));
       await expect(page.getByRole('button', { name: 'По датам', exact: true })).toHaveAttribute('aria-pressed', 'true');
     }
     await expect(page.locator('.library-card')).toHaveCount(12);
-    await page.getByRole('searchbox', { name: 'Поиск по библиотеке' }).fill('not-found');
-    await page.getByRole('button', { name: 'Найти', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Ничего не найдено' })).toBeVisible();
+    await page.getByRole('button', { name: 'Поиск по библиотеке', exact: true }).click();
+    const search = page.getByRole('dialog', { name: 'Поиск в Workspace' });
+    await search.getByRole('searchbox', { name: 'Найти файлы в Workspace' }).fill('not-found');
+    await search.getByRole('button', { name: 'Фильтры · 4', exact: true }).click();
+    await search.getByRole('button', { name: 'Показать в библиотеке', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Материалы не найдены' })).toBeVisible();
     await page.getByRole('button', { name: 'Сбросить фильтры' }).first().click();
     await expect(page.locator('.library-card')).toHaveCount(18);
     await expect(page).toHaveURL(`${origin.origin}/library?view=dates`);
@@ -130,12 +135,12 @@ test('Library visual gallery: proportions, minute groups, metadata, filters and 
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 375, height: 812 });
     // Nested sections stay reachable in the expanded sidebar on narrow screens.
-    await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+    await page.getByRole('button', { name: 'Свернуть меню', exact: true }).click();
     // The shell has a width transition; inspect the completed narrow layout.
-    await expect(page.locator('.workspace-sidebar')).toHaveCSS('width', '72px');
+    await expect(page.locator('.workspace-sidebar')).toHaveCSS('width', '57px');
     await expect.poll(() => gallery.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await geometry();
-    await expect.poll(() => page.locator('.library-content').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await expect.poll(() => page.locator('.library-section .production-section-body').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('library-gallery-mobile.png') });
     expect(paid).toBe(0);
   } finally { await owner.http.request('/api/auth/sign-out', { json: {} }); }

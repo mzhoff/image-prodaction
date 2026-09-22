@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { validPlatformSignature } from '@/modules/provider-connections/server/platform/request-auth';
 import { ownedBudgetWorkspaces } from '@/modules/provider-connections/server/platform/owned-workspaces';
+import { readPublicBillingConfig } from '@/app/config/billing';
 
 const payload = z.object({ issuer: z.string().url(), subject: z.string().min(1).max(200) }).strict();
 export async function handleBudgetWorkspaces(request: Request) {
@@ -42,8 +43,9 @@ export async function handleBudgetWorkspaces(request: Request) {
       return reply(400, 'INVALID_REQUEST');
     }
     if (!parsed.success || parsed.data.issuer !== issuer) return reply(400, 'INVALID_IDENTITY');
+    const [workspaces, billing] = await Promise.all([ownedBudgetWorkspaces(issuer, parsed.data.subject), readPublicBillingConfig()]);
     return Response.json(
-      { workspaces: await ownedBudgetWorkspaces(issuer, parsed.data.subject) },
+      { workspaces, transfer: billing.transfer },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch {

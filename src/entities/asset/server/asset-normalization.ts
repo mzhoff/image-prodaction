@@ -1,7 +1,7 @@
 import type { UploadImageAssetInput } from './asset-service-contracts';
 import { AssetLibraryQueryError, AssetProvenanceError } from './asset-service-contracts';
 
-export function normalizeAssetProvenance(input: UploadImageAssetInput) {
+export function normalizeAssetProvenance(input: Omit<UploadImageAssetInput, 'bytes'>) {
   const origin = input.origin ?? 'unknown';
   const libraryVisible = input.libraryVisible ?? false;
   const provider = normalizeOptionalMetadataText(input.provider);

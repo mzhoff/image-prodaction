@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, Eye, EyeOff, KeyRound } from '@prodactionpro/ui-core/icons';
@@ -14,6 +15,7 @@ interface ResetPasswordPageProps {
 }
 
 export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) {
+  const tUi = useTranslations();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +29,7 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
     event.preventDefault();
     if (!token) return;
     if (password !== confirmation) {
-      setError('Пароли не совпадают.');
+      setError(tUi("Пароли не совпадают."));
       return;
     }
 
@@ -56,16 +58,16 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
 
   if (invalidLink) {
     return (
-      <AuthShell ariaLabel="Ссылка сброса пароля недействительна">
+      <AuthShell ariaLabel={tUi("Ссылка сброса пароля недействительна")}>
         <div className="auth-card auth-state-card">
           <span className="auth-state-icon auth-state-icon-error" aria-hidden="true">
             <AlertTriangle size={26} />
           </span>
           <div className="auth-card-head">
-            <h2>Ссылка недействительна</h2>
-            <p>Срок действия ссылки закончился или она уже была использована.</p>
+            <h2>{tUi("Ссылка недействительна")}</h2>
+            <p>{tUi("Срок действия ссылки закончился или она уже была использована.")}</p>
           </div>
-          <Link className="auth-primary-link" href="/forgot-password">Запросить новую ссылку</Link>
+          <Link className="auth-primary-link" href="/forgot-password">{tUi("Запросить новую ссылку")}</Link>
         </div>
       </AuthShell>
     );
@@ -73,16 +75,15 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
 
   if (complete) {
     return (
-      <AuthShell ariaLabel="Пароль изменён">
+      <AuthShell ariaLabel={tUi("Пароль изменён")}>
         <div className="auth-card auth-state-card">
           <span className="auth-state-icon" aria-hidden="true"><KeyRound size={26} /></span>
           <div className="auth-card-head">
-            <h2>Пароль изменён</h2>
-            <p>Все прежние сессии завершены. Войдите с новым паролем.</p>
+            <h2>{tUi("Пароль изменён")}</h2>
+            <p>{tUi("Все прежние сессии завершены. Войдите с новым паролем.")}</p>
           </div>
           <Link className="auth-primary-link" href="/login">
-            Перейти ко входу
-            <ArrowRight size={16} />
+            {tUi("Перейти ко входу")}<ArrowRight size={16} />
           </Link>
         </div>
       </AuthShell>
@@ -90,16 +91,16 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
   }
 
   return (
-    <AuthShell ariaLabel="Установка нового пароля">
+    <AuthShell ariaLabel={tUi("Установка нового пароля")}>
       <div className="auth-card">
         <div className="auth-card-head">
-          <span className="auth-card-badge"><KeyRound size={14} /> Новый пароль</span>
-          <h2>Защитите аккаунт</h2>
-          <p>Придумайте новый пароль длиной не менее 8 символов.</p>
+          <span className="auth-card-badge"><KeyRound size={14} />  {' '}{tUi("Новый пароль")}</span>
+          <h2>{tUi("Защитите аккаунт")}</h2>
+          <p>{tUi("Придумайте новый пароль длиной не менее 8 символов.")}</p>
         </div>
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
-            <span>Новый пароль</span>
+            <span>{tUi("Новый пароль")}</span>
             <div className="auth-password-field">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -115,7 +116,7 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
               <button
                 type="button"
                 onClick={() => setShowPassword((visible) => !visible)}
-                aria-label="Показать или скрыть пароль"
+                aria-label={tUi("Показать или скрыть пароль")}
                 disabled={pending}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -123,7 +124,7 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
             </div>
           </label>
           <label>
-            <span>Повторите пароль</span>
+            <span>{tUi("Повторите пароль")}</span>
             <input
               type={showPassword ? 'text' : 'password'}
               name="password-confirmation"
@@ -136,9 +137,9 @@ export function ResetPasswordPage({ token, linkError }: ResetPasswordPageProps) 
               required
             />
           </label>
-          {error ? <p className="auth-form-error" role="alert">{error}</p> : null}
+          {error ? <p className="auth-form-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
           <button className="auth-submit" type="submit" disabled={pending}>
-            {pending ? 'Сохраняем…' : 'Сохранить новый пароль'}
+            {pending ? tUi("Сохраняем…") : tUi("Сохранить новый пароль")}
             <span><ArrowRight size={16} /></span>
           </button>
         </form>

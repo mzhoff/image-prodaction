@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import {
   getTextSectionDuplicateIssues,
@@ -33,6 +34,7 @@ export function TextSectionFilterTags({
   parseOptions,
   text,
 }: TextSectionFilterTagsProps) {
+  const tUi = useTranslations();
   const filters = parseTextSectionFilters(text, parseOptions);
   const plainEnd = filters[0]?.start ?? text?.length ?? 0;
   const hasPlainText = Boolean(textField && text?.slice(0, plainEnd).trim());
@@ -45,7 +47,7 @@ export function TextSectionFilterTags({
         data-node-interactive data-text-field={textField} data-text-fragment-handle
         data-text-range-start={0} data-text-range-end={plainEnd}
         data-text-readonly={readOnly || undefined}
-        aria-label="Перетащить свободный текст" title="Перетащи текст на канвас или в другое поле. Alt — копировать.">
+        aria-label={tUi("Перетащить свободный текст")} title={tUi("Перетащи текст на канвас или в другое поле. Alt — копировать.")}>
         TEXT
       </button> : null}
       {filters.map((filter) => (
@@ -60,7 +62,7 @@ export function TextSectionFilterTags({
           data-text-section-label={filter.label}
           data-text-range-start={filter.start}
           data-text-readonly={readOnly || undefined}
-          title={textField ? 'Перетащи блок на канвас или в текст. Alt — копировать.' : undefined}
+          title={textField ? tUi("Перетащи блок на канвас или в текст. Alt — копировать.") : undefined}
           onClick={() => onToggle?.(filter.id)}
         >
           {filter.label}
@@ -75,6 +77,7 @@ export function TextSectionDuplicateWarnings({
   issues,
   onSelectIssue,
 }: TextSectionDuplicateWarningsProps) {
+  const tUi = useTranslations();
   if (issues.length === 0) return null;
 
   return (
@@ -87,8 +90,7 @@ export function TextSectionDuplicateWarnings({
           data-node-interactive
           onClick={() => onSelectIssue?.(issue)}
         >
-          Неуникальное имя фильтра {issue.header}. Переименуй этот блок, чтобы он стал отдельным фильтром.
-        </button>
+          {tUi("Неуникальное имя фильтра")}{' '}{issue.header}{tUi(". Переименуй этот блок, чтобы он стал отдельным фильтром.")}</button>
       ))}
     </div>
   );

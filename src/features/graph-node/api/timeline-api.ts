@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AssetClientError, mapRemoteImageAsset, type ActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
+import { AssetClientError, mapRemoteImageAsset } from '@/entities/production-graph/lib/remote-asset';
 import { deriveRemoteVideoAsset } from '@/entities/production-graph/lib/remote-video-asset';
 import { timelineAnalysisSchema, timelineDescriptionResultSchema, type TimelineAnalysis, type TimelineDescriptionResult, type TimelineShot } from '@/shared/media/timeline-contracts';
 import { notifyProviderUsageUpdated } from '@/shared/api/provider-usage-events';
@@ -19,7 +19,7 @@ const jobResponseSchema = z.object({ job: z.object({ id: z.string(), status: z.s
   progress: z.object({ completedShots: z.number().optional(), totalShots: z.number().nullable().optional(),
     analysis: timelineAnalysisProgressSchema.nullish() }).optional() });
 
-export async function startTimelineJob(payload: TimelinePayload, scope: ActiveAssetScope, idempotencyKey: string, signal?: AbortSignal) {
+export async function startTimelineJob(payload: TimelinePayload, scope: { workspaceId: string; documentId: string | null }, idempotencyKey: string, signal?: AbortSignal) {
   return readResponse(await fetch('/api/timeline', { method: 'POST', credentials: 'same-origin', signal,
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, ...scope, idempotencyKey }) }));
 }

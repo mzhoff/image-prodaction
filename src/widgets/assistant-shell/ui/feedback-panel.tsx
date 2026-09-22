@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import {
   AlertTriangle,
@@ -25,6 +26,7 @@ interface FeedbackAttachmentDraft {
   previewUrl: string | null;
 }
 export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
+  const tUi = useTranslations();
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [attachment, setAttachment] = useState<FeedbackAttachmentDraft | null>(null);
@@ -42,7 +44,7 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
     setAttachmentError(null);
     setSubmissionError(null);
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      setAttachmentError('Файл больше 10 МБ. Выберите изображение меньшего размера.');
+      setAttachmentError(tUi("Файл больше 10 МБ. Выберите изображение меньшего размера."));
       return;
     }
 
@@ -95,7 +97,7 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
     } catch (error) {
       setSubmissionError(error instanceof FeedbackApiError
         ? error.message
-        : 'Не удалось отправить обратную связь. Попробуйте ещё раз.');
+        : tUi("Не удалось отправить обратную связь. Попробуйте ещё раз."));
     } finally {
       setSubmitting(false);
     }
@@ -115,9 +117,9 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
     return (
       <div className="feedback-panel feedback-panel-success" role="status">
         <CheckCircle2 size={44} />
-        <strong>Спасибо за обратную связь!</strong>
-        <p>Отзыв отправлен в PRODaction Feedback и привязан к Image Production.</p>
-        <button onClick={reset} type="button">Оставить ещё отзыв</button>
+        <strong>{tUi("Спасибо за обратную связь!")}</strong>
+        <p>{tUi("Отзыв отправлен в PRODaction Feedback и привязан к Image Production.")}</p>
+        <button onClick={reset} type="button">{tUi("Оставить ещё отзыв")}</button>
       </div>
     );
   }
@@ -125,17 +127,17 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
   return (
     <form className="feedback-panel" onPaste={handlePaste} onSubmit={submit}>
       <div className="feedback-panel-intro">
-        <strong>Как вам работа в Image Production?</strong>
-        <p>Оцените продукт и напишите, что стоит исправить или улучшить.</p>
+        <strong>{tUi("Как вам работа в Image Production?")}</strong>
+        <p>{tUi("Оцените продукт и напишите, что стоит исправить или улучшить.")}</p>
         <span>{contextLabel}</span>
       </div>
 
       <fieldset className="feedback-rating">
-        <legend>Оценка</legend>
+        <legend>{tUi("Оценка")}</legend>
         <div>
           {ratingValues.map((value) => (
             <button
-              aria-label={`${value} из 5`}
+              aria-label={tUi("{p1} из 5", { p1: value })}
               aria-pressed={rating === value}
               className={rating !== null && value <= rating ? 'feedback-rating-selected' : ''}
               key={value}
@@ -153,7 +155,7 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
       </fieldset>
 
       <label className="feedback-comment">
-        <span>Комментарий</span>
+        <span>{tUi("Комментарий")}</span>
         <textarea
           maxLength={FEEDBACK_COMMENT_MAX_LENGTH}
           onChange={(event) => {
@@ -161,7 +163,7 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
             setSent(false);
             setSubmissionError(null);
           }}
-          placeholder="Что произошло? Что было неудобно? Какого результата вы ожидали?"
+          placeholder={tUi("Что произошло? Что было неудобно? Какого результата вы ожидали?")}
           value={comment}
         />
         <small>{comment.length}/{FEEDBACK_COMMENT_MAX_LENGTH}</small>
@@ -169,25 +171,24 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
 
       <div className="feedback-attachment-section">
         <div className="feedback-attachment-heading">
-          <span>Скриншот</span>
+          <span>{tUi("Скриншот")}</span>
           <label>
             <Paperclip size={14} />
-            Добавить файл
-            <input accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} type="file" />
+            {tUi("Добавить файл")}<input accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} type="file" />
           </label>
         </div>
-        <p>Можно вставить изображение из буфера обмена через ⌘V.</p>
+        <p>{tUi("Можно вставить изображение из буфера обмена через ⌘V.")}</p>
 
         {attachment ? (
           <div className="feedback-attachment-preview">
             {attachment.previewUrl ? (
-              <img alt="Предпросмотр прикреплённого скриншота" src={attachment.previewUrl} />
+              <img alt={tUi("Предпросмотр прикреплённого скриншота")} src={attachment.previewUrl} draggable={false} />
             ) : <FileImage size={24} />}
             <div>
-              <strong>{attachment.file.name || 'Скриншот из буфера'}</strong>
+              <strong>{attachment.file.name || tUi("Скриншот из буфера")}</strong>
               <span>{formatFileSize(attachment.file.size)}</span>
             </div>
-            <button aria-label="Удалить вложение" onClick={() => setAttachment(null)} type="button">
+            <button aria-label={tUi("Удалить вложение")} onClick={() => setAttachment(null)} type="button">
               <Trash2 size={15} />
             </button>
           </div>
@@ -197,15 +198,13 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
           <div className="feedback-attachment-warning" role="alert">
             <AlertTriangle size={15} />
             <span>
-              Текущий PRODaction Feedback принимает только оценку и текст. Удалите файл для отправки;
-              поддержку вложений добавим отдельным расширением API.
-            </span>
+              {tUi("Текущий PRODaction Feedback принимает только оценку и текст. Удалите файл для отправки; поддержку вложений добавим отдельным расширением API.")}</span>
           </div>
         ) : null}
-        {attachmentError ? <p className="feedback-field-error" role="alert">{attachmentError}</p> : null}
+        {attachmentError ? <p className="feedback-field-error" role="alert">{typeof (attachmentError) === 'string' ? tUi((attachmentError) as string) : (attachmentError)}</p> : null}
       </div>
 
-      {submissionError ? <p className="feedback-submit-error" role="alert">{submissionError}</p> : null}
+      {submissionError ? <p className="feedback-submit-error" role="alert">{typeof (submissionError) === 'string' ? tUi((submissionError) as string) : (submissionError)}</p> : null}
 
       <button
         className="feedback-submit-button"
@@ -213,7 +212,7 @@ export function FeedbackPanel({ contextLabel }: { contextLabel: string }) {
         type="submit"
       >
         <Send size={15} />
-        {submitting ? 'Отправляем…' : 'Отправить feedback'}
+        {submitting ? tUi("Отправляем…") : tUi("Отправить feedback")}
       </button>
     </form>
   );

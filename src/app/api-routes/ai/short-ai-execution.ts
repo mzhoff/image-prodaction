@@ -61,7 +61,7 @@ export function executeShortOpenRouterCall<TProvider, TResult>(
 
 export function toShortAiApiErrorResponse(error: unknown) {
   if (error instanceof ProviderConnectionNotConfiguredError) {
-    return apiError('provider_not_configured', error.message, 409);
+    return apiError(error.code, error.message, 409);
   }
   if (error instanceof ProviderCredentialConfigurationError) {
     return apiError(

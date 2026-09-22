@@ -1,3 +1,4 @@
+import { AudioProcessingError } from '@/shared/media/audio-contracts';
 import { toApiErrorResponse } from '@/app/api-routes/error-response';
 import {
   AssetDocumentWorkspaceMismatchError,
@@ -11,6 +12,7 @@ import {
 import { apiError } from '@/shared/api/api-error';
 
 export function toAssetApiErrorResponse(error: unknown) {
+  if (error instanceof AudioProcessingError) return apiError(error.code, error.message, error.status);
   if (error instanceof AssetNotFoundError) return apiError('asset_not_found', 'Asset not found.', 404);
   if (error instanceof AssetNotReadyError) return apiError('asset_not_ready', 'Asset content is not ready.', 409);
   if (error instanceof AssetDocumentWorkspaceMismatchError) {

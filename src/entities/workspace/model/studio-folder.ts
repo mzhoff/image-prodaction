@@ -3,6 +3,7 @@ export interface StudioFolder {
   workspaceId: string;
   name: string;
   systemKey: string | null;
+  parentId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,3 +1,4 @@
+import { readBoundedAudioStream } from '@/shared/media/audio-upload-request';
 import { and, eq, sql } from 'drizzle-orm';
 import {
   managedAttachmentRefSchema,
@@ -128,9 +129,11 @@ export class ChatAttachmentAssetBridge {
     const declaredLength = Number.parseInt(response.headers.get('content-length') ?? '', 10);
     const maxBytes = getMaxImageUploadBytes();
     if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+      await response.body?.cancel();
       throw new Error('The image attachment is too large for a document asset.');
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!response.body) throw new Error('Attachment content is empty.');
+    const bytes = await readBoundedAudioStream(response.body, maxBytes);
     if (bytes.byteLength > maxBytes) throw new Error('The image attachment is too large for a document asset.');
     const created = await uploadImageAsset({
       bytes,

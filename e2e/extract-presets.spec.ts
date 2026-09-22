@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -84,7 +85,7 @@ test('Extract presets preserve drafts and expose selected graphic layers through
   const savedExtract = () => document.snapshot.project.nodes.find((node) => node.id === extract.id)!.data as ImageToTextNodeData;
 
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     const node = page.locator(`[data-node-id="${extract.id}"]`);
     const presetControl = node.getByRole('button', { name: 'Extract preset', exact: true });
     const layerControl = node.getByRole('button', { name: 'Extract layers', exact: true });

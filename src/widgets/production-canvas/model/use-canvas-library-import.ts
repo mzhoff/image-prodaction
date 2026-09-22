@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useRef } from 'react';
 import { loadLibraryImageReference, readLibraryProjectImports } from '@/entities/production-graph/lib/library-image-reference';
@@ -14,6 +15,7 @@ export function useCanvasLibraryImport({ projectId, ready, documentStatus, getPo
   getPosition: () => GraphPoint;
   showToast: (message: string) => void;
 }) {
+  const tUi = useTranslations();
   const positionRef = useRef(getPosition);
   positionRef.current = getPosition;
   const canImportRef = useRef(ready && documentStatus === 'active');
@@ -29,28 +31,28 @@ export function useCanvasLibraryImport({ projectId, ready, documentStatus, getPo
     const scope = getActiveAssetScopeSnapshot();
     const signal = lifecycleRef.current?.signal;
     if (!ready || !projectId || scope?.documentId !== projectId || documentStatus !== 'active') {
-      showToast('Сначала откройте доступный проект и дождитесь загрузки канваса.');
+      showToast(tUi("Сначала откройте доступный проект и дождитесь загрузки канваса."));
       return false;
     }
     const pending = entries.filter(({ nodeId }) => !nodeId || !useProductionGraphStore.getState().nodes.some((node) => node.id === nodeId));
     if (!pending.length) return true;
     const position = positionRef.current();
     try {
-      if (pending.length > 1) showToast(`Добавляем изображения из библиотеки: ${pending.length}…`);
+      if (pending.length > 1) showToast(tUi("Добавляем изображения из библиотеки: {p1}…", { p1: pending.length }));
       const loaded = [];
       for (const { assetId, nodeId } of pending) {
         loaded.push({ asset: await loadLibraryImageReference(assetId, scope.workspaceId, signal), nodeId });
       }
       if (signal?.aborted || !canImportRef.current || getActiveAssetScopeSnapshot() !== scope) return false;
       insertLibraryImageBatch(loaded, position);
-      showToast(loaded.length > 1 ? `Добавлено изображений: ${loaded.length}. Всю группу можно отменить одним Undo.`
-        : 'Изображение добавлено в Import. Оригинал и миниатюра используются из библиотеки.');
+      showToast(loaded.length > 1 ? tUi("Добавлено изображений: {p1}. Всю группу можно отменить одним Undo.", { p1: loaded.length })
+        : tUi("Изображение добавлено в Import. Оригинал и миниатюра используются из библиотеки."));
       return true;
     } catch (error) {
-      if (!signal?.aborted) showToast(error instanceof Error ? error.message : 'Не удалось вставить изображение.');
+      if (!signal?.aborted) showToast(error instanceof Error ? error.message : tUi("Не удалось вставить изображение."));
       return false;
     }
-  }, [documentStatus, projectId, ready, showToast]);
+  }, [tUi, documentStatus, projectId, ready, showToast]);
 
   useEffect(() => {
     if (!ready || !projectId) return;

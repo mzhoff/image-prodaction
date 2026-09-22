@@ -6,5 +6,6 @@
 .card .table { font-size: 12px; }
 .card .table th { font-size: 10px; }
 .card .table th:first-child, .card .table td:first-child { width: auto; }
-.card form { border-top: 1px solid var(--pui-semantic-border-default); padding-top: 18px; }
+.card form { border: 0; padding: 16px; border-radius: 14px; background: var(--settings-inset); }
+.card form input:not([type="checkbox"]), .card form :global(.settings-select-trigger) { background: var(--settings-card); }
 .card legend { padding: 0 0 14px; font-size: 14px; font-weight: 600; }

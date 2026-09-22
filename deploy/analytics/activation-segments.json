@@ -1,0 +1,241 @@
+{
+  "counterId": 112833712,
+  "verifiedOn": "2026-09-22",
+  "segments": [
+    {
+      "id": 1008105193,
+      "name": "REVERIE · Анкета завершена",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='onboarding_status' AND ym:s:userParamsLevel3=='completed')"
+    },
+    {
+      "id": 1008105195,
+      "name": "REVERIE · Дизайнеры",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='design')"
+    },
+    {
+      "id": 1008105196,
+      "name": "REVERIE · Маркетологи",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='marketing')"
+    },
+    {
+      "id": 1008105197,
+      "name": "REVERIE · Авторы контента",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='creator')"
+    },
+    {
+      "id": 1008105198,
+      "name": "REVERIE · Видеопродакшен",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='video')"
+    },
+    {
+      "id": 1008105199,
+      "name": "REVERIE · Предприниматели",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='founder')"
+    },
+    {
+      "id": 1008105200,
+      "name": "REVERIE · Эксперты",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='expert')"
+    },
+    {
+      "id": 1008105201,
+      "name": "REVERIE · Студенты",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='student')"
+    },
+    {
+      "id": 1008105202,
+      "name": "REVERIE · Другие роли",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='role' AND ym:s:userParamsLevel3=='other')"
+    },
+    {
+      "id": 1008105203,
+      "name": "REVERIE · Возраст до 18",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='age_group' AND ym:s:userParamsLevel3=='under18')"
+    },
+    {
+      "id": 1008105204,
+      "name": "REVERIE · Возраст 18–24",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='age_group' AND ym:s:userParamsLevel3=='18_24')"
+    },
+    {
+      "id": 1008105205,
+      "name": "REVERIE · Возраст 25–34",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='age_group' AND ym:s:userParamsLevel3=='25_34')"
+    },
+    {
+      "id": 1008105206,
+      "name": "REVERIE · Возраст 35–44",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='age_group' AND ym:s:userParamsLevel3=='35_44')"
+    },
+    {
+      "id": 1008105207,
+      "name": "REVERIE · Возраст 45–54",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='age_group' AND ym:s:userParamsLevel3=='45_54')"
+    },
+    {
+      "id": 1008105208,
+      "name": "REVERIE · Возраст 55+",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='age_group' AND ym:s:userParamsLevel3=='55plus')"
+    },
+    {
+      "id": 1008105209,
+      "name": "REVERIE · AI: начинающие",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='ai_experience' AND ym:s:userParamsLevel3=='new')"
+    },
+    {
+      "id": 1008105210,
+      "name": "REVERIE · AI: пробовали",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='ai_experience' AND ym:s:userParamsLevel3=='tried')"
+    },
+    {
+      "id": 1008105211,
+      "name": "REVERIE · AI: регулярные пользователи",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='ai_experience' AND ym:s:userParamsLevel3=='regular')"
+    },
+    {
+      "id": 1008105212,
+      "name": "REVERIE · AI: встроен в процесс",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='ai_experience' AND ym:s:userParamsLevel3=='workflow')"
+    },
+    {
+      "id": 1008105213,
+      "name": "REVERIE · Задача: изображения",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='tasks_image' AND ym:s:userParamsLevel3=='yes')"
+    },
+    {
+      "id": 1008105214,
+      "name": "REVERIE · Задача: видео",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='tasks_video' AND ym:s:userParamsLevel3=='yes')"
+    },
+    {
+      "id": 1008105215,
+      "name": "REVERIE · Задача: тексты",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='tasks_writing' AND ym:s:userParamsLevel3=='yes')"
+    },
+    {
+      "id": 1008105216,
+      "name": "REVERIE · Задача: автоматизация",
+      "expression": "EXISTS(ym:s:userParamsLevel1=='reverie' AND ym:s:userParamsLevel2=='tasks_automation' AND ym:s:userParamsLevel3=='yes')"
+    },
+    {
+      "id": 1008105217,
+      "name": "REVERIE · Визиты с ошибкой входа",
+      "expression": "ym:s:goal661652943IsReached=='Yes'"
+    },
+    {
+      "id": 1008105218,
+      "name": "REVERIE · Визиты с ошибкой анкеты",
+      "expression": "ym:s:goal661652949IsReached=='Yes'"
+    },
+    {
+      "id": 1008105219,
+      "name": "REVERIE · Визиты с нажатием пополнения",
+      "expression": "ym:s:goal661652991IsReached=='Yes'"
+    },
+    {
+      "id": 1008105220,
+      "name": "REVERIE · Визиты с зачислением",
+      "expression": "ym:s:goal661653006IsReached=='Yes'"
+    },
+    {
+      "id": 1008105221,
+      "name": "REVERIE · Визиты с запуском генерации",
+      "expression": "ym:s:goal651324843IsReached=='Yes'"
+    }
+  ],
+  "uiSegments": [
+    {
+      "name": "REVERIE · Анкета завершена",
+      "path": "reverie.onboarding_status.completed"
+    },
+    {
+      "name": "REVERIE · Роль: дизайн",
+      "path": "reverie.role.design"
+    },
+    {
+      "name": "REVERIE · Роль: маркетинг",
+      "path": "reverie.role.marketing"
+    },
+    {
+      "name": "REVERIE · Роль: автор контента",
+      "path": "reverie.role.creator"
+    },
+    {
+      "name": "REVERIE · Роль: видеопродакшен",
+      "path": "reverie.role.video"
+    },
+    {
+      "name": "REVERIE · Роль: предприниматель",
+      "path": "reverie.role.founder"
+    },
+    {
+      "name": "REVERIE · Роль: эксперт",
+      "path": "reverie.role.expert"
+    },
+    {
+      "name": "REVERIE · Роль: студент",
+      "path": "reverie.role.student"
+    },
+    {
+      "name": "REVERIE · Роль: другая",
+      "path": "reverie.role.other"
+    },
+    {
+      "name": "REVERIE · Возраст: до 18",
+      "path": "reverie.age_group.under18"
+    },
+    {
+      "name": "REVERIE · Возраст: 18–24",
+      "path": "reverie.age_group.18_24"
+    },
+    {
+      "name": "REVERIE · Возраст: 25–34",
+      "path": "reverie.age_group.25_34"
+    },
+    {
+      "name": "REVERIE · Возраст: 35–44",
+      "path": "reverie.age_group.35_44"
+    },
+    {
+      "name": "REVERIE · Возраст: 45–54",
+      "path": "reverie.age_group.45_54"
+    },
+    {
+      "name": "REVERIE · Возраст: 55+",
+      "path": "reverie.age_group.55plus"
+    },
+    {
+      "name": "REVERIE · AI: начинающие",
+      "path": "reverie.ai_experience.new"
+    },
+    {
+      "name": "REVERIE · AI: пробовали",
+      "path": "reverie.ai_experience.tried"
+    },
+    {
+      "name": "REVERIE · AI: регулярно используют",
+      "path": "reverie.ai_experience.regular"
+    },
+    {
+      "name": "REVERIE · AI: встроен в процесс",
+      "path": "reverie.ai_experience.workflow"
+    },
+    {
+      "name": "REVERIE · Задача: изображения",
+      "path": "reverie.tasks_image.yes"
+    },
+    {
+      "name": "REVERIE · Задача: видео",
+      "path": "reverie.tasks_video.yes"
+    },
+    {
+      "name": "REVERIE · Задача: тексты",
+      "path": "reverie.tasks_writing.yes"
+    },
+    {
+      "name": "REVERIE · Задача: автоматизация",
+      "path": "reverie.tasks_automation.yes"
+    }
+  ],
+  "uiVerifiedOn": "2026-09-22"
+}

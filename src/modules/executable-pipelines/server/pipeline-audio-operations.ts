@@ -14,6 +14,7 @@ export function createStoredAudioOperations(scope: PipelineHandlerScope): AudioH
   return {
     async convertAudio(input) {
       const source = await readAudioArtifact(input.context.workspaceId, input.artifact, input.signal);
+      try {
       const options = audioConvertOptionsSchema.parse(input.config);
       const converted = await convertAudioBytes({ bytes: source.bytes, options, signal: input.signal });
       input.signal.throwIfAborted();
@@ -26,17 +27,18 @@ export function createStoredAudioOperations(scope: PipelineHandlerScope): AudioH
         userId: scope.actorUserId, workspaceId: input.context.workspaceId,
       }, converted);
       return toAudioArtifact(asset, input.context.runId);
+      } finally { await source.dispose(); }
     },
     async transcribeAudio(input) {
       const source = await readAudioArtifact(input.context.workspaceId, input.artifact, input.signal);
-      return transcribeAudio({
+      try { return await transcribeAudio({
         bytes: source.bytes, model: requireString(input.config.model, 'Transcription model'),
         language: typeof input.config.language === 'string' ? input.config.language : 'auto',
         actorUserId: scope.actorUserId, documentId: scope.documentId, workspaceId: input.context.workspaceId,
         idempotencyKey: `pipeline:${input.context.runId}:node:${input.nodeId}`, signal: input.signal,
         runtimeAttribution: await getRuntimeGenerationAttribution(input.context, input.nodeId),
         metadata: { pipelineRunId: input.context.runId, pipelineNodeId: input.nodeId, sourceAssetId: source.asset.id },
-      });
+      }); } finally { await source.dispose(); }
     },
     async generateAudio(input) {
       const options = longSpeechOptionsSchema.parse({ ...input.config, inputText: input.text });

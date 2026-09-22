@@ -13,8 +13,8 @@ export function WorkspaceFileCard({ project, folderName, editing, name, onName, 
 }) {
   return <article className="workspace-project-card" onContextMenu={menu}>
     <div className="workspace-project-preview">
-      <Link href={`/projects/${project.id}`} aria-label={`Open ${project.name}`}>
-        {project.thumbnailAvailable && project.thumbnailUrl ? <img src={project.thumbnailUrl} alt="" loading="lazy" />
+      <Link href={`/projects/${project.id}`} aria-label={`Open ${project.name}`} draggable={false}>
+        {project.thumbnailAvailable && project.thumbnailUrl ? <img src={project.thumbnailUrl} alt="" loading="lazy" draggable={false} />
           : <span className="workspace-project-preview-empty" aria-hidden="true"><FilePlus2 size={22} /><span>Preview will appear after editing</span></span>}
       </Link>
       {project.status === 'active' ? <button type="button" aria-pressed={project.favorite} onClick={favorite}

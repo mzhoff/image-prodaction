@@ -1,3 +1,5 @@
+'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import type { ReactNode } from 'react';
 
 export function SettingsState({ busy = false, children, icon, title, tone = 'neutral' }: {
@@ -16,9 +18,10 @@ export function SettingsState({ busy = false, children, icon, title, tone = 'neu
 }
 
 export function ProviderSettingsSkeleton() {
+  const tUi = useTranslations();
   return (
     <div className="settings-provider-skeleton"
-      aria-label="Загружаем настройки AI Providers" aria-busy="true">
+      aria-label={tUi("Загружаем настройки AI Providers")} aria-busy="true">
       <i /><i /><i />
     </div>
   );

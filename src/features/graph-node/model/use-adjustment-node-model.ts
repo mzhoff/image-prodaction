@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffectEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { AdjustmentNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
@@ -38,6 +39,8 @@ const defaultAdjustmentValues: ImageAdjustmentValues = {
 };
 
 export function useAdjustmentNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const data = node.data as AdjustmentNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -138,7 +141,7 @@ export function useAdjustmentNodeModel(node: ProductionNode) {
       } catch (error) {
         if (processingRef.current !== runId) return;
         updateNodeDataSilent(node.id, {
-          message: error instanceof Error ? error.message : 'Не удалось применить коррекцию.',
+          message: error instanceof Error ? error.message : tEffect("Не удалось применить коррекцию."),
         });
         setNodeStatus(node.id, 'error');
       }

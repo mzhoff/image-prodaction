@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { X } from '@prodactionpro/ui-core/icons';
 import { useEffect } from 'react';
@@ -16,6 +17,7 @@ export function CompositionConfirmDialog({
   onConfirm: () => void;
   title: string;
 }) {
+  const tUi = useTranslations();
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCancel();
@@ -36,7 +38,7 @@ export function CompositionConfirmDialog({
         </header>
         <p>{message}</p>
         <footer className="composition-confirm-actions">
-          <button type="button" className="composition-confirm-secondary" onClick={onCancel}>Отмена</button>
+          <button type="button" className="composition-confirm-secondary" onClick={onCancel}>{tUi("Отмена")}</button>
           <button type="button" className="composition-confirm-primary" onClick={onConfirm}>{confirmLabel}</button>
         </footer>
       </section>
