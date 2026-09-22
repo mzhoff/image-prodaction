@@ -1,0 +1,15 @@
+# Copy to /opt/reverie-image-production/compose.release.yaml and apply LAST after
+# compose.production.yaml, compose.timeweb.yaml and the protected compose.egress.yaml.
+# Current Timeweb release uses private MinIO; omit this storage alias when moving
+# to external S3 and follow docs/external-s3-storage.md instead.
+services:
+  minio:
+    networks:
+      default: {}
+      edge:
+        aliases: [reverie-production-storage]
+  web:
+    environment:
+      REVERIE_BILLING_PUBLIC_CONFIG_FILE: /run/reverie/billing.public.json
+    volumes:
+      - /opt/reverie-image-production/billing.public.json:/run/reverie/billing.public.json:ro
