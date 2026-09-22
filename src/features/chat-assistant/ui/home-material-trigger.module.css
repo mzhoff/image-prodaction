@@ -1,0 +1,11 @@
+.trigger { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; flex: 0 0 96px; width: 96px; height: 80px; padding: 10px 12px; gap: 6px; border: 1px solid var(--pui-semantic-border-default); border-radius: 15px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 60%, var(--pui-semantic-surface-secondary)); transition: background 150ms ease; color: var(--pui-semantic-text-primary); box-shadow: 0 2px 5px #00000006; text-align: left; cursor: pointer; }
+.icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-secondary); }
+.icon svg { width: 19px; height: 19px; }
+.count { position: absolute; top: 12px; right: 10px; color: var(--pui-semantic-text-muted); font-size: 9px; font-weight: 500; line-height: 1; }
+.trigger strong { font: inherit; font-size: 11px; font-weight: 550; line-height: 16px; }
+.trigger:is(:hover,:focus-visible,[data-selected='true']) .icon { background: linear-gradient(145deg,#91e1ff,#49a3e9 60%,#397de0); color: #fff; box-shadow: inset 0 1px 1px #ffffff80; }
+.trigger:disabled { opacity: .5; cursor: default; }
+.trigger:focus-visible { outline: 2px solid #309ce6; outline-offset: 3px; }
+
+.trigger:is(:hover,:focus-visible):not(:disabled) { background: var(--pui-semantic-surface-primary); }
+@media (prefers-reduced-motion: reduce) { .trigger { transition: none; } }

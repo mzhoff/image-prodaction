@@ -1,6 +1,10 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
 import { useState, type FormEvent } from 'react';
-import { BrandSelect } from '@/shared/ui/brand-select';
+import { SettingsSelect } from './settings-select';
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 import type {
   MemberBudgetPolicy,
   MemberBudgetRow,
@@ -17,6 +21,7 @@ export function MemberBudgetForm({
   cancel: () => void;
   save: (policy: Omit<MemberBudgetPolicy, 'mode' | 'revision'>) => Promise<void>;
 }) {
+  const tUi = useTranslations();
   const [period, setPeriod] = useState(member.period);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,45 +30,42 @@ export function MemberBudgetForm({
     void save({ enabled: fields.get('enabled') === 'on', limitUsd: limit || null, period });
   }
   return (
-    <form className="settings-form" onSubmit={submit} aria-label={`Лимит участника ${member.name}`}>
+    <form className="settings-form" onSubmit={submit} aria-label={tUi("Лимит участника {p1}", { p1: member.name })}>
       <fieldset disabled={busy} style={{ border: 0, padding: 0, display: 'grid', gap: 14 }}>
-        <legend>{member.name}: настройки AI</legend>
+        <legend>{member.name}{tUi(": настройки AI")}</legend>
         <label className="settings-checkbox">
           <input type="checkbox" name="enabled" defaultChecked={member.enabled} />
-          <span>Разрешить платные AI-запросы</span>
+          <span>{tUi("Разрешить платные AI-запросы")}</span>
         </label>
         <label>
-          <span>Лимит в USD</span>{' '}
-          <input
+          <span>{tUi("Лимит в USD")}</span>{' '}
+          <PuiInput
             name="limit"
             inputMode="decimal"
             defaultValue={member.limitUsd ?? ''}
             pattern="[0-9]{1,12}(\.[0-9]{1,8})?"
             maxLength={21}
-            placeholder="Без лимита"
+            placeholder={tUi("Без лимита")}
           />
         </label>
-        <BrandSelect
-          label="Период лимита"
+        <SettingsSelect
+          label={tUi("Период лимита")}
           value={period}
           disabled={busy}
           onChange={(value) => setPeriod(value === 'month' ? 'month' : 'lifetime')}
           options={[
-            { value: 'lifetime', label: 'За всё время, без сброса' },
-            { value: 'month', label: 'Календарный месяц (UTC)' },
+            { value: 'lifetime', label: tUi("За всё время, без сброса") },
+            { value: 'month', label: tUi("Календарный месяц (UTC)") },
           ]}
         />
         <p>
-          Сумма включает уже понесённые расходы за выбранный период. Пустое поле — без личного лимита. Токены
-          показываем в статистике, а бюджет задаём в USD: у разных моделей разная цена токена.
-        </p>
+          {tUi("Лимит в USD учитывает уже потраченное за выбранный период. Пустое поле — без ограничения.")}</p>
         <div className="settings-form-actions">
-          <button className="settings-primary-button" type="submit">
-            {busy ? 'Сохраняем…' : 'Сохранить'}
-          </button>{' '}
-          <button className="settings-quiet-button" type="button" onClick={cancel}>
-            Отмена
-          </button>
+          <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="submit">
+            {busy ? tUi("Сохраняем…") : tUi("Сохранить")}
+          </Button>{' '}
+          <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button" onClick={cancel}>
+            {tUi("Отмена")}</Button>
         </div>
       </fieldset>
     </form>

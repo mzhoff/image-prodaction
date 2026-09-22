@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
@@ -6,7 +7,7 @@ import { createDefaultNode } from '../src/entities/production-graph/model/create
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
 import type { AssetRecord, ExportImageNodeData, ProductionNode } from '../src/entities/production-graph/model/types';
-import { audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
 
 test.use({ channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL, trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1440, height: 1000 } });
 
@@ -23,8 +24,7 @@ test('Export browses inputs and upstream history without changing output; curren
     const form = audioQaForm(bytes, owner.workspaceId, true);
     form.set('file', new Blob([new Uint8Array(bytes)], { type: 'image/png' }), `variant-${i + 1}.png`);
     const upload = await owner.http.request('/api/assets/images', { form });
-    expect(upload.status).toBe(201);
-    assets.push(mapRemoteImageAsset((await upload.json()).asset));
+    assets.push(mapRemoteImageAsset((await awaitQaAssetIngest(owner.http, upload)).asset));
   }
   const source = createDefaultNode('importImage', { x: 0, y: 0 });
   source.data = { ...source.data, assetId: assets[0].id };
@@ -62,7 +62,7 @@ test('Export browses inputs and upstream history without changing output; curren
     expect({ format: meta.format, width: meta.width, height: meta.height }).toEqual({ format: 'webp', width, height });
   };
   try {
-    await page.goto(`/projects/${project.id}`);
+    await gotoQaSection(page, `/projects/${project.id}`);
     await expect(card).toBeVisible();
     await expect(currentDownload).toBeEnabled();
     const canonical = await readOutput();
@@ -96,8 +96,10 @@ test('Export browses inputs and upstream history without changing output; curren
     const saving = page.waitForResponse((response) => response.url().endsWith('/api/assets/images') && response.request().method() === 'POST');
     await card.getByRole('button', { name: 'Save current to Library', exact: true }).click();
     const saved = await saving;
-    expect(saved.status()).toBe(201);
-    const savedAsset = mapRemoteImageAsset((await saved.json()).asset);
+    const { asset: libraryAsset } = await awaitQaAssetIngest(owner.http, {
+      status: saved.status(), json: () => saved.json(),
+    });
+    const savedAsset = mapRemoteImageAsset(libraryAsset);
     expect({ width: savedAsset.width, height: savedAsset.height, mimeType: savedAsset.mimeType }).toEqual({ width: 200, height: 150, mimeType: 'image/webp' });
     const zipDownload = page.waitForEvent('download');
     await card.getByRole('button', { name: 'Download ZIP', exact: true }).click();

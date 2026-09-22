@@ -1,0 +1,10 @@
+.section-tool-button {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px;
+  color: var(--pui-semantic-text-secondary); background: transparent; cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.section-tool-button:hover, .section-tool-button[data-active=true] { background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-primary); }
+.section-tool-button:focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: 3px; }
+.section-tool-button.section-help-button { background: var(--pui-semantic-surface-primary); }
+.section-tool-button.section-help-button:hover { color: var(--pui-semantic-accent-default); }

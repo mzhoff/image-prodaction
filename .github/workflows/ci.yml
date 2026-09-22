@@ -77,12 +77,16 @@ jobs:
           scope: '@prodactionpro'
       - name: Verify ChatModule version family
         run: npm run check:chatmodule-versions
+      - name: Verify reproducible package sources
+        run: npm run check:release-package-sources
       - name: Install dependencies
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PRODACTION_PACKAGES_READ_TOKEN }}
         run: npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+      - name: Verify release tooling and patched loader compatibility
+        run: node --test scripts/private-packages.test.mjs scripts/esbuild-loader-compatibility.test.mjs scripts/analytics-release-profile.test.mjs
       - name: Install audio codec test tools
         run: |
           sudo apt-get update
@@ -129,11 +133,22 @@ jobs:
         run: npm run lint
       - name: Check architecture boundaries
         run: npm run check:architecture
+      - name: Check published UI contract
+        run: npm run check:reverie-ui
       - name: Enforce implementation file-size limit
         run: npm run check:size
       - name: Unit tests with coverage thresholds
         env:
           AUDIO_CODEC_TESTS_REQUIRED: '1'
+          VIDEO_CODEC_TESTS_REQUIRED: '1'
+          TIMELINE_CODEC_TESTS_REQUIRED: '1'
+          MEDIA_LOCAL_INTEGRATION: '1'
+          WORKSPACE_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          VIDEO_STYLE_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          MODEL_PREFERENCES_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          USAGE_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          PLATFORM_BUDGET_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          STORIES_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
         run: npm run test:coverage
       - name: Production build
         run: npm run build
@@ -145,6 +160,7 @@ jobs:
             config --quiet
           docker compose --env-file .env.production.example -f compose.production.yaml -f compose.timeweb.yaml config --quiet
           node scripts/check-production-network-config.mjs
+          node --test scripts/s3-storage-ops.test.mjs
           docker run --rm \
             --volume "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.10.2-alpine \
@@ -183,9 +199,15 @@ jobs:
           node scripts/wait-for-url.mjs http://localhost:3004/api/health/pipeline-worker 60000
       - name: Backend critical-path smoke
         run: npm run test:backend-smoke
+      - name: Account onboarding persistence and isolation
+        env:
+          RUN_ONBOARDING_POSTGRES: '1'
+        run: node --experimental-strip-types --loader ./scripts/node-test-loader.mjs --test src/modules/user-onboarding/server/onboarding.postgres.test.ts
       - name: Generation persistence smoke
         run: npm run test:generation-persistence-smoke
       - name: Browser critical-path E2E
+        env:
+          RUN_ONBOARDING_POSTGRES: '1'
         run: npx playwright test
       - name: Build production container
         env:

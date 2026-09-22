@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useEffect, type RefObject } from 'react';
+import { useEffectEvent, useEffect, type RefObject } from 'react';
 import type { GenerateImageNodeData } from '@/entities/production-graph/model/types';
 import type { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { appendGenerationResult } from '@/entities/production-graph/model/generation-history';
@@ -29,6 +30,8 @@ interface RecoveryOptions extends Pick<GraphState, 'addAsset' | 'setNodeStatus' 
 export function useGenerateImageRecovery({ nodeId, pendingGenerationJobId, generationPresentationRef,
   activeGenerationJobIdRef, pollingControllerRef, addAsset, setNodeStatus, setGenerationWaitPhase,
   updateNodeData, updateNodeDataSilent }: RecoveryOptions) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   useEffect(() => {
     const jobId = pendingGenerationJobId;
     if (!jobId || activeGenerationJobIdRef.current === jobId) return;
@@ -39,7 +42,7 @@ export function useGenerateImageRecovery({ nodeId, pendingGenerationJobId, gener
     setNodeStatus(nodeId, 'running');
     setGenerationWaitPhase('queued');
     updateNodeDataSilent(nodeId, {
-      message: 'Восстанавливаем незавершённую генерацию…',
+      message: tEffect("Восстанавливаем незавершённую генерацию…"),
     });
     void requestGenerationJob(jobId, {
       signal: controller.signal,
@@ -69,8 +72,8 @@ export function useGenerateImageRecovery({ nodeId, pendingGenerationJobId, gener
       notifyAssistantNotice({
         id: `image-generated:${asset.id}`,
         status: 'success',
-        title: 'Изображение готово',
-        subtitle: 'Ровер закончил задачу. Открой чат, чтобы найти источник.',
+        title: tEffect("Изображение готово"),
+        subtitle: tEffect("Ровер закончил задачу. Открой чат, чтобы найти источник."),
         nodeId: nodeId,
       });
       if (scope) {
@@ -109,14 +112,6 @@ export function useGenerateImageRecovery({ nodeId, pendingGenerationJobId, gener
         pollingControllerRef.current = null;
       }
     };
-  }, [
-    activeGenerationJobIdRef, generationPresentationRef, pollingControllerRef, setGenerationWaitPhase,
-    addAsset,
-    nodeId,
-    pendingGenerationJobId,
-    setNodeStatus,
-    updateNodeData,
-    updateNodeDataSilent,
-  ]);
+  }, [activeGenerationJobIdRef, generationPresentationRef, pollingControllerRef, setGenerationWaitPhase, addAsset, nodeId, pendingGenerationJobId, setNodeStatus, updateNodeData, updateNodeDataSilent]);
 
 }

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { getActiveAssetScope, getActiveAssetScopeSnapshot, subscribeActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
@@ -25,6 +26,7 @@ function connectedVideoId(nodeId: string, context = useProductionGraphStore.getS
 }
 
 export function useTimelineNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as TimelineHandoffNodeData;
   const nodes = useProductionGraphStore((state) => state.nodes);
   const edges = useProductionGraphStore((state) => state.edges);
@@ -89,8 +91,8 @@ export function useTimelineNodeModel(node: ProductionNode) {
           const total = saved.shotBaselines?.length ?? 0;
           const elapsed = response.job.startedAt ? Date.now() - Date.parse(response.job.startedAt) : undefined;
           setDescriptionProgress(saved.action === 'describe' ? { completed, total, estimatedRemainingMs: estimateRemainingTime(elapsed, completed, total) } : null);
-          setProgress(saved.action === 'analyze' ? 'Ищем смены сцен и подготавливаем кадры'
-            : `Описания: ${completed} / ${saved.shotBaselines?.length ?? 0}`);
+          setProgress(saved.action === 'analyze' ? tUi("Ищем смены сцен и подготавливаем кадры")
+            : tUi("Описания: {p1} / {p2}", { p1: completed, p2: saved.shotBaselines?.length ?? 0 }));
           const latest = currentData(node.id)?.analysis;
           if (latest && response.result && !('version' in response.result)) {
             const next = applyTimelineDescriptions(latest, response.result, saved.shotBaselines ?? []);
@@ -107,7 +109,7 @@ export function useTimelineNodeModel(node: ProductionNode) {
       useProductionGraphStore.getState().setNodeStatus(node.id, 'error');
       useProductionGraphStore.getState().updateNodeDataSilent(node.id, { message: error instanceof Error ? error.message : 'Timeline processing failed.' });
     } finally { if (guard.current === controller) guard.current = null; }
-  }, [node.id]);
+  }, [tUi, node.id]);
 
   useEffect(() => {
     if (activeScope && data.request?.jobId && sourceId === data.request.sourceAssetId && !guard.current) void execute(data.request);

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RuntimeV2Client } from '@/modules/executable-pipelines/contracts/runtime-v2-contracts';
@@ -10,6 +11,7 @@ import {
 import { runtimeErrorMessage } from './runtime-connections-values';
 
 export function useRuntimeConnections(onDirtyChange: (dirty: boolean) => void) {
+  const tUi = useTranslations();
   const [workspaces, setWorkspaces] = useState<WorkspaceSettingsOption[]>([]);
   const [workspaceId, setWorkspaceId] = useState('');
   const [clients, setClients] = useState<RuntimeV2Client[]>([]);
@@ -131,7 +133,7 @@ export function useRuntimeConnections(onDirtyChange: (dirty: boolean) => void) {
 
   function selectWorkspace(id: string) {
     if (mutationLock.current || id === workspaceId) return;
-    if (issuedCredential && !window.confirm('Ключ показан только один раз. Вы уже перенесли его в подключаемое приложение?')) return;
+    if (issuedCredential && !window.confirm(tUi("Ключ показан только один раз. Вы уже перенесли его в подключаемое приложение?"))) return;
     clientsRequest.current += 1;
     detailsRequest.current += 1;
     setIssuedCredential(null);
@@ -146,7 +148,7 @@ export function useRuntimeConnections(onDirtyChange: (dirty: boolean) => void) {
 
   function selectClient(id: string) {
     if (mutationLock.current || id === clientId) return;
-    if (issuedCredential && !window.confirm('Ключ показан только один раз. Вы уже перенесли его в подключаемое приложение?')) return;
+    if (issuedCredential && !window.confirm(tUi("Ключ показан только один раз. Вы уже перенесли его в подключаемое приложение?"))) return;
     detailsRequest.current += 1;
     setIssuedCredential(null);
     setDetails(null);

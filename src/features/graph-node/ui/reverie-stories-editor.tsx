@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,6 +22,7 @@ interface Props {
 
 /** The product adapter owns save/cancel and history; the shared editor owns structure. */
 export function ReverieStoriesEditor({ initialDocument, media, onSave, onClose, fromConnectedRecipe = false, authoringProfileBundle }: Props) {
+  const tUi = useTranslations();
   const dialog = useRef<HTMLDialogElement>(null);
   const [history, setHistory] = useState({ documents: [initialDocument], index: 0 });
   const draft = history.documents[history.index];
@@ -37,7 +39,7 @@ export function ReverieStoriesEditor({ initialDocument, media, onSave, onClose, 
     };
   }, []);
   return createPortal(
-    <dialog ref={dialog} className="reverie-stories-editor-dialog" aria-label="Редактор REVERIE Stories" data-node-interactive
+    <dialog ref={dialog} className="reverie-stories-editor-dialog" aria-label={tUi("Редактор REVERIE Stories")} data-node-interactive
       onCancel={(event) => { event.preventDefault(); onClose(); }}
       onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
@@ -58,13 +60,13 @@ export function ReverieStoriesEditor({ initialDocument, media, onSave, onClose, 
         </div>
         <footer className="reverie-stories-editor-footer">
           <div className="reverie-stories-editor-notes">
-            {saveError ? <p role="alert" className="reverie-stories-editor-error">{saveError}</p> : null}
-            <p>{fromConnectedRecipe ? 'Правки сохраняются в черновике. Новый запуск Pipeline соберёт историю из входов.' : 'Черновик сохраняется в Pipeline. Публикация Stories — в Content Hub.'}</p>
-            {!authoringProfileBundle ? <p>Для точного предпросмотра и кнопок загрузите стиль приложения в ноде.</p> : null}
+            {saveError ? <p role="alert" className="reverie-stories-editor-error">{typeof (saveError) === 'string' ? tUi((saveError) as string) : (saveError)}</p> : null}
+            <p>{fromConnectedRecipe ? tUi("Правки сохраняются в черновике. Новый запуск Pipeline соберёт историю из входов.") : tUi("Черновик сохраняется в Pipeline. Публикация Stories — в Content Hub.")}</p>
+            {!authoringProfileBundle ? <p>{tUi("Для точного предпросмотра и кнопок загрузите стиль приложения в ноде.")}</p> : null}
           </div>
           <div className="reverie-stories-editor-actions">
-            <Button type="button" appearance="outline" intent="neutral" size="md" onClick={onClose}>Отмена</Button>
-            <Button type="button" intent="neutral" size="md" leadingIcon={<Check size={16} />} onClick={() => { try { onSave(draft); } catch (error) { setSaveError(error instanceof Error ? error.message : 'Не удалось сохранить черновик.'); } }}>Сохранить черновик</Button>
+            <Button type="button" appearance="outline" intent="neutral" size="md" onClick={onClose}>{tUi("Отмена")}</Button>
+            <Button type="button" intent="neutral" size="md" leadingIcon={<Check size={16} />} onClick={() => { try { onSave(draft); } catch (error) { setSaveError(error instanceof Error ? error.message : tUi("Не удалось сохранить черновик.")); } }}>{tUi("Сохранить черновик")}</Button>
           </div>
         </footer>
       </div>

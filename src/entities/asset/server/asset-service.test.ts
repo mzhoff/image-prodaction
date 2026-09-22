@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AssetObjectStore } from '@/shared/storage/s3-assets';
@@ -254,6 +255,23 @@ test('reuses a server-requested asset id for retry-safe deterministic transforms
   assert.equal(allocatedIds, 0);
   assert.equal(putCalls, 1);
   assert.deepEqual(repository.transitions, ['pending', 'ready']);
+});
+
+test('documentless hidden uploads accept deterministic UUIDv5 and reuse the sealed asset', async () => {
+  const repository = new MemoryAssetRepository();
+  const stableId = '3d655414-035d-5e73-8f0b-81745a31cbca';
+  let puts = 0;
+  const dependencies: AssetUploadDependencies = { repository, bucket: 'private-assets', createId: () => assetId,
+    assertAccess: async (scope) => { assert.equal(scope.documentId, null); },
+    objectStore: createObjectStore({ put: async () => { puts++; } }),
+  };
+  const input = { bytes: onePixelPng, claimedContentType: 'image/png', documentId: null,
+    libraryVisible: false, maxBytes: 1024, origin: 'unknown' as const, operation: 'home_video_reference', originalName: 'reference.png',
+    requestedAssetId: stableId, userId: 'user-1', workspaceId };
+  const first = await uploadImageAsset(input, dependencies);
+  const replay = await uploadImageAsset(input, dependencies);
+  assert.equal(first.id, stableId); assert.equal(replay.id, stableId); assert.equal(puts, 1);
+  assert.equal(first.documentId, null);
 });
 
 test('concurrent deterministic uploads atomically claim one row and both resolve the same ready asset', async () => {
@@ -630,7 +648,7 @@ test('legacy Library thumbnail is generated lazily once and then served from its
   const thumbnailId = '01900000-0000-7000-8000-000000000009';
   const thumbnailBytes = Buffer.from('lazy-thumbnail');
   const repository = new MemoryAssetRepository();
-  repository.record = createRecord({ libraryVisible: true, status: 'ready' });
+  repository.record = createRecord({ libraryVisible: true, status: 'ready', byteSize: onePixelPng.length, checksumSha256: createHash('sha256').update(onePixelPng).digest('hex') });
   const gets: string[] = [];
   const puts: string[] = [];
 
@@ -669,7 +687,7 @@ test('legacy Library video poster is generated lazily and served as a stored thu
   const thumbnailBytes = Buffer.from('video-poster-webp');
   const repository = new MemoryAssetRepository();
   repository.record = createRecord({
-    contentType: 'video/mp4',
+    contentType: 'video/mp4', byteSize: onePixelPng.length, checksumSha256: createHash('sha256').update(onePixelPng).digest('hex'),
     mediaKind: 'video',
     libraryVisible: true,
     status: 'ready',
@@ -681,7 +699,7 @@ test('legacy Library video poster is generated lazily and served as a stored thu
     createId: () => '01900000-0000-7000-8000-000000000009',
     createVideoThumbnail: async (bytes) => {
       posterCreations += 1;
-      assert.deepEqual(Buffer.from(bytes), onePixelPng);
+      assert.deepEqual(Buffer.from(bytes instanceof Uint8Array ? bytes : bytes.header), onePixelPng);
       return createThumbnailImage(thumbnailBytes);
     },
     objectStore: createObjectStore({

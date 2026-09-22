@@ -17,12 +17,9 @@ yarn-error.log*
 pnpm-debug.log*
 .DS_Store
 .local-packages/*
-# Exact local canaries must travel with the Stories consumers until registry release.
+# Only currently used, verified archives travel with the release.
 !.local-packages/prodaction-stories-platform-contracts-3.0.0-canary.0.tgz
-!.local-packages/prodactionpro-ui-media-0.1.0-canary-media.4.tgz
-!.local-packages/prodactionpro-ui-stories-editor-0.1.0-canary-stories.2.tgz
-!.local-packages/prodactionpro-ui-stories-editor-0.1.0-canary-stories.4.tgz
-!.local-packages/prodactionpro-ui-stories-editor-0.1.0-canary-stories.5.tgz
+!.local-packages/reverie-identity-client-0.1.0-canary.9.tgz
 tsconfig.tsbuildinfo
 .playwright-mcp/
 /blob-report/
@@ -31,8 +28,4 @@ tsconfig.tsbuildinfo
 image-prodaction-canvas-*.png
 /.codex/artifacts/
 /.visual-intent/
-
-# Generic shared Identity client, built from the exact Content Hub package version.
-!.local-packages/reverie-identity-client-0.1.0-canary.2.tgz
-
-!.local-packages/reverie-identity-client-0.1.0-canary.4.tgz
+/src/app/config/billing.local.json

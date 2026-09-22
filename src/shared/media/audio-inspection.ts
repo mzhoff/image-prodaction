@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { mediaHeader, mediaChecksum, type MediaSource } from './media-source';
 import { dirname } from 'node:path';
 import { audioMetadataSchema, AudioProcessingError, MAX_AUDIO_BYTES, MAX_AUDIO_DURATION_SECONDS, MAX_AUDIO_OUTPUT_BYTES, type AudioContainer, type AudioInspectionOptions, type ValidatedAudio } from './audio-contracts';
 import { runAudioProgram } from './audio-process';
@@ -8,8 +8,8 @@ const demuxers = { ogg: 'ogg', m4a: 'mov', mp3: 'mp3', wav: 'wav', aac: 'aac', f
 const codecs = { ogg: ['opus', 'vorbis'], m4a: ['aac', 'alac'], mp3: ['mp3'], wav: ['pcm_u8', 'pcm_s16le', 'pcm_s24le', 'pcm_s32le', 'pcm_f32le', 'pcm_f64le'], aac: ['aac'], flac: ['flac'] };
 type ProbeStream = { codec_type?: string; codec_name?: string; channels?: number; sample_rate?: string; duration?: string; disposition?: { attached_pic?: number } };
 
-export function detectAudioContainer(bytes: Uint8Array): AudioContainer {
-  const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+export function detectAudioContainer(bytes: MediaSource): AudioContainer {
+  const data = Buffer.from(mediaHeader(bytes));
   if (data.length < 12) throw new AudioProcessingError('unsupported_audio', 'The audio file is empty or its signature is unsupported.', 415);
   const header = data.toString('ascii', 0, 4);
   if (header === 'OggS') return 'ogg';
@@ -21,7 +21,7 @@ export function detectAudioContainer(bytes: Uint8Array): AudioContainer {
   throw new AudioProcessingError('unsupported_audio', 'Supported audio: Ogg/Opus, M4A, MP3, WAV, AAC and FLAC.', 415);
 }
 
-export function validateAudioEnvelope(bytes: Uint8Array, options: AudioInspectionOptions) {
+export function validateAudioEnvelope(bytes: MediaSource, options: AudioInspectionOptions) {
   const limit = Math.min(options.maxBytes ?? MAX_AUDIO_BYTES, MAX_AUDIO_OUTPUT_BYTES);
   if (!Number.isSafeInteger(limit) || limit < 1 || bytes.byteLength < 1 || bytes.byteLength > limit) throw new AudioProcessingError('file_too_large', 'Audio must be nonempty and within the configured byte limit.', 413);
   const container = detectAudioContainer(bytes);
@@ -36,7 +36,7 @@ export function audioInputArguments(container: AudioContainer, source: string) {
     ...(container === 'm4a' ? ['-enable_drefs', '0', '-use_absolute_path', '0'] : []), '-f', demuxers[container], '-i', source];
 }
 
-export async function inspectAudioFile(bytes: Uint8Array, source: string, options: AudioInspectionOptions, container = detectAudioContainer(bytes)): Promise<ValidatedAudio> {
+export async function inspectAudioFile<T extends MediaSource>(bytes: T, source: string, options: AudioInspectionOptions, container = detectAudioContainer(bytes)): Promise<ValidatedAudio<T>> {
   const result = await runAudioProgram('ffprobe', ['-v', 'error', ...audioInputArguments(container, source), '-show_streams', '-show_format', '-of', 'json'], dirname(source), options.signal);
   let probe: { streams?: ProbeStream[]; format?: { duration?: string } };
   try { probe = JSON.parse(result); } catch { throw new AudioProcessingError('invalid_audio', 'The audio metadata is invalid.'); }
@@ -57,5 +57,5 @@ export async function inspectAudioFile(bytes: Uint8Array, source: string, option
   const times = [...progress.matchAll(/^out_time_us=(\d+)$/gm)].map((match) => Number(match[1]) / 1_000_000);
   const decodedDuration = Math.max(0, ...times);
   if (!decodedDuration || decodedDuration > maximum || Math.abs(decodedDuration - durationSeconds) > 0.5) throw new AudioProcessingError('invalid_audio_duration', 'The decoded audio duration does not match its metadata or limit.');
-  return { bytes, audio: parsed.data, byteSize: bytes.byteLength, checksumSha256: createHash('sha256').update(bytes).digest('hex'), contentType: parsed.data.contentType, extension: container };
+  return { bytes, audio: parsed.data, byteSize: bytes.byteLength, checksumSha256: mediaChecksum(bytes), contentType: parsed.data.contentType, extension: container };
 }

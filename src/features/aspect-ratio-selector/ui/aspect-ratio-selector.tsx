@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { ChevronDown } from '@prodactionpro/ui-core/icons';
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -16,6 +17,7 @@ export interface AspectRatioSelectorProps {
 }
 /** Model-bound discrete ratio control. Crop/custom dimensions deliberately remain separate. */
 export function AspectRatioSelector({ value, availableRatios, catalogRatios = [], onChange, getResolution, disabled }: AspectRatioSelectorProps) {
+  const tUi = useTranslations();
   const scale = useMemo(() => createAspectRatioScale([...catalogRatios, ...availableRatios]), [availableRatios, catalogRatios]);
   const choices = scale.filter((ratio) => availableRatios.includes(ratio));
   const hasAuto = availableRatios.includes('auto');
@@ -85,7 +87,7 @@ export function AspectRatioSelector({ value, availableRatios, catalogRatios = []
       }}><span className="mini-select-label">{value === 'auto' ? 'Auto' : value}</span><ChevronDown size={13} /></button>
     {anchor && !disabled && createPortal(<>
       <div className="dark-select-backdrop" data-node-interactive onPointerDown={(event) => { event.stopPropagation(); close(); }} />
-      <div ref={popup} id={id} role="dialog" aria-label="Выбор соотношения сторон" className="aspect-ratio-menu"
+      <div ref={popup} id={id} role="dialog" aria-label={tUi("Выбор соотношения сторон")} className="aspect-ratio-menu"
         data-placement={anchor.placement} data-node-interactive
         style={{ top: anchor.top, left: anchor.left, width: anchor.width }}
         onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()}
@@ -101,9 +103,9 @@ export function AspectRatioSelector({ value, availableRatios, catalogRatios = []
         </div>
         <div className="aspect-ratio-scroll" data-node-interactive>
           <div className="aspect-ratio-scale" style={{ width: scaleWidth }}>
-            <div role="slider" tabIndex={choices.length ? 0 : -1} aria-label="Соотношение сторон" aria-orientation="horizontal"
+            <div role="slider" tabIndex={choices.length ? 0 : -1} aria-label={tUi("Соотношение сторон")} aria-orientation="horizontal"
               aria-valuemin={0} aria-valuemax={scale.length - 1} aria-valuenow={supportedSelection ? selectedIndex : scale.indexOf('1:1')}
-              aria-valuetext={`${draft === 'auto' ? 'Автоматически' : draft}. ${resolution.label}`} aria-disabled={!choices.length}
+              aria-valuetext={`${draft === 'auto' ? tUi("Автоматически") : draft}. ${resolution.label}`} aria-disabled={!choices.length}
               className="aspect-ratio-slider" onKeyDown={keyboard} onPointerDown={startGesture} onPointerMove={moveGesture}
               onPointerUp={finishGesture} onPointerCancel={cancelGesture} onLostPointerCapture={cancelGesture}>
               <div className="aspect-ratio-track">

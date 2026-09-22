@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useEffect, useRef } from 'react';
+import { useEffectEvent, useEffect, useRef } from 'react';
 import type { SubjectBuilderNodeData } from '@/entities/production-graph/model/types';
 import { requestGenerationJob } from '../api/ai-client';
 import type { Dispatch, SetStateAction } from 'react';
@@ -22,6 +23,8 @@ interface Params extends SubjectBuilderStoreActions {
 }
 
 export function useSubjectReferenceRecovery(params: Params) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const {
     addAsset,
     data,
@@ -67,7 +70,7 @@ export function useSubjectReferenceRecovery(params: Params) {
     setGeneratingReferenceTarget(slotId);
     setNodeStatus(nodeId, 'running');
     updateNodeDataSilent(nodeId, {
-      message: `Восстанавливаем ${getSubjectReferenceSlotLabel(slotId).toLowerCase()} reference…`,
+      message: tEffect("Восстанавливаем {p1} reference…", { p1: getSubjectReferenceSlotLabel(slotId).toLowerCase() }),
     });
 
     void requestGenerationJob(jobId, { signal: controller.signal }).then((response) => {
@@ -86,7 +89,7 @@ export function useSubjectReferenceRecovery(params: Params) {
           && assetIds.length < SUBJECT_PROFILE_REFERENCE_SLOTS.length,
         referenceGenerationRequests: nextRequests,
         sourceCount: current.textInputCount + current.imageCount + assetIds.length,
-        message: `Восстановлен результат ${getSubjectReferenceSlotLabel(slotId)} reference.`,
+        message: tEffect("Восстановлен результат {p1} reference.", { p1: getSubjectReferenceSlotLabel(slotId) }),
       });
       setNodeStatus(nodeId, 'success');
     }).catch((error: unknown) => {

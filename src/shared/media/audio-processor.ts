@@ -1,15 +1,16 @@
+import type { MediaSource } from './media-source';
 import { readFile, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { audioConvertOptionsSchema, AudioProcessingError, AUDIO_CHUNK_SECONDS, MAX_AUDIO_OUTPUT_BYTES, type AudioChunk, type AudioConvertOptions, type AudioInspectionOptions } from './audio-contracts';
 import { audioInputArguments, inspectAudioFile, validateAudioEnvelope } from './audio-inspection';
 import { runAudioProgram, withAudioWork } from './audio-process';
 
-export async function inspectAudioBytes(bytes: Uint8Array, options: AudioInspectionOptions = {}) {
+export async function inspectAudioBytes<T extends MediaSource>(bytes: T, options: AudioInspectionOptions = {}) {
   const container = validateAudioEnvelope(bytes, options);
   return withAudioWork(bytes, options.signal, (_directory, source) => inspectAudioFile(bytes, source, options, container));
 }
 
-export async function convertAudioBytes(input: { bytes: Uint8Array; options: AudioConvertOptions; signal?: AbortSignal }) {
+export async function convertAudioBytes(input: { bytes: MediaSource; options: AudioConvertOptions; signal?: AbortSignal }) {
   const parsed = audioConvertOptionsSchema.safeParse(input.options);
   if (!parsed.success) throw new AudioProcessingError('invalid_audio_options', parsed.error.issues[0]?.message ?? 'Audio conversion settings are invalid.', 400);
   const options = parsed.data;
@@ -27,7 +28,7 @@ export async function convertAudioBytes(input: { bytes: Uint8Array; options: Aud
 }
 
 /** Processes one chunk at a time; no array of all audio bytes is kept in memory. */
-export async function forEachAudioChunk(input: { bytes: Uint8Array; chunkDurationSeconds?: number; maxChunks?: number; signal?: AbortSignal }, consume: (chunk: AudioChunk) => Promise<void>) {
+export async function forEachAudioChunk(input: { bytes: MediaSource; chunkDurationSeconds?: number; maxChunks?: number; signal?: AbortSignal }, consume: (chunk: AudioChunk) => Promise<void>) {
   const seconds = input.chunkDurationSeconds ?? AUDIO_CHUNK_SECONDS;
   const maxChunks = input.maxChunks ?? 30;
   if (!Number.isFinite(seconds) || seconds < 1 || seconds > AUDIO_CHUNK_SECONDS || !Number.isInteger(maxChunks) || maxChunks < 1 || maxChunks > 60) throw new AudioProcessingError('invalid_chunk_options', 'Audio chunk limits are invalid.');

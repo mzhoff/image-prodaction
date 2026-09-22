@@ -2,7 +2,9 @@
 .model-selector-menu {
   position: fixed; z-index: 10020; display: flex; flex-direction: column; gap: 6px;
   padding: 8px 4px 6px; box-sizing: border-box; border: 1px solid var(--pui-semantic-border-default);
-  border-radius: 16px; background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-secondary);
+  border-radius: 16px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent); color: var(--pui-semantic-text-secondary);
+  -webkit-backdrop-filter: var(--production-popup-backdrop-filter);
+  backdrop-filter: var(--production-popup-backdrop-filter);
   isolation: isolate;
   font-size: 12px; line-height: 16px; font-weight: 500;
 }

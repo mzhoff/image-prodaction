@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useRef, useState } from 'react';
 import type { RuntimeV2Grant } from '@/modules/executable-pipelines/contracts/runtime-v2-descriptor-contracts';
@@ -10,6 +11,7 @@ import {
 import { runtimeErrorMessage } from './runtime-connections-values';
 
 export function useRuntimeGrantTest(workspaceId: string, clientId: string, grant: RuntimeV2Grant) {
+  const tUi = useTranslations();
   const [input, setInput] = useState(() => initialRuntimeTestInput(grant));
   const [cap, setCap] = useState('');
   const [attempt, setAttempt] = useState<RuntimeTestAttempt | null>(null);
@@ -38,7 +40,7 @@ export function useRuntimeGrantTest(workspaceId: string, clientId: string, grant
     let current: RuntimeTestAttempt;
     try { current = attempt ?? createRuntimeTestAttempt(grant, input, cap, crypto.randomUUID()); }
     catch (reason) { setError(runtimeErrorMessage(reason)); return; }
-    if (!attempt && !window.confirm('Запустить один тест выбранной версии? Если pipeline использует AI-провайдера, этот вызов может быть платным.')) return;
+    if (!attempt && !window.confirm(tUi("Запустить один тест выбранной версии? Если pipeline использует AI-провайдера, этот вызов может быть платным."))) return;
     lock.current = true;
     setBusy(true);
     setAttempt(current);
@@ -63,7 +65,7 @@ export function useRuntimeGrantTest(workspaceId: string, clientId: string, grant
 
   async function cancel() {
     if (!run || lock.current || terminal) return;
-    if (!window.confirm('Отменить этот запуск? Уже выполненные вызовы провайдера могут быть оплачены.')) return;
+    if (!window.confirm(tUi("Отменить этот запуск? Уже выполненные вызовы провайдера могут быть оплачены."))) return;
     lock.current = true;
     setBusy(true);
     try { setRun((await runtimeConnectionsApi.cancelRun(workspaceId, clientId, run.id)).run); setError(null); }

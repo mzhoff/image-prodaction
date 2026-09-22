@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   },
   logging: { incomingRequests: { ignore: [/\/identity\/callback/] } },
   output: 'standalone',
+  serverExternalPackages: ['libheif-js'],
+  outputFileTracingIncludes: { '/api/chat/v1/references/convert': ['./node_modules/libheif-js/**/*', './node_modules/sharp/**/*', './node_modules/@img/**/*'] },
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {

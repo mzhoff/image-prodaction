@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
@@ -39,7 +40,7 @@ test('batch menu intersects compatibility, lays out independent pairs, and undoe
     const { project } = await response.json();
     const snapshot = createProjectExport({ ...structuredClone(initialProject), nodes, edges: [], assets: [] }, createEmptyProjectUiState());
     expect((await owner.http.request(`/api/projects/${project.id}`, { method: 'PATCH', json: { expectedRevision: project.revision, snapshot } })).status).toBe(200);
-    await page.goto(`/projects/${project.id}`);
+    await gotoQaSection(page, `/projects/${project.id}`);
     await expect(page.locator('.production-node')).toHaveCount(nodes.length);
   };
   const output = page.getByRole('button', { name: 'Add to output', exact: true });

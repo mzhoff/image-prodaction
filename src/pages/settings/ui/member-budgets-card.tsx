@@ -1,4 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
 
 import { useCallback, useEffect, useState } from 'react';
 import type {
@@ -16,6 +19,7 @@ export function MemberBudgetsCard({
   workspaceId: string;
   onDirtyChange: (dirty: boolean) => void;
 }) {
+  const tUi = useTranslations();
   const [data, setData] = useState<MemberBudgetData | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -66,30 +70,25 @@ export function MemberBudgetsCard({
     <section className={`settings-card settings-usage-card ${styles.card}`} aria-labelledby="member-budgets-title">
       <div className="settings-card-head settings-card-head-split">
         <div>
-          <h3 id="member-budgets-title">Расходы и лимиты участников</h3>
-          <p>Генерации и Ask AI расходуют общий баланс Workspace. Личный лимит не резервирует деньги.</p>
+          <h3 id="member-budgets-title">{tUi("Расходы и лимиты участников")}</h3>
+          <p>{tUi("Генерации и Ask AI расходуют общий баланс Workspace. Личный лимит не резервирует деньги.")}</p>
         </div>
-        <button
+        <Button size="sm" intent="neutral" appearance="soft"
           className="settings-quiet-button"
           type="button"
           disabled={busy || editing !== null}
           onClick={() => void load()}
         >
-          Обновить
-        </button>
+          {tUi("Обновить")}</Button>
       </div>
       <p className="settings-provider-usage-note">
-        В бете новые запросы останавливаются после достижения лимита. Последний запрос может превысить его.
-        Пока стоимость запроса уточняется, новые запуски участника с лимитом приостановлены.
-      </p>
+        {tUi("В бете новые запросы останавливаются после достижения лимита. Последний запрос может превысить его. Пока стоимость запроса уточняется, новые запуски участника с лимитом приостановлены.")}</p>
       <p className="settings-provider-usage-note">
-        Изображения и видео — количество запросов к модели. Личный учёт Ask AI начинается с включения этой
-        функции; прежние диалоги остаются в общей статистике.
-      </p>
-      {busy ? <p role="status">Обновляем данные…</p> : null}
+        {tUi("Изображения и видео — количество запросов к модели. Личный учёт Ask AI начинается с включения этой функции; прежние диалоги остаются в общей статистике.")}</p>
+      {busy ? <p role="status">{tUi("Обновляем данные…")}</p> : null}
       {error ? (
         <p className="settings-message settings-message-error" role="alert">
-          {error}
+          {typeof (error) === 'string' ? tUi((error) as string) : (error)}
         </p>
       ) : null}
       {data ? (
@@ -97,11 +96,11 @@ export function MemberBudgetsCard({
           <table className={`settings-usage-table ${styles.table}`}>
             <thead>
               <tr>
-                <th>Участник</th>
-                <th>Расходы / лимит</th>
-                <th>Запросы</th>
-                <th>Токены</th>
-                <th>AI-доступ</th>
+                <th>{tUi("Участник")}</th>
+                <th>{tUi("Расходы / лимит")}</th>
+                <th>{tUi("Запросы")}</th>
+                <th>{tUi("Токены")}</th>
+                <th>{tUi("AI-доступ")}</th>
               </tr>
             </thead>
             <tbody>
@@ -123,8 +122,7 @@ export function MemberBudgetsCard({
         member={selected} busy={busy} cancel={() => setEditing(null)} save={policy => save(selected, policy)} /> : null}
       {editing ? (
         <p className="settings-provider-usage-note">
-          Сохраните или отмените изменения перед переключением Workspace.
-        </p>
+          {tUi("Сохраните или отмените изменения перед переключением Workspace.")}</p>
       ) : null}
     </section>
   );
@@ -143,6 +141,7 @@ function MemberRow({
   otherEditing: boolean;
   edit: () => void;
 }) {
+  const tUi = useTranslations();
   const overrun =
     member.limitUsd === null ? 0 : Math.max(0, Number(member.spentUsd) - Number(member.limitUsd));
   return (
@@ -151,37 +150,36 @@ function MemberRow({
         <td>
           {member.name}
           <br />
-          <small>{member.role ? { owner: 'Владелец', admin: 'Администратор', member: 'Участник' }[member.role] : 'Бывший участник'}</small>
+          <small>{member.role ? { owner: tUi("Владелец"), admin: tUi("Администратор"), member: tUi("Участник") }[member.role] : tUi("Бывший участник")}</small>
         </td>
         <td>
-          {member.unresolved > 0 ? '≥ ' : ''}{formatUsd(member.spentUsd)} /{' '}
-          {member.limitUsd === null ? 'Без лимита' : formatUsd(member.limitUsd)}
+          {member.unresolved > 0 ? '≥ ' : ''}{tUi(formatUsd(member.spentUsd))} /{' '}
+          {member.limitUsd === null ? tUi("Без лимита") : tUi(formatUsd(member.limitUsd))}
           <br />
-          <small>{member.period === 'month' ? 'Текущий месяц, UTC' : 'За всё время'}</small>
-          {overrun > 0 ? <p role="status">Превышение: {formatUsd(overrun)}</p> : null}
-          {member.unresolved > 0 ? <p>Стоимость уточняется: {member.unresolved} запр.</p> : null}
+          <small>{member.period === 'month' ? tUi("Текущий месяц, UTC") : tUi("За всё время")}</small>
+          {overrun > 0 ? <p role="status">{tUi("Превышение:")}{' '} {tUi(formatUsd(overrun))}</p> : null}
+          {member.unresolved > 0 ? <p>{tUi("Стоимость уточняется:")}{' '} {member.unresolved}  {' '}{tUi("запр.")}</p> : null}
         </td>
         <td>
           {member.requests}
           <br />
           <small>
-            Изобр.: {member.images} · Видео: {member.videos} · Ask AI: {member.assistant}
+            {tUi("Изобр.:")}{' '}{member.images}  {' '}{tUi("· Видео:")}{' '} {member.videos} · Ask AI: {member.assistant}
           </small>
         </td>
         <td>{member.totalTokens}</td>
         <td>
-          {member.enabled ? 'Включён' : 'Отключён'}
+          {member.enabled ? tUi("Включён") : tUi("Отключён")}
           {canManage && member.role ? (
             <p>
-              <button
+              <Button size="sm" intent="neutral" appearance="soft"
                 className="settings-quiet-button"
                 type="button"
                 disabled={busy || otherEditing}
                 onClick={edit}
-                aria-label={`Изменить лимит: ${member.name}`}
+                aria-label={tUi("Изменить лимит: {p1}", { p1: member.name })}
               >
-                Изменить
-              </button>
+                {tUi("Изменить")}</Button>
             </p>
           ) : null}
         </td>

@@ -1,3 +1,4 @@
+import { awaitAssetUpload } from '@/shared/api/asset-upload-response';
 import type { AssetRecord } from '../model/types';
 
 export interface ActiveAssetScope {
@@ -88,11 +89,12 @@ export async function uploadRemoteImageAsset(
   formData.set('origin', origin);
   formData.set('workspaceId', scope.workspaceId);
 
-  const response = await request('/api/assets/images', {
+  let response = await request('/api/assets/images', {
     method: 'POST',
     credentials: 'same-origin',
     body: formData,
   });
+  response = await awaitAssetUpload(response, request);
   const payload = await response.json().catch(() => null) as { asset?: RemoteImageAssetDto } & AssetApiErrorPayload | null;
   if (!response.ok || !payload?.asset) throw new AssetClientError(response.status, payload);
   return mapRemoteImageAsset(payload.asset);

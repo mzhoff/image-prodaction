@@ -1,8 +1,10 @@
 # Workspace Usage
 
 `/usage` is a read-only section of the existing Workspace shell. It aggregates
-local Image Production generation and ChatModule ledgers; it is not a wallet,
-an OpenRouter account dashboard, a billing engine, or a new platform service.
+local Image Production generation and ChatModule ledgers and displays the existing
+Workspace provider-key balance used by Canvas. It adds no wallet, billing engine
+or new platform service. The balance is the key’s remaining budget, not total
+OpenRouter account credits.
 
 ## Contract and access
 
@@ -26,9 +28,17 @@ an OpenRouter account dashboard, a billing engine, or a new platform service.
 
 - Compact top-left toolbar: Today, Yesterday, Week, Month (UI default), Quarter,
   custom inclusive date range; timezone and chart grain are separate selectors.
-- Week is the last 7 completed days. Month/Quarter start 1/3 calendar months
-  before today (clamped at month end) and end yesterday. For example, on
-  September 12, Quarter selects June 12–September 11, not the calendar Q3.
+- Week is the last 7 days including today. Month/Quarter start 1/3 calendar months
+  before today (clamped at month end) and include today. For example, on
+  September 21, Week selects September 15–21 and Month selects August 21–September 21.
+- The range trigger always displays the selected dates. The shared three-month
+  calendar supports two-click ranges, full-month selection (clamped to today),
+  month navigation, keyboard arrows/PageUp/PageDown and optional typed dates.
+  Future days are disabled; ranges longer than the API's 366-day limit cannot be applied.
+- The empty screen retains muted zero-valued cards and a transparent glass illustration.
+  Only a confirmed missing/exhausted AI budget shows the existing subscription-sheet CTA.
+  A balance error or an empty filtered period does not imply that payment is required.
+  Comparison dates/timezone/refresh metadata are no longer shown as a separate status row.
 - The API returns `comparison.period`, `comparison.rows`, `currentThrough`,
   `previousThrough`, `partial`, and `available` in addition to the current rows.
   Both reads follow the same membership gate and use the same Workspace ID.
@@ -44,12 +54,25 @@ an OpenRouter account dashboard, a billing engine, or a new platform service.
 - Line (default) and stacked-bar charts share stable series/colors and a
   day/week/month aggregation. Weeks start Monday; partial edge buckets stay
   within the selected dates. Aggregation changes the chart, not the KPI totals.
-- The top five models by requests plus Other are shown. Legend checkboxes only
-  hide chart series, not dashboard totals. No-call buckets are zero; wholly
-  unknown costs break a line rather than becoming zero. Future buckets are
-  empty. Keyboard-accessible point details and a data table accompany the plot.
-- This extends the product dashboard in place; it adds no chart dependency,
-  provider calls, billing schema or separate analytics application.
+- The top five models by requests plus Other are shown as tinted toggle badges
+  (`aria-pressed`). Switching a badge recalculates chart scale and tooltip totals,
+  without changing the page KPI totals. No-call buckets are zero; wholly unknown
+  costs break a line rather than becoming zero. Future buckets are empty.
+- Hover, tap or keyboard focus opens a viewport-clamped dark translucent tooltip
+  with the bucket date, selected-model expenses and request counts, including
+  explicit partial-cost markers. Escape/blur/scroll dismiss it. There is no
+  duplicate details row or chart-data table. These are expenses, not a historical
+  wallet balance.
+- The leading Balance card uses `/api/ai/balance?workspaceId=…` through the same
+  shared hook as Canvas. It refreshes every 60 seconds while visible, on focus,
+  the existing provider-usage event and manual refresh. Period/category/model
+  filters do not affect it; a failed refresh marks the last value as stale.
+  An unconfigured key shows zero; an unknown/unlimited remainder shows “—”.
+- Cards and operation tiles have no outlines. Model table names, filter options
+  and chart labels use the same catalogs as composer/Canvas. The table uses the
+  existing publisher logos and groups by model ID, without the provider prefix.
+- This extends the dashboard in place without a chart dependency or billing schema.
+  Balance reuses the existing read-only provider budget endpoint.
 
 ## Measurement definitions
 
@@ -60,6 +83,7 @@ an OpenRouter account dashboard, a billing engine, or a new platform service.
 | Call day | Earliest observation for the attempt, dispatch timestamp for the fallback, or chat call `created_at` |
 | Outcomes | Success / failure / no provider confirmation. An unconfirmed dispatch is not presented as a provider success |
 | USD | Sum of available costs, including failed calls. Unknown costs are counted explicitly and displayed as a partial sum (`≥`) |
+| Average request cost | Exact reported model expenses ÷ all model requests in the filtered period (including failures). Derived on each snapshot/filter change; no stored column. Zero requests or any unknown costs produce “—”, rather than a misleading precise average |
 | Tokens | Sum of reported input, output and total tokens; calls with missing fields are counted explicitly. No conversion between media units and tokens |
 | Results | Successful generation operations by completion date: image generation/edit/refine/background removal; text generation/formatting; speech generation; video generation |
 
@@ -86,7 +110,8 @@ provider bill from hard-coded model prices.
 - `src/modules/usage/core`: calendar bounds, exact arithmetic, shared grouping.
 - `src/modules/usage/server`: membership gate and parameterized SQL projection.
 - `src/pages/usage`: Workspace-bound loading, filters, charts, tables and methods.
-- Thin App Router API/page entrypoints; no schema migration, provider call,
+- Shared `src/features/provider-budget` loading for Usage and Canvas.
+- Thin App Router API/page entrypoints; no schema migration, new provider integration,
   ChatModule package modification or change to existing Workspace ownership.
 
 ## Validation
@@ -126,3 +151,18 @@ Browser fixtures are not financial evidence and are never inserted in ledgers.
   client, 6 grants and 7 pipelines verified without starting a generation.
 - Existing build warning about broad tracing in `video-processor.ts` remains
   outside this Usage change. No dependency versions were changed.
+
+### Local verification — 2026-09-21
+
+- 16 focused core/service/Canvas-budget tests and one transactional PostgreSQL
+  test passed. Average-cost coverage includes incomplete prices, zero calls,
+  tiny amounts, fractional rounding and values above Number’s integer precision.
+- Chromium passed real local membership/API checks and synthetic UI scenarios:
+  catalog names/logos, averages, borderless cards, independent balance refresh,
+  stale/unknown/disconnected balances, chart badges/selected totals, keyboard and
+  cursor tooltips, empty selection, filters and late Workspace response isolation.
+- Desktop light/dark and 390px layouts inspected. Tooltip stays inside the
+  viewport; keyboard focus survives the browser’s automatic scroll into view.
+- Typecheck, zero-warning lint, architecture and file-size checks passed.
+  QA accounts are removed after the browser run. No deployment, schema migration
+  or paid generation was performed for this change.

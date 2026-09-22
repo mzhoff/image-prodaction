@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -44,7 +45,7 @@ test('live image models have logos, conditional settings and a preserved OpenRou
   });
   const data = () => document.snapshot.project.nodes[0].data as GenerateImageNodeData;
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     const node = page.locator(`article[data-node-id="${image.id}"]`);
     const modelSelect = node.getByRole('button', { name: 'Image model', exact: true });
     await modelSelect.click();

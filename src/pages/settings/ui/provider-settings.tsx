@@ -1,9 +1,13 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
+import { useSubscriptions } from '@/features/subscriptions/ui/subscription-provider';
 
 import { useEffect, useState } from 'react';
 import { MemberBudgetsCard } from './member-budgets-card';
 import { AlertCircle, Loader2, PlugZap, RefreshCcw } from '@prodactionpro/ui-core/icons';
-import { BrandSelect } from '@/shared/ui/brand-select';
+import { SettingsSelect } from './settings-select';
 import { useProviderSettingsModel } from '../model/use-provider-settings-model';
 import { ProviderConnectionCard } from './provider-connection-card';
 import { LocalUsageCard, ProviderUsageCard } from './provider-usage-cards';
@@ -14,6 +18,8 @@ interface ProviderSettingsProps {
 }
 
 export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
+  const tUi = useTranslations();
+  const openSubscriptions = useSubscriptions();
   const [providerDirty, setProviderDirty] = useState(false);
   const [budgetDirty, setBudgetDirty] = useState(false);
   const model = useProviderSettingsModel(setProviderDirty);
@@ -25,14 +31,15 @@ export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
     <section className="settings-section settings-provider-section" aria-labelledby="settings-providers-title">
       <header className="settings-section-head settings-provider-title-row">
         <div>
-          <h2 id="settings-providers-title">AI Providers</h2>
-          <p>Подключение и расходы AI-провайдеров на уровне Workspace.</p>
+          <h2 id="settings-providers-title">{tUi("AI и баланс")}</h2>
         </div>
+        <Button type="button" intent="neutral" appearance="solid" disabled={!model.selectedWorkspaceId}
+          onClick={() => openSubscriptions({ workspaceId: model.selectedWorkspaceId, tab: 'budget', source: 'provider_settings' })}>{tUi("Пополнить баланс")}</Button>
         {model.workspaceOptions.length > 0 ? (
-          <BrandSelect
+          <SettingsSelect
             className="settings-workspace-select"
             disabled={model.workspacesPending || model.mutation !== null || budgetDirty}
-            label="Workspace"
+            label={tUi("Пространство")}
             value={model.selectedWorkspaceId}
             options={model.workspaceOptions}
             onChange={model.selectWorkspace}
@@ -41,33 +48,29 @@ export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
       </header>
 
       {model.workspacesPending ? (
-        <SettingsState busy icon={<Loader2 className="spin" size={22} />} title="Загружаем Workspace">
-          Проверяем доступные рабочие пространства.
-        </SettingsState>
+        <SettingsState busy icon={<Loader2 className="spin" size={22} />} title={tUi("Загружаем Workspace")}>
+          {tUi("Проверяем доступные рабочие пространства.")}</SettingsState>
       ) : null}
       {!model.workspacesPending && model.workspacesError ? (
-        <SettingsState icon={<AlertCircle size={22} />} title="Workspace недоступны" tone="error">
-          <span>{model.workspacesError}</span>
-          <button type="button" onClick={() => void model.loadWorkspaces()}>
-            <RefreshCcw size={14} />Повторить
-          </button>
+        <SettingsState icon={<AlertCircle size={22} />} title={tUi("Workspace недоступны")} tone="error">
+          <span>{typeof (model.workspacesError) === 'string' ? tUi((model.workspacesError) as string) : (model.workspacesError)}</span>
+          <Button size="sm" intent="neutral" appearance="soft" type="button" onClick={() => void model.loadWorkspaces()}>
+            <RefreshCcw size={14} />{tUi("Повторить")}</Button>
         </SettingsState>
       ) : null}
       {!model.workspacesPending && !model.workspacesError && model.workspaces.length === 0 ? (
-        <SettingsState icon={<PlugZap size={22} />} title="Нет доступных Workspace">
-          Сначала создайте или получите доступ к рабочему пространству.
-        </SettingsState>
+        <SettingsState icon={<PlugZap size={22} />} title={tUi("Нет доступных Workspace")}>
+          {tUi("Сначала создайте или получите доступ к рабочему пространству.")}</SettingsState>
       ) : null}
 
       {model.detailsPending && model.selectedWorkspaceId ? <ProviderSettingsSkeleton /> : null}
       {!model.detailsPending && model.detailsError ? (
         <SettingsState icon={<AlertCircle size={22} />}
-          title="Настройки провайдера недоступны" tone="error">
-          <span>{model.detailsError}</span>
-          <button type="button"
+          title={tUi("Настройки провайдера недоступны")} tone="error">
+          <span>{typeof (model.detailsError) === 'string' ? tUi((model.detailsError) as string) : (model.detailsError)}</span>
+          <Button size="sm" intent="neutral" appearance="soft" type="button"
             onClick={() => void model.loadWorkspaceDetails(model.selectedWorkspaceId)}>
-            <RefreshCcw size={14} />Повторить
-          </button>
+            <RefreshCcw size={14} />{tUi("Повторить")}</Button>
         </SettingsState>
       ) : null}
 
@@ -79,7 +82,7 @@ export function ProviderSettings({ onDirtyChange }: ProviderSettingsProps) {
           <LocalUsageCard usage={model.aiUsage} />
           {model.secondaryError ? (
             <p className="settings-message settings-message-error" role="alert">
-              {model.secondaryError}
+              {typeof (model.secondaryError) === 'string' ? tUi((model.secondaryError) as string) : (model.secondaryError)}
             </p>
           ) : null}
         </div>

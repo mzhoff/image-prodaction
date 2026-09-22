@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { IconButton } from '@prodactionpro/ui-core/icon-button';
 import { ChevronLeft, ChevronRight, Download, Images, Loader2, Maximize2, Minimize2, Trash2, Video } from '@prodactionpro/ui-core/icons';
@@ -25,6 +26,7 @@ export interface TimelineMediaProps {
 
 export function TimelineMedia({ analysis, shot, workspaceId, disabled, nodeId, onSelectShot, onFullscreen, fullscreen,
   previewMode, onPreviewMode, onEdit, framesSidePort }: TimelineMediaProps) {
+  const tUi = useTranslations();
   const playback = useTimelinePlayback({ analysis, shot, nodeId, previewMode, onPreviewMode });
   const { time, frames, playing, stillTime, seek, pause } = playback;
   const clip = useTimelineClipDownload(workspaceId, analysis.sourceAssetId, shot.startMs, shot.endMs);
@@ -44,7 +46,7 @@ export function TimelineMedia({ analysis, shot, workspaceId, disabled, nodeId, o
       <video ref={playback.player} src={getRemoteAssetContentUrl(analysis.sourceAssetId)} playsInline preload="metadata"
         className={previewMode === 'image' ? 'timeline-editor-video-hidden' : undefined}
         {...playback.videoProps} aria-label="Selected shot video" />
-      {!playing || previewMode === 'image' ? <img className="timeline-editor-exact-frame" src={frameUrl(stillTime)} alt={`Frame at ${formatTimelineTime(stillTime)}`} aria-busy={stillTime !== time} /> : null}
+      {!playing || previewMode === 'image' ? <img className="timeline-editor-exact-frame" src={frameUrl(stillTime)} alt={`Frame at ${formatTimelineTime(stillTime)}`} aria-busy={stillTime !== time} draggable={false} /> : null}
       <div className="timeline-editor-overlay-top">
         <IconButton size="xs" icon={previewMode === 'video' ? <Images /> : <Video />} aria-label={previewMode === 'video' ? 'Show still frames' : 'Show video'} title={previewMode === 'video' ? 'Still frame mode' : 'Video mode'}
           onClick={() => { pause(); onPreviewMode(previewMode === 'video' ? 'image' : 'video'); }} />
@@ -59,8 +61,8 @@ export function TimelineMedia({ analysis, shot, workspaceId, disabled, nodeId, o
         <IconButton size="xs" icon={<ChevronRight />} aria-label="Next shot" disabled={!onSelectShot || analysis.shots.length <= 1} onClick={() => chooseShot(1)} />
       </div>
     </div>
-    {playback.mediaError ? <p className="timeline-editor-feedback" role="status">Не удалось воспроизвести видео в этом браузере. Стоп-кадры доступны для просмотра.</p> : null}
-    {clip.busy || clip.error ? <p className="timeline-editor-feedback" role={clip.error ? 'alert' : 'status'}>{clip.error || 'Готовим фрагмент для скачивания…'}</p> : null}
+    {playback.mediaError ? <p className="timeline-editor-feedback" role="status">{tUi("Не удалось воспроизвести видео в этом браузере. Стоп-кадры доступны для просмотра.")}</p> : null}
+    {clip.busy || clip.error ? <p className="timeline-editor-feedback" role={clip.error ? 'alert' : 'status'}>{clip.error || tUi("Готовим фрагмент для скачивания…")}</p> : null}
     <TimelineToolbar time={time} duration={shot.endMs - shot.startMs} playing={playing} disabled={disabled}
       atStart={index === 0} atEnd={index >= frames.length - 1} canSplit={canAddCut}
       canSetStart={canCut && (shotIndex > 0 || canAddCut)} canSetEnd={canCut && (shotIndex < analysis.shots.length - 1 || canAddCut)}
@@ -75,11 +77,11 @@ export function TimelineMedia({ analysis, shot, workspaceId, disabled, nodeId, o
       onAddFrame={() => edit((current) => { const latest = current.shots.find((item) => item.id === shot.id); return latest ? selectTimelineFrames(current, shot.id, [...latest.frames.map((frame) => frame.timeMs), time]) : current; })} />
     <TimelineFrameRail shot={shot} frames={frames} time={time} disabled={disabled} onSeek={seek} onPause={pause}
       onMove={(originalTime, next) => edit((current) => { const latest = current.shots.find((item) => item.id === shot.id); const selected = latest?.frames.findIndex((frame) => frame.timeMs === originalTime) ?? -1; return selected >= 0 ? moveTimelineFrame(current, shot.id, selected, next) : current; })} />
-    <CollapsibleSection title="Стоп-кадры" className="text-node-section timeline-editor-frames-section" sidePort={framesSidePort}>
+    <CollapsibleSection title={tUi("Стоп-кадры")} className="text-node-section timeline-editor-frames-section" sidePort={framesSidePort}>
       <div className="timeline-editor-frames" aria-label="Selected still frames">
         {shot.frames.map((frame, frameIndex) => <div key={frame.timeMs} className="timeline-editor-frame" data-active={frame.timeMs === time}>
           <button type="button" className="timeline-editor-frame-select" aria-label={`Preview selected frame ${frameIndex + 1} at ${formatTimelineTime(frame.timeMs)}`} aria-pressed={frame.timeMs === time} onClick={() => seek(frame.timeMs)}>
-            <img loading="lazy" src={frameUrl(frame.timeMs)} alt="" /><span>{formatTimelineTime(frame.timeMs)}</span>
+            <img loading="lazy" src={frameUrl(frame.timeMs)} alt="" draggable={false} /><span>{formatTimelineTime(frame.timeMs)}</span>
           </button>
           <IconButton size="2xs" icon={<Trash2 />} className="timeline-editor-frame-remove" aria-label={`Remove selected frame ${frameIndex + 1}`} disabled={disabled || shot.frames.length <= 1}
             onClick={() => edit((current) => { const latest = current.shots.find((item) => item.id === shot.id); return latest ? selectTimelineFrames(current, shot.id, latest.frames.filter((item) => item.timeMs !== frame.timeMs).map((item) => item.timeMs)) : current; })} />

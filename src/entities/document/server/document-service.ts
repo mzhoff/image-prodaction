@@ -64,9 +64,17 @@ export async function listDocuments(userId: string) {
     .filter((project) => project.status === 'trash' || !isDisposableUntouchedDocument(project));
 }
 
-export async function createDocument(input: { name?: string; userId: string; workspaceId: string; folderId?: string | null }) {
+export async function createDocument(input: { name?: string; userId: string; workspaceId: string; folderId?: string | null; creationId?: string }) {
   await requireWorkspaceMembership(input.userId, input.workspaceId);
   if (input.folderId) await requireStudioFolder(input.userId, input.workspaceId, input.folderId);
+  if (input.creationId) {
+    const [created] = await getDb().insert(document).values({ id: input.creationId, workspaceId: input.workspaceId,
+      createdByUserId: input.userId, name: normalizeDocumentName(input.name), folderId: input.folderId }).onConflictDoNothing().returning();
+    if (created) return toDocumentDto({ ...created, favorite: false });
+    const [existing] = await getDb().select().from(document).where(and(eq(document.id, input.creationId), eq(document.workspaceId, input.workspaceId), eq(document.createdByUserId, input.userId))).limit(1);
+    if (!existing) throw new DocumentConflictError();
+    return toDocumentDto({ ...existing, favorite: false });
+  }
   const [created] = await getDb().insert(document).values({
     id: createUuidV7(),
     workspaceId: input.workspaceId,

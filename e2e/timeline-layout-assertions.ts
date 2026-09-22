@@ -1,0 +1,75 @@
+import { expect, type Page } from '@playwright/test';
+import type { TimelineSnapshot } from '../src/modules/story-projects/contracts/story-timeline';
+
+export async function checkTimelineLayout(page: Page) {
+  const library = page.getByRole('complementary', { name: 'Библиотека монтажа' });
+  await expect(page.getByRole('searchbox', { name: 'Найти материал' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Поиск в библиотеке', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Найти материал' }).fill('Video QA');
+  await expect(library.getByRole('button', { name: /^Выбрать / })).toHaveCount(1);
+  await page.getByRole('searchbox', { name: 'Найти материал' }).press('Escape');
+  const header = library.locator('header'), scroll = page.getByLabel('Содержимое библиотеки');
+  const before = (await header.boundingBox())!.y;
+  await scroll.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  expect(await scroll.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
+  expect((await header.boundingBox())!.y).toBe(before);
+  await scroll.evaluate((el) => { el.scrollTop = 0; });
+  const image = library.getByRole('button', { name: 'Выбрать Photo 1.png', exact: true });
+  expect(await image.textContent()).toBe('');
+  const thumb = (await image.locator('img').boundingBox())!; expect(Math.abs(thumb.width - thumb.height)).toBeLessThan(1);
+  const left = page.getByRole('separator', { name: 'Ширина материалов' }), right = page.getByRole('separator', { name: 'Ширина инструментов' });
+  const width = (await library.boundingBox())!.width, handle = (await left.boundingBox())!;
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + 40); await page.mouse.down(); await page.mouse.move(handle.x + 70, handle.y + 40, { steps: 4 });
+  expect((await library.boundingBox())!.width).toBeGreaterThan(width + 50); await page.mouse.up(); await left.dblclick();
+  const tools = page.getByRole('complementary', { name: 'Инструменты монтажа' }), toolWidth = (await tools.boundingBox())!.width;
+  await right.press('ArrowLeft'); expect((await tools.boundingBox())!.width).toBeGreaterThan(toolWidth); await right.dblclick();
+  const tracks = page.getByRole('region', { name: 'Монтажная дорожка' });
+  await page.getByRole('button', { name: 'Показать или скрыть таймлайн' }).click(); await expect(tracks).toBeHidden();
+  await page.getByRole('button', { name: 'Показать или скрыть таймлайн' }).click();
+  await page.getByRole('button', { name: 'Изменить компоновку панелей' }).click();
+  const rightBox = (await tools.boundingBox())!, timeline = (await tracks.boundingBox())!;
+  expect(timeline.x + timeline.width).toBeLessThan(rightBox.x); expect(Math.abs(timeline.y + timeline.height - rightBox.y - rightBox.height)).toBeLessThan(2);
+  await page.getByRole('button', { name: 'Изменить компоновку панелей' }).click(); expect((await tracks.boundingBox())!.x).toBeGreaterThan((await library.boundingBox())!.x + width);
+  await page.getByRole('button', { name: 'Изменить компоновку панелей' }).click();
+  await page.getByRole('button', { name: 'Ассистент', exact: true }).click();
+  const assistant = page.locator('[data-assistant-window="docked"]'); await assistant.evaluate((el) => el.setAttribute('data-layout-qa', 'same-window'));
+  await page.getByRole('button', { name: 'Развернуть окно ассистента', exact: true }).click();
+  await expect(assistant).toHaveAttribute('data-view', 'expanded');
+  const expanded = (await tools.boundingBox())!, bottom = (await tracks.boundingBox())!;
+  expect(expanded.width).toBeGreaterThan(toolWidth + 100); expect(bottom.x + bottom.width).toBeLessThan(expanded.x); expect(Math.abs(bottom.y + bottom.height - expanded.y - expanded.height)).toBeLessThan(2);
+  expect(await assistant.evaluate((el) => getComputedStyle(el).position)).toBe('relative');
+  await page.screenshot({ path: '/tmp/timeline-layout-expanded.png', fullPage: true });
+  await page.getByRole('button', { name: 'Свернуть окно ассистента', exact: true }).click(); await expect(assistant).toHaveAttribute('data-layout-qa', 'same-window');
+  await page.getByRole('button', { name: 'Свойства', exact: true }).click();
+}
+
+export async function checkTimelineClipEditing(page: Page, snapshot: () => TimelineSnapshot) {
+  const saved = () => expect(page.getByRole('status', { name: 'Состояние сохранения' })).toHaveText('Сохранено');
+  await page.getByRole('button', { name: '+ Видеодорожка', exact: true }).click(); await saved();
+  expect(snapshot().videoTracks).toHaveLength(1);
+  const primary = page.locator('[data-video-track="primary"]');
+  await primary.getByRole('button', { name: /^Клип 1,/ }).click();
+  await page.getByRole('button', { name: 'Видеодорожка', exact: true }).click(); await page.getByRole('option', { name: 'Видео 2', exact: true }).click(); await saved();
+  const overlay = snapshot().clips.find((clip) => clip.trackId)!; expect(overlay.startMs).toBe(0);
+  const lane = page.locator(`[data-video-track="${overlay.trackId}"]`), playhead = page.getByRole('slider', { name: 'Позиция на таймлайне' });
+  await lane.getByRole('button', { name: /^Клип 1,/ }).click(); await playhead.press('Home');
+  for (let index = 0; index < 15; index++) await playhead.press('ArrowRight');
+  await lane.getByRole('button', { name: /^Клип 1,/ }).click({ button: 'right' });
+  await expect(page.getByRole('menu', { name: 'Действия с клипом' })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Разрезать по игле', exact: true }).click(); await saved();
+  expect(snapshot().clips.filter((clip) => clip.trackId)).toHaveLength(2);
+  expect(snapshot().clips.filter((clip) => clip.trackId).map((clip) => clip.durationMs)).toEqual([500, 400]);
+  await page.getByRole('button', { name: 'Отменить изменение', exact: true }).click(); await saved(); expect(snapshot().clips.filter((clip) => clip.trackId)).toHaveLength(1);
+  await page.getByRole('button', { name: 'Повторить изменение', exact: true }).click(); await saved();
+  await page.getByRole('button', { name: 'Добавить Music QA.wav на таймлайн', exact: true }).click();
+  await page.getByRole('button', { name: 'Аудиоклип Music QA.wav', exact: true }).click(); await playhead.press('Home');
+  for (let index = 0; index < 15; index++) await playhead.press('ArrowRight');
+  await page.getByRole('button', { name: 'Разрезать по игле', exact: true }).click(); await saved(); expect(snapshot().audioClips).toHaveLength(2);
+  await page.getByRole('button', { name: 'Аудиоклип Music QA.wav', exact: true }).last().click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Убрать клип', exact: true }).click(); await saved(); expect(snapshot().audioClips).toHaveLength(1);
+  await lane.getByRole('button', { name: /^Клип 1,/ }).press('Shift+F10');
+  await expect(page.getByRole('menu', { name: 'Действия с клипом' })).toBeVisible(); await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu', { name: 'Действия с клипом' })).toHaveCount(0);
+  await page.screenshot({ path: '/tmp/timeline-layout-editing.png', fullPage: true });
+  await page.reload(); await expect(page.locator('[data-video-track]')).toHaveCount(2); expect(snapshot().clips.filter((clip) => clip.trackId)).toHaveLength(2);
+}

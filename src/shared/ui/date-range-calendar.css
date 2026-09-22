@@ -1,0 +1,39 @@
+.date-range-calendar { position: fixed; margin: 0; padding: 4px; width: min(900px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px); overflow: auto; border: 0; border-radius: 26px; color: var(--pui-semantic-text-primary); background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 70%, transparent); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: 0 16px 60px #0002; }
+.date-range-calendar::backdrop { background: #17171b0a; }
+.date-range-calendar-surface { min-width: 0; }
+.date-range-calendar button, .date-range-calendar input { font: inherit; font-size: 13px; color: inherit; }
+.date-range-calendar button { cursor: pointer; border: 0; }
+.date-range-calendar button:disabled { cursor: default; opacity: .3; }
+.date-range-calendar :is(button,input):focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: 2px; z-index: 1; }
+.date-range-calendar-navigation { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; }
+.date-range-calendar-navigation span { font-size: 12px; color: var(--pui-semantic-text-secondary); }
+.date-range-calendar-navigation button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 12px; background: transparent; }
+.date-range-calendar-navigation button:hover:not(:disabled) { background: var(--pui-semantic-surface-primary); }
+.date-range-calendar-months { display: grid; grid-template-columns: repeat(3,minmax(220px,1fr)); gap: 16px; overflow-x: auto; padding: 16px; border-radius: 22px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 90%, transparent); scroll-snap-type: x proximity; }
+.date-range-calendar-month { min-width: 0; scroll-snap-align: center; }
+.date-range-calendar-month-title { display: block; margin: 0 auto 16px; padding: 10px 14px; border-radius: 12px; font-weight: 600 !important; background: transparent; text-transform: capitalize; }
+.date-range-calendar-month-title:hover { background: var(--pui-semantic-surface-secondary); }
+.date-range-calendar-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); grid-auto-rows: 36px; gap: 2px 0; }
+.date-range-calendar-grid > * { display: grid; place-items: center; min-width: 0; }
+.date-range-calendar-weekday { font-size: 11px; color: var(--pui-semantic-text-secondary); }
+.date-range-calendar-grid button { padding: 0; border-radius: 10px; background: transparent; font-variant-numeric: tabular-nums; transition: background 100ms ease; }
+.date-range-calendar-grid [data-weekend] { color: #ce6972; }
+.date-range-calendar-grid button[aria-current=date] { color: var(--pui-semantic-accent-default); font-weight: 600; }
+.date-range-calendar-grid button[data-in-range] { background: color-mix(in srgb, var(--pui-semantic-accent-default) 12%, var(--pui-semantic-surface-secondary)); border-radius: 0; }
+.date-range-calendar-grid button:nth-child(7n + 1)[data-in-range], .date-range-calendar-grid button[data-range-start] { border-radius: 10px 0 0 10px; }
+.date-range-calendar-grid button:nth-child(7n)[data-in-range], .date-range-calendar-grid button[data-range-end] { border-radius: 0 10px 10px 0; }
+.date-range-calendar-grid button[data-range-start][data-range-end] { border-radius: 10px; }
+.date-range-calendar-grid button:is([data-range-start],[data-range-end]) { background: var(--pui-semantic-accent-default); color: #fff; }
+.date-range-calendar-grid button:hover:not(:disabled) { background: color-mix(in srgb, var(--pui-semantic-accent-default) 22%, var(--pui-semantic-surface-secondary)); color: var(--pui-semantic-text-primary); }
+.date-range-calendar-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 12px 12px; }
+.date-range-calendar-inputs, .date-range-calendar-actions { display: flex; align-items: center; gap: 8px; }
+.date-range-calendar-inputs input { width: 138px; min-width: 0; padding: 10px; border: 0; border-radius: 12px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 80%, transparent); color-scheme: inherit; }
+.date-range-calendar-count { margin-left: 6px; font-size: 12px; white-space: nowrap; color: var(--pui-semantic-text-secondary); }
+.date-range-calendar-actions { margin-left: auto; }
+.date-range-calendar-actions button { min-height: 38px; padding: 10px 16px; border-radius: 12px; background: transparent; }
+.date-range-calendar-actions button:hover:not(:disabled) { background: var(--pui-semantic-surface-primary); }
+.date-range-calendar-actions button:last-child { background: var(--pui-semantic-text-primary); color: var(--pui-semantic-surface-primary); }
+.date-range-calendar-actions button:last-child:hover:not(:disabled) { background: color-mix(in srgb, var(--pui-semantic-text-primary) 85%, black); }
+.date-range-calendar-error { width: 100%; margin: 0; color: #ba3d4c; font-size: 12px; }
+@media(max-width:600px) { .date-range-calendar-months { grid-template-columns: repeat(3,minmax(250px,1fr)); gap: 20px; } .date-range-calendar-count { display: none; } .date-range-calendar-inputs { width: 100%; } .date-range-calendar-inputs input { flex: 1; width: 0; } }
+@media(prefers-reduced-transparency:reduce) { .date-range-calendar, .date-range-calendar-months { background: var(--pui-semantic-surface-primary); -webkit-backdrop-filter: none; backdrop-filter: none; } }

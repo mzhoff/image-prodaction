@@ -24,10 +24,10 @@ export function formatDevice(userAgent?: string | null) {
   return 'Браузер';
 }
 
-export function formatSessionDate(value: string | Date) {
+export function formatSessionDate(value: string | Date, language = 'ru-RU') {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'неизвестной даты';
-  return new Intl.DateTimeFormat('ru-RU', {
+  return new Intl.DateTimeFormat(language, {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',

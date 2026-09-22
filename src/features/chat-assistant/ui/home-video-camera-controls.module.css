@@ -1,0 +1,29 @@
+.root { padding: 0 14px 12px; color: var(--pui-semantic-text-secondary); }
+.cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.control { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 58px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 55%, transparent); border-radius: 15px; background: var(--pui-semantic-surface-primary); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 120ms; }
+.control > span { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.control small { color: var(--pui-semantic-text-muted); font-size: 10px; }
+.control strong { font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.control > svg { flex-shrink: 0; }
+.control:hover:not(:disabled), .control[aria-expanded='true'] { background: var(--pui-semantic-surface-secondary); }
+.control:disabled { opacity: .5; cursor: default; }
+.root button:focus-visible, .dialog button:focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: 2px; }
+.dialog { width: min(948px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; border: 0; border-radius: 24px; background: transparent; color: var(--pui-semantic-text-primary); overflow: auto; box-shadow: 0 24px 90px #0003; }
+.dialog::backdrop { background: #16202c55; backdrop-filter: blur(8px); }
+.dialogSurface { padding: 0 8px 8px; background: var(--pui-semantic-surface-primary); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 48px; padding: 8px; }
+.header h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.header button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-muted); cursor: pointer; }
+.body { border-radius: 16px; background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 65%, var(--pui-semantic-surface-primary)); overflow: hidden; }
+.filters { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
+.filters button { min-height: 32px; padding: 4px 10px; border: 0; border-radius: 20px; background: transparent; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.filters button[aria-pressed='true'] { background: var(--pui-semantic-border-default); }
+.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; padding: 12px; max-height: 65dvh; overflow: auto; }
+.options > button { display: flex; flex-direction: column; gap: 8px; padding: 8px; border: 1px solid transparent; border-radius: 16px; background: color-mix(in srgb, var(--pui-semantic-border-default) 35%, transparent); text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.options > button[aria-pressed='true'] { border-color: var(--pui-semantic-accent-default); }
+.options > button:hover { background: var(--pui-semantic-border-default); }
+.options strong { padding: 0 4px; font-size: 13px; font-weight: 500; }
+.options > button > span:last-child { padding: 0 4px 4px; font-size: 12px; line-height: 1.5; color: var(--pui-semantic-text-muted); }
+.optionIcon { display: flex; justify-content: space-between; align-items: center; min-height: 70px; width: 100%; padding: 16px; border-radius: 12px; background: var(--pui-semantic-surface-primary); }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .control { transition: none; } }

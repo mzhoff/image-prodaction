@@ -56,6 +56,11 @@ body {
   user-select: none;
 }
 
+/* UI images are previews; dedicated card/clip drag handles own drag-and-drop. */
+img {
+  -webkit-user-drag: none;
+}
+
 button,
 input,
 textarea,

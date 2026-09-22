@@ -1,3 +1,6 @@
+'use client';
+import { useUiCatalog } from '@/shared/i18n/use-ui-catalog';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import Image from 'next/image';
 import type { RuntimeV2Run } from '@/modules/executable-pipelines/contracts/runtime-v2-run-contracts';
 import { runtimeArtifactPath } from '../model/runtime-grant-test-values';
@@ -12,13 +15,16 @@ const usageLabels: Record<RuntimeV2Run['usage']['state'], string> = {
 };
 
 export function RuntimeTestResult({ run, workspaceId, clientId }: { run: RuntimeV2Run; workspaceId: string; clientId: string }) {
+  const tUi = useTranslations();
+  const ui_statusLabels = useUiCatalog(statusLabels, tUi);
+  const ui_usageLabels = useUiCatalog(usageLabels, tUi);
   return (
     <div className={styles.result}>
-      <p role="status"><strong>{statusLabels[run.status]}</strong> · версия {run.pipeline.version}</p>
-      <p className={styles.muted}>{usageLabels[run.usage.state]}: {run.usage.actualProviderCostUsd === null ? 'неизвестно' : `$${run.usage.actualProviderCostUsd}`}</p>
-      {run.usage.knownProviderCostUsd !== null && run.usage.state !== 'COMPLETE' ? <p className={styles.muted}>Подтверждённая часть: ${run.usage.knownProviderCostUsd}</p> : null}
-      <p className={styles.muted}>Вызовов провайдера: {run.usage.providerCallCount} · с известной стоимостью: {run.usage.pricedCallCount}</p>
-      {run.error ? <p className="settings-message settings-message-error" role="alert">Запуск завершился с ошибкой: {run.error.code}. Автоматический повтор не выполняется.</p> : null}
+      <p role="status"><strong>{ui_statusLabels[run.status]}</strong>  {' '}{tUi("· версия")}{' '} {run.pipeline.version}</p>
+      <p className={styles.muted}>{ui_usageLabels[run.usage.state]}: {run.usage.actualProviderCostUsd === null ? tUi("неизвестно") : `$${run.usage.actualProviderCostUsd}`}</p>
+      {run.usage.knownProviderCostUsd !== null && run.usage.state !== 'COMPLETE' ? <p className={styles.muted}>{tUi("Подтверждённая часть: $")}{run.usage.knownProviderCostUsd}</p> : null}
+      <p className={styles.muted}>{tUi("Вызовов провайдера:")}{' '} {run.usage.providerCallCount}  {' '}{tUi("· с известной стоимостью:")}{' '} {run.usage.pricedCallCount}</p>
+      {run.error ? <p className="settings-message settings-message-error" role="alert">{tUi("Запуск завершился с ошибкой:")}{' '} {run.error.code}{tUi(". Автоматический повтор не выполняется.")}</p> : null}
       {Object.entries(run.outputs ?? {}).map(([name, output]) => {
         if (typeof output === 'string') return <div key={name}><strong>{name}</strong><pre className={styles.textResult}>{output}</pre></div>;
         if (output && typeof output === 'object' && !Array.isArray(output) && output.kind === 'image') {
@@ -27,15 +33,15 @@ export function RuntimeTestResult({ run, workspaceId, clientId }: { run: Runtime
           const width = typeof output.width === 'number' && output.width > 0 ? output.width : 960;
           const height = typeof output.height === 'number' && output.height > 0 ? output.height : 640;
           return <figure className={styles.preview} key={name}>
-            <Image unoptimized src={path} width={width} height={height} alt={`Результат теста: ${name}`} />
-            <figcaption><a href={path} download rel="noreferrer">Скачать {name}</a></figcaption>
+            <Image unoptimized src={path} width={width} height={height} alt={tUi("Результат теста: {p1}", { p1: name })} draggable={false} />
+            <figcaption><a href={path} download rel="noreferrer">{tUi("Скачать")}{' '} {name}</a></figcaption>
           </figure>;
         }
         return <div key={name}><strong>{name}</strong><pre className={styles.textResult}>{JSON.stringify(output, null, 2)}</pre></div>;
       })}
-      <details className={styles.diagnostics}><summary>Диагностика запуска</summary><dl>
+      <details className={styles.diagnostics}><summary>{tUi("Диагностика запуска")}</summary><dl>
         <dt>ID</dt><dd>{run.id}</dd><dt>Grant</dt><dd>{run.grantId}</dd>
-        <dt>Попытки</dt><dd>{run.attemptCount}</dd><dt>Контроль бюджета</dt><dd>{run.cost.enforcement}</dd>
+        <dt>{tUi("Попытки")}</dt><dd>{run.attemptCount}</dd><dt>{tUi("Контроль бюджета")}</dt><dd>{run.cost.enforcement}</dd>
         <dt>Checksum</dt><dd>{run.pipeline.checksum}</dd>
       </dl></details>
     </div>

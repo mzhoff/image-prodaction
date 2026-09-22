@@ -1,0 +1,163 @@
+/* Product appearance adapter: the shared ChatModule keeps its composer lifecycle. */
+.assistant-shell {
+  padding: 8px;
+  border: 0;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent);
+  -webkit-backdrop-filter: var(--production-popup-backdrop-filter);
+  backdrop-filter: var(--production-popup-backdrop-filter);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--pui-semantic-shadow-color) 14%, transparent);
+  transform: translate(10px, 12px) scale(.94);
+}
+.assistant-shell-open { transform: none; }
+.assistant-shell-header { gap: 10px; padding: 6px 6px 14px; border: 0; }
+.assistant-shell-title > span { flex: 0 0 34px; border-radius: 12px; }
+.assistant-shell-title div { min-width: 0; }
+.assistant-shell-title small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.assistant-shell .assistant-shell-header-controls > .pro-tooltip-trigger > button,
+.assistant-shell .assistant-shell-settings > .pro-tooltip-trigger > button {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  line-height: 0;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 50%, transparent);
+}
+.assistant-shell .assistant-shell-header-controls > .pro-tooltip-trigger > button > svg,
+.assistant-shell .assistant-shell-settings > .pro-tooltip-trigger > button > svg { display: block; margin: 0; }
+.assistant-shell-header button:hover { background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); }
+.assistant-shell-assistant-panel,
+.assistant-shell-feedback-panel {
+  overflow: hidden;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 92%, transparent);
+}
+.assistant-shell-notice { margin-bottom: 6px; border: 0; border-radius: 14px; }
+.assistant-shell .image-production-chat {
+  background: transparent;
+  --cm-chat-side-gap: 10px;
+  --cm-chat-message-inset: 2px;
+  --cm-attachment-thumbnail-size: 64px;
+  --cm-attachment-thumbnail-radius: 12px;
+}
+.assistant-shell .cm-composer-dock { padding: 0 8px 8px; background: transparent; }
+.assistant-shell .cm-composer-form {
+  min-height: 132px;
+  max-height: min(440px, 60dvh);
+  padding: 5px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--pui-semantic-surface-primary);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--pui-semantic-shadow-color) 5%, transparent);
+}
+.assistant-shell .cm-composer-textarea {
+  flex: 1 1 auto;
+  min-height: 74px;
+  padding: 12px 12px 8px;
+  border: 0;
+  border-radius: 15px 15px 0 0;
+  background: var(--pui-semantic-surface-secondary);
+  color: var(--pui-semantic-text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.assistant-shell .cm-composer-textarea::placeholder { color: var(--pui-semantic-text-secondary); }
+.assistant-shell .cm-composer-footer {
+  flex: 0 0 auto;
+  min-height: 44px;
+  margin-top: 0;
+  padding: 4px 8px 8px;
+  border-radius: 0 0 15px 15px;
+  background: var(--pui-semantic-surface-secondary);
+}
+.assistant-shell .cm-composer-attachment-content { max-height: 112px; flex-shrink: 0; overflow-y: auto; padding: 8px; margin-bottom: 5px; }
+.assistant-shell .cm-composer-attachment-content + .cm-composer-textarea { margin-top: 0; }
+.assistant-shell .cm-composer-add-button,
+.assistant-shell .cm-composer-send-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 65%, transparent);
+  color: var(--pui-semantic-text-secondary);
+}
+.assistant-shell .cm-composer-add-button:hover { background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); }
+.assistant-shell .cm-composer-send-button-enabled,
+.assistant-shell .cm-composer-send-button-cancel {
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
+}
+.assistant-shell .cm-composer-send-button-enabled:hover,
+.assistant-shell .cm-composer-send-button-cancel:hover { background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 90%, black); }
+.assistant-shell .cm-composer-send-button-disabled { opacity: .4; }
+.assistant-shell .cm-composer-helper { margin-top: 5px; font-size: 10px; }
+.assistant-shell-settings-menu {
+  border: 0;
+  border-radius: 20px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent);
+  -webkit-backdrop-filter: var(--production-popup-backdrop-filter);
+  backdrop-filter: var(--production-popup-backdrop-filter);
+}
+.assistant-shell-settings-menu button { justify-items: start; border-radius: 13px; background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 92%, transparent); }
+.assistant-shell-settings-menu button:hover { background: var(--pui-semantic-surface-primary); }
+.assistant-shell button:focus-visible { outline: 2px solid var(--pui-semantic-border-focus); outline-offset: 2px; }
+.assistant-shell .cm-composer-form:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--pui-semantic-accent-default) 18%, transparent); }
+.assistant-launcher-slot { right: 28px; bottom: 28px; }
+.assistant-floating-button:hover { transform: scale(1.05); }
+.assistant-floating-button:focus-visible { outline: 2px solid var(--pui-semantic-border-focus); outline-offset: 4px; }
+@media (max-width: 600px) {
+  .assistant-shell, .assistant-shell.assistant-shell-expanded { right: 12px; bottom: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
+  .assistant-launcher-slot { right: 16px; bottom: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-shell, .assistant-floating-button { transition: none; }
+  .assistant-floating-button:hover { transform: none; }
+}
+
+.assistant-window-content { display: grid; grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border-radius: 18px; background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 92%, transparent); }
+.assistant-window-content[hidden], .assistant-shell-header[hidden], .assistant-shell-title[hidden] { display: none; }
+.assistant-window-content > .image-production-chat-host { height: 100%; }
+.assistant-window-docked.assistant-shell { position: relative; inset: auto; z-index: 1; width: 100%; height: 100%; min-width: 0; max-height: none; opacity: 1; pointer-events: auto; transform: none; }
+.assistant-window-docked[data-open='false'] { padding: 6px; grid-template-rows: auto; align-content: start; }
+.assistant-window-docked[data-open='false'] .assistant-shell-header { padding: 0; justify-content: center; }
+.assistant-window-docked.assistant-shell-expanded { position: fixed; inset: 28px 28px 28px auto; z-index: 90; width: min(660px, calc(100vw - 56px)); height: calc(100dvh - 56px); }
+.assistant-window-fullscreen { display: grid; grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; height: 100%; }
+.assistant-window-fullscreen > .assistant-window-content { border-radius: 0; background: transparent; }
+.assistant-shell-notice > div { display: grid; gap: 3px; }
+.assistant-shell .assistant-shell-assistant-panel, .assistant-shell .assistant-shell-feedback-panel { height: 100%; }
+.assistant-shell .story-composer-container { min-width: 0; }
+@media (max-width: 600px) {
+  .assistant-window-docked.assistant-shell { right: auto; bottom: auto; width: 100%; max-height: none; }
+  .assistant-window-docked.assistant-shell-expanded { inset: 12px; width: calc(100vw - 24px); height: calc(100dvh - 24px); }
+}
+
+/* Hide the default dock when the product supplies its shared composer surface. */
+.assistant-custom-composer .cm-composer-dock > .cm-composer-form,
+.assistant-custom-composer .cm-composer-dock > .cm-composer-helper { display: none; }
+.assistant-shell .production-text-composer { width: 100%; max-width: none; margin: 0; }
+.assistant-shell .assistant-composer { min-width: 0; border-radius: 20px; padding: 5px; background: var(--pui-semantic-surface-primary); box-shadow: 0 4px 16px color-mix(in srgb, var(--pui-semantic-shadow-color) 5%, transparent); }
+.assistant-shell .assistant-composer .cm-composer-form { min-height: 120px; padding: 0; border-radius: 15px 15px 0 0; box-shadow: none; }
+.assistant-shell .assistant-composer .cm-composer-footer { padding-bottom: 4px; border-radius: 0; }
+.assistant-composer-options { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 36px; padding: 0 8px 8px; border-radius: 0 0 15px 15px; background: var(--pui-semantic-surface-secondary); }
+.assistant-composer-parameters { min-width: 0; flex: 1; }
+.assistant-composer-parameters .home-image-model { max-width: 100%; }
+.assistant-composer-tools { display: flex; align-items: center; gap: 4px; }
+.assistant-composer-tools > button { flex: 0 0 32px; align-items: center; justify-content: center; width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 11px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 65%, transparent); box-shadow: none; }
+.assistant-composer-tools > button > :is(strong, small) { display: none; }
+.assistant-composer-tools > button > span { width: auto; height: auto; margin: 0; background: transparent; }
+.assistant-shell .production-composer-file-hint { padding-inline: 4px; margin: 5px 0 0; font-size: 10px; }
+.assistant-shell .production-story-composer .cm-composer-form:focus-within { box-shadow: none; }
+.assistant-shell .assistant-composer:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--pui-semantic-accent-default) 18%, transparent); }
+
+.assistant-chat.cm-shell .cm-message[data-role='assistant'] .cm-message-bubble { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.assistant-chat.cm-shell .cm-message[data-role='assistant'] :is(.cm-rich-text, .cm-text-block) { font-size: 14px; line-height: 1.71; }
+.assistant-chat.cm-shell .cm-message[data-role='user'] .cm-message-bubble { background: var(--pui-color-neutral-1000, #000); border: 0; color: var(--pui-color-neutral-0, #fff); box-shadow: none; padding: 11px 15px; border-radius: 18px; }
+.assistant-chat.cm-shell .cm-message[data-role='user'] :is(.cm-text-block, .cm-rich-text) { color: inherit; }

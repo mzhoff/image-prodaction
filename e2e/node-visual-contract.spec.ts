@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
@@ -30,7 +31,7 @@ async function openVisualFixture(page: Page, context: BrowserContext, baseURL?: 
   const ui = { ...createEmptyProjectUiState(), viewport: { x: 40, y: 90, zoom: 1 } };
   const snapshot = createProjectExport({ ...structuredClone(initialProject), nodes, edges: [], assets: [] }, ui);
   expect((await owner.http.request(`/api/projects/${project.id}`, { method: 'PATCH', json: { snapshot, expectedRevision: project.revision } })).status).toBe(200);
-  await page.goto(`/projects/${project.id}`);
+  await gotoQaSection(page, `/projects/${project.id}`);
   await expect(page.locator('.production-node')).toHaveCount(nodes.length);
   // Opening a document auto-fits all 33 cards. Zoom/pan through the canvas's
   // normal wheel gestures so the first card can be edited at a readable scale.
@@ -38,7 +39,10 @@ async function openVisualFixture(page: Page, context: BrowserContext, baseURL?: 
   await expect(page.getByLabel('Canvas zoom', { exact: true })).toHaveText('10%');
   const scale = await page.locator('.canvas-world').evaluate((world) => new DOMMatrixReadOnly(getComputedStyle(world).transform).a);
   let first = (await page.locator('.production-node-textGeneration').boundingBox())!;
+  // Hold the physical modifier: Ctrl on an event alone models accelerated touchpad pinch.
+  await page.keyboard.down('Control');
   await canvas.dispatchEvent('wheel', { ctrlKey: true, deltaY: (1 - 1 / scale) / 0.001, clientX: first.x, clientY: first.y });
+  await page.keyboard.up('Control');
   await expect(page.getByLabel('Canvas zoom', { exact: true })).toHaveText('100%');
   first = (await page.locator('.production-node-textGeneration').boundingBox())!;
   await canvas.dispatchEvent('wheel', { deltaX: (first.x - 40) / 1.3, deltaY: 0 });

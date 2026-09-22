@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useState } from 'react';
 import type { ExtractPresetId, ImageToTextNodeData, ProductionNode } from '@/entities/production-graph/model/types';
@@ -24,6 +25,7 @@ import { getExtractAnalysisPresetPatch } from './extract-analysis-preset-state';
 const analysisPresetOptions = extractAnalysisPresets.map(({ id, label }) => ({ value: id, label }));
 
 export function useExtractNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as ImageToTextNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -67,11 +69,11 @@ export function useExtractNodeModel(node: ProductionNode) {
     if (useProductionGraphStore.getState().nodes.find((item) => item.id === node.id)?.status === 'running') return;
     const sourceAssets = getIncomingImageInputs(node.id, undefined, { edges, nodes, assets }).slice(0, 5);
     if (sourceAssets.length === 0) {
-      updateNodeData(node.id, { message: 'Подключи изображение к входу Extract или загрузи его в Import node.' });
+      updateNodeData(node.id, { message: tUi("Подключи изображение к входу Extract или загрузи его в Import node.") });
       return;
     }
     if (!data.prompt?.trim()) {
-      updateNodeData(node.id, { message: 'Выбери слои в Layers или введи промпт для Extract.' });
+      updateNodeData(node.id, { message: tUi("Выбери слои в Layers или введи промпт для Extract.") });
       return;
     }
 
@@ -80,7 +82,7 @@ export function useExtractNodeModel(node: ProductionNode) {
       updateNodeData(node.id, { message: '' });
       const imageDataUrls = await Promise.all(sourceAssets.map(async ({ asset }) => {
         const blob = await loadAssetBlob(asset);
-        if (!blob) throw new Error(`Не удалось прочитать изображение «${asset.name}».`);
+        if (!blob) throw new Error(tUi("Не удалось прочитать изображение «{p1}».", { p1: asset.name }));
         return prepareImageForOpenRouter(blob);
       }));
       const result = await requestAnalyzeImage({ analysisPreset: selectedAnalysisPreset, model: selectedModel, prompt: data.prompt, imageDataUrls });

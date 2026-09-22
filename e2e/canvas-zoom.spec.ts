@@ -40,11 +40,21 @@ test('toolbar reports canvas scale and enforces 135% for gestures and restored v
     await checkScale();
     const initialBox = (await indicator.boundingBox())!;
 
+    // A physical modifier with a mouse wheel keeps the original sensitivity.
+    await page.keyboard.down('Control');
     await zoomBy(-40);
     await expect(indicator).toHaveText('120%');
     await checkScale();
-    await zoomBy(200);
-    await expect(indicator).toHaveText('96%');
+    await page.keyboard.up('Control');
+    await page.getByRole('button', { name: 'Zoom to fit', exact: true }).click();
+    await expect(indicator).toHaveText('115%');
+
+    // Touchpad pinch sets Ctrl on the wheel event without a keyboard press.
+    await zoomBy(-16);
+    await expect(indicator).toHaveText('124%');
+    await checkScale();
+    await zoomBy(100);
+    await expect(indicator).toHaveText('62%');
     await checkScale();
 
     await zoomBy(-100_000);

@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -49,7 +50,7 @@ test('account model lists persist across nodes/reloads, settings reorder favorit
     });
   }
   const open = async (index: number) => {
-    const document = documents[index]; await page.goto(`/projects/${document.id}`);
+    const document = documents[index]; await gotoQaSection(page, `/projects/${document.id}`);
     const node = page.locator(`[data-node-id="${document.nodeId}"]`).first();
     const trigger = index < 2 ? node.getByRole('button', { name: 'Image model', exact: true })
       : node.locator('.setting-row').filter({ has: page.locator(':scope > span').filter({ hasText: /^Model$/ }) }).getByRole('button').first();
@@ -102,7 +103,7 @@ test('account model lists persist across nodes/reloads, settings reorder favorit
   dialog = await open(4); await expect(dialog.getByRole('tab', { name: 'All', exact: true })).toHaveAttribute('aria-selected', 'true');
   await dialog.getByRole('tab', { name: 'Favorite', exact: true }).click();
   await expect.poll(async () => (await read()).preferences.audio.tab).toBe('favorites');
-  await page.goto('/settings/account');
+  await gotoQaSection(page, '/settings/account');
   const settings = page.getByRole('region', { name: 'Избранные модели', exact: true });
   await settings.getByRole('tab', { name: 'Изображения', exact: true }).click();
   const ordered = settings.getByRole('list', { name: 'Порядок избранных моделей' });

@@ -1,5 +1,19 @@
-/* Единственный источник палитры/геометрии — опубликованный профиль ui-tokens.
-   Эти aliases адаптируют публичный ChatModule 0.12, не копируя его реализацию. */
+/* Базовая палитра/геометрия — опубликованный профиль ui-tokens.
+   Локальные цвета сохраняют согласованный вид Production независимо от
+   переименований в UI-пакете. Aliases адаптируют публичный ChatModule API. */
+:root {
+  --production-resolution-text: #a6a6a6;
+  --production-voice-preview-accent: #204aff;
+  --production-popup-opacity: 70%;
+  --production-popup-backdrop-filter: blur(30px) saturate(1.15);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --production-popup-opacity: 100%; --production-popup-backdrop-filter: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --production-popup-opacity: 100%; --production-popup-backdrop-filter: none; }
+}
+
 :root,
 .image-production-chat[data-theme] {
   --cm-color-page: var(--pui-semantic-surface-canvas);
@@ -25,6 +39,43 @@
   --cm-radius-pill: var(--pui-radius-full);
   --cm-shadow-popup: var(--pui-shadow-lg);
   --cm-shadow-soft: var(--pui-shadow-sm);
+}
+
+/* Shared ChatModule presentation for Home, Canvas and Stories. A single
+   shrink-wrapped content column gives the bubble and its footer the same edge. */
+.image-production-chat.cm-shell .cm-message[data-role='user'] > .cm-message-content {
+  justify-self: end;
+  width: fit-content;
+  max-width: 100%;
+}
+.image-production-chat.cm-shell .cm-message[data-role='user'] > .cm-message-content > .cm-message-bubble {
+  --cm-color-text: var(--pui-color-neutral-0, #fff);
+  --cm-color-text-muted: var(--pui-color-neutral-0, #fff);
+  --cm-color-text-subtle: var(--pui-color-neutral-0, #fff);
+  --cm-color-surface-raised: var(--pui-color-neutral-800, #2b2b2e);
+  --cm-color-border: var(--pui-color-neutral-600, #606064);
+  justify-self: stretch;
+  background: var(--pui-color-neutral-1000, #000);
+  color: var(--pui-color-neutral-0, #fff);
+  border: 0;
+  box-shadow: none;
+}
+.image-production-chat.cm-shell .cm-message[data-role='user'] > .cm-message-content > .cm-message-meta-row[data-placement='below-message'] {
+  width: 100%;
+  justify-self: stretch;
+  flex-wrap: nowrap;
+}
+.image-production-chat.cm-shell .cm-message[data-role='user'] .cm-message-actions {
+  margin-inline-end: auto;
+  justify-content: flex-start;
+}
+.image-production-chat.cm-shell .cm-message[data-role='user'] .cm-message-actions button {
+  padding-inline: 0;
+  border: 0;
+}
+.image-production-chat.cm-shell .cm-message[data-role='user'] .cm-message-actions button:focus-visible {
+  outline: 2px solid var(--pui-semantic-accent-default);
+  outline-offset: 2px;
 }
 
 /* SVG-cursors с жёстким чёрным stroke не видны на тёмном канвасе.

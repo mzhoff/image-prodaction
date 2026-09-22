@@ -23,10 +23,12 @@ test('resolves import indices against the latest user message with managed image
       reference('attachment-b', 'second.webp'),
     ],
   };
+  const answer = createTextMessage({ content: 'По разделам', conversationId: conversation.id, role: 'user' });
+  answer.metadata = { selectedAction: { payload: { kind: 'assistant-answer' } } };
   let assertedIds: string[] = [];
   const conversations = {
     findById: async () => conversation,
-    listMessages: async () => [older, latest],
+    listMessages: async () => [older, latest, answer],
   } as unknown as ConversationStore;
   const attachments = {
     assertReadyReferences: async (refs: Array<{ attachmentId: string }>) => {

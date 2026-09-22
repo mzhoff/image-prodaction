@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Sparkles } from '@prodactionpro/ui-core/icons';
 import { IconButton } from '@prodactionpro/ui-core/icon-button';
@@ -9,6 +10,7 @@ interface AssistantFloatingButtonProps {
 }
 
 export function AssistantFloatingButton({ className = '', onClick }: AssistantFloatingButtonProps) {
+  const tUi = useTranslations();
   return (
     <IconButton
       type="button"
@@ -18,7 +20,8 @@ export function AssistantFloatingButton({ className = '', onClick }: AssistantFl
       icon={<Sparkles size={28} />}
       className={`assistant-floating-button ${className}`}
       data-snapshot-exclude
-      aria-label="Open assistant"
+      aria-label={tUi("Открыть ассистента")}
+      inert={className.includes('assistant-floating-button-hidden')}
       onClick={onClick}
     />
   );

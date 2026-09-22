@@ -1,10 +1,11 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test, type Locator } from '@playwright/test';
 import sharp from 'sharp';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
 import type { AssetRecord } from '../src/entities/production-graph/model/types';
-import { audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
 
 test.use({ trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1600, height: 1000 } });
 
@@ -21,8 +22,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
   });
   const bytes = await sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1350"><defs><linearGradient id="g"><stop stop-color="#c67772"/><stop offset="1" stop-color="#1c3e64"/></linearGradient></defs><rect width="900" height="1350" fill="url(#g)"/><circle cx="450" cy="450" r="240" fill="#92744b"/><rect x="180" y="740" width="540" height="400" rx="40" fill="#576949"/></svg>')).png().toBuffer();
   const uploaded = await owner.http.request('/api/assets/images', { form: audioQaForm(bytes, owner.workspaceId, true) });
-  expect(uploaded.status).toBe(201);
-  const remote = (await uploaded.json()).asset;
+  const { asset: remote } = await awaitQaAssetIngest(owner.http, uploaded);
   const asset: AssetRecord = { id: remote.id, kind: 'image', name: 'Color QA.png', mimeType: 'image/png',
     width: 900, height: 1350, createdAt: remote.createdAt, storage: { type: 'remote', assetId: remote.id } };
   const input = createDefaultNode('importImage', { x: 20, y: 80 });
@@ -45,6 +45,8 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
   const stage = viewer.locator('.image-viewer-stage');
   const sidebar = viewer.locator('.image-editor-sidebar');
   const assertSide = async (screenWidth: number, screenHeight: number) => {
+    await expect(stage).toBeVisible();
+    await expect(sidebar).toBeVisible();
     const image = (await stage.boundingBox())!;
     const tools = (await sidebar.boundingBox())!;
     expect(tools.x).toBeGreaterThan(image.x + image.width);
@@ -55,7 +57,7 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
     expect(image.y + image.height).toBeLessThanOrEqual(screenHeight);
   };
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     await card(curves.id).locator('.image-plate').click();
     // This assertion rejects an older Docker bundle that still embeds its own viewer.
     await expect(viewer).toHaveClass(/pui-media-viewer/);

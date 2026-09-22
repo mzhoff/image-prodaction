@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { ImageViewer } from '@/features/graph-node/ui/image-viewer';
 import { createNodeAskAiLaunchCoordinator,
@@ -7,6 +8,7 @@ import { AssistantPetLauncher } from '@/features/assistant-pet/ui/assistant-pet-
 import { ContextMenu } from '@/shared/ui/context-menu';
 import { AssistantShell } from '@/widgets/assistant-shell/ui/assistant-shell';
 import { Plus } from '@prodactionpro/ui-core/icons';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CANVAS_WORLD_SIZE, useProductionCanvasModel } from '../model/use-production-canvas-model';
 import { useCanvasScissors } from '../model/use-canvas-scissors';
@@ -21,14 +23,20 @@ import { DocumentTitleBar } from './document-title-bar';
 import { OpenRouterBalance } from './openrouter-balance';
 import { useTextFragmentDrag } from '../model/use-text-fragment-drag';
 import { TextFragmentDragPreview } from '@/features/graph-node/ui/text-fragment-drag-preview';
+import { SectionHelpButton } from '@/shared/ui/section-help';
+import Link from 'next/link';
+import styles from './canvas-session.module.css';
 
 interface ProductionCanvasProps {
   projectId?: string;
 }
 
 export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
+  const tUi = useTranslations();
+  const requestedAssistant = useSearchParams()?.get('assistant') === '1';
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  useEffect(() => { if (requestedAssistant) setAssistantOpen(true); }, [requestedAssistant, projectId]);
   const openAssistant = useCallback(() => setAssistantOpen(true), []);
   const [chatLaunchCoordinator] = useState(() => createNodeAskAiLaunchCoordinator(openAssistant));
   const askAiNode = useCallback(
@@ -42,7 +50,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
   const fragmentDrag = useTextFragmentDrag({ projectId, containerRef: model.canvas.containerRef, screenToWorld: model.canvas.screenToWorld, notify: model.showToast });
   const autoOpenedProjectRef = useRef<string | undefined>(undefined);
   const projectTitle = model.documentName
-    ?? (model.documentSync.phase === 'loading' ? 'Загрузка документа…' : 'Untitled Pipeline');
+    ?? (model.documentSync.phase === 'loading' ? tUi("Загрузка документа…") : 'Untitled Pipeline');
   const syncProblem = model.documentSync.phase === 'conflict'
     || model.documentSync.phase === 'error'
     || model.documentSync.phase === 'recovery';
@@ -58,13 +66,13 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
   }, [model.documentSync.phase, model.nodes.length, model.workspaceId, projectId]);
 
   return (
-    <div className="canvas-shell">
+    <div className="canvas-shell" aria-busy={!model.documentReady}>
       {cutPreview ? <svg className="canvas-cut-preview" data-snapshot-exclude aria-hidden="true">
         <polyline points={cutPreview.points.map((p) => `${p.x},${p.y}`).join(' ')} />
       </svg> : null}
       <TextFragmentDragPreview {...fragmentDrag} />
-      <div className="canvas-bottom-controls" data-snapshot-exclude>
-        {syncProblem && model.documentSync.message ? (
+      <div className="canvas-bottom-controls" data-snapshot-exclude inert={!model.documentReady}>
+        {model.documentReady && model.workspaceId && syncProblem && model.documentSync.message ? (
           <div className="canvas-toast" role="status">{model.documentSync.message}</div>
         ) : null}
         <CanvasImportProgressCard store={model.importProgressStore} />
@@ -82,8 +90,13 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           onZoomToFit={() => model.canvas.zoomToBounds(model.bounds)}
         />
       </div>
+      {!model.documentReady || (model.documentSync.phase === 'recovery' && !model.workspaceId) ? <div className={styles.status} role="status">
+        <p>{model.documentSync.message ?? tUi('Открываем чистый холст…')}</p>
+        {model.documentSync.phase !== 'loading' ? <><button type="button" onClick={model.reloadDocumentFromServer}>{tUi('Повторить')}</button><Link href="/flows">{tUi('К Flows')}</Link></> : null}
+      </div> : null}
       <div
         ref={model.canvas.containerRef}
+        inert={!model.documentReady}
         tabIndex={-1}
         {...cutHandlers}
         className={`production-canvas ${model.connectionDraft ? 'production-canvas-connecting' : ''}`}
@@ -109,10 +122,10 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           title={projectTitle}
         />
         <DocumentNodePalette
-          favoriteNodesError={model.favoriteNodesError}
+          favoriteNodesError={typeof (model.favoriteNodesError) === 'string' ? tUi((model.favoriteNodesError) as string) : (model.favoriteNodesError)}
           favoriteNodes={model.favoriteNodes}
           favoriteNodesLoading={model.favoriteNodesLoading}
-          nodeTemplatesError={model.nodeTemplatesError}
+          nodeTemplatesError={typeof (model.nodeTemplatesError) === 'string' ? tUi((model.nodeTemplatesError) as string) : (model.nodeTemplatesError)}
           nodeTemplates={model.nodeTemplates}
           nodeTemplatesLoading={model.nodeTemplatesLoading}
           open={paletteOpen}
@@ -130,7 +143,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             transform: `translate(${model.canvas.pan.x}px, ${model.canvas.pan.y}px) scale(${model.canvas.zoom})`,
           }}
         >
-          <CanvasSectionLayer
+          {model.documentReady ? <><CanvasSectionLayer
             disabled={model.canvasTool === 'section'}
             onRenameSection={model.renameSection}
             onSectionContextMenu={model.openSectionMenu}
@@ -161,13 +174,15 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
             onStartConnection={model.startConnection}
             onStartDrag={model.startNodeDrag}
             selectedSet={model.selectedSet}
-          />
+          /></> : null}
         </div>
-        <OpenRouterBalance workspaceId={model.workspaceId} />
+        {model.documentReady ? <div className={styles.help} data-canvas-ui data-snapshot-exclude><SectionHelpButton section="canvas" /></div> : null}
+        <OpenRouterBalance key={`${model.workspaceId}:${projectId}`} workspaceId={model.workspaceId} documentId={projectId} />
         <button
           type="button"
           className={`document-floating-action document-floating-action-add ${paletteOpen ? 'document-floating-action-hidden' : ''}`}
           data-snapshot-exclude
+          data-onboarding-target="canvas-palette"
           aria-label="Open node palette"
           aria-expanded={paletteOpen}
           onClick={() => setPaletteOpen(true)}
@@ -180,7 +195,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           onClick={openAssistant}
           size="canvas"
         />
-        <AssistantShell
+        {model.documentReady && (!projectId || model.workspaceId) ? <AssistantShell
           open={assistantOpen}
           notice={assistantOpen ? model.toastMessage : null}
           contextLabel={projectTitle}
@@ -204,7 +219,7 @@ export function ProductionCanvas({ projectId }: ProductionCanvasProps) {
           route={projectId ? `/projects/${projectId}` : '/projects'}
           selectionIds={[...model.selectedSet, ...model.selectedSectionSet]}
           workspaceId={model.workspaceId}
-        />
+        /> : null}
         {model.boxSelection.rectStyle ? <div className="selection-rect" data-snapshot-exclude style={model.boxSelection.rectStyle} /> : null}
         {model.sectionDraftStyle ? <div className="section-draft-rect" data-snapshot-exclude style={model.sectionDraftStyle} /> : null}
         <ContextMenu menu={model.contextMenu.menu} onClose={model.closeContextMenu} />

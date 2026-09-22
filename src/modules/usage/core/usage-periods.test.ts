@@ -3,10 +3,10 @@ import test from 'node:test';
 import { usageDays, usagePeriod } from './usage-dashboard';
 import { usageChange, usageComparisonWindow, usagePresetPeriod } from './usage-periods';
 
-test('presets use the requested timezone and completed rolling windows', () => {
+test('presets use the requested timezone and include the current day', () => {
   const now = new Date('2026-09-11T22:00:00Z');
   const cases = [['today', '2026-09-12', '2026-09-12'], ['yesterday', '2026-09-11', '2026-09-11'],
-    ['week', '2026-09-05', '2026-09-11'], ['month', '2026-08-12', '2026-09-11'], ['quarter', '2026-06-12', '2026-09-11']] as const;
+    ['week', '2026-09-06', '2026-09-12'], ['month', '2026-08-12', '2026-09-12'], ['quarter', '2026-06-12', '2026-09-12']] as const;
   for (const [preset, from, to] of cases) {
     const actual = usagePresetPeriod(preset, 'Europe/Moscow', now);
     assert.equal(actual.from, from); assert.equal(actual.to, to);
@@ -26,9 +26,9 @@ test('previous period immediately precedes selected dates and has exactly the sa
     const period = usagePresetPeriod(preset, 'Europe/Moscow', now), comparison = usageComparisonWindow(period, now);
     assert.equal(usageDays(comparison.period).length, usageDays(period).length);
     assert.equal(comparison.period.end, period.start);
-    assert.equal(comparison.currentThrough, period.end);
-    assert.equal(comparison.previousThrough, comparison.period.end);
-    assert.equal(comparison.partial, false);
+    assert.equal(comparison.currentThrough, preset === 'yesterday' ? period.end : now.toISOString());
+    assert.equal(Date.parse(comparison.currentThrough) - Date.parse(period.start), Date.parse(comparison.previousThrough) - Date.parse(comparison.period.start));
+    assert.equal(comparison.partial, preset !== 'yesterday');
   }
 });
 

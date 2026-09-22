@@ -43,7 +43,7 @@ export function CanvasToolbar({
   };
 
   return (
-    <div className="canvas-toolbar" aria-label="Canvas tools">
+    <div className="canvas-toolbar" data-onboarding-target="canvas-tools" aria-label="Canvas tools">
       <ProTooltip label="Select" shortcut="V">
         <button
           type="button"

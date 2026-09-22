@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -46,7 +47,7 @@ test('model ratio selector commits clicks, previews drags, retains sparse stops 
   };
   const position = async (ratio: string) => label(ratio).evaluate((element) => element.style.left);
   try {
-    await page.goto(`/projects/${documents[0].id}`);
+    await gotoQaSection(page, `/projects/${documents[0].id}`);
     await expect(trigger).toBeEnabled(); await trigger.click();
     await expect(dialog.locator('.aspect-ratio-resolution')).toHaveText('2048 × 2048 px');
     const initialReads = catalogReads;
@@ -127,7 +128,7 @@ test('model ratio selector commits clicks, previews drags, retains sparse stops 
     await expect(dialog.locator('.aspect-ratio-resolution')).toHaveText('1216 × 896 px');
     await page.keyboard.press('Escape');
     // The sparse video model keeps the same global coordinates and cannot select the hidden square.
-    await page.goto(`/projects/${documents[1].id}`); await expect(trigger).toBeEnabled(); await trigger.click();
+    await gotoQaSection(page, `/projects/${documents[1].id}`); await expect(trigger).toBeEnabled(); await trigger.click();
     await expect(dialog.locator('[data-aspect-ratio]')).toHaveCount(2);
     expect(await position('9:16')).toBe(verticalPosition); expect(await position('16:9')).toBe(horizontalPosition);
     await expect(label('1:1')).toHaveCount(0);

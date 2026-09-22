@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLibraryAssets } from '../api/library-api';
@@ -9,6 +10,7 @@ import type {
 } from './types';
 
 export function useLibraryAssets(workspaceId: string | undefined, filters: LibraryFilters) {
+  const tUi = useTranslations();
   const [items, setItems] = useState<LibraryAssetItem[]>([]);
   const [facets, setFacets] = useState<LibraryFacets>({});
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -34,12 +36,12 @@ export function useLibraryAssets(workspaceId: string | undefined, filters: Libra
       setNextCursor(response.nextCursor ?? null);
     } catch (caughtError) {
       if (caughtError instanceof DOMException && caughtError.name === 'AbortError') return;
-      setError(caughtError instanceof Error ? caughtError.message : 'Библиотека недоступна.');
+      setError(caughtError instanceof Error ? caughtError.message : tUi("Библиотека недоступна."));
       setItems([]);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [stableFilters, workspaceId]);
+  }, [tUi, stableFilters, workspaceId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,11 +59,11 @@ export function useLibraryAssets(workspaceId: string | undefined, filters: Libra
       setFacets(response.facets ?? facets);
       setNextCursor(response.nextCursor ?? null);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Не удалось загрузить следующую страницу.');
+      setError(caughtError instanceof Error ? caughtError.message : tUi("Не удалось загрузить следующую страницу."));
     } finally {
       setLoadingMore(false);
     }
-  }, [facets, loadingMore, nextCursor, stableFilters, workspaceId]);
+  }, [tUi, facets, loadingMore, nextCursor, stableFilters, workspaceId]);
 
   const removeItems = useCallback((ids: string[]) => {
     const removed = new Set(ids);

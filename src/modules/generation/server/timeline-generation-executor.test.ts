@@ -97,3 +97,11 @@ test('cancellation before saving a result cannot persist an apparently successfu
   await assert.rejects(createTimelineGenerationExecutor(fixture.dependencies).execute({ job, signal: controller.signal }), { name: 'AbortError' });
   assert.equal(fixture.saved.length, 0);
 });
+
+test('standalone Timeline analysis runs without a canvas document and still verifies membership', async () => {
+  const fixture = setup();
+  const standalone = { ...payload, request: { ...payload.request, documentId: null } };
+  fixture.dependencies.readPayload = async () => standalone;
+  await execute(fixture, { documentId: null, metadata: { ...job.metadata, requestHash: timelinePayloadHash(standalone) } });
+  assert.equal(fixture.calls(), 1); assert.ok(fixture.authorized() >= 3);
+});

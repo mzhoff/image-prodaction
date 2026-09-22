@@ -1,4 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
 
 import { useEffect, useState } from 'react';
 import type { RuntimeV2Grant, RuntimeV2Updates, RuntimeV2Version } from '@/modules/executable-pipelines/contracts/runtime-v2-descriptor-contracts';
@@ -9,6 +12,7 @@ import { RuntimeGrantTest } from './runtime-grant-test';
 import styles from './runtime-connections.module.css';
 
 export function RuntimeGrantCard({ grant, model }: { grant: RuntimeV2Grant; model: RuntimeConnectionsModel }) {
+  const tUi = useTranslations();
   const [updates, setUpdates] = useState<RuntimeV2Updates | null>(null);
   const [rollbackVersion, setRollbackVersion] = useState('');
   const [pending, setPending] = useState(false);
@@ -26,18 +30,18 @@ export function RuntimeGrantCard({ grant, model }: { grant: RuntimeV2Grant; mode
     return () => controller.abort();
   }, [model.workspaceId, model.clientId, grant.id, grant.pipelinePublicId, grant.revision]);
   async function toggleEnabled() {
-    if (grant.enabled && !window.confirm(`Запретить новые запуски «${grant.pipelineName}» для этого приложения? История сохранится.`)) return;
+    if (grant.enabled && !window.confirm(tUi("Запретить новые запуски «{p1}» для этого приложения? История сохранится.", { p1: grant.pipelineName }))) return;
     await model.mutate(() => runtimeConnectionsApi.setGrantEnabled(model.workspaceId, model.clientId,
-      grant.id, !grant.enabled, grant.revision), grant.enabled ? 'Новые запуски pipeline запрещены.' : 'Разрешение включено.');
+      grant.id, !grant.enabled, grant.revision), grant.enabled ? tUi("Новые запуски pipeline запрещены.") : tUi("Разрешение включено."));
     await model.refresh();
   }
   async function changeVersion(version: RuntimeV2Version, rollback: boolean) {
-    if (!window.confirm(`${rollback ? 'Вернуть' : 'Закрепить'} версию ${version.version} для новых запусков? Уже выполняющиеся запуски сохранят свою версию.`)) return;
+    if (!window.confirm(tUi("{p1} версию {p2} для новых запусков? Уже выполняющиеся запуски сохранят свою версию.", { p1: rollback ? 'Вернуть' : 'Закрепить', p2: version.version }))) return;
     const input = runtimeRepinInput(grant.revision, version);
     await model.mutate(() => rollback
       ? runtimeConnectionsApi.rollback(model.workspaceId, model.clientId, grant.id, input)
       : runtimeConnectionsApi.repin(model.workspaceId, model.clientId, grant.id, input),
-    `Для новых запусков закреплена версия ${version.version}.`);
+    tUi("Для новых запусков закреплена версия {p1}.", { p1: version.version }));
     await model.refresh();
   }
   async function createCandidate() {
@@ -47,7 +51,7 @@ export function RuntimeGrantCard({ grant, model }: { grant: RuntimeV2Grant; mode
       pipeline: grant.pipelinePublicId, capabilityKey: version.capabilityKey!, version: version.version,
       checksum: version.checksum, inputSchemaChecksum: version.inputSchemaChecksum!, outputSchemaChecksum: version.outputSchemaChecksum!,
       updatePolicy: 'PINNED', executionPolicy: grant.executionPolicy, costPolicy: grant.costPolicy,
-    }), `Создано отдельное разрешение на версию ${version.version}. Проверьте его ниже. Рабочая версия ${grant.pinned.version} не изменилась.`);
+    }), tUi("Создано отдельное разрешение на версию {p1}. Проверьте его ниже. Рабочая версия {p2} не изменилась.", { p1: version.version, p2: grant.pinned.version }));
     await model.refresh();
   }
   const previous = updates?.rollbackVersions.filter((version) => canPinRuntimeVersion(version)) ?? [];
@@ -58,50 +62,49 @@ export function RuntimeGrantCard({ grant, model }: { grant: RuntimeV2Grant; mode
   return (
     <div className={styles.grant}>
       <header className={styles.cardHeader}>
-        <div><h4>{grant.pipelineName}</h4><p className={styles.muted}>Версия {grant.pinned.version} · {grant.enabled ? 'разрешён' : 'отключён'}</p></div>
-        {model.canManage ? <button className="settings-quiet-button" type="button" disabled={model.mutation}
-          onClick={() => void toggleEnabled()}>{grant.enabled ? 'Отключить' : 'Включить'}</button> : null}
+        <div><h4>{grant.pipelineName}</h4><p className={styles.muted}>{tUi("Версия")}{' '} {grant.pinned.version} · {grant.enabled ? tUi("разрешён") : tUi("отключён")}</p></div>
+        {model.canManage ? <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button" disabled={model.mutation}
+          onClick={() => void toggleEnabled()}>{grant.enabled ? tUi("Отключить") : tUi("Включить")}</Button> : null}
       </header>
-      <p className={styles.muted}>Назначение: {grant.capabilityKey}</p>
-      <p className={styles.muted}>Лимит: {grant.costPolicy.maximumProviderCostUsd === null ? 'не задан' : `$${grant.costPolicy.maximumProviderCostUsd}`}
-        {' · '}{grant.costPolicy.mode === 'STRICT' ? 'строгий контроль' : 'без гарантии лимита, возможен перерасход'}</p>
-      {pending ? <p className={styles.muted} role="status">Проверяем обновления…</p> : null}
-      {error ? <p className="settings-message settings-message-error" role="alert">{error}</p> : null}
+      <p className={styles.muted}>{tUi("Назначение:")}{' '} {grant.capabilityKey}</p>
+      <p className={styles.muted}>{tUi("Лимит:")}{' '} {grant.costPolicy.maximumProviderCostUsd === null ? tUi("не задан") : `$${grant.costPolicy.maximumProviderCostUsd}`}
+        {' · '}{grant.costPolicy.mode === 'STRICT' ? tUi("строгий контроль") : tUi("без гарантии лимита, возможен перерасход")}</p>
+      {pending ? <p className={styles.muted} role="status">{tUi("Проверяем обновления…")}</p> : null}
+      {error ? <p className="settings-message settings-message-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
       {updates?.updateAvailable ? (
         <div className={styles.update}>
-          <strong>Доступна версия {updates.latest.version}</strong>
-          <p>{incompatible ? 'Изменился формат или назначение. Текущее разрешение нельзя перевести на эту версию.'
-            : 'Обновление не применено. Проверьте новую версию перед переключением.'}</p>
-          {updates.compatibility.behavioralChange ? <p>Внутренняя логика изменилась: результат может отличаться даже при прежнем формате данных.</p> : null}
-          <p>Изменение стоимости пока неизвестно. Автоматическое обновление выключено.</p>
+          <strong>{tUi("Доступна версия")}{' '} {updates.latest.version}</strong>
+          <p>{incompatible ? tUi("Изменился формат или назначение. Текущее разрешение нельзя перевести на эту версию.")
+            : tUi("Обновление не применено. Проверьте новую версию перед переключением.")}</p>
+          {updates.compatibility.behavioralChange ? <p>{tUi("Внутренняя логика изменилась: результат может отличаться даже при прежнем формате данных.")}</p> : null}
+          <p>{tUi("Изменение стоимости пока неизвестно. Автоматическое обновление выключено.")}</p>
           {model.canManage ? <div className={styles.actions}>
-            <button className="settings-quiet-button" type="button" disabled={blocked || !canPinRuntimeVersion(updates.latest)}
-              onClick={() => void createCandidate()}>Создать отдельное разрешение для проверки</button>
-            <button className="settings-primary-button" type="button"
+            <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button" disabled={blocked || !canPinRuntimeVersion(updates.latest)}
+              onClick={() => void createCandidate()}>{tUi("Создать отдельное разрешение для проверки")}</Button>
+            <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="button"
               disabled={blocked || incompatible || !canPinRuntimeVersion(updates.latest)}
-              onClick={() => void changeVersion(updates.latest, false)}>Закрепить версию {updates.latest.version}</button>
+              onClick={() => void changeVersion(updates.latest, false)}>{tUi("Закрепить версию")}{' '} {updates.latest.version}</Button>
           </div> : null}
         </div>
-      ) : updates ? <p className={styles.muted}>Закреплена последняя опубликованная версия.</p> : null}
+      ) : updates ? <p className={styles.muted}>{tUi("Закреплена последняя опубликованная версия.")}</p> : null}
       {model.canManage && previous.length > 0 ? (
         <div className={styles.referenceRow}>
-          <label className={styles.selectLabel}>Вернуться к прежней версии
-            <select value={rollbackVersion} disabled={blocked} onChange={(event) => setRollbackVersion(event.target.value)}>
-              <option value="">Выберите версию</option>
-              {previous.map((version) => <option value={version.version} key={version.version}>Версия {version.version}</option>)}
+          <label className={styles.selectLabel}>{tUi("Вернуться к прежней версии")}<select value={rollbackVersion} disabled={blocked} onChange={(event) => setRollbackVersion(event.target.value)}>
+              <option value="">{tUi("Выберите версию")}</option>
+              {previous.map((version) => <option value={version.version} key={version.version}>{tUi("Версия")}{' '} {version.version}</option>)}
             </select>
           </label>
-          <button className="settings-quiet-button" type="button" disabled={blocked || !chosenRollback}
-            onClick={() => chosenRollback && void changeVersion(chosenRollback, true)}>Вернуть</button>
+          <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button" disabled={blocked || !chosenRollback}
+            onClick={() => chosenRollback && void changeVersion(chosenRollback, true)}>{tUi("Вернуть")}</Button>
         </div>
       ) : null}
       <details className={styles.diagnostics}>
-        <summary>Формат данных и диагностика</summary>
-        <dl><dt>ID разрешения</dt><dd>{grant.id}</dd><dt>Pipeline</dt><dd>{grant.pipelinePublicId}</dd>
-          <dt>Ревизия разрешения</dt><dd>{grant.revision}</dd><dt>Checksum</dt><dd>{grant.pinned.checksum}</dd>
-          <dt>Вход</dt><dd>{grant.pinned.inputSchemaChecksum}</dd><dt>Выход</dt><dd>{grant.pinned.outputSchemaChecksum}</dd></dl>
-        <p>На вход: {describeFields(grant.input.fields)}</p><p>На выход: {describeFields(grant.output.fields)}</p>
-        {updates ? <p>Причины ручного обновления: {updates.compatibility.autoRepinDeniedReasons.join(', ') || 'Политика PINNED'}</p> : null}
+        <summary>{tUi("Формат данных и диагностика")}</summary>
+        <dl><dt>{tUi("ID разрешения")}</dt><dd>{grant.id}</dd><dt>Pipeline</dt><dd>{grant.pipelinePublicId}</dd>
+          <dt>{tUi("Ревизия разрешения")}</dt><dd>{grant.revision}</dd><dt>Checksum</dt><dd>{grant.pinned.checksum}</dd>
+          <dt>{tUi("Вход")}</dt><dd>{grant.pinned.inputSchemaChecksum}</dd><dt>{tUi("Выход")}</dt><dd>{grant.pinned.outputSchemaChecksum}</dd></dl>
+        <p>{tUi("На вход:")}{' '} {tUi(describeFields(grant.input.fields))}</p><p>{tUi("На выход:")}{' '} {tUi(describeFields(grant.output.fields))}</p>
+        {updates ? <p>{tUi("Причины ручного обновления:")}{' '} {updates.compatibility.autoRepinDeniedReasons.join(', ') || tUi("Политика PINNED")}</p> : null}
       </details>
       {model.canManage ? <RuntimeGrantTest key={`${grant.id}:${grant.revision}`} grant={grant} model={model} /> : null}
     </div>

@@ -1,4 +1,6 @@
 'use client';
+import { useUiCatalog } from '@/shared/i18n/use-ui-catalog';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Loader2, Pause, Play, UserRound } from '@prodactionpro/ui-core/icons';
 import { useEffect, useRef, useState } from 'react';
@@ -33,7 +35,9 @@ export function VoiceSelector({ model, value, options, onChange }: {
 }
 
 function VoiceGenderIcon({ gender }: { gender: VoiceGender }) {
-  const label = voiceGenderLabels[gender];
+  const tUi = useTranslations();
+  const ui_voiceGenderLabels = useUiCatalog(voiceGenderLabels, tUi);
+  const label = ui_voiceGenderLabels[gender];
   // Match the shared 24px stroke grid; the shared package has no gender symbols yet.
   return <span className="voice-gender-icon" role="img" aria-label={label}>
     {gender === 'unknown' ? <UserRound size={14} aria-hidden="true" /> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -45,6 +49,7 @@ function VoiceGenderIcon({ gender }: { gender: VoiceGender }) {
 function VoicePreviewButton({ model, voice, language, name, direction }: {
   model: string; voice: string; language: string; name: string; direction: string;
 }) {
+  const tUi = useTranslations();
   const [sample, setSample] = useState<VoicePreviewSample>();
   const [state, setState] = useState<'idle' | 'loading' | 'playing' | 'error'>('idle');
   const audioRef = useRef<HTMLAudioElement | undefined>(undefined);
@@ -81,9 +86,9 @@ function VoicePreviewButton({ model, voice, language, name, direction }: {
     setState('loading');
     try { await audio.play(); } catch { if (attemptRef.current === attempt && activePreview === audio && audioRef.current === audio) setState('error'); }
   };
-  const label = !sample ? `${name}: образец ещё не записан. ${direction}`
-    : state === 'error' ? 'Не удалось воспроизвести образец. Нажмите, чтобы повторить.'
-      : `${state === 'playing' || state === 'loading' ? 'Остановить' : 'Прослушать'} образец ${name} · ${language.toUpperCase()}. ${direction}`;
+  const label = !sample ? tUi("{p1}: образец ещё не записан. {p2}", { p1: name, p2: direction })
+    : state === 'error' ? tUi("Не удалось воспроизвести образец. Нажмите, чтобы повторить.")
+      : tUi("{p1} образец {p2} · {p3}. {p4}", { p1: state === 'playing' || state === 'loading' ? 'Остановить' : 'Прослушать', p2: name, p3: language.toUpperCase(), p4: direction });
   return <ProTooltip label={label}>
     <button type="button" className="voice-preview-button" aria-label={label} aria-disabled={!sample} aria-pressed={state === 'playing'} onClick={() => void toggle()}>
       {state === 'loading' ? <Loader2 size={14} className="spin" /> : state === 'playing' ? <Pause size={14} /> : <Play size={14} />}

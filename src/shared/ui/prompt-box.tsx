@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import type { CSSProperties, RefObject } from 'react';
 import { TextareaControl } from '@prodactionpro/ui-core/textarea-control';
@@ -25,12 +26,13 @@ export function PromptBox({
   className,
   style,
   value,
-  placeholder = DEFAULT_PROMPT_PLACEHOLDER,
+  placeholder,
   readonly,
   textareaRef,
   onChange,
 }: PromptBoxProps) {
-  const textareaPlaceholder = readonly && placeholder === DEFAULT_PROMPT_PLACEHOLDER ? '' : placeholder;
+  const tUi = useTranslations();
+  const textareaPlaceholder = readonly && (!placeholder || placeholder === DEFAULT_PROMPT_PLACEHOLDER) ? '' : placeholder ?? tUi(DEFAULT_PROMPT_PLACEHOLDER);
   const handleWheel = useScrollableWheel<HTMLTextAreaElement>();
 
   return (

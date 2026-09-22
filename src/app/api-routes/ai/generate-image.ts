@@ -190,7 +190,7 @@ export async function POST(request: Request) {
       return apiError('generation_image_config_unavailable', error.message, 400);
     }
     if (error instanceof ProviderConnectionNotConfiguredError) {
-      return apiError('provider_not_configured', error.message, 409);
+      return apiError(error.code, error.message, 409);
     }
     if (error instanceof ProviderCredentialConfigurationError) {
       return apiError(

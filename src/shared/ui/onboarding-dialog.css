@@ -1,0 +1,101 @@
+.pui-onboarding-layer {
+  --onboarding-inner-surface: color-mix(in srgb, var(--pui-semantic-surface-primary) 60%, var(--pui-semantic-surface-secondary));
+  --pui-onboarding-card-width-wide: 560px;
+  --pui-onboarding-card-width-compact: 460px;
+  --pui-onboarding-card-light-surface: color-mix(in srgb, var(--pui-semantic-surface-secondary) 70%, transparent);
+  --pui-onboarding-card-light-content-primary: var(--pui-semantic-text-primary);
+  --pui-onboarding-card-light-content-secondary: var(--pui-semantic-text-secondary);
+  --pui-onboarding-card-light-content-muted: var(--pui-semantic-text-secondary);
+  --pui-onboarding-card-light-radius: 28px;
+  --pui-onboarding-card-light-padding: 4px;
+  --pui-onboarding-card-light-focus: var(--pui-semantic-accent-default);
+  --pui-onboarding-accent-default: var(--pui-semantic-accent-default);
+  --pui-onboarding-card-shadow-strong: color-mix(in srgb, var(--pui-semantic-text-primary) 14%, transparent);
+  --pui-onboarding-card-shadow-soft: color-mix(in srgb, var(--pui-semantic-text-primary) 8%, transparent);
+  z-index: 1500;
+}
+html[data-theme='dark'] .pui-onboarding-layer {
+  --onboarding-inner-surface: color-mix(in srgb, var(--pui-semantic-surface-secondary) 94%, white);
+}
+.pui-onboarding-layer .pui-onboarding-overlay--solid { background-image: none; }
+/* Keep blur separate from the dimming overlay, whose opacity varies by scenario. */
+.pui-onboarding-layer[data-placement='center']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(25px);
+}
+.pui-onboarding-layer .pui-onboarding-card {
+  gap: 4px;
+  border: 0;
+  -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);
+  animation: onboarding-dialog-enter .42s cubic-bezier(.16,1,.3,1) both;
+}
+.pui-onboarding-layer .pui-onboarding-card__header { padding: 8px 12px 8px 16px; }
+.pui-onboarding-layer .pui-onboarding-card__close { margin: 0; }
+.pui-onboarding-layer .pui-onboarding-card__content {
+  gap: 18px;
+  padding: 20px 20px 28px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--onboarding-inner-surface) 90%, transparent);
+  -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px);
+}
+.pui-onboarding-layer .pui-onboarding-card__media { grid-row: 1; aspect-ratio: 2.25; margin-bottom: 8px; border: 0; border-radius: 20px; overflow: hidden; background: #fff; }
+.pui-onboarding-layer .pui-onboarding-card__media img { object-fit: contain; }
+.pui-onboarding-layer .pui-onboarding-card__copy { gap: 14px; }
+.pui-onboarding-layer .pui-onboarding-card__title { font-size: 25px; line-height: 1.2; letter-spacing: -.7px; }
+.pui-onboarding-layer .pui-onboarding-card__text { font-size: 14px; line-height: 1.6; }
+.pui-onboarding-layer .pui-onboarding-card__text p { margin: 0 0 10px; }
+.pui-onboarding-layer .pui-onboarding-card__text p:last-child { margin-bottom: 0; }
+.pui-onboarding-layer .pui-onboarding-card__footer { padding: 8px 12px; }
+.pui-onboarding-layer .pui-onboarding-card__footer .pui-button { border-radius: 999px; }
+.pui-onboarding-layer .pui-onboarding-card__navigation {
+  --pui-button-height-md: var(--pui-button-height-lg);
+  --pui-button-padding-x-md: var(--pui-button-padding-x-lg);
+  --pui-button-font-size-md: var(--pui-button-font-size-lg);
+  --pui-button-line-height-md: var(--pui-button-line-height-lg);
+  --pui-button-icon-size-md: var(--pui-button-icon-size-lg);
+  --pui-button-icon-stroke-width-md: var(--pui-button-icon-stroke-width-lg);
+  --pui-button-gap-md: var(--pui-button-gap-lg);
+}
+.pui-onboarding-layer .pui-onboarding-card__navigation .pui-button[data-appearance=outline] {
+  --pui-button-state-layer-opacity-hover: 0;
+  border: 0;
+  background: transparent;
+}
+.pui-onboarding-layer .pui-onboarding-card__navigation .pui-button[data-appearance=outline]:hover:not(:disabled):not([data-disabled=true]) {
+  background: #fff;
+  color: #18181b;
+}
+/* The package owns skip behavior; present its supplementary action as a ghost button. */
+.pui-onboarding-layer .pui-onboarding-card__supplementary .pui-button[data-appearance=link] {
+  height: auto;
+  min-height: var(--pui-button-height-lg);
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  text-decoration: none;
+}
+.pui-onboarding-layer .pui-onboarding-card__supplementary .pui-button[data-appearance=link] .pui-button__label { text-decoration: none; }
+@keyframes onboarding-dialog-enter { from { opacity: 0; transform: translate(-50%, calc(-50% + 150px)) scale(.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+/* Target cards already receive their top-left coordinates from the guide engine. */
+.pui-onboarding-layer[data-placement='target'] .pui-onboarding-card {
+  animation-name: onboarding-target-enter;
+}
+@keyframes onboarding-target-enter {
+  from { opacity: 0; transform: translateY(24px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 600px) {
+  .pui-onboarding-layer .pui-onboarding-card__content { padding: 16px 16px 24px; }
+  .pui-onboarding-layer .pui-onboarding-card__title { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .pui-onboarding-layer .pui-onboarding-card { animation: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .pui-onboarding-layer[data-placement='center']::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .pui-onboarding-layer { --pui-onboarding-card-light-surface: var(--pui-semantic-surface-secondary); }
+  .pui-onboarding-layer .pui-onboarding-card__content { background: var(--onboarding-inner-surface); }
+  .pui-onboarding-layer .pui-onboarding-card, .pui-onboarding-layer .pui-onboarding-card__content { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

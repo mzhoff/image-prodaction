@@ -1,8 +1,11 @@
+'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { useCallback } from 'react';
 import type { GraphPoint } from '@/entities/production-graph/model/types';
 import type { PortableProjectExport } from '@/entities/production-graph/model/project-schema';
 import type { ProductionGraphState } from '@/entities/production-graph/model/store-types';
 import { createDatedJsonFileName, downloadJsonFile, readJsonFile } from '@/shared/lib/json-file';
+import { trackBehavior } from '@/shared/analytics/client';
 
 interface UseCanvasProjectTransferOptions {
   exportPipelineTemplateForSection: ProductionGraphState['exportPipelineTemplateForSection'];
@@ -19,25 +22,29 @@ export function useCanvasProjectTransfer({
   importPortableProject,
   showToast,
 }: UseCanvasProjectTransferOptions) {
+  const tUi = useTranslations();
   const exportProjectSnapshotFile = useCallback(() => {
     downloadJsonFile(exportProjectSnapshot(), createDatedJsonFileName('reverie-project'));
+    trackBehavior('ip_document_exported', { source: 'editor', operation: 'project_snapshot' });
     showToast('Project snapshot exported.');
   }, [exportProjectSnapshot, showToast]);
 
   const exportSectionPipelineTemplateFile = useCallback((sectionId: string, sectionTitle: string) => {
     const fileNamePrefix = `reverie-pipeline-${slugifyFilePrefix(sectionTitle) || 'section'}`;
     downloadJsonFile(exportPipelineTemplateForSection(sectionId), createDatedJsonFileName(fileNamePrefix));
+    trackBehavior('ip_document_exported', { source: 'editor', operation: 'pipeline_template' });
     showToast('Pipeline template exported.');
   }, [exportPipelineTemplateForSection, showToast]);
 
   const importPortableProjectFile = useCallback(async (file: File, expectedKind: PortableProjectExport['kind']) => {
     try {
       const result = importPortableProject(await readJsonFile(file), expectedKind);
+      trackBehavior('ip_document_imported', { source: 'editor', operation: result.kind === 'pipelineTemplate' ? 'pipeline_template' : 'project_snapshot' });
       showToast(result.kind === 'pipelineTemplate' ? 'Pipeline template imported.' : 'Project snapshot imported.');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Не удалось импортировать JSON.');
+      showToast(error instanceof Error ? error.message : tUi("Не удалось импортировать JSON."));
     }
-  }, [importPortableProject, showToast]);
+  }, [tUi, importPortableProject, showToast]);
 
   const importProjectSnapshotFile = useCallback((file: File) => {
     void importPortableProjectFile(file, 'projectSnapshot');
@@ -46,11 +53,12 @@ export function useCanvasProjectTransfer({
   const importPipelineTemplateFileAt = useCallback(async (file: File, position: GraphPoint) => {
     try {
       const result = importPipelineTemplateAt(await readJsonFile(file), position);
+      if (result.nodeCount > 0) trackBehavior('ip_document_imported', { source: 'editor', operation: 'pipeline_template' });
       showToast(result.nodeCount > 0 ? `Pipeline imported: ${result.nodeCount} nodes.` : 'Pipeline JSON is empty.');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Не удалось импортировать pipeline JSON.');
+      showToast(error instanceof Error ? error.message : tUi("Не удалось импортировать pipeline JSON."));
     }
-  }, [importPipelineTemplateAt, showToast]);
+  }, [tUi, importPipelineTemplateAt, showToast]);
 
   const importPipelineTemplateAtPosition = useCallback((position: GraphPoint) => {
     const input = document.createElement('input');

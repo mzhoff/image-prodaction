@@ -1,0 +1,187 @@
+[
+  {
+    "event": "ip_login_viewed",
+    "name": "Вход: экран показан",
+    "goalId": 661652935
+  },
+  {
+    "event": "ip_login_method_clicked",
+    "name": "Вход: выбран способ",
+    "goalId": 661652936
+  },
+  {
+    "event": "ip_telegram_open_clicked",
+    "name": "Вход: открыть Telegram",
+    "goalId": 661652937
+  },
+  {
+    "event": "ip_login_challenge_ready",
+    "name": "Вход: ссылка готова",
+    "goalId": 661652938
+  },
+  {
+    "event": "ip_login_terms_viewed",
+    "name": "Вход: условия показаны",
+    "goalId": 661652939
+  },
+  {
+    "event": "ip_login_terms_accepted",
+    "name": "Вход: условия приняты",
+    "goalId": 661652940
+  },
+  {
+    "event": "ip_login_succeeded",
+    "name": "Вход: завершён",
+    "goalId": 661652942
+  },
+  {
+    "event": "ip_login_failed",
+    "name": "Вход: ошибка",
+    "goalId": 661652943
+  },
+  {
+    "event": "ip_login_expired",
+    "name": "Вход: ссылка истекла",
+    "goalId": 661652944
+  },
+  {
+    "event": "ip_login_restarted",
+    "name": "Вход: начать заново",
+    "goalId": 661652945
+  },
+  {
+    "event": "ip_questionnaire_step_viewed",
+    "name": "Анкета: шаг показан",
+    "goalId": 661652946
+  },
+  {
+    "event": "ip_questionnaire_step_completed",
+    "name": "Анкета: шаг сохранён",
+    "goalId": 661652947
+  },
+  {
+    "event": "ip_questionnaire_validation_failed",
+    "name": "Анкета: незаполненные поля",
+    "goalId": 661652949
+  },
+  {
+    "event": "ip_questionnaire_save_failed",
+    "name": "Анкета: ошибка сохранения",
+    "goalId": 661652950
+  },
+  {
+    "event": "ip_questionnaire_back",
+    "name": "Анкета: возврат к шагу",
+    "goalId": 661652951
+  },
+  {
+    "event": "ip_questionnaire_completed",
+    "name": "Анкета: завершена",
+    "goalId": 661652952
+  },
+  {
+    "event": "ip_questionnaire_left",
+    "name": "Анкета: выход",
+    "goalId": 661652953
+  },
+  {
+    "event": "ip_tour_opened",
+    "name": "Знакомство: открыто",
+    "goalId": 661652954
+  },
+  {
+    "event": "ip_tour_step_viewed",
+    "name": "Знакомство: шаг показан",
+    "goalId": 661652988
+  },
+  {
+    "event": "ip_tour_completed",
+    "name": "Знакомство: завершено",
+    "goalId": 661652989
+  },
+  {
+    "event": "ip_tour_skipped",
+    "name": "Знакомство: пропущено",
+    "goalId": 661652990
+  },
+  {
+    "event": "ip_topup_clicked",
+    "name": "Баланс: нажать пополнение",
+    "goalId": 661652991
+  },
+  {
+    "event": "ip_topup_viewed",
+    "name": "Баланс: экран показан",
+    "goalId": 661652992
+  },
+  {
+    "event": "ip_topup_amount_selected",
+    "name": "Баланс: сумма выбрана",
+    "goalId": 661652993
+  },
+  {
+    "event": "ip_topup_instructions_viewed",
+    "name": "Баланс: реквизиты показаны",
+    "goalId": 661652994
+  },
+  {
+    "event": "ip_topup_telegram_clicked",
+    "name": "Баланс: открыть Telegram",
+    "goalId": 661652995
+  },
+  {
+    "event": "ip_topup_handoff_created",
+    "name": "Баланс: заявка подготовлена",
+    "goalId": 661652996
+  },
+  {
+    "event": "ip_topup_handoff_failed",
+    "name": "Баланс: ошибка заявки",
+    "goalId": 661652997
+  },
+  {
+    "event": "ip_bot_login_started",
+    "name": "Бот: начат вход",
+    "goalId": 661652998
+  },
+  {
+    "event": "ip_bot_login_approved",
+    "name": "Бот: вход подтверждён",
+    "goalId": 661652999
+  },
+  {
+    "event": "ip_bot_login_denied",
+    "name": "Бот: вход отклонён",
+    "goalId": 661653000
+  },
+  {
+    "event": "ip_bot_topup_clicked",
+    "name": "Бот: нажать пополнение",
+    "goalId": 661653001
+  },
+  {
+    "event": "ip_bot_topup_created",
+    "name": "Бот: заявка создана",
+    "goalId": 661653002
+  },
+  {
+    "event": "ip_bot_topup_opened",
+    "name": "Бот: пополнение открыто",
+    "goalId": 661653003
+  },
+  {
+    "event": "ip_bot_receipt_received",
+    "name": "Бот: квитанция получена",
+    "goalId": 661653004
+  },
+  {
+    "event": "ip_payment_approved",
+    "name": "Оплата: поступление подтверждено",
+    "goalId": 661653005
+  },
+  {
+    "event": "ip_balance_credited",
+    "name": "Баланс: средства доступны",
+    "goalId": 661653006
+  }
+]

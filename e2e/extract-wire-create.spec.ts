@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -33,7 +34,7 @@ test('Extract created from a dragged image wire keeps its connection after autos
     await route.fulfill({ json: { project: document } });
   });
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     const output = page.locator(`[data-node-id="${source.id}"] button.node-port[data-port-id="image"]`);
     await expect(output).toBeVisible();
     const box = (await output.boundingBox())!;

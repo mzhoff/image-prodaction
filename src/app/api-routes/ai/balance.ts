@@ -1,4 +1,5 @@
 import { getOpenRouterProviderUsage } from '@/modules/provider-connections/server/provider-connection-service';
+import { keyBudget } from '@/modules/provider-connections/core/key-budget';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { isUuid } from '@/shared/lib/id';
@@ -17,12 +18,10 @@ export async function GET(request: Request) {
     const data = response.keyUsage;
 
     return Response.json({
-      limit: data.limit,
-      remaining: data.limitRemaining,
+      ...keyBudget(data),
       used: data.usage,
       usedToday: data.usageDaily,
       usedMonth: data.usageMonthly,
-      updatedAt: data.updatedAt,
       provider: 'openrouter',
     }, {
       headers: { 'Cache-Control': 'private, no-store' },

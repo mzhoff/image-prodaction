@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Button } from '@prodactionpro/ui-core/button';
 import { IconButton } from '@prodactionpro/ui-core/icon-button';
@@ -14,6 +15,7 @@ import { TimelineMedia } from './timeline-media';
 import './timeline-fullscreen.css';
 
 export function TimelineFullscreen({ model, onClose, nodeId }: { model: TimelineNodeModel; onClose: () => void; nodeId?: string }) {
+  const tUi = useTranslations();
   const dialog = useRef<HTMLDialogElement>(null);
   const activeRow = useRef<HTMLElement>(null);
   const titleId = useId();
@@ -31,27 +33,27 @@ export function TimelineFullscreen({ model, onClose, nodeId }: { model: Timeline
   return createPortal(<dialog ref={dialog} className="timeline-fullscreen-dialog" aria-labelledby={titleId}
     onCancel={(event) => { event.preventDefault(); onClose(); }} onKeyDown={(event) => event.stopPropagation()}
     onPointerDown={(event) => event.stopPropagation()}>
-    <header className="timeline-fullscreen-header"><div><h2 id={titleId}>Timeline Handoff</h2><p>Фрагментов: {analysis.shots.length}. Проверьте границы и стоп-кадры перед созданием описаний.</p></div>
+    <header className="timeline-fullscreen-header"><div><h2 id={titleId}>Timeline Handoff</h2><p>{tUi("Фрагментов:")}{' '} {analysis.shots.length}{tUi(". Проверьте границы и стоп-кадры перед созданием описаний.")}</p></div>
       <Button size="sm" appearance="solid" intent="neutral" disabled={model.locked} onClick={() => void model.start('describe', undefined, remaining > 0)}>
-        <Sparkles data-icon="inline-start" />{remaining > 0 ? `Описать оставшиеся (${remaining})` : 'Обновить все описания'}
+        <Sparkles data-icon="inline-start" />{remaining > 0 ? tUi("Описать оставшиеся ({p1})", { p1: remaining }) : tUi("Обновить все описания")}
       </Button>
-      <IconButton size="sm" icon={<X />} aria-label="Закрыть редактор Timeline" onClick={onClose} autoFocus />
+      <IconButton size="sm" icon={<X />} aria-label={tUi("Закрыть редактор Timeline")} onClick={onClose} autoFocus />
     </header>
     {model.progress || model.data.message ? <div className="timeline-fullscreen-status" role="status">{model.data.message || model.progress}
-      {model.data.request?.jobId ? <Button size="sm" onClick={() => void model.cancel()}>Отменить обработку</Button> : null}</div> : null}
-    <div className="timeline-fullscreen-table" role="table" aria-label="Фрагменты и описания">
-      <div role="row" className="timeline-fullscreen-heading"><span role="columnheader">Видео и стоп-кадры</span><span role="columnheader">Описание</span></div>
+      {model.data.request?.jobId ? <Button size="sm" onClick={() => void model.cancel()}>{tUi("Отменить обработку")}</Button> : null}</div> : null}
+    <div className="timeline-fullscreen-table" role="table" aria-label={tUi("Фрагменты и описания")}>
+      <div role="row" className="timeline-fullscreen-heading"><span role="columnheader">{tUi("Видео и стоп-кадры")}</span><span role="columnheader">{tUi("Описание")}</span></div>
       {analysis.shots.map((shot, index) => {
         const selected = model.activeShotIndex === index;
         const first = shot.frames[0]!;
         return <section key={shot.id} ref={selected ? activeRow : undefined} role="row" className="timeline-fullscreen-row" data-active={selected}>
-          <div role="cell"><h3><Button size="sm" appearance={selected ? 'soft' : 'ghost'} aria-pressed={selected} onClick={() => model.select(index)}>Фрагмент {index + 1}</Button>
-            <span>{formatTimelineTime(shot.startMs)} – {formatTimelineTime(shot.endMs)} · {((shot.endMs - shot.startMs) / 1000).toFixed(2)} с</span></h3>
+          <div role="cell"><h3><Button size="sm" appearance={selected ? 'soft' : 'ghost'} aria-pressed={selected} onClick={() => model.select(index)}>{tUi("Фрагмент")}{' '} {index + 1}</Button>
+            <span>{formatTimelineTime(shot.startMs)} – {formatTimelineTime(shot.endMs)} · {((shot.endMs - shot.startMs) / 1000).toFixed(2)}  {' '}{tUi("с")}</span></h3>
             {selected ? <TimelineMedia key={shot.id} analysis={analysis} shot={shot} workspaceId={workspaceId} nodeId={nodeId}
               disabled={model.locked} previewMode={model.data.previewMode} onPreviewMode={(previewMode) => model.settings({ previewMode })} onEdit={model.edit}
               onSelectShot={model.select} onFullscreen={onClose} fullscreen />
-              : <button type="button" className="timeline-fullscreen-row-preview" aria-label={`Открыть фрагмент ${index + 1}`} onClick={() => model.select(index)}>
-                <img loading="lazy" src={first.assetId ? getRemoteAssetContentUrl(first.assetId) : timelineFrameUrl(workspaceId, analysis.sourceAssetId, first.timeMs)} alt={`Фрагмент ${index + 1}`} /><span>Открыть видео и редактировать кадры</span>
+              : <button type="button" className="timeline-fullscreen-row-preview" aria-label={tUi("Открыть фрагмент {p1}", { p1: index + 1 })} onClick={() => model.select(index)}>
+                <img loading="lazy" src={first.assetId ? getRemoteAssetContentUrl(first.assetId) : timelineFrameUrl(workspaceId, analysis.sourceAssetId, first.timeMs)} alt={tUi("Фрагмент {p1}", { p1: index + 1 })} draggable={false} /><span>{tUi("Открыть видео и редактировать кадры")}</span>
               </button>}
           </div>
           <div role="cell"><TimelineDescription shot={shot} model={model} /></div>

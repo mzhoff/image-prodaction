@@ -6,7 +6,7 @@ import { documentAssistantEvent } from '@/shared/db/schema/document-assistant-ev
 import { isUuid } from '@/shared/lib/id';
 import { CHAT_ASSISTANT_PRODUCT_ID } from '../contracts/assistant-config';
 import type { DocumentAssistantActivity, DocumentAssistantEventKind } from '../contracts/document-assistant-activity';
-import { DocumentConversationAccessError, ensureDocumentConversation } from './document-conversation-service';
+import { DocumentConversationAccessError, findDocumentConversation } from './document-conversation-service';
 import { getChatConversationInfrastructure } from './conversation-infrastructure';
 import { persistDocumentActivityMessages } from './document-activity-chat-adapter';
 import { createDocumentActivityId, insertDocumentActivityOnce } from './document-activity-identity';
@@ -71,7 +71,8 @@ export async function recordDocumentAssistantActivity(principal: Principal, inpu
 
 async function persistActivities(principal: Principal, documentId: string, activities: DocumentAssistantActivity[]) {
   if (!activities.length) return;
-  const conversationId = await ensureDocumentConversation(principal, documentId);
+  const conversationId = await findDocumentConversation(principal, documentId);
+  if (!conversationId) return; // Keep events on the document until the user starts a conversation.
   await persistDocumentActivityMessages({ ...getChatConversationInfrastructure(), principal, conversationId, activities,
     onPublishError: (error) => console.error('[document-activity-live-delivery-error]', { errorName: error instanceof Error ? error.name : 'UnknownError' }),
   });

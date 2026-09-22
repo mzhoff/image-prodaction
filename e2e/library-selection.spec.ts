@@ -1,3 +1,4 @@
+import { dismissSectionGuide, gotoQaSection } from './release-user-fixture';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
@@ -58,7 +59,7 @@ test('Library selection downloads originals/ZIP, confirms partial deletion and d
   const menu = page.locator('.context-menu');
   const selection = page.getByRole('group', { name: 'Выбор файлов' });
   try {
-    await page.goto('/library');
+    await gotoQaSection(page, '/library');
     await expect(cards).toHaveCount(5);
     await cards.first().click({ button: 'right' });
     await expect(menu.getByRole('button', { name: 'Скопировать ссылку', exact: true })).toBeEnabled();
@@ -74,10 +75,17 @@ test('Library selection downloads originals/ZIP, confirms partial deletion and d
     await cards.nth(1).locator('a').click();
     await expect(page).toHaveURL(`${origin.origin}/library`);
     await expect(selection).toContainText('Выбрано: 2');
-    const search = page.getByRole('searchbox', { name: 'Поиск по библиотеке', exact: true });
-    await search.fill('photo'); await page.getByRole('button', { name: 'Найти', exact: true }).click();
+    const searchLibrary = async (query: string) => {
+      await page.getByRole('button', { name: 'Поиск по библиотеке', exact: true }).click();
+      const search = page.getByRole('dialog', { name: 'Поиск в Workspace' });
+      await search.getByRole('searchbox', { name: 'Найти файлы в Workspace' }).fill(query);
+      await search.getByRole('button', { name: 'Фильтры', exact: true }).click();
+      await search.getByRole('button', { name: 'Показать в библиотеке', exact: true }).click();
+      await expect(search).toHaveCount(0);
+    };
+    await searchLibrary('photo');
     await expect(selection).toHaveCount(0);
-    await search.fill(''); await page.getByRole('button', { name: 'Найти', exact: true }).click();
+    await searchLibrary('');
     await expect(selection).toHaveCount(0);
     await expect(cards.getByRole('checkbox')).toHaveCount(0);
     await cards.first().click({ button: 'right' });
@@ -125,6 +133,7 @@ test('Library selection downloads originals/ZIP, confirms partial deletion and d
     await menu.getByRole('button', { name: 'Добавить в проект', exact: true }).click();
     await page.getByRole('region', { name: 'Отправить в проект' }).getByRole('menuitem', { name: document.name }).click();
     await expect(page).toHaveURL(`${origin.origin}/projects/${document.id}`);
+    await dismissSectionGuide(page, 'canvas');
     const imports = page.locator('.production-node-importImage');
     await expect(imports).toHaveCount(4);
     await expect.poll(() => document.snapshot.project.nodes.length).toBe(5);

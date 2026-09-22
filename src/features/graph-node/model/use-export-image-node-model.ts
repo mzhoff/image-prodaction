@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useMemo, useState } from 'react';
 import type {
@@ -53,6 +54,7 @@ export const exportBackgroundOptions: DarkSelectOption[] = [
 const opaqueBackgroundOptions = exportBackgroundOptions.filter((option) => option.value !== 'transparent');
 
 export function useExportImageNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as ExportImageNodeData;
   const [message, setMessage] = useState('');
   const [exporting, setExporting] = useState(false);
@@ -131,7 +133,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
 
   const handleDownload = useCallback(async () => {
     if (sourceItems.length === 0) {
-      setMessage('Подключи image output к входу Export.');
+      setMessage(tUi("Подключи image output к входу Export."));
       return;
     }
 
@@ -148,7 +150,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
 
       if (sourceItems.length === 1) {
         const sourceBlob = await loadAssetBlob(sourceItems[0].asset);
-        if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+        if (!sourceBlob) throw new Error(tUi("Не удалось прочитать изображение из локального хранилища."));
         const exported = await exportImageBlob(sourceBlob, exportOptions);
         downloadBlob(exported.blob, names.image(exported.extension));
         setMessage(`${exported.width}x${exported.height} · ${exported.mimeType}`);
@@ -159,7 +161,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
       for (let index = 0; index < sourceItems.length; index += 1) {
         const item = sourceItems[index];
         const sourceBlob = await loadAssetBlob(item.asset);
-        if (!sourceBlob) throw new Error(`Не удалось прочитать ${item.asset.name} из локального хранилища.`);
+        if (!sourceBlob) throw new Error(tUi("Не удалось прочитать {p1} из локального хранилища.", { p1: item.asset.name }));
         const exported = await exportImageBlob(sourceBlob, exportOptions);
         zipEntries.push({
           blob: exported.blob,
@@ -171,15 +173,15 @@ export function useExportImageNodeModel(node: ProductionNode) {
       downloadBlob(zipBlob, names.archive);
       setMessage(`ZIP · ${zipEntries.length} files · ${data.format.toUpperCase()}`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось экспортировать изображение.');
+      setMessage(error instanceof Error ? error.message : tUi("Не удалось экспортировать изображение."));
     } finally {
       setExporting(false);
     }
-  }, [data.background, data.format, data.quality, data.scale, data.title, sourceItems]);
+  }, [tUi, data.background, data.format, data.quality, data.scale, data.title, sourceItems]);
 
   const handleSaveToLibrary = useCallback(async () => {
     if (!sourceAsset || savingToLibrary) {
-      if (!sourceAsset) setMessage('Подключи image output к входу Export.');
+      if (!sourceAsset) setMessage(tUi("Подключи image output к входу Export."));
       return;
     }
 
@@ -187,7 +189,7 @@ export function useExportImageNodeModel(node: ProductionNode) {
     setMessage('');
     try {
       const sourceBlob = await loadAssetBlob(sourceAsset);
-      if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+      if (!sourceBlob) throw new Error(tUi("Не удалось прочитать изображение из локального хранилища."));
       const exported = await exportImageBlob(sourceBlob, {
         background: data.background,
         format: data.format,
@@ -201,13 +203,13 @@ export function useExportImageNodeModel(node: ProductionNode) {
         { type: exported.mimeType },
       ));
       addAsset(savedAsset);
-      setMessage(`${fileName} · сохранено в Library`);
+      setMessage(tUi("{p1} · сохранено в Library", { p1: fileName }));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось сохранить изображение в Library.');
+      setMessage(error instanceof Error ? error.message : tUi("Не удалось сохранить изображение в Library."));
     } finally {
       setSavingToLibrary(false);
     }
-  }, [
+  }, [tUi,
     addAsset,
     data.background,
     data.format,

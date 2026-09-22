@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useEffect, useState } from 'react';
+import { useEffectEvent, useEffect, useState } from 'react';
 import { getActiveAssetScope, type ActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import { getNodeTimelineAnalysis } from '@/entities/production-graph/model/graph-timeline-io';
 import type { TimelineHandoffNodeData } from '@/entities/production-graph/model/types';
@@ -18,6 +19,8 @@ function outputSignature(analysis: TimelineAnalysis, data: TimelineHandoffNodeDa
 /** Settle edits before preparing private references; stale responses cannot replace newer frames. */
 export function useTimelineOutputAssets(nodeId: string, analysis: TimelineAnalysis | undefined,
   data: TimelineHandoffNodeData, scope: ActiveAssetScope | undefined, locked: boolean) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const [status, setStatus] = useState({ busy: false, error: '' });
   const [retry, setRetry] = useState(0);
   const signature = analysis ? outputSignature(analysis, data) : undefined;
@@ -64,7 +67,7 @@ export function useTimelineOutputAssets(nodeId: string, analysis: TimelineAnalys
         }
         if (current()) setStatus({ busy: false, error: '' });
       } catch (error) {
-        if (current()) setStatus({ busy: false, error: error instanceof Error ? error.message : 'Не удалось подготовить выходы. Повторите попытку.' });
+        if (current()) setStatus({ busy: false, error: error instanceof Error ? error.message : tEffect("Не удалось подготовить выходы. Повторите попытку.") });
       }
     };
     const timer = setTimeout(() => { void run(); }, 400);

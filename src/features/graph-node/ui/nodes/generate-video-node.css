@@ -65,7 +65,7 @@
   border-radius: 12px;
 }
 .video-generation-preview { display: block; width: 100%; height: 100%; object-fit: contain; background: var(--pui-semantic-surface-inverse); }
-.video-generation-placeholder { position: absolute; inset: 0; display: grid; place-content: center; color: var(--pui-semantic-text-tertiary); }
+.video-generation-placeholder { position: absolute; inset: 0; display: grid; place-content: center; color: inherit; }
 .video-generation-result .image-plate-version-controls { top: 8px; bottom: auto; }
 .video-generation-result .generation-waiting-experience { border-radius: inherit; }
 

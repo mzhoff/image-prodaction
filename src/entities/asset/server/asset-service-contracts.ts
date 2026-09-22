@@ -1,3 +1,4 @@
+import type { MediaSource } from '@/shared/media/media-source';
 import type {
   AssetLibraryFacets,
   AssetMediaKind,
@@ -92,7 +93,7 @@ export interface ThumbnailImage {
 export interface AssetStorageDependencies {
   createId?(): string;
   createThumbnail?(bytes: Uint8Array): Promise<ThumbnailImage>;
-  createVideoThumbnail?(bytes: Uint8Array, signal?: AbortSignal): Promise<ThumbnailImage>;
+  createVideoThumbnail?(bytes: MediaSource, signal?: AbortSignal): Promise<ThumbnailImage>;
   objectStore: AssetObjectStore;
   repository: AssetRepository;
 }

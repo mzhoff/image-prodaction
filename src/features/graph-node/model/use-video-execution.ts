@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { getActiveAssetScope, getActiveAssetScopeSnapshot, subscribeActiveAssetScope } from '@/entities/production-graph/lib/remote-asset';
 import type { GenerateVideoNodeData } from '@/entities/production-graph/model/types';
@@ -11,10 +12,12 @@ import { isVideoJobTerminal, readVideoJob, submitVideo, videoJobAsset, waitVideo
 import { requestCancelSpeechJob } from '../api/speech-api';
 import { getVideoGenerationUserMessage } from '../lib/video-generation-user-message';
 import { prepareVideoImages } from '../lib/prepare-video-images';
+import { trackBehavior } from '@/shared/analytics/client';
 
 type Saved = NonNullable<GenerateVideoNodeData['videoRequest']>;
 const store = () => useProductionGraphStore.getState();
 export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
+  const tUi = useTranslations();
   const scope = useSyncExternalStore(subscribeActiveAssetScope, getActiveAssetScopeSnapshot, () => undefined);
   const guard = useRef<AbortController | null>(null);
   const resumed = useRef<string | undefined>(undefined);
@@ -49,8 +52,8 @@ export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
           notifyAssistantNotice({
             id: `video-generated:${asset.id}`,
             status: 'success',
-            title: 'Видео готово',
-            subtitle: 'Ровер закончил сборку. Открой чат, чтобы найти источник.',
+            title: tUi("Видео готово"),
+            subtitle: tUi("Ровер закончил сборку. Открой чат, чтобы найти источник."),
             nodeId,
           });
           void recordDocumentAssistantActivity({
@@ -63,19 +66,19 @@ export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
           }).catch(() => undefined);
           return;
         }
-        if (isVideoJobTerminal(response)) throw new Error(response.job.error?.message ?? 'Запрос отменён. Уже отправленное поставщику задание может продолжиться и быть оплачено.');
-        setProgress(response.job.status === 'queued' ? 'В очереди…' : 'Генерируем и сохраняем видео. Можно закрыть проект — работа продолжится.');
+        if (isVideoJobTerminal(response)) throw new Error(response.job.error?.message ?? tUi("Запрос отменён. Уже отправленное поставщику задание может продолжиться и быть оплачено."));
+        setProgress(response.job.status === 'queued' ? tUi("В очереди…") : tUi("Генерируем и сохраняем видео. Можно закрыть проект — работа продолжится."));
         await waitVideoPoll(controller.signal); response = await readVideoJob(saved.jobId!, controller.signal);
       }
-      throw new Error('Видео ещё не получено. Нажмите «Проверить результат» — новый платный запрос не создаётся.');
+      throw new Error(tUi("Видео ещё не получено. Нажмите «Проверить результат» — новый платный запрос не создаётся."));
     } catch (error) {
       if (current()) {
         setProgress('');
         store().setNodeStatus(nodeId, 'error');
-        store().updateNodeDataSilent(nodeId, { message: getVideoGenerationUserMessage(error instanceof Error ? error.message : 'Не удалось получить видео.') });
+        store().updateNodeDataSilent(nodeId, { message: getVideoGenerationUserMessage(error instanceof Error ? error.message : tUi("Не удалось получить видео.")) });
       }
     } finally { if (guard.current === controller) guard.current = null; }
-  }, [nodeId]);
+  }, [tUi, nodeId]);
   useEffect(() => {
     const saved = data.videoRequest;
     // Resume only acknowledged jobs automatically. Unknown submit is retried explicitly with the same frozen request/key.
@@ -92,7 +95,7 @@ export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
       && store().nodes.some((item) => item.id === nodeId && item.type === 'generateVideo');
     store().setNodeStatus(nodeId, 'running');
     store().updateNodeDataSilent(nodeId, { message: '' });
-    setProgress('Подготавливаем кадры…');
+    setProgress(tUi("Подготавливаем кадры…"));
     try {
       const prepared = await prepareVideoImages(payload, store().assets, active, controller.signal);
       if (!current()) return;
@@ -101,11 +104,12 @@ export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
       store().updateNodeDataSilent(nodeId, { videoRequest: saved });
       // No await between releasing preparation's guard and acquiring execution's.
       guard.current = null;
+      trackBehavior('ip_generation_requested', { source: 'editor', node_type: 'generateVideo', operation: 'generate_video' });
       await execute(saved);
     } catch (error) {
       if (current()) {
         setProgress(''); store().setNodeStatus(nodeId, 'error');
-        store().updateNodeDataSilent(nodeId, { message: getVideoGenerationUserMessage(error instanceof Error ? error.message : 'Не удалось подготовить кадры.') });
+        store().updateNodeDataSilent(nodeId, { message: getVideoGenerationUserMessage(error instanceof Error ? error.message : tUi("Не удалось подготовить кадры.")) });
       }
       controller.abort(); // Stop sibling uploads after a preparation failure.
     } finally { if (guard.current === controller) guard.current = null; }
@@ -113,7 +117,7 @@ export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
   const cancel = async () => {
     const saved = data.videoRequest; if (!saved?.jobId) return;
     try { await requestCancelSpeechJob(saved.jobId); }
-    catch { if (isCurrent(saved)) store().updateNodeDataSilent(nodeId, { message: 'Не удалось отменить запрос. Проверьте результат.' }); }
+    catch { if (isCurrent(saved)) store().updateNodeDataSilent(nodeId, { message: tUi("Не удалось отменить запрос. Проверьте результат.") }); }
   };
   const isCurrent = (saved: Saved) => getActiveAssetScope()?.documentId === saved.documentId
     && getActiveAssetScope()?.workspaceId === saved.workspaceId
@@ -124,11 +128,11 @@ export function useVideoExecution(nodeId: string, data: GenerateVideoNodeData) {
       const response = await readVideoJob(saved.jobId).catch(() => undefined);
       if (!isCurrent(saved)) return;
       if (!response || !['failed', 'canceled'].includes(response.job.status) || !isVideoJobTerminal(response)) {
-        store().updateNodeDataSilent(nodeId, { message: 'Сначала проверьте результат текущего запроса.' }); return;
+        store().updateNodeDataSilent(nodeId, { message: tUi("Сначала проверьте результат текущего запроса.") }); return;
       }
     }
-    const warning = saved.jobId ? '' : 'Сервер не подтвердил ID задания. Сначала проверьте результат или историю OpenRouter: запрос мог быть принят. ';
-    if (!isCurrent(saved) || !window.confirm(`${warning}Новая генерация может списать средства повторно. Завершить работу с этим запросом?`)) return;
+    const warning = saved.jobId ? '' : tUi("Сервер не подтвердил ID задания. Сначала проверьте результат или историю OpenRouter: запрос мог быть принят. ");
+    if (!isCurrent(saved) || !window.confirm(tUi("{p1}Новая генерация может списать средства повторно. Завершить работу с этим запросом?", { p1: warning }))) return;
     if (!isCurrent(saved)) return;
     store().updateNodeDataSilent(nodeId, { videoRequest: undefined, message: '' }); store().setNodeStatus(nodeId, 'idle'); setProgress('');
   };

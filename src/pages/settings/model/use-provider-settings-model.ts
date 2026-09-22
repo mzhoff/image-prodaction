@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -28,6 +29,7 @@ import {
 type ProviderMutation = 'connect' | 'disconnect' | 'validate' | null;
 
 export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void) {
+  const tUi = useTranslations();
   const [workspaces, setWorkspaces] = useState<WorkspaceSettingsOption[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
   const [workspacesPending, setWorkspacesPending] = useState(true);
@@ -92,10 +94,10 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
       const partialErrors: string[] = [];
       if (keyUsageResult.status === 'rejected' && nextConnection
         && nextConnection.status !== 'disconnected' && !isNotFoundError(keyUsageResult.reason)) {
-        partialErrors.push('Не удалось обновить лимиты OpenRouter.');
+        partialErrors.push(tUi("Не удалось обновить лимиты OpenRouter."));
       }
       if (aiUsageResult.status === 'rejected') {
-        partialErrors.push('Не удалось загрузить локальную статистику Reverie.');
+        partialErrors.push(tUi("Не удалось загрузить локальную статистику Reverie."));
       }
       setSecondaryError(partialErrors.join(' '));
     } catch (error) {
@@ -108,7 +110,7 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
     } finally {
       if (!signal?.aborted) setDetailsPending(false);
     }
-  }, []);
+  }, [tUi]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,7 +160,7 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
   function selectWorkspace(nextWorkspaceId: string) {
     if (!nextWorkspaceId || nextWorkspaceId === selectedWorkspaceId) return;
     if (dirty && !window.confirm(
-      'API key ещё не сохранён. Переключить Workspace и удалить введённое значение?',
+      tUi("API key ещё не сохранён. Переключить Workspace и удалить введённое значение?"),
     )) return;
     resetCredentialDraft();
     setActionError(null);
@@ -178,8 +180,8 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
       setConnection(result.provider);
       resetCredentialDraft();
       setNotice(replacing
-        ? 'Новый OpenRouter key проверен и заменил предыдущее подключение.'
-        : 'OpenRouter подключён для всего Workspace.');
+        ? tUi("Новый OpenRouter key проверен и заменил предыдущее подключение.")
+        : tUi("OpenRouter подключён для всего Workspace."));
       await loadWorkspaceDetails(selectedWorkspaceId);
     } catch (error) {
       const message = readErrorMessage(error);
@@ -195,7 +197,7 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
     setActionError(null);
     setNotice(null);
     if (apiKey.trim().length < 12) {
-      setActionError('Введите полный OpenRouter API key.');
+      setActionError(tUi("Введите полный OpenRouter API key."));
       return;
     }
     if (!disconnected) {
@@ -214,9 +216,9 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
       const result = await validateOpenRouter(selectedWorkspaceId);
       setConnection(result.provider);
       setKeyUsage(result.keyUsage);
-      if (result.valid) setNotice('Подключение работает. Лимиты OpenRouter обновлены.');
+      if (result.valid) setNotice(tUi("Подключение работает. Лимиты OpenRouter обновлены."));
       else setActionError(result.provider.lastError
-        || 'OpenRouter отклонил сохранённый key. Замените его и повторите проверку.');
+        || tUi("OpenRouter отклонил сохранённый key. Замените его и повторите проверку."));
     } catch (error) {
       const message = readErrorMessage(error);
       await loadWorkspaceDetails(selectedWorkspaceId);
@@ -237,7 +239,7 @@ export function useProviderSettingsModel(onDirtyChange: (dirty: boolean) => void
         maskedKey: null, lastValidatedAt: null, lastUsedAt: null, lastError: null });
       setKeyUsage(null);
       resetCredentialDraft();
-      setNotice('OpenRouter отключён. Новые AI-операции этого Workspace запускаться не будут.');
+      setNotice(tUi("OpenRouter отключён. Новые AI-операции этого Workspace запускаться не будут."));
       await loadWorkspaceDetails(selectedWorkspaceId);
     } catch (error) {
       setActionError(readErrorMessage(error));

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Check, ChevronDown } from '@prodactionpro/ui-core/icons';
 import { useEffect, useRef, useState } from 'react';
@@ -28,9 +29,11 @@ export function BrandSelect({
   label,
   onChange,
   options,
-  placeholder = 'Выберите',
+  placeholder,
   value,
 }: BrandSelectProps) {
+  const tUi = useTranslations();
+  placeholder ??= tUi("Выберите");
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const selectedIndex = options.findIndex((option) => option.value === value);

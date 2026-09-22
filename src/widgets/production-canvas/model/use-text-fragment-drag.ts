@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffectEvent, useEffect, useRef, useState, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { createDefaultNode } from '@/entities/production-graph/model/create-default-node';
 import type { TextFragmentSource } from '@/entities/production-graph/model/text-fragments';
@@ -13,6 +14,8 @@ type Point = { clientX: number; clientY: number; altKey: boolean };
 type Options = { projectId?: string; containerRef: RefObject<HTMLDivElement | null>; screenToWorld: (point: { clientX: number; clientY: number }) => { x: number; y: number } | null; notify: (text: string) => void };
 
 export function useTextFragmentDrag(options: Options) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const latest = useRef(options);
   latest.current = options;
   const [preview, setPreview] = useState<TextFragmentPreview | null>(null);
@@ -38,8 +41,8 @@ export function useTextFragmentDrag(options: Options) {
       if (previewRef.current) previewRef.current.style.transform = `translate3d(${location.clientX}px, ${location.clientY}px, 0)`;
       const drop = resolve(point);
       if (active !== drop?.element) { active?.removeAttribute('data-text-drop-active'); active = drop?.element ?? null; active?.setAttribute('data-text-drop-active', ''); }
-      if (hintRef.current) hintRef.current.textContent = !drop ? 'Здесь нельзя сбросить текст'
-        : `${source?.copyOnly || point.altKey ? 'Копия · ' : ''}${'nodeId' in drop.target ? 'Добавить текст в поле' : 'Создать Prompt'}`;
+      if (hintRef.current) hintRef.current.textContent = !drop ? tEffect("Здесь нельзя сбросить текст")
+        : `${source?.copyOnly || point.altKey ? tEffect("Копия · ") : ''}${'nodeId' in drop.target ? tEffect("Добавить текст в поле") : tEffect("Создать Prompt")}`;
     };
     const move = (point: Point) => {
       cancelAnimationFrame(frame);
@@ -72,7 +75,7 @@ export function useTextFragmentDrag(options: Options) {
       if (!payload || !drop) return;
       const outcome = useProductionGraphStore.getState().dropTextFragment(payload, drop.target, point.altKey);
       if (outcome.ok) canvas.focus({ preventScroll: true });
-      latest.current.notify(outcome.ok ? 'Готово. Отменить: ⌘Z / Ctrl+Z.' : outcome.reason);
+      latest.current.notify(outcome.ok ? tEffect("Готово. Отменить: ⌘Z / Ctrl+Z.") : outcome.reason);
     };
     const pointerDown = (event: PointerEvent) => {
       const handle = eventElement(event)?.closest<HTMLElement>(FRAGMENT_HANDLE);

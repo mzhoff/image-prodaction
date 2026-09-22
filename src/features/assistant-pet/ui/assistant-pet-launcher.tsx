@@ -1,10 +1,13 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Sparkles } from '@prodactionpro/ui-core/icons';
 import { useEffect, useRef } from 'react';
 import { AssistantFloatingButton } from '@/shared/ui/assistant-floating-button';
+import { ProTooltip } from '@/shared/ui/pro-tooltip';
 import { findAssistantPetCharacter } from '../model/assistant-pet-characters';
 import type { AssistantNotice, AssistantPetEmotion } from '../model/assistant-pet-contract';
+import { ASSISTANT_CHARACTER_AVAILABLE } from '../model/assistant-pet-contract';
 import { useAssistantLauncherPreference } from '../model/use-assistant-launcher-preference';
 import { useAssistantPetNotice } from '../model/assistant-pet-notices';
 import { RoverVector } from './rover-vector';
@@ -17,17 +20,20 @@ interface AssistantPetLauncherProps {
 }
 
 export function AssistantPetLauncher({ className = '', notice, onClick, size = 'workspace' }: AssistantPetLauncherProps) {
+  const tUi = useTranslations();
   const { preference } = useAssistantLauncherPreference();
   const character = findAssistantPetCharacter(preference.characterId);
   const fixed = className.includes('assistant-floating-button-fixed');
   const petNotice = useAssistantPetNotice();
   const activeNotice = notice ?? petNotice;
 
-  if (preference.presentation === 'button') {
+  if (!ASSISTANT_CHARACTER_AVAILABLE || preference.presentation === 'button') {
     return (
       <div className={`assistant-launcher-slot ${fixed ? 'assistant-launcher-slot-fixed' : ''}`}>
         {activeNotice ? <AssistantNoticeBubble notice={activeNotice} /> : null}
-        <AssistantFloatingButton className={className} onClick={onClick} />
+        <ProTooltip label={tUi("Открыть ассистента")}>
+          <AssistantFloatingButton className={className} onClick={onClick} />
+        </ProTooltip>
       </div>
     );
   }
@@ -46,7 +52,7 @@ export function AssistantPetLauncher({ className = '', notice, onClick, size = '
         type="button"
         className={`assistant-pet-launcher assistant-pet-launcher-${size} ${className}`}
         data-snapshot-exclude
-        aria-label={`Открыть ассистента — ${character.name}`}
+        aria-label={tUi("Открыть ассистента — {p1}", { p1: character.name })}
         onClick={onClick}
       >
         <AssistantPetVisual
@@ -106,5 +112,5 @@ function AssistantPetVisual({ animationUrl, emotion, fallbackImageUrl, renderKin
 
   if (animationUrl) return <div className="assistant-pet-lottie" aria-hidden="true" ref={container} />;
   if (renderKind === 'rover-v1') return <RoverVector emotion={emotion} />;
-  return <img className={`assistant-pet-image assistant-pet-emotion-${emotion}`} src={fallbackImageUrl} alt="" />;
+  return <img className={`assistant-pet-image assistant-pet-emotion-${emotion}`} src={fallbackImageUrl} alt="" draggable={false} />;
 }

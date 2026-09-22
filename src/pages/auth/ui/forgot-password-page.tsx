@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
@@ -11,6 +12,7 @@ import { formatAuthError } from '@/shared/auth/error-message';
 import { AuthShell } from './auth-shell';
 
 export function ForgotPasswordPage() {
+  const tUi = useTranslations();
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -41,18 +43,17 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell ariaLabel="Восстановление пароля">
+    <AuthShell ariaLabel={tUi("Восстановление пароля")}>
       <div className="auth-card">
         <div className="auth-card-head">
           <span className="auth-card-badge">
             <Mail size={14} />
-            Восстановление доступа
-          </span>
-          <h2>{submitted ? 'Проверьте почту' : 'Забыли пароль?'}</h2>
+            {tUi("Восстановление доступа")}</span>
+          <h2>{submitted ? tUi("Проверьте почту") : tUi("Забыли пароль?")}</h2>
           <p>
             {submitted
-              ? 'Запрос обработан. Если указанный email привязан к аккаунту, письмо со ссылкой уже отправлено. Проверьте входящие и папку «Спам».'
-              : 'Укажите email аккаунта. Мы отправим защищённую ссылку для установки нового пароля.'}
+              ? tUi("Запрос обработан. Если указанный email привязан к аккаунту, письмо со ссылкой уже отправлено. Проверьте входящие и папку «Спам».")
+              : tUi("Укажите email аккаунта. Мы отправим защищённую ссылку для установки нового пароля.")}
           </p>
         </div>
 
@@ -66,12 +67,10 @@ export function ForgotPasswordPage() {
                 setSubmitted(false);
               }}
             >
-              Отправить повторно
-            </button>
+              {tUi("Отправить повторно")}</button>
             <Link className="auth-text-link" href="/login">
               <ArrowLeft size={15} />
-              Вернуться ко входу
-            </Link>
+              {tUi("Вернуться ко входу")}</Link>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
@@ -88,15 +87,14 @@ export function ForgotPasswordPage() {
                 required
               />
             </label>
-            {error ? <p className="auth-form-error" role="alert">{error}</p> : null}
+            {error ? <p className="auth-form-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
             <button className="auth-submit" type="submit" disabled={pending}>
-              {pending ? 'Отправляем…' : 'Отправить ссылку'}
+              {pending ? tUi("Отправляем…") : tUi("Отправить ссылку")}
               <span><ArrowRight size={16} /></span>
             </button>
             <Link className="auth-text-link" href="/login">
               <ArrowLeft size={15} />
-              Вернуться ко входу
-            </Link>
+              {tUi("Вернуться ко входу")}</Link>
           </form>
         )}
       </div>

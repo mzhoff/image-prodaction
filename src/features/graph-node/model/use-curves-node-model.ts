@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffectEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CurvesNodeData, ProductionNode } from '@/entities/production-graph/model/types';
 import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/graph-io';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
@@ -17,6 +18,8 @@ import { curvesImageBlob, type CurvesAdjustmentValues } from '../lib/curves-imag
 export const defaultCurvesOpacity = 100;
 
 export function useCurvesNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const data = node.data as CurvesNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -106,7 +109,7 @@ export function useCurvesNodeModel(node: ProductionNode) {
       } catch (error) {
         if (processingRef.current !== runId) return;
         updateNodeDataSilent(node.id, {
-          message: error instanceof Error ? error.message : 'Не удалось применить кривые.',
+          message: error instanceof Error ? error.message : tEffect("Не удалось применить кривые."),
         });
         setNodeStatus(node.id, 'error');
       }

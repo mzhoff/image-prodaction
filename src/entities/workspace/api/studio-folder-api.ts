@@ -2,9 +2,9 @@ import type { StudioFolder } from '../model/studio-folder';
 export async function fetchStudioFolders(workspaceId: string, signal?: AbortSignal) {
   return folderJson<{ folders: StudioFolder[] }>(`/api/workspaces/${workspaceId}/folders`, { signal }).then((result) => result.folders);
 }
-export async function saveStudioFolder(workspaceId: string, name: string, id?: string) {
+export async function saveStudioFolder(workspaceId: string, name: string, id?: string, parentId?: string) {
   return folderJson<{ folder: StudioFolder }>(`/api/workspaces/${workspaceId}/folders${id ? `/${id}` : ''}`, {
-    method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+    method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, ...(!id && parentId ? { parentId } : {}) }),
   }).then((result) => result.folder);
 }
 async function folderJson<T>(url: string, init: RequestInit) {

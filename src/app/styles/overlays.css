@@ -11,12 +11,13 @@
   overflow: visible;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 96%, transparent);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent);
   padding: 6px;
   /* A shadow preserves the half-pixel outline on displays where borders snap to 1px. */
   box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--pui-semantic-text-primary) 14%, transparent),
     0 18px 42px color-mix(in srgb, var(--pui-semantic-shadow-color) 18%, transparent);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: var(--production-popup-backdrop-filter);
+  backdrop-filter: var(--production-popup-backdrop-filter);
 }
 
 .context-menu-item {

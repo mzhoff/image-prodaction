@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useMemo } from 'react';
 import { getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
@@ -23,8 +24,10 @@ import {
   updateTextResult,
 } from './text-workflow-values';
 import { useTextSectionFilters } from './use-text-section-filters';
+import { trackBehavior } from '@/shared/analytics/client';
 
 export function useTextGenerationNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as TextGenerationNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -50,12 +53,13 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
   const handleGenerate = useCallback(async () => {
     const prompt = [inputText.trim(), data.instruction.trim()].filter(Boolean).join('\n\n');
     if (!prompt) {
-      updateNodeData(node.id, { message: 'Добавь prompt в ноде или подключи текст ко входу Prompt.' });
+      updateNodeData(node.id, { message: tUi("Добавь prompt в ноде или подключи текст ко входу Prompt.") });
       return;
     }
     try {
       setNodeStatus(node.id, 'running');
       updateNodeDataSilent(node.id, { message: '' });
+      trackBehavior('ip_generation_requested', { source: 'editor', node_type: 'textGeneration', operation: 'generate_text' });
       const result = await requestGenerateText({
         inputText: '',
         instruction: prompt,
@@ -70,7 +74,7 @@ export function useTextGenerationNodeModel(node: ProductionNode) {
       setNodeStatus(node.id, 'error');
       updateNodeDataSilent(node.id, { message: error instanceof Error ? error.message : 'OpenRouter text generation failed' });
     }
-  }, [data, inputText, node.id, reasoning, selectedModel, setNodeStatus, supportsReasoning, supportsTemperature, temperature, updateNodeData, updateNodeDataSilent]);
+  }, [tUi, data, inputText, node.id, reasoning, selectedModel, setNodeStatus, supportsReasoning, supportsTemperature, temperature, updateNodeData, updateNodeDataSilent]);
 
   return {
     data,

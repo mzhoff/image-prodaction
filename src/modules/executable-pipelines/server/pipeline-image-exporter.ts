@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { readBoundedAudioStream } from '@/shared/media/audio-upload-request';
 import {
   getAssetContent,
   getMaxImageUploadBytes,
@@ -27,7 +28,7 @@ export function createSharpImageExporter(
       if (content.asset.workspaceId !== input.context.workspaceId || content.asset.mediaKind !== 'image') {
         throw handlerError('Export source does not belong to the pipeline workspace.', input.nodeId);
       }
-      const bytes = new Uint8Array(await new Response(content.object.body).arrayBuffer());
+      const bytes = await readBoundedAudioStream(content.object.body, getMaxImageUploadBytes(), input.signal);
       let transformed: Awaited<ReturnType<typeof transformPipelineExportImage>>;
       try {
         transformed = await transformPipelineExportImage(bytes, options);

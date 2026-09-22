@@ -3,14 +3,14 @@ import { listDocumentAssistantActivity } from './document-activity-service';
 import {
   bindDocumentConversation,
   DocumentConversationAccessError,
-  ensureDocumentConversation,
+  findDocumentConversation,
 } from './document-conversation-service';
 
 export async function getDocumentConversationRoute(request: Request, documentId: string) {
   try {
     const principal = await resolveChatPrincipal(request);
     const id = normalizeId(documentId);
-    const conversationId = await ensureDocumentConversation(principal, id);
+    const conversationId = await findDocumentConversation(principal, id);
     await listDocumentAssistantActivity(principal, id);
     return Response.json({ conversationId }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

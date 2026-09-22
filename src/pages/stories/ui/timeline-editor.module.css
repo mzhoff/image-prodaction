@@ -1,0 +1,35 @@
+.editor { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--ink); background: var(--pui-semantic-surface-secondary); }
+.editor :where(button):not(:where([data-assistant-window] *, :global(.pui-button))) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 6px 10px; border: 0; border-radius: 10px; background: var(--pui-semantic-surface-primary); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.editor :where(button:hover:not(:disabled)):not(:where([data-assistant-window] *, :global(.pui-button))) { background: var(--pui-semantic-surface-elevated); }
+.editor :where(button:disabled):not(:where([data-assistant-window] *, :global(.pui-button))) { opacity: .45; cursor: default; }
+.editor :where(input, textarea, select):not(:where([data-assistant-window] *)) { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: var(--pui-semantic-surface-primary); color: var(--ink); font: inherit; font-size: 12px; user-select: text; }
+.editor :where(input[type=checkbox]):not(:where([data-assistant-window] *)) { width: auto; }
+.editor :where(button, a, input, textarea, select):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.editor :global(.story-primary) { background: var(--blue); color: var(--pui-semantic-text-on-accent); }
+.editor :global(.story-primary):hover:not(:disabled) { background: color-mix(in srgb, var(--blue) 88%, var(--ink)); }
+.header { flex: none; display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 12px 20px; }
+.back { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; color: var(--ink); }
+.back:hover { background: var(--pui-semantic-surface-primary); }
+.documentIcon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--pui-semantic-surface-primary); color: var(--ink-soft); }
+.identity { flex: 1; min-width: 0; }
+.identity input { max-width: 480px; padding: 2px 0; border-color: transparent; background: transparent; font-size: 15px; font-weight: 600; text-overflow: ellipsis; }
+.identity > div { display: flex; align-items: center; gap: 12px; padding-top: 4px; font-size: 10px; color: var(--ink-soft); }
+.folder { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.status { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.status::before { content: ''; width: 5px; height: 5px; background: var(--pui-semantic-status-success-foreground); border-radius: 50%; }
+.status[data-dirty=true]::before { background: var(--pui-semantic-status-warning-foreground); }
+.actions { display: flex; gap: 8px; align-items: center; }
+.actions > :not(:last-child) button { width: 34px; height: 34px; padding: 0; background: transparent; }
+.actions > :not(:last-child) button:hover:not(:disabled) { background: var(--pui-semantic-surface-primary); }
+
+.content { display: flex; flex: 1; min-width: 0; min-height: 0; margin: 0; padding: 0 8px 8px; border: 0; overflow: hidden; }
+.settings { display: grid; grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 1fr)) auto; align-items: center; gap: 16px; flex: none; margin: 0 8px 8px; padding: 16px; border: 0; border-radius: 16px; background: var(--pui-semantic-surface-primary); }
+.label { display: block; margin-bottom: 8px; color: var(--ink-soft); font-size: 11px; }
+.settings :global(.story-ratio-choices) small { display: none; }
+.settings :global(.story-ratio-choices) button { padding: 8px; min-height: 42px; }
+.settingsLinks { display: grid; gap: 6px; font-size: 11px; }
+.settingsLinks a { color: var(--blue); }
+.error { padding: 8px 20px; font-size: 12px; color: var(--pui-semantic-status-danger-foreground); background: var(--pui-semantic-status-danger-background); }
+.loading { padding: 24px; }
+@media (max-width: 1000px) { .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 40vh; overflow: auto; } }
+@media (max-width: 600px) { .header { gap: 8px; padding: 10px; min-height: 68px; } .documentIcon, .folder { display: none; } .actions { gap: 2px; } .identity input { font-size: 13px; } .identity > div { gap: 8px; } .content { padding: 0 4px 4px; } .settings { grid-template-columns: minmax(0, 1fr); } }

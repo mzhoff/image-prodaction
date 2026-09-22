@@ -12,7 +12,7 @@ export const publicationNodeHelp = {
     execution: 'canvas-only',
     limitations: [
       'Для отправки нужны настроенный bot token, канал и права администратора у бота.',
-      'Add to Plan пока недоступен; действуют ограничения Telegram на текст и media.',
+      'Add to Plan пока недоступен; действуют ограничения Telegram на текст и media; загрузка альбома потоковая, до 100 MiB суммарно и 10 файлов.',
       'Отправка не является server handler executable pipeline и требует отдельного действия в UI.',
       'Порты formatRules/checkRules видны в графе, но текущая публикация ещё не читает их значения.',
     ],

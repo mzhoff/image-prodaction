@@ -1,55 +1,38 @@
 'use client';
+import { useUiCatalog } from '@/shared/i18n/use-ui-catalog';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-export type TemplateTab = 'templates' | 'tutorials';
+import { useState } from 'react';
+import { ArrowUpRight } from '@prodactionpro/ui-core/icons';
+import { learningCards, type LearningCard, type TemplateTab } from '../model/workspace-learning-catalog';
+import { WorkspaceLearningGallery } from './workspace-learning-gallery';
 
-const templateCards = [
-  { image: '/workspace-assets/template-01.png', title: 'Change face' },
-  { image: '/workspace-assets/template-02.png', title: 'Change Clothes' },
-  { image: '/workspace-assets/template-03.png', title: 'Change Face Node' },
-  { image: '/workspace-assets/template-04.png', title: 'Change subscriber' },
-  { image: '/workspace-assets/template-05.png', title: 'Change audio' },
-  { image: '/workspace-assets/template-06.png', title: 'Change Models' },
-  { image: '/workspace-assets/template-07.png', title: 'Change Machine' },
-  { image: '/workspace-assets/template-08.png', title: 'Change face' },
-];
+export type { TemplateTab } from '../model/workspace-learning-catalog';
 
-const tutorialCards = [
-  { image: '/workspace-assets/template-03.png', title: 'Build a content pipeline' },
-  { image: '/workspace-assets/template-06.png', title: 'Connect AI models' },
-  { image: '/workspace-assets/template-02.png', title: 'Prepare batch inputs' },
-  { image: '/workspace-assets/template-07.png', title: 'Publish final assets' },
-];
-
-export function WorkspaceTemplateBand({
-  activeTab,
-  onTabChange,
-}: {
-  activeTab: TemplateTab;
-  onTabChange: (tab: TemplateTab) => void;
+export function WorkspaceTemplateBand({ open, activeTab, onTabChange }: {
+  open: boolean; activeTab: TemplateTab; onTabChange: (tab: TemplateTab) => void;
 }) {
-  const cards = activeTab === 'templates' ? templateCards : tutorialCards;
-  return (
-    <section className="workspace-template-band" aria-label="Templates">
-      <div className="workspace-template-tabs">
-        <TemplateTabButton active={activeTab === 'templates'} label="Templates" onClick={() => onTabChange('templates')} />
-        <TemplateTabButton active={activeTab === 'tutorials'} label="Tutorials" onClick={() => onTabChange('tutorials')} />
+  const tUi = useTranslations();
+  const ui_learningCards = useUiCatalog(learningCards, tUi);
+  const [selected, setSelected] = useState<LearningCard | null>(null);
+  const cards = ui_learningCards.filter((card) => card.kind === activeTab);
+  return <>
+    <div id="flows-learning" className="workspace-learning-collapse" data-open={open} inert={!open} aria-hidden={!open}>
+      <div className="workspace-learning-collapse-inner">
+        <section className="workspace-learning-band" aria-label={tUi("Туториалы и шаблоны")}>
+          <div className="workspace-learning-tabs" role="group" aria-label={tUi("Материалы для старта")}>
+            <button type="button" aria-pressed={activeTab === 'tutorials'} onClick={() => onTabChange('tutorials')}>{tUi("Туториалы")}</button>
+            <button type="button" aria-pressed={activeTab === 'templates'} onClick={() => onTabChange('templates')}>{tUi("Шаблоны")}</button>
+          </div>
+          <div className="workspace-learning-cards">
+            {cards.map((card) => <button className="workspace-learning-card" type="button" key={card.id} onClick={() => setSelected(card)}>
+              <span className="workspace-learning-art"><img src={card.image} alt="" draggable={false} /><ArrowUpRight size={17} /></span>
+              <strong>{card.title}</strong><span className="workspace-learning-description">{card.description}</span>
+            </button>)}
+          </div>
+        </section>
       </div>
-      <div className="workspace-template-list">
-        {cards.map((card) => <button className="workspace-template-card" key={`${card.image}-${card.title}`} type="button">
-          <img src={card.image} alt="" />
-          <span>{card.title}</span>
-        </button>)}
-      </div>
-    </section>
-  );
-}
-
-function TemplateTabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
-  return <button
-    aria-selected={active}
-    className={`workspace-template-tab ${active ? 'workspace-template-tab-active' : ''}`}
-    onClick={onClick}
-    role="tab"
-    type="button"
-  >{label}</button>;
+    </div>
+    {selected ? <WorkspaceLearningGallery initialCard={selected} onClose={() => setSelected(null)} /> : null}
+  </>;
 }

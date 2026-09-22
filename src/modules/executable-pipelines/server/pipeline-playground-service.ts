@@ -115,6 +115,9 @@ export function mapPipelinePlaygroundDescriptor(target: PlaygroundTarget): Pipel
         description: contract.description ?? null,
         kind: contract.kind,
         required: contract.required,
+        ...(contract.schema ? { schema: contract.schema } : {}),
+        ...(contract.defaultValue !== undefined ? { defaultValue: contract.defaultValue } : {}),
+        ...(contract.documentFormat ? { documentFormat: contract.documentFormat, documentSchemaChecksum: contract.documentSchemaChecksum } : {}),
       };
     }),
     outputs: Object.entries(target.compiledPlan.definition.outputs).map(([name, binding]) => {

@@ -1,7 +1,15 @@
 import type { ProjectSummary, WorkspaceRecord } from '../model/types';
+import { trackBehavior } from '@/shared/analytics/client';
 
 interface ApiErrorPayload {
   error?: { message?: string };
+}
+
+export async function createWorkspace(name: string, creationId: string): Promise<WorkspaceRecord> {
+  const result = await requestJson<{ workspace: { id: string; name: string } }>('/api/workspaces', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, creationId }),
+  });
+  return { ...result.workspace, members: [] };
 }
 
 export async function fetchWorkspaceState(signal?: AbortSignal) {
@@ -22,7 +30,10 @@ export async function createWorkspaceProject(workspaceId: string, name = 'Untitl
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ workspaceId, name, folderId }),
-  }).then((result) => result.project);
+  }).then((result) => {
+    trackBehavior('ip_document_created');
+    return result.project;
+  });
 }
 
 export async function updateWorkspaceProject(

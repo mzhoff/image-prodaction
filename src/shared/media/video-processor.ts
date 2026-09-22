@@ -1,3 +1,4 @@
+import type { MediaSource } from './media-source';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { AudioProcessingError, MAX_AUDIO_OUTPUT_BYTES, type ValidatedAudio } from './audio-contracts';
@@ -6,18 +7,18 @@ import { runAudioProgram, withAudioWork } from './audio-process';
 import { inspectVideoFile, validateVideoEnvelope, videoInputArguments } from './video-inspection';
 import { resolveVideoCropPixels } from './video-crop';
 import { readVideoTrimTiming } from './video-trim';
-import { MAX_VIDEO_DURATION_SECONDS, MAX_VIDEO_OUTPUT_BYTES, VideoProcessingError, videoDeriveOptionsSchema, type ValidatedVideo, type VideoAudioTrack, type VideoContainer, type VideoDeriveOptions, type VideoInspectionOptions, type VideoMetadata } from './video-contracts';
+import { MAX_VIDEO_BYTES, MAX_VIDEO_DURATION_SECONDS, MAX_VIDEO_OUTPUT_BYTES, VideoProcessingError, videoDeriveOptionsSchema, type ValidatedVideo, type VideoAudioTrack, type VideoContainer, type VideoDeriveOptions, type VideoInspectionOptions, type VideoMetadata } from './video-contracts';
 
 const MAX_VIDEO_POSTER_FRAME_BYTES = 24 * 1024 * 1024;
 
-export async function inspectVideoBytes(bytes: Uint8Array, options: VideoInspectionOptions = {}) {
+export async function inspectVideoBytes<T extends MediaSource>(bytes: T, options: VideoInspectionOptions = {}) {
   const container = validateVideoEnvelope(bytes, options);
   return translateVideoError(() => withAudioWork(bytes, options.signal, (_directory, source) => inspectVideoFile(bytes, source, options, container)));
 }
 
 /** Extracts a bounded first-frame poster. The caller converts it to the Library WebP variant. */
-export async function extractVideoPosterFrame(bytes: Uint8Array, signal?: AbortSignal) {
-  const container = validateVideoEnvelope(bytes, { maxBytes: MAX_VIDEO_OUTPUT_BYTES, signal });
+export async function extractVideoPosterFrame(bytes: MediaSource, signal?: AbortSignal) {
+  const container = validateVideoEnvelope(bytes, { maxBytes: MAX_VIDEO_BYTES, signal });
   return translateVideoError(() => withAudioWork(bytes, signal, async (directory, source) => {
     const target = join(directory, 'poster.png');
     await runAudioProgram('ffmpeg', [
@@ -38,11 +39,11 @@ export function selectVideoAudioTrack(video: VideoMetadata, index?: number): Vid
 }
 
 /** Original bytes are never changed. Derived output is validated before it reaches storage. */
-export async function deriveVideoBytes(input: { bytes: Uint8Array; options: VideoDeriveOptions; signal?: AbortSignal }): Promise<ValidatedAudio | ValidatedVideo> {
+export async function deriveVideoBytes(input: { bytes: MediaSource; options: VideoDeriveOptions; signal?: AbortSignal }): Promise<ValidatedAudio | ValidatedVideo> {
   const parsed = videoDeriveOptionsSchema.safeParse(input.options);
   if (!parsed.success) throw new VideoProcessingError('invalid_video_options', 'Video extraction settings are invalid.', 400);
   const options = parsed.data;
-  const container = validateVideoEnvelope(input.bytes, { maxBytes: MAX_VIDEO_OUTPUT_BYTES });
+  const container = validateVideoEnvelope(input.bytes, { maxBytes: MAX_VIDEO_BYTES });
   return translateVideoError(() => withAudioWork(input.bytes, input.signal, async (directory, source) => {
     const original = await inspectVideoFile(input.bytes, source, { signal: input.signal }, container);
     if (options.kind === 'audio') {

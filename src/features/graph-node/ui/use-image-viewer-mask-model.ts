@@ -1,20 +1,17 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AssetRecord, GenerationResultMetadata } from '@/entities/production-graph/model/types';
-import { DEFAULT_IMAGE_MODEL, getImageModelConfig } from '@/shared/api/openrouter-models';
+import { getImageModelConfig } from '@/shared/api/openrouter-models';
 import { useOpenRouterModels } from '@/shared/api/use-openrouter-models';
 import { modelSelectOptions } from '../lib/node-select-options';
+import { getEditDefaultModel } from '../lib/image-viewer-edit-model';
 import type { ImageMaskEditorHandle, MaskTool } from './image-mask-editor';
 import type { MaskEditPayload } from './image-viewer-types';
 
 export const MIN_MASK_BRUSH_SIZE = 8;
 export const MAX_MASK_BRUSH_SIZE = 120;
-
-/** Keep the edit model aligned with the exact model recorded on this result. */
-export function getEditDefaultModel(sourceModelId?: string) {
-  return sourceModelId ?? DEFAULT_IMAGE_MODEL;
-}
 
 interface UseImageViewerMaskModelParams {
   asset?: AssetRecord;
@@ -24,6 +21,7 @@ interface UseImageViewerMaskModelParams {
   onMaskChange?: (maskDataUrl: string | null) => void;
   onMaskEdit?: (payload: MaskEditPayload) => Promise<void>;
   sourceModel?: string;
+  initialMaskOpen?: boolean;
 }
 
 export function useImageViewerMaskModel({
@@ -34,7 +32,9 @@ export function useImageViewerMaskModel({
   onMaskChange,
   onMaskEdit,
   sourceModel,
+  initialMaskOpen = false,
 }: UseImageViewerMaskModelParams) {
+  const tUi = useTranslations();
   const canMaskEdit = Boolean(assetId && (onMaskEdit || onMaskChange));
   const localMaskMode = Boolean(onMaskChange && !onMaskEdit);
   const activeMetadata = assetId ? assetMetadata?.[assetId] : undefined;
@@ -42,7 +42,7 @@ export function useImageViewerMaskModel({
   const editDefaultModel = getEditDefaultModel(sourceModelId);
   const [brushSize, setBrushSize] = useState(16);
   const [editModel, setEditModel] = useState(editDefaultModel);
-  const [maskOpen, setMaskOpen] = useState(false);
+  const [maskOpen, setMaskOpen] = useState(initialMaskOpen);
   const [message, setMessage] = useState('');
   const [previewTool, setPreviewTool] = useState<MaskTool | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -104,12 +104,12 @@ export function useImageViewerMaskModel({
     if (!assetId || !onMaskEdit) return;
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt) {
-      setMessage('Опиши, что нужно изменить в выделенной области.');
+      setMessage(tUi("Опиши, что нужно изменить в выделенной области."));
       return;
     }
     const maskDataUrl = maskRef.current?.getMaskDataUrl();
     if (!maskDataUrl) {
-      setMessage('Сначала нарисуй маску на изображении.');
+      setMessage(tUi("Сначала нарисуй маску на изображении."));
       return;
     }
 
@@ -119,7 +119,7 @@ export function useImageViewerMaskModel({
       maskRef.current?.reset();
       setMaskOpen(false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось перегенерировать фрагмент.');
+      setMessage(error instanceof Error ? error.message : tUi("Не удалось перегенерировать фрагмент."));
     }
   };
 

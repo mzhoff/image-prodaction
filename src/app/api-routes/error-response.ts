@@ -3,8 +3,10 @@ import { AuthenticationRequiredError } from '@/modules/authentication/server/aut
 import { DocumentConflictError, DocumentNotFoundError } from '@/entities/document/server/document-service';
 import { DocumentValidationError } from '@/entities/document/server/document-validation';
 import { WorkspaceAccessError } from '@/entities/workspace/server/workspace-service';
+import { MemberBudgetError } from '@/modules/workspace-budgets/core/member-budget-policy';
 
 export function toApiErrorResponse(error: unknown) {
+  if (error instanceof MemberBudgetError) return apiError(error.code, error.message, error.status);
   if (error instanceof AuthenticationRequiredError) return apiError('unauthorized', 'Authentication required.', 401);
   if (error instanceof WorkspaceAccessError) return apiError('forbidden', 'Workspace access denied.', 403);
   if (error instanceof DocumentNotFoundError) return apiError('document_not_found', 'Document not found.', 404);

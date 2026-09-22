@@ -1,6 +1,7 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffectEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { CropImageNodeData, CropRect, ProductionNode } from '@/entities/production-graph/model/types';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
 import { loadAssetBlob, saveTransientImageAsset } from '@/entities/production-graph/lib/asset-db';
@@ -22,6 +23,8 @@ import { useCropVideoProcessing } from './use-crop-video-processing';
 const CROP_STATE_VERSION = 3;
 
 export function useCropImageNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
+  const tEffect = useEffectEvent(tUi);
   const data = node.data as CropImageNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -42,10 +45,10 @@ export function useCropImageNodeModel(node: ProductionNode) {
     // Rotation metadata describes the displayed frame, which is what the crop box edits.
     if (asset?.kind === 'video' && asset.video) {
       try { return { asset: { ...asset, ...getVideoDisplayDimensions(asset.video) } }; }
-      catch { return { asset: undefined, error: 'Для обрезки нужен ролик с поворотом на 0°, 90°, 180° или 270°.' }; }
+      catch { return { asset: undefined, error: tUi("Для обрезки нужен ролик с поворотом на 0°, 90°, 180° или 270°.") }; }
     }
     return { asset };
-  }, [assets, edges, hasVideoInput, node.id, nodes, sourceConflict]);
+  }, [tUi, assets, edges, hasVideoInput, node.id, nodes, sourceConflict]);
   const sourceAsset = source.asset;
   const imageResultAsset = useMemo(() => (
     assets.find((asset) => asset.id === data.resultAssetId)
@@ -168,21 +171,13 @@ export function useCropImageNodeModel(node: ProductionNode) {
       } catch (error) {
         if (processingRef.current !== runId) return;
         updateNodeDataSilent(node.id, {
-          message: error instanceof Error ? error.message : 'Не удалось выполнить crop.',
+          message: error instanceof Error ? error.message : tEffect("Не удалось выполнить crop."),
         });
       }
     }, 180);
 
     return () => { window.clearTimeout(timer); processingRef.current += 1; };
-  }, [
-    addAsset,
-    crop,
-    node.id,
-    pixelSize.height,
-    pixelSize.width,
-    sourceAsset,
-    updateNodeDataSilent,
-  ]);
+  }, [addAsset, crop, node.id, pixelSize.height, pixelSize.width, sourceAsset, updateNodeDataSilent]);
 
   const handleCropDragStart = useCallback(() => {
     pushHistory();
@@ -270,10 +265,10 @@ export function useCropImageNodeModel(node: ProductionNode) {
     handlePixelSizeChange,
     handleReset,
     locked: Boolean(data.locked),
-    message: sourceConflict ? 'Подключите один источник: изображение или видео.'
-      : hasVideoInput ? source.error || video.error || (video.busy ? 'Обрезаем видео…'
-        : video.result ? `${video.result.width} × ${video.result.height} · MP4 · Видео готово`
-          : sourceAsset ? 'Настройте рамку и нажмите «Обрезать видео».' : 'Ожидаем видео от предыдущей ноды.') : data.message,
+    message: sourceConflict ? tUi("Подключите один источник: изображение или видео.")
+      : hasVideoInput ? source.error || video.error || (video.busy ? tUi("Обрезаем видео…")
+        : video.result ? tUi("{p1} × {p2} · MP4 · Видео готово", { p1: video.result.width, p2: video.result.height })
+          : sourceAsset ? tUi("Настройте рамку и нажмите «Обрезать видео».") : tUi("Ожидаем видео от предыдущей ноды.")) : data.message,
     hasVideoInput,
     video,
     pixelSize,

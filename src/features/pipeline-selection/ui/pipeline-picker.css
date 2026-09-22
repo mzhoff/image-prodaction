@@ -1,0 +1,16 @@
+.pipeline-picker-dialog { width: min(720px, calc(100vw - 32px)); height: min(680px, calc(100dvh - 48px)); }
+.pipeline-picker-content { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 12px; border-radius: 18px; background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 80%, transparent); }
+.pipeline-picker-list { overflow-y: auto; display: grid; align-content: start; gap: 10px; min-height: 0; scrollbar-width: thin; }
+.pipeline-picker-card { display: flex; gap: 14px; align-items: center; width: 100%; padding: 16px; border: 1px solid color-mix(in srgb, var(--pui-semantic-surface-primary) 65%, transparent); border-radius: 20px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 60%, transparent); color: var(--pui-semantic-text-primary); text-align: left; cursor: pointer; transition: background 160ms ease; }
+.pipeline-picker-card:hover { background: var(--pui-semantic-surface-primary); }
+.pipeline-picker-icon { display: grid; flex: none; place-items: center; width: 54px; height: 54px; border-radius: 18px; background: color-mix(in srgb, var(--pui-semantic-accent-default) 9%, var(--pui-semantic-surface-primary)); color: var(--pui-semantic-accent-default); }
+.pipeline-picker-copy { display: grid; flex: 1; min-width: 0; gap: 7px; }
+.pipeline-picker-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pipeline-picker-title strong { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
+.pipeline-picker-title small { padding: 3px 6px; border-radius: 6px; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-secondary); font-size: 10px; }
+.pipeline-picker-origin { display: flex; align-items: center; gap: 6px; color: var(--pui-semantic-text-secondary); font-size: 11px; }
+.pipeline-picker-description { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--pui-semantic-text-secondary); font-size: 12px; line-height: 1.5; }
+.pipeline-picker-io { color: var(--pui-semantic-text-muted); font-size: 10px; }
+.pipeline-picker-state { display: grid; justify-items: center; align-content: center; gap: 12px; min-height: 280px; padding: 24px; color: var(--pui-semantic-text-secondary); text-align: center; font-size: 13px; }
+.pipeline-picker-state h3, .pipeline-picker-state p { margin: 0; max-width: 380px; line-height: 1.6; }
+.pipeline-picker-state :is(button, a) { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); text-decoration: none; cursor: pointer; }

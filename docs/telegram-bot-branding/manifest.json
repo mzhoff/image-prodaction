@@ -1,0 +1,84 @@
+{
+  "created": "2026-09-22",
+  "status": "optimized-assets-local-integration",
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "id": "avatar",
+      "source": "/Users/m.pyzhov/.codex/generated_images/01a0b909-ef3c-7d20-a226-5e2f6d9d9067/exec-213ec57d-64cf-4392-a233-98fdab1fa403.png",
+      "file": "assets/avatar.webp",
+      "width": 640,
+      "height": 640,
+      "bytes": 26624,
+      "sha256": "05102185e76b00dcf3064a152419856ba6116db8fab66aeb627b68debb9663ec",
+      "originalBytes": 1530520,
+      "telegram": {
+        "file": "telegram/avatar.jpg",
+        "bytes": 38375
+      }
+    },
+    {
+      "id": "welcome",
+      "source": "/Users/m.pyzhov/.codex/generated_images/01a0b909-ef3c-7d20-a226-5e2f6d9d9067/exec-01268745-0aa7-42e6-9bbc-2af543191c42.png",
+      "file": "assets/welcome.webp",
+      "width": 960,
+      "height": 480,
+      "bytes": 11574,
+      "sha256": "608b1f5c0ffcddf70a02d85c11d79fcb8b7c02282764de3ff61562dae0c79bab",
+      "originalBytes": 1311815,
+      "telegram": {
+        "file": "telegram/welcome.jpg",
+        "bytes": 16413
+      }
+    },
+    {
+      "id": "login",
+      "source": "/Users/m.pyzhov/.codex/generated_images/01a0b909-ef3c-7d20-a226-5e2f6d9d9067/exec-7aac00db-2a3a-4005-8e71-1b668c289614.png",
+      "file": "assets/login.webp",
+      "width": 960,
+      "height": 480,
+      "bytes": 13778,
+      "sha256": "a8d812fc54d4323398477a36cc8b3a93d0630c3f86f56aff58afe8687105acae",
+      "originalBytes": 1454784,
+      "telegram": {
+        "file": "telegram/login.jpg",
+        "bytes": 20463
+      }
+    },
+    {
+      "id": "balance",
+      "source": "/Users/m.pyzhov/.codex/generated_images/01a0b909-ef3c-7d20-a226-5e2f6d9d9067/exec-6c9c61ba-17cd-4c60-8be7-e5f3984a6c1d.png",
+      "file": "assets/balance.webp",
+      "width": 960,
+      "height": 480,
+      "bytes": 16262,
+      "sha256": "ec5200eb3e186fc59e5dc5b394e63ec895c64cd6a169ec73a4ed59752825f29d",
+      "originalBytes": 1392388,
+      "telegram": {
+        "file": "telegram/balance.jpg",
+        "bytes": 22604
+      }
+    },
+    {
+      "id": "success",
+      "source": "/Users/m.pyzhov/.codex/generated_images/01a0b909-ef3c-7d20-a226-5e2f6d9d9067/exec-695a8cea-d3aa-4492-87d2-96c333bff6c8.png",
+      "file": "assets/success.webp",
+      "width": 960,
+      "height": 480,
+      "bytes": 11246,
+      "sha256": "5d40c9da02ac8d69c3edbd3a1d193e9389e251a2838f5ba34e022ae937b4ca11",
+      "originalBytes": 1349141,
+      "telegram": {
+        "file": "telegram/success.jpg",
+        "bytes": 16421
+      }
+    }
+  ],
+  "conversion": {
+    "webpQuality": 82,
+    "jpegQuality": 85,
+    "banners": "960x480",
+    "avatar": "640x640",
+    "crop": false
+  }
+}

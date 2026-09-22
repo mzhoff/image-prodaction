@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useMemo, useState } from 'react';
 import { loadAssetBlob } from '@/entities/production-graph/lib/asset-db';
@@ -27,6 +28,7 @@ interface Params {
 }
 
 export function useTelegramPublicationDelivery(params: Params) {
+  const tUi = useTranslations();
   const [channels, setChannels] = useState<TelegramChannelRecord[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState('');
   const [inputChannel, setInputChannel] = useState('');
@@ -80,16 +82,16 @@ export function useTelegramPublicationDelivery(params: Params) {
   const handleAddChannel = async () => {
     const channel = inputChannel.trim();
     if (!channel) {
-      setError('Введите ссылку, @username или идентификатор канала.');
+      setError(tUi("Введите ссылку, @username или идентификатор канала."));
       return;
     }
     setIsVerifying(true);
-    setInfo('Проверяем доступ бота к каналу…');
+    setInfo(tUi("Проверяем доступ бота к каналу…"));
     setPostUrl('');
     try {
       const response = await verifyTelegramChannel({ channel });
       if (!response.botIsAdmin) {
-        setError('Бот не является администратором этого канала. Добавьте бота в канал как админ и повторите проверку.');
+        setError(tUi("Бот не является администратором этого канала. Добавьте бота в канал как админ и повторите проверку."));
         return;
       }
       const nextChannel: TelegramChannelRecord = { ...response, verifiedAt: new Date().toISOString() };
@@ -98,28 +100,28 @@ export function useTelegramPublicationDelivery(params: Params) {
       setSelectedChannelId(nextChannel.chatId);
       setStep('select');
       setInputChannel('');
-      setStatus({ message: `Канал ${nextChannel.title} подтвержден. Нажми «Отправить», чтобы опубликовать.`, severity: 'success' });
+      setStatus({ message: tUi("Канал {p1} подтвержден. Нажми «Отправить», чтобы опубликовать.", { p1: nextChannel.title }), severity: 'success' });
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Не удалось проверить канал.');
+      setError(error instanceof Error ? error.message : tUi("Не удалось проверить канал."));
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handlePublish = async () => {
-    if (!selectedChannel) return setError('Выбери канал для публикации.');
-    if (!selectedChannel.botIsAdmin) return setError('Этот канал сохранен без статуса администратора. Проверь, что бот еще в канале админом.');
+    if (!selectedChannel) return setError(tUi("Выбери канал для публикации."));
+    if (!selectedChannel.botIsAdmin) return setError(tUi("Этот канал сохранен без статуса администратора. Проверь, что бот еще в канале админом."));
     if (!canPublish) {
       setStatus({
         message: hasPublishableContent
-          ? `Текст превышает лимит Telegram в ${params.messageCharacterLimit} символов. Слишком длинная часть будет обрезана.`
-          : 'Нужен текст или хотя бы одно изображение.',
+          ? tUi("Текст превышает лимит Telegram в {p1} символов. Слишком длинная часть будет обрезана.", { p1: params.messageCharacterLimit })
+          : tUi("Нужен текст или хотя бы одно изображение."),
         severity: hasPublishableContent ? 'warning' : 'error',
       });
       return;
     }
     setIsPublishing(true);
-    setInfo('Публикуем сообщение…');
+    setInfo(tUi("Публикуем сообщение…"));
     setPostUrl('');
     try {
       const preparedMedia = await Promise.all(params.mediaItems.slice(0, TELEGRAM_MAX_MEDIA_ITEMS)
@@ -139,11 +141,11 @@ export function useTelegramPublicationDelivery(params: Params) {
       });
       if (response.postUrl) setPostUrl(response.postUrl);
       setStatus({
-        message: `Опубликовано успешно. Сообщений: ${response.messageIds.length}. ${response.postUrl ? 'Нажмите «Открыть пост».' : ''}`,
+        message: tUi("Опубликовано успешно. Сообщений: {p1}. {p2}", { p1: response.messageIds.length, p2: response.postUrl ? 'Нажмите «Открыть пост».' : '' }),
         severity: 'success',
       });
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Не удалось опубликовать сообщение.');
+      setError(error instanceof Error ? error.message : tUi("Не удалось опубликовать сообщение."));
     } finally {
       setIsPublishing(false);
     }

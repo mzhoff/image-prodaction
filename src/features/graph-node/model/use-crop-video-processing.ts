@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { deriveRemoteVideoAsset } from '@/entities/production-graph/lib/remote-video-asset';
@@ -10,6 +11,7 @@ import { useProductionGraphStore } from '@/entities/production-graph/model/use-p
 
 /** Video encoding is explicit; moving the frame only updates the draft. */
 export function useCropVideoProcessing(node: ProductionNode, source: AssetRecord | undefined, crop: CropRect) {
+  const tUi = useTranslations();
   const scope = useSyncExternalStore(subscribeActiveAssetScope, getActiveAssetScopeSnapshot, () => undefined);
   const controllerRef = useRef<AbortController | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,7 +49,7 @@ export function useCropVideoProcessing(node: ProductionNode, source: AssetRecord
     try {
       const asset = await deriveRemoteVideoAsset({ workspaceId: active.workspaceId, assetId: source.id, kind: 'crop', crop }, fetch, controller.signal);
       if (!current()) return;
-      if (asset.kind !== 'video') throw new Error('Сервер не вернул обрезанное видео.');
+      if (asset.kind !== 'video') throw new Error(tUi("Сервер не вернул обрезанное видео."));
       const store = useProductionGraphStore.getState();
       store.addAsset(asset);
       store.updateNodeData(node.id, { videoResultAssetId: asset.id, videoResultSignature: signature, message: '' });

@@ -1,4 +1,10 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { useAssistantRuntime } from '@/shared/assistant/model/use-assistant-runtime';
+import { notifyProviderUsageUpdated } from '@/shared/api/provider-usage-events';
+
+import { AiAccessBoundary } from '@/features/ai-access/ui/ai-access-boundary';
 
 import {
   type ChatContextSelectors,
@@ -7,9 +13,9 @@ import {
 import {
   ChatRuntimeProvider,
   type ChatAttachmentDropTarget,
-  useCreateChatRuntime,
 } from '@prodactionpro/chat-runtime-react';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
+import { CreatedDocumentMessage } from './created-document-message';
 import { ChatContent } from './image-production-chat-content';
 import { createImageProductionChatClient } from '@/modules/chat-assistant/adapters/client/chat-client';
 import { PIPELINE_BUILD_TOOL, PIPELINE_UPDATE_TOOL } from '@/modules/chat-assistant/contracts/image-production-tools';
@@ -31,23 +37,23 @@ export function ImageProductionChat({
   registerAttachmentDropTarget,
   workspaceId,
 }: ImageProductionChatProps) {
+  const tUi = useTranslations();
   const { reload, state } = useChatAssistantConfig(workspaceId);
-  if (!workspaceId) return <AssistantNotice>Workspace ещё загружается…</AssistantNotice>;
+  if (!workspaceId) return <AssistantNotice>{tUi("Workspace ещё загружается…")}</AssistantNotice>;
   if (state.phase === 'idle' || state.phase === 'loading') {
-    return <AssistantNotice>Проверяю подключение ассистента…</AssistantNotice>;
+    return <AssistantNotice>{tUi("Проверяю подключение ассистента…")}</AssistantNotice>;
   }
   if (state.phase === 'error') {
-    return <AssistantNotice action={reload} actionLabel="Повторить">{state.message}</AssistantNotice>;
+    return <AssistantNotice action={reload} actionLabel={tUi("Повторить")}>{state.message}</AssistantNotice>;
   }
   if (!state.value.enabled) {
     return (
       <AssistantNotice>
-        Ассистент безопасно выключен. Нужна серверная настройка: {state.value.missingSettings.join(', ')}.
-      </AssistantNotice>
+        {tUi("Ассистент пока недоступен. Администратор бета-теста должен завершить его настройку. Ваши проекты сохранены.")}</AssistantNotice>
     );
   }
   return (
-    <ConfiguredChatSession
+    <AiAccessBoundary key={workspaceId} workspaceId={workspaceId}><ConfiguredChatSession
       key={`${workspaceId}:${state.value.model}:${context.document?.id ?? 'workspace'}`}
       context={context}
       documentId={context.document?.id}
@@ -56,7 +62,7 @@ export function ImageProductionChat({
       onPipelineChanged={onPipelineChanged}
       registerAttachmentDropTarget={registerAttachmentDropTarget}
       workspaceId={workspaceId}
-    />
+    /></AiAccessBoundary>
   );
 }
 
@@ -69,10 +75,11 @@ function ConfiguredChatSession(props: {
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
+  const tUi = useTranslations();
   const { reload, state } = useDocumentConversation(props.documentId, props.workspaceId);
-  if (state.phase === 'loading') return <AssistantNotice>Восстанавливаю историю ассистента…</AssistantNotice>;
+  if (state.phase === 'loading') return <AssistantNotice>{tUi("Восстанавливаю историю ассистента…")}</AssistantNotice>;
   if (state.phase === 'error') {
-    return <AssistantNotice action={reload} actionLabel="Повторить">{state.message}</AssistantNotice>;
+    return <AssistantNotice action={reload} actionLabel={tUi("Повторить")}>{state.message}</AssistantNotice>;
   }
   return <ConfiguredChat {...props} initialConversationId={state.conversationId} onFocusNode={props.onFocusNode} />;
 }
@@ -96,15 +103,13 @@ function ConfiguredChat({
   registerAttachmentDropTarget?: (target?: AssistantAttachmentDropTarget) => void;
   workspaceId: string;
 }) {
-  const transport = useMemo(() => createImageProductionChatClient(workspaceId), [workspaceId]);
+  const transport = useMemo(() => createImageProductionChatClient(workspaceId, documentId ? { kind: 'flow', id: documentId } : undefined), [workspaceId, documentId]);
   const stableContext = useMemo(() => context, [context]);
-  const runtime = useCreateChatRuntime({
+  const runtime = useAssistantRuntime({
     context: stableContext,
-    initialState: {
-      conversationId: initialConversationId,
-      phase: initialConversationId ? 'loading' : 'idle',
-      selectedMode: 'product-copilot',
-      selectedModel: model,
+    conversationId: initialConversationId, model, mode: 'product-copilot',
+    onEvent: (event) => {
+      if (event.event === 'done' || event.event === 'error') notifyProviderUsageUpdated(workspaceId);
     },
     onToolLifecycleEvent: (event: ToolLifecycleEvent) => {
       if (event.status === 'succeeded'
@@ -113,14 +118,10 @@ function ConfiguredChat({
       }
     },
     transport,
-    welcomeMessage: false,
   });
-  useEffect(() => {
-    if (!initialConversationId) return;
-    void runtime.loadConversation(initialConversationId).catch(() => undefined);
-  }, [initialConversationId, runtime]);
   return (
     <ChatRuntimeProvider runtime={runtime}>
+      {documentId ? <CreatedDocumentMessage workspaceId={workspaceId} kind="flow" documentId={documentId} /> : null}
       <ChatContent
         model={model}
         onFocusNode={onFocusNode}

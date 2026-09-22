@@ -75,6 +75,6 @@ function assertDecryptableConnection(
   if (!record || !record.encryptedSecret || !record.authenticationTag
     || !record.initializationVector || record.encryptionKeyVersion === null
     || (requireConnected && record.status !== 'connected')) {
-    throw new ProviderConnectionNotConfiguredError();
+    throw new ProviderConnectionNotConfiguredError(record?.status === 'invalid');
   }
 }

@@ -4,10 +4,13 @@ Image Production consumes ChatModule as a private, independently versioned
 GitHub Packages dependency. The application does not copy ChatModule source and
 does not update one package from the family separately from the others.
 
+Поставка 0.13.0 и фактические consumer-проверки:
+[отчёт от 22 сентября 2026](./chatmodule-0.13.0-release-acceptance.md).
+
 ## Version policy
 
 - Direct `@prodactionpro/chat-*` dependencies use one exact stable version, for
-  the current consumer baseline `0.12.0`. Ranges such as `^0.12.0`, tags such as
+  the current consumer baseline `0.13.0`. Ranges such as `^0.13.0`, tags such as
   `latest`, Git branches
   and tarballs are not allowed.
 - Dependabot groups every ChatModule package update into one pull request.
@@ -17,9 +20,11 @@ does not update one package from the family separately from the others.
   review of the ChatModule migration notes.
 
 `npm run check:chatmodule-versions` enforces the exact-version and single-family
-rules in both `package.json` and `package-lock.json`. For the 0.12 consumer all
+rules in both `package.json` and `package-lock.json`. For the 0.13 consumer all
 direct and resolved `@prodactionpro/chat-*` packages must therefore be exactly
-`0.12.0`; a nested older family is a failed update, even if typecheck passes.
+`0.13.0`; a nested older family is a failed update, even if typecheck passes.
+The check includes nested `node_modules` records and rejects missing direct
+dependencies. Its regression tests run with the same policy command.
 
 ## GitHub secret
 
@@ -72,6 +77,13 @@ Retry переносит сохранённые selectors только чере�
 server verification; tool lifecycle co-streamed до terminal event и не требует
 consumer REST reconciliation. CM-026 про revision drift внутри текущего turn
 проверяется и ведётся отдельно от Retry-контракта CM-023.
+
+В 0.13.0 добавлен публичный контракт локализации UI. Production подключает
+`ChatLocalizationProvider` к своему RU/EN-каталогу в `PackageLocalization`.
+Проверки `src/shared/i18n/package-translations.test.ts` импортируют настоящий
+установленный пакет и проверяют SSR, публичный hook, перевод кнопок и
+сохранение исходного текста сообщений. Общие interaction/recovery контракты
+из backlog этим выпуском не заменяются; продуктовые адаптеры сохраняются.
 
 До merge также открыть `docs/chatmodule-consumer-workarounds.md`, сопоставить
 исправленные upstream CM IDs с активными CW IDs и либо заменить workaround в

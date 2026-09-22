@@ -1,0 +1,66 @@
+/* Account uses the same glass surface and entrance as Workspace search. */
+.production-anchored-dialog.production-account-dialog {
+  border: 0; border-radius: 24px; overflow: hidden;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--pui-semantic-shadow-color) 20%, transparent);
+}
+.production-account-dialog::backdrop { background: color-mix(in srgb, var(--pui-semantic-shadow-color) 20%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.production-account-dialog[open] { display: flex; flex-direction: column; transform-origin: bottom left; animation: production-account-enter 420ms cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes production-account-enter { from { transform: translateY(150px) scale(.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+.production-account-header { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; gap: 16px; padding: 16px 20px 14px; }
+.production-account-header h2 { margin: 0; color: var(--pui-semantic-text-primary); font-size: 18px; font-weight: 600; line-height: 1.4; }
+.production-account-header p { margin: 4px 0 0; color: var(--pui-semantic-text-secondary); font-size: 11px; line-height: 1.5; }
+.production-account-close { display: grid; place-items: center; flex: 0 0 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 80%, transparent); color: var(--pui-semantic-text-secondary); cursor: pointer; }
+.production-account-close:hover { background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); }
+.production-account-content { display: grid; gap: 16px; margin: 0 8px 6px; padding: 12px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-radius: 18px; background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 85%, transparent); }
+.production-account-links { display: grid; gap: 6px; }
+.production-account-links a { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 56px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 65%, transparent); color: inherit; text-decoration: none; transition: background 160ms ease; }
+.production-account-links a:hover { background: var(--pui-semantic-surface-primary); }
+.production-account-link-icon { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border-radius: 11px; color: var(--pui-semantic-text-primary); background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 85%, transparent); }
+.production-account-links a > span:nth-child(2) { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.production-account-links strong { font-size: 12px; font-weight: 550; }
+.production-account-links small { color: var(--pui-semantic-text-secondary); font-size: 10px; line-height: 1.4; }
+.production-account-links a > svg { flex-shrink: 0; color: var(--pui-semantic-text-muted); }
+.production-account-preferences { display: grid; gap: 14px; }
+.production-account-preferences fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.production-account-preferences legend { margin: 0; padding: 0 0 9px; font-size: 11px; font-weight: 500; color: var(--pui-semantic-text-secondary); }
+.production-theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.production-theme-options button { min-width: 0; padding: 5px 5px 9px; border: 1px solid transparent; border-radius: 14px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 55%, transparent); color: var(--pui-semantic-text-secondary); font: inherit; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+.production-theme-options button:hover { background: var(--pui-semantic-surface-primary); }
+.production-theme-options button[aria-pressed='true'] { border-color: var(--pui-semantic-accent-default); background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); }
+.production-theme-preview { --preview-canvas: var(--pui-color-neutral-0); --preview-sidebar: var(--pui-color-neutral-100); --preview-card: var(--pui-color-neutral-100); position: relative; display: block; height: 42px; overflow: hidden; border: 1px solid var(--pui-color-alpha-white-14); border-radius: 9px; background: var(--preview-canvas); }
+.production-theme-preview[data-preview-theme='dark'] { --preview-canvas: var(--pui-color-neutral-900); --preview-sidebar: var(--pui-color-neutral-800); --preview-card: var(--pui-color-neutral-800); }
+.production-theme-preview[data-preview-theme='system'] { --preview-canvas: linear-gradient(115deg, var(--pui-color-neutral-0) 50%, var(--pui-color-neutral-900) 50%); --preview-card: color-mix(in srgb, var(--pui-color-neutral-600) 35%, transparent); }
+.production-theme-preview > i { position: absolute; inset: 0 auto 0 0; width: 23%; background: var(--preview-sidebar); }
+.production-theme-preview > span { position: absolute; left: 32%; right: 10%; height: 12px; top: 9px; border-radius: 3px; background: var(--preview-card); }
+.production-theme-preview > span:last-child { top: 26px; height: 9px; right: 25%; background: color-mix(in srgb, var(--pui-semantic-accent-default) 45%, transparent); }
+.production-theme-caption { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 9px; font-size: 10px; white-space: nowrap; }
+.production-theme-caption svg { flex: 0 0 14px; width: 14px; height: 14px; }
+.production-preference-options { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--pui-color-neutral-800) 80%, transparent); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); }
+.production-preference-options button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 30px; padding: 5px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--pui-color-neutral-0); font: inherit; font-size: 11px; cursor: pointer; }
+.production-preference-options button:is(:hover, [aria-pressed='true']) { background: var(--pui-color-alpha-white-14); }
+.production-preference-options button[aria-pressed='true'] { box-shadow: inset 0 0 0 1px var(--pui-color-alpha-white-52); }
+.production-preference-options small { font-size: 9px; color: var(--pui-color-alpha-white-68); }
+.production-account-subscription { display: grid; gap: 10px; padding: 14px; border: 0; border-radius: 15px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 65%, transparent); }
+.production-account-subscription-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.production-account-subscription strong { font-size: 12px; font-weight: 550; }
+.production-account-subscription-heading > span { padding: 4px 7px; border-radius: 999px; background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-secondary); font-size: 9px; }
+.production-account-subscription p { margin: 0; color: var(--pui-semantic-text-secondary); font-size: 11px; line-height: 1.55; }
+.production-account-subscription :is(a, button) { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 6px 11px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--pui-color-neutral-800) 80%, transparent); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px); color: var(--pui-color-neutral-0); font: inherit; font-size: 11px; text-decoration: none; cursor: pointer; }
+.production-account-subscription :is(a, button):hover { background: var(--pui-color-neutral-800); }
+.production-account-subscription > small { color: var(--pui-semantic-text-muted); font-size: 9px; line-height: 1.5; }
+.production-account-signout button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 32px; padding: 6px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--pui-semantic-text-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.production-account-signout button:hover { background: color-mix(in srgb, var(--pui-semantic-text-primary) 6%, transparent); color: var(--pui-semantic-text-primary); }
+.production-account-signout button:disabled { opacity: .5; cursor: wait; }
+.production-account-signout [role='alert'] { font-size: 11px; }
+.production-profile-identity { display: flex; align-items: center; gap: 8px; flex: 0 0 40px; height: 40px; padding: 8px 10px; }
+.production-profile-identity > img { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; object-fit: cover; }
+.production-profile-identity strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 500; line-height: 24px; }
+@media (prefers-reduced-motion: reduce) { .production-account-dialog[open] { animation: none; } .production-account-links a, .production-theme-options button { transition: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .production-anchored-dialog.production-account-dialog { background: var(--pui-semantic-surface-primary); }
+  .production-account-dialog::backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .production-account-content { background: var(--pui-semantic-surface-secondary); }
+  .production-account-links a, .production-account-subscription, .production-theme-options button { background: var(--pui-semantic-surface-primary); }
+  .production-preference-options, .production-account-subscription a { background: var(--pui-color-neutral-800); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

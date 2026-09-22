@@ -1,5 +1,9 @@
 export type AssistantLauncherPresentation = 'button' | 'pet';
 
+// Temporarily use the compact launcher while the character is redesigned.
+// Keep saved preferences intact so the character can return without migration.
+export const ASSISTANT_CHARACTER_AVAILABLE = false;
+
 export type AssistantPetEmotion = 'idle' | 'hover' | 'thinking' | 'celebrate' | 'warning';
 
 export type AssistantNoticeStatus = 'info' | 'success' | 'warning' | 'error';

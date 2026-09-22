@@ -1,7 +1,8 @@
+import type { MediaSource } from './media-source-contracts';
 import { z } from 'zod';
 
 /** Pilot limits: bounded uploads, temporary files and decoder work, not provider limits. */
-export const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;
 export const MAX_VIDEO_OUTPUT_BYTES = 128 * 1024 * 1024;
 export const MAX_VIDEO_DURATION_SECONDS = 30 * 60;
 export const MAX_VIDEO_DIMENSION = 4096;
@@ -67,8 +68,8 @@ export interface VideoInspectionOptions {
   maxDurationSeconds?: number;
   signal?: AbortSignal;
 }
-export interface ValidatedVideo {
-  bytes: Uint8Array;
+export interface ValidatedVideo<T extends MediaSource = Uint8Array> {
+  bytes: T;
   video: VideoMetadata;
   byteSize: number;
   checksumSha256: string;

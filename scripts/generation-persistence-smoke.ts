@@ -1,3 +1,4 @@
+import { isolatePersistenceSmoke } from './smoke-isolated-persistence.ts';
 import assert from 'node:assert/strict';
 import { config } from 'dotenv';
 import { eq } from 'drizzle-orm';
@@ -24,6 +25,8 @@ import { createUuidV7 } from '@/shared/lib/id';
 
 config({ path: '.env.local' });
 config({ path: '.env' });
+
+if (await isolatePersistenceSmoke(import.meta.url)) process.exit(0);
 
 const onePixelPng = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',

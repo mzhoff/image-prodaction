@@ -32,7 +32,7 @@ function fixture() {
       assert.equal(input.scope.idempotencyKey, 'speech-job:job');
       return { job: { id: 'child' }, chunkCount: 3, result: { audioBody: new Uint8Array([1]), contentType: 'audio/mpeg', generationId: null } };
     },
-    inspect: async (bytes) => ({ audio, bytes, byteSize: bytes.length, contentType: 'audio/mpeg', extension: 'mp3', checksumSha256: 'hash' }),
+    inspect: async (bytes) => ({ audio, bytes, byteSize: bytes.byteLength, contentType: 'audio/mpeg', extension: 'mp3', checksumSha256: 'hash' }),
     persist: async (input) => { assert.equal(input.generationJobId, job.id); assert.equal(input.userId, 'author'); return asset; },
   };
   return { dependencies, calls: () => calls };

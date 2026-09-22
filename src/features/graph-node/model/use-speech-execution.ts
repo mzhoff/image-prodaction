@@ -9,6 +9,7 @@ import { MAX_SPEECH_TEXT_CHARACTERS } from '@/shared/media/speech-text';
 import type { GenerateSpeechRequest } from '../api/ai-client-contracts';
 import { isSpeechJobTerminal, requestCancelSpeechJob, requestSpeech, requestSpeechJob, type SpeechApiResult, type SpeechProgress } from '../api/speech-api';
 import { appendSpeechResult } from './text-workflow-values';
+import { trackBehavior } from '@/shared/analytics/client';
 
 export function useSpeechExecution(nodeId: string, data: TextToSpeechNodeData) {
   const guard = useRef<AbortController | null>(null);
@@ -84,6 +85,9 @@ export function useSpeechExecution(nodeId: string, data: TextToSpeechNodeData) {
       idempotencyKey: crypto.randomUUID(), fingerprint,
       metadata: { language: payload.language, model: payload.model, voice: payload.voice },
     };
+    if (!saved.jobId && !guard.current) {
+      trackBehavior('ip_generation_requested', { source: 'editor', node_type: 'textToSpeech', operation: 'generate_speech' });
+    }
     await execute(saved, payload);
   };
 

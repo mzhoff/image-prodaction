@@ -1,10 +1,11 @@
+import { putMediaObject } from './media-object';
+import { type MediaSource } from '@/shared/media/media-source';
 import { and, eq } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
 import { getDb } from '@/shared/db/client';
 import { asset as assetTable } from '@/shared/db/schema/asset';
-import { videoMetadataSchema, VideoProcessingError, MAX_VIDEO_OUTPUT_BYTES, type VideoMetadata, type ValidatedVideo } from '@/shared/media/video-contracts';
+import { videoMetadataSchema, VideoProcessingError, MAX_VIDEO_BYTES, type VideoMetadata, type ValidatedVideo } from '@/shared/media/video-contracts';
 import { inspectVideoBytes } from '@/shared/media/video-processor';
-import { readBoundedAudioStream } from '@/shared/media/audio-upload-request';
+import { readStoredMediaFile } from '@/shared/media/stored-media-file';
 import { createAssetObjectKey, getAssetObjectStore } from '@/shared/storage/s3-assets';
 import { AssetNotFoundError, AssetProvenanceError, AssetStorageError, type AssetDto, type AssetUploadDependencies, type UploadImageAssetInput } from './asset-service-contracts';
 import { createDefaultUploadDependencies, logStorageFailure, storeThumbnailVariant } from './asset-storage-support';
@@ -12,9 +13,9 @@ import { normalizeAssetProvenance, normalizeOriginalName } from './asset-normali
 import { toAssetDto } from './asset-dto';
 
 export type VideoAssetDto = AssetDto & { mediaKind: 'video'; video: VideoMetadata };
-export interface UploadVideoAssetInput extends UploadImageAssetInput { maxDurationSeconds?: number; signal?: AbortSignal }
+export interface UploadVideoAssetInput<T extends MediaSource = Uint8Array> extends Omit<UploadImageAssetInput, 'bytes'> { bytes: T; maxDurationSeconds?: number; signal?: AbortSignal }
 
-export async function uploadVideoAsset(input: UploadVideoAssetInput, dependencies = createDefaultUploadDependencies()): Promise<VideoAssetDto> {
+export async function uploadVideoAsset(input: UploadVideoAssetInput<MediaSource>, dependencies = createDefaultUploadDependencies()): Promise<VideoAssetDto> {
   await dependencies.assertAccess({ documentId: input.documentId ?? null, userId: input.userId, workspaceId: input.workspaceId });
   const inspected = await inspectVideoBytes(input.bytes, { maxBytes: input.maxBytes, maxDurationSeconds: input.maxDurationSeconds, claimedContentType: input.claimedContentType, signal: input.signal });
   return persistAuthorizedVideoAsset(input, inspected, dependencies);
@@ -22,7 +23,7 @@ export async function uploadVideoAsset(input: UploadVideoAssetInput, dependencie
 
 /** Server-only primitive: caller resolves session/service/run authorization before calling.
  * Original and derived assets have distinct immutable ids and objects. */
-export async function persistAuthorizedVideoAsset(input: UploadVideoAssetInput, inspected: ValidatedVideo, dependencies: AssetUploadDependencies = createDefaultUploadDependencies()): Promise<VideoAssetDto> {
+export async function persistAuthorizedVideoAsset(input: UploadVideoAssetInput<MediaSource>, inspected: ValidatedVideo<MediaSource>, dependencies: AssetUploadDependencies = createDefaultUploadDependencies()): Promise<VideoAssetDto> {
   input.signal?.throwIfAborted();
   const provenance = normalizeAssetProvenance(input);
   const id = input.requestedAssetId ?? dependencies.createId();
@@ -44,7 +45,7 @@ export async function persistAuthorizedVideoAsset(input: UploadVideoAssetInput, 
     pending = await dependencies.repository.resetPending(pending.id);
   }
   try {
-    await dependencies.objectStore.put({ bucket: pending.bucket, key: pending.storageKey, body: inspected.bytes, contentType: inspected.contentType });
+    await putMediaObject(dependencies.objectStore, pending, inspected.bytes, inspected.contentType, input.signal);
     input.signal?.throwIfAborted();
     if (dependencies.createVideoThumbnail) {
       const thumbnail = await dependencies.createVideoThumbnail(inspected.bytes, input.signal);
@@ -64,18 +65,17 @@ export async function persistAuthorizedVideoAsset(input: UploadVideoAssetInput, 
 export async function getWorkspaceVideoAsset(input: { assetId: string; workspaceId: string }): Promise<VideoAssetDto> {
   return asVideoAssetDto(toAssetDto(await requireWorkspaceVideoRecord(input)));
 }
-export async function readWorkspaceVideoAsset(input: { assetId: string; workspaceId: string; signal?: AbortSignal }) {
+export async function readWorkspaceVideoAsset(input: { assetId: string; workspaceId: string; signal?: AbortSignal }): Promise<{ asset: VideoAssetDto; bytes: MediaSource; video: VideoMetadata; dispose?: () => Promise<void> }> {
   input.signal?.throwIfAborted();
   const record = await requireWorkspaceVideoRecord(input);
   const dto = asVideoAssetDto(toAssetDto(record));
   const object = await getAssetObjectStore().get({ bucket: record.bucket, key: record.storageKey });
-  const bytes = await readBoundedAudioStream(object.body, MAX_VIDEO_OUTPUT_BYTES, input.signal);
-  if (bytes.length !== record.byteSize || createHash('sha256').update(bytes).digest('hex') !== record.checksumSha256) throw new VideoProcessingError('video_checksum_mismatch', 'Stored video does not match its checksum.');
-  return { asset: dto, bytes, video: dto.video };
+  const content = await readStoredMediaFile({ body: object.body, byteSize: record.byteSize, checksumSha256: record.checksumSha256, maxBytes: MAX_VIDEO_BYTES, signal: input.signal });
+  return { asset: dto, ...content, video: dto.video };
 }
 async function requireWorkspaceVideoRecord(input: { assetId: string; workspaceId: string }) {
   const [record] = await getDb().select().from(assetTable).where(and(eq(assetTable.id, input.assetId), eq(assetTable.workspaceId, input.workspaceId), eq(assetTable.mediaKind, 'video'), eq(assetTable.status, 'ready'))).limit(1);
-  if (!record || record.byteSize > MAX_VIDEO_OUTPUT_BYTES) throw new AssetNotFoundError();
+  if (!record || record.byteSize > MAX_VIDEO_BYTES) throw new AssetNotFoundError();
   const parsed = videoMetadataSchema.safeParse(record.metadata?.video);
   if (!parsed.success || parsed.data.contentType !== record.contentType || parsed.data.width !== record.width || parsed.data.height !== record.height) throw new VideoProcessingError('invalid_video_metadata', 'Stored video metadata is invalid.');
   return record;

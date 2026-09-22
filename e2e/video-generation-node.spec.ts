@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -83,7 +84,7 @@ test('video modes expose only relevant ports, submit one durable job, resume wit
     await route.fulfill({ json: { project: document } });
   });
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     const node = page.locator(`[data-node-id="${video.id}"]`);
     const empty = page.locator(`[data-node-id="${emptyVideo.id}"]`);
     const imageNode = page.locator(`[data-node-id="${image.id}"]`);

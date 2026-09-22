@@ -16,7 +16,7 @@
 }
 .aspect-ratio-heading { position: relative; display: flex; justify-content: space-between; height: 35px; }
 .aspect-ratio-value { font-size: 21px; font-weight: 600; line-height: 25px; }
-.aspect-ratio-resolution { font-size: 10px; line-height: 12px; color: var(--pui-semantic-text-tertiary, #a6a6a6); text-align: right; }
+.aspect-ratio-resolution { font-size: 10px; line-height: 12px; color: var(--production-resolution-text, #a6a6a6); text-align: right; }
 .aspect-ratio-preview-container { position: absolute; left: 50%; top: 0; transform: translateX(-50%); height: 35px; display: flex; align-items: center; justify-content: center; }
 .aspect-ratio-preview { height: 35px; box-sizing: border-box; flex-shrink: 0; border: 1px solid transparent; border-image: url('/aspect-ratio/preview.svg') 4 fill / 4px / 0 stretch; transition: width .2s ease; }
 .aspect-ratio-auto-preview { color: var(--pui-semantic-text-secondary); font-size: 12px; }

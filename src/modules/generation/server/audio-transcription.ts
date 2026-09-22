@@ -1,3 +1,5 @@
+import { createReadStream } from 'node:fs';
+import type { MediaSource } from '@/shared/media/media-source';
 import { createHash } from 'node:crypto';
 import type { ProviderExecuteRequest, ProviderResult } from '@/modules/provider-connections';
 import { forEachAudioChunk } from '@/shared/media/audio-processor';
@@ -5,7 +7,7 @@ import { AUDIO_CHUNK_SECONDS } from '@/shared/media/audio-contracts';
 import { executeInternalOpenRouterChat } from './internal-short-ai-execution';
 
 type ExecutionScope = Omit<Parameters<typeof executeInternalOpenRouterChat<string>>[0], 'providerRequest' | 'transform'>;
-export type AudioTranscriptionInput = ExecutionScope & { bytes: Uint8Array; model: string; language?: string };
+export type AudioTranscriptionInput = ExecutionScope & { bytes: MediaSource; model: string; language?: string };
 export type TranscriptionChunkExecutor = (input: ExecutionScope & {
   providerRequest: ProviderExecuteRequest; transform(result: ProviderResult): string;
 }) => Promise<{ result: string }>;
@@ -16,7 +18,10 @@ export async function transcribeAudio(input: AudioTranscriptionInput, dependenci
   execute: executeInternalOpenRouterChat as TranscriptionChunkExecutor,
 }) {
   const text: string[] = [];
-  const fingerprint = createHash('sha256').update(input.bytes).update(JSON.stringify([input.model, input.language ?? 'auto'])).digest('hex');
+  const hash = createHash('sha256');
+  if (input.bytes instanceof Uint8Array) hash.update(input.bytes);
+  else for await (const chunk of createReadStream(input.bytes.path, { signal: input.signal })) hash.update(chunk);
+  const fingerprint = hash.update(JSON.stringify([input.model, input.language ?? 'auto'])).digest('hex');
   await dependencies.chunks({ bytes: input.bytes, chunkDurationSeconds: AUDIO_CHUNK_SECONDS,
     maxChunks: 30, signal: input.signal }, async (chunk) => {
     input.signal.throwIfAborted();

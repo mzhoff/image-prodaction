@@ -1,5 +1,6 @@
 'use client';
 
+import { awaitAssetUpload } from '@/shared/api/asset-upload-response';
 import type {
   CreatePipelinePlaygroundRunInput,
   PipelinePlaygroundDescriptor,
@@ -14,7 +15,7 @@ export async function fetchPipelinePlaygroundDescriptor(endpoint: string, signal
   );
   const payload = await readJson<{
     pipeline: PipelinePlaygroundDescriptor;
-  }>(response, 'Pipeline could not be connected.');
+  }>(response, 'Не удалось подключить pipeline.');
   return payload.pipeline;
 }
 
@@ -31,7 +32,7 @@ export async function createPipelinePlaygroundRun(
   });
   const payload = await readJson<{ run: PipelinePlaygroundRun }>(
     response,
-    'Pipeline run could not be started.',
+    'Не удалось запустить pipeline.',
   );
   return payload.run;
 }
@@ -43,7 +44,7 @@ export async function fetchPipelinePlaygroundRun(runId: string, signal?: AbortSi
   );
   const payload = await readJson<{ run: PipelinePlaygroundRun }>(
     response,
-    'Pipeline result could not be loaded.',
+    'Не удалось загрузить результат pipeline.',
   );
   return payload.run;
 }
@@ -53,16 +54,23 @@ export async function uploadPipelinePlaygroundImage(
   workspaceId: string,
   signal?: AbortSignal,
 ): Promise<PipelineArtifactReference> {
+  return uploadPipelinePlaygroundMedia(file, workspaceId, 'image', signal);
+}
+
+export async function uploadPipelinePlaygroundMedia(
+  file: File, workspaceId: string, kind: PipelineArtifactReference['kind'], signal?: AbortSignal,
+): Promise<PipelineArtifactReference> {
   const formData = new FormData();
   formData.set('file', file);
   formData.set('workspaceId', workspaceId);
   formData.set('documentId', '');
   formData.set('origin', 'uploaded');
-  const response = await fetch('/api/assets/images', {
+  let response = await fetch(`/api/assets/${kind === 'image' ? 'images' : kind}`, {
     method: 'POST',
     body: formData,
     signal,
   });
+  response = await awaitAssetUpload(response, fetch, signal);
   const payload = await readJson<{
     asset: {
       byteSize: number;
@@ -73,9 +81,9 @@ export async function uploadPipelinePlaygroundImage(
       originalName: string;
       width: number | null;
     };
-  }>(response, 'Image could not be uploaded.');
+  }>(response, 'Не удалось загрузить файл. Попробуйте ещё раз.');
   return {
-    kind: 'image',
+    kind,
     assetId: payload.asset.id,
     checksumSha256: payload.asset.checksumSha256,
     mimeType: payload.asset.contentType,

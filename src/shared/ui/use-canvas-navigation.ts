@@ -27,7 +27,16 @@ interface UseCanvasNavigationOptions {
 const DEFAULT_MIN_ZOOM = 0.1;
 const DEFAULT_MAX_ZOOM = 1.35;
 const DEFAULT_ZOOM_SENSITIVITY = 0.001;
+const TOUCHPAD_ZOOM_MULTIPLIER = 5;
 const DEFAULT_SCROLL_PAN_SPEED = 1.3;
+
+export function getCanvasWheelZoomMultiplier(
+  event: Pick<WheelEvent, 'ctrlKey' | 'deltaMode'>,
+  controlKeyPressed: boolean,
+) {
+  // Pinch emits pixel wheel events with synthetic Ctrl; physical Ctrl + wheel keeps its speed.
+  return event.ctrlKey && event.deltaMode === 0 && !controlKeyPressed ? TOUCHPAD_ZOOM_MULTIPLIER : 1;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -114,6 +123,10 @@ export function useCanvasNavigation({
     const container = containerRef.current;
     if (!container) return undefined;
 
+    let controlKeyPressed = false;
+    const trackControlKey = (event: KeyboardEvent) => { controlKeyPressed = event.ctrlKey; };
+    const resetControlKey = () => { controlKeyPressed = false; };
+
     const stopPanning = (event?: PointerEvent) => {
       const state = middlePanRef.current;
       if (!state.active) return;
@@ -181,7 +194,8 @@ export function useCanvasNavigation({
       if (event.ctrlKey || event.metaKey) {
         const rect = container.getBoundingClientRect();
         const currentZoom = zoomRef.current;
-        const nextZoom = clamp(currentZoom * (1 - event.deltaY * zoomSensitivity), minZoom, maxZoom);
+        const multiplier = getCanvasWheelZoomMultiplier(event, controlKeyPressed);
+        const nextZoom = clamp(currentZoom * (1 - event.deltaY * zoomSensitivity * multiplier), minZoom, maxZoom);
         const worldX = (event.clientX - rect.left - panRef.current.x) / currentZoom;
         const worldY = (event.clientY - rect.top - panRef.current.y) / currentZoom;
 
@@ -208,6 +222,9 @@ export function useCanvasNavigation({
       event.stopPropagation();
     };
 
+    window.addEventListener('keydown', trackControlKey, true);
+    window.addEventListener('keyup', trackControlKey, true);
+    window.addEventListener('blur', resetControlKey);
     container.addEventListener('pointerdown', handlePointerDown, true);
     container.addEventListener('pointermove', handlePointerMove, true);
     container.addEventListener('pointerup', stopPanning, true);
@@ -217,6 +234,9 @@ export function useCanvasNavigation({
     container.addEventListener('auxclick', handleAuxClick, true);
 
     return () => {
+      window.removeEventListener('keydown', trackControlKey, true);
+      window.removeEventListener('keyup', trackControlKey, true);
+      window.removeEventListener('blur', resetControlKey);
       container.removeEventListener('pointerdown', handlePointerDown, true);
       container.removeEventListener('pointermove', handlePointerMove, true);
       container.removeEventListener('pointerup', stopPanning, true);

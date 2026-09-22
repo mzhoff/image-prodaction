@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
@@ -53,7 +54,7 @@ test('42-file drop shows live progress, preserves successes, and finishes as one
   const card = page.getByRole('region', { name: 'Импорт файлов', exact: true });
   const bar = page.getByRole('progressbar', { name: 'Обработано файлов' });
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     await expect(page.locator('.production-node-textPrompt')).toHaveCount(1);
     // Record transient conversion text even on small HEIC files that decode quickly.
     await page.evaluate(() => {

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { Copy, Download, Link2, Lock, Palette, Pencil, PlayCircle, Trash2, Unlock } from '@prodactionpro/ui-core/icons';
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
@@ -19,6 +20,7 @@ export interface SectionMenuOptions {
 
 export function useSectionMenuActions({ exportSectionPipelineTemplate, graph, projectId,
   sectionColorPreviews, setSectionColorPreviews, showToast, studioPipelines }: SectionMenuOptions) {
+  const tUi = useTranslations();
   return useCallback((section: GraphSection): ContextMenuAction[] => {
     const publication = studioPipelines.publicationsBySectionId.get(section.id);
     const publishing = studioPipelines.publishingSectionIds.has(section.id);
@@ -40,11 +42,11 @@ export function useSectionMenuActions({ exportSectionPipelineTemplate, graph, pr
           if (title) graph.renameSection(section.id, title); } },
       { id: 'section-capability', label: 'Integration capability', icon: <Link2 size={14} />,
         onSelect: () => {
-          const value = window.prompt('Назначение pipeline, например content.generate-article-summary. Пустое значение удалит назначение из черновика. Затем опубликуйте новую executable version.', section.capabilityKey ?? '');
+          const value = window.prompt(tUi("Назначение pipeline, например content.generate-article-summary. Пустое значение удалит назначение из черновика. Затем опубликуйте новую executable version."), section.capabilityKey ?? '');
           if (value === null) return;
           const result = graph.setSectionCapabilityKey(section.id, value);
           showToast(result.ok
-            ? 'Назначение обновлено в черновике. Выберите Publish executable version, чтобы применить его в новой публикации.'
+            ? tUi("Назначение обновлено в черновике. Выберите Publish executable version, чтобы применить его в новой публикации.")
             : result.reason);
         } },
       { id: 'duplicate-section', label: 'Duplicate group', icon: <Copy size={14} />,
@@ -64,7 +66,7 @@ export function useSectionMenuActions({ exportSectionPipelineTemplate, graph, pr
         destructive: true, separatorBefore: true,
         onSelect: () => graph.deleteSection(section.id) },
     ];
-  }, [exportSectionPipelineTemplate, graph, projectId, sectionColorPreviews,
+  }, [tUi, exportSectionPipelineTemplate, graph, projectId, sectionColorPreviews,
     setSectionColorPreviews, showToast, studioPipelines]);
 
 }

@@ -1,0 +1,7 @@
+.help { position: absolute; z-index: 39; top: 42px; right: 244px; }
+.help button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 12px; background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); cursor: pointer; }
+.help button:hover { background: var(--pui-color-neutral-0); }
+.status { position: absolute; z-index: 45; left: 50%; top: 40%; transform: translate(-50%, -50%); max-width: min(440px, 90%); padding: 20px; border-radius: 20px; background: var(--pui-semantic-surface-primary); text-align: center; }
+.status p { margin: 0 0 12px; }
+.status button, .status a { display: inline-block; padding: 10px 16px; border: 0; border-radius: 12px; background: var(--pui-semantic-surface-secondary); color: inherit; font: inherit; text-decoration: none; cursor: pointer; margin: 4px; }
+@media (max-width: 640px) { .help { top: 89px; right: 232px; } }

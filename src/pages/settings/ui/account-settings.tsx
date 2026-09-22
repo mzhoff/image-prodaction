@@ -1,11 +1,14 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
 
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
 import { ModelPreferencesSettings } from '@/features/model-selector/ui/model-preferences-settings';
 import { ThemeControl } from '@/shared/ui/theme-control';
 
-import { BadgeCheck, MailWarning, Save } from '@prodactionpro/ui-core/icons';
+import { BadgeCheck, MailWarning, Save, UserRound } from '@prodactionpro/ui-core/icons';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { authClient, useSession } from '@/shared/auth/client';
@@ -16,6 +19,8 @@ interface AccountSettingsProps {
 }
 
 export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
+  const tUi = useTranslations();
+  const [appearanceContainer, setAppearanceContainer] = useState<HTMLElement | null>(null);
   const { data: session } = useSession();
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -51,7 +56,7 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
         return;
       }
       setSavedName(name.trim());
-      setMessage('Изменения сохранены.');
+      setMessage(tUi("Изменения сохранены."));
     } catch (caughtError) {
       setError(formatAuthError(caughtError));
     } finally {
@@ -72,7 +77,7 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
     } finally {
       setVerificationPending(false);
       setVerificationSent(true);
-      setMessage('Если адрес ещё не подтверждён, новое письмо уже в пути.');
+      setMessage(tUi("Если адрес ещё не подтверждён, новое письмо уже в пути."));
     }
   }
 
@@ -80,15 +85,15 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
     <section className="settings-section" aria-labelledby="settings-account-title">
       <header className="settings-section-head">
         <div>
-          <h2 id="settings-account-title">Аккаунт</h2>
-          <p>Основные данные профиля и статус email.</p>
+          <h2 id="settings-account-title">{tUi("Профиль")}</h2>
         </div>
       </header>
 
-      <ThemeControl />
-      <form className="settings-form" onSubmit={handleSubmit}>
+      <form className="settings-card settings-form" onSubmit={handleSubmit}>
+        <div className="settings-profile-summary"><span className="settings-profile-avatar" aria-hidden="true"><UserRound size={26} /></span>
+          <div><h3>{originalName || tUi("Ваш профиль")}</h3><p>{tUi("Личные данные")}</p></div></div>
         <label>
-          <span>Имя и фамилия</span>
+          <span>{tUi("Имя и фамилия")}</span>
           <PuiInput
             type="text"
             name="name"
@@ -113,44 +118,47 @@ export function AccountSettings({ onDirtyChange }: AccountSettingsProps) {
             disabled
             readOnly
           />
-          <small>Смену email подключим отдельным подтверждаемым сценарием.</small>
         </label>
 
         <div className={`settings-verification ${session?.user.emailVerified ? 'settings-verification-ok' : ''}`}>
           {session?.user.emailVerified ? <BadgeCheck size={18} /> : <MailWarning size={18} />}
           <div>
-            <strong>{session?.user.emailVerified ? 'Email подтверждён' : 'Email не подтверждён'}</strong>
+            <strong>{session?.user.emailVerified ? tUi("Email подтверждён") : tUi("Email не подтверждён")}</strong>
             <span>
               {session?.user.emailVerified
-                ? 'Этот адрес можно использовать для восстановления доступа.'
-                : 'Подтвердите адрес, чтобы продолжить пользоваться аккаунтом.'}
+                ? tUi("Адрес для восстановления доступа.")
+                : tUi("Подтвердите адрес для восстановления доступа.")}
             </span>
           </div>
           {session?.user.emailVerified ? null : (
-            <button
+            <Button size="sm" intent="neutral" appearance="soft"
               type="button"
               onClick={() => void resendVerification()}
               disabled={verificationPending || verificationSent}
             >
               {verificationPending
-                ? 'Отправляем…'
+                ? tUi("Отправляем…")
                 : verificationSent
-                  ? 'Письмо отправлено'
-                  : 'Отправить подтверждение'}
-            </button>
+                  ? tUi("Письмо отправлено")
+                  : tUi("Отправить подтверждение")}
+            </Button>
           )}
         </div>
 
-        {error ? <p className="settings-message settings-message-error" role="alert">{error}</p> : null}
+        {error ? <p className="settings-message settings-message-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
         {message ? <p className="settings-message settings-message-success" role="status">{message}</p> : null}
 
         <div className="settings-form-actions">
-          <button className="settings-primary-button" type="submit" disabled={!dirty || pending}>
+          <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="submit" disabled={!dirty || pending}>
             <Save size={16} />
-            {pending ? 'Сохраняем…' : 'Сохранить изменения'}
-          </button>
+            {pending ? tUi("Сохраняем…") : tUi("Сохранить")}
+          </Button>
         </div>
       </form>
+      <section ref={setAppearanceContainer} className="settings-card settings-appearance-card" aria-labelledby="settings-appearance-title">
+        <div><h3 id="settings-appearance-title">{tUi("Оформление")}</h3></div>
+        <ThemeControl menuClassName="settings-select-menu" portalContainer={appearanceContainer?.closest('.settings-dialog')} />
+      </section>
       <ModelPreferencesSettings />
     </section>
   );

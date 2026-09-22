@@ -1,0 +1,4 @@
+.page { height: 100%; display: grid; place-items: center; background: var(--pui-semantic-surface-secondary); }
+.status { padding: 24px; border-radius: 24px; color: var(--pui-semantic-text-secondary); text-align: center; }
+.status p { margin: 0 0 16px; }
+.status button, .status a { display: inline-block; margin: 4px; padding: 10px 16px; border: 0; border-radius: 12px; background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); font: inherit; text-decoration: none; cursor: pointer; }

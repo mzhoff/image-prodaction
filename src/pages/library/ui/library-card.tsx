@@ -1,4 +1,6 @@
 'use client';
+import { useFormatLocale } from '@/shared/i18n/use-format-locale';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -17,6 +19,8 @@ export const LibraryCard = memo(function LibraryCard({
   filterQuery: string;
   width: number;
 }) {
+  const tUi = useTranslations();
+  const language = useFormatLocale();
   const actions = useLibraryAssetActions();
   const previewHref = `/library/${encodeURIComponent(item.id)}${filterQuery ? `?${filterQuery}` : ''}`;
   const previewUrl = item.thumbnailUrl || item.contentUrl;
@@ -28,7 +32,7 @@ export const LibraryCard = memo(function LibraryCard({
       data-asset-id={item.id} style={{ width }} onContextMenu={(event) => actions.openMenu(event, item)}>
       <Link href={previewHref} prefetch={false} className="library-card-preview"
         onClick={(event) => { if (actions.selection.active) { event.preventDefault(); if (!actions.busy) actions.selection.toggle(item); } }}
-        aria-label={`${actions.selection.active ? 'Выбрать' : 'Открыть'} ${item.originalName}`} aria-describedby={detailsId}>
+        aria-label={`${actions.selection.active ? tUi("Выбрать") : tUi("Открыть")} ${item.originalName}`} aria-describedby={detailsId} draggable={false}>
         {previewUrl && !failed ? <Image
           src={previewUrl}
           alt=""
@@ -37,22 +41,22 @@ export const LibraryCard = memo(function LibraryCard({
           unoptimized
           loading="lazy"
           decoding="async"
-          onError={() => setFailed(true)}
+          onError={() => setFailed(true)} draggable={false}
         /> : <span className="library-media-placeholder" aria-hidden="true">
           {item.mediaKind === 'video' ? <Video size={30} /> : <ImageIcon size={30} />}
         </span>}
         {item.mediaKind === 'video' ? <span className="library-video-play-badge" aria-hidden="true"><Play fill="currentColor" size={18} /></span> : null}
         <span className="library-card-details" id={detailsId}>
-          <span>{item.width && item.height ? `${item.width} × ${item.height}` : 'Разрешение неизвестно'}<span aria-hidden="true"> · </span>{formatLibraryByteSize(item.byteSize)}</span>
-          <time dateTime={item.createdAt}>{formatLibraryTimestamp(item.createdAt)}</time>
+          <span>{item.width && item.height ? `${item.width} × ${item.height}` : tUi("Разрешение неизвестно")}<span aria-hidden="true"> · </span>{formatLibraryByteSize(item.byteSize, language)}</span>
+          <time dateTime={item.createdAt}>{formatLibraryTimestamp(item.createdAt, language)}</time>
         </span>
       </Link>
         {actions.selection.active ? <label className="library-card-checkbox">
-          <input type="checkbox" aria-label={`Выбрать ${item.originalName}`} checked={actions.selection.selectedIds.has(item.id)}
+          <input type="checkbox" aria-label={tUi("Выбрать {p1}", { p1: item.originalName })} checked={actions.selection.selectedIds.has(item.id)}
             disabled={actions.busy} onChange={() => actions.selection.toggle(item)} />
         </label> : null}
         <button type="button" className="library-card-actions"
-          aria-label={`Действия с ${item.originalName}`} onClick={(event) => actions.openMenu(event, item)}><MoreHorizontal size={18} /></button>
+          aria-label={tUi("Действия с {p1}", { p1: item.originalName })} onClick={(event) => actions.openMenu(event, item)}><MoreHorizontal size={18} /></button>
     </article>
   );
 });

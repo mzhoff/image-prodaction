@@ -1,7 +1,13 @@
 'use client';
+import { useUiCatalog } from '@/shared/i18n/use-ui-catalog';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
+
+import { SectionHelpButton } from '@/shared/ui/section-help';
 
 import Link from 'next/link';
-import { Cable, PlugZap, Shield, UserRound, X } from '@prodactionpro/ui-core/icons';
+import { Cable, PlugZap, Shield, Trash2, UserRound, X } from '@prodactionpro/ui-core/icons';
 import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { SettingsSection } from '../model/settings-section';
@@ -18,10 +24,10 @@ interface SettingsPanelProps {
 }
 
 const navigation = [
-  { section: 'account' as const, label: 'Аккаунт', icon: UserRound, group: 'Личные' },
+  { section: 'account' as const, label: 'Профиль', icon: UserRound, group: 'Личные' },
   { section: 'security' as const, label: 'Безопасность', icon: Shield, group: 'Личные' },
-  { section: 'providers' as const, label: 'AI Providers', icon: PlugZap, group: 'Workspace' },
-  { section: 'integrations' as const, label: 'Подключения', icon: Cable, group: 'Workspace' },
+  { section: 'providers' as const, label: 'AI и баланс', icon: PlugZap, group: 'Пространство' },
+  { section: 'integrations' as const, label: 'Подключения', icon: Cable, group: 'Пространство' },
 ];
 
 export function SettingsPanel({
@@ -30,6 +36,8 @@ export function SettingsPanel({
   onDirtyChange,
   presentation,
 }: SettingsPanelProps) {
+  const tUi = useTranslations();
+  const ui_navigation = useUiCatalog(navigation, tUi);
   const [dirty, setDirty] = useState(false);
 
   const updateDirty = useCallback((nextDirty: boolean) => {
@@ -47,7 +55,7 @@ export function SettingsPanel({
   }, [dirty]);
 
   function canLeave() {
-    return !dirty || window.confirm('Есть несохранённые изменения. Закрыть настройки без сохранения?');
+    return !dirty || window.confirm(tUi("Есть несохранённые изменения. Закрыть настройки без сохранения?"));
   }
 
   function handleClose() {
@@ -68,29 +76,29 @@ export function SettingsPanel({
     <div className={`settings-panel settings-panel-${presentation}`}>
       <header className="settings-header">
         <div>
-          <span>Reverie</span>
-          <h1 id="settings-title">Настройки</h1>
+          <h1 id="settings-title">{tUi("Настройки")}</h1>
         </div>
+        <div className="production-section-actions"><SectionHelpButton section="settings" label={tUi("Как устроены настройки")} />
         {presentation === 'dialog' ? (
-          <button className="settings-close-button" type="button" onClick={handleClose} aria-label="Закрыть настройки">
+          <Button size="sm" intent="neutral" appearance="soft" className="settings-close-button" type="button" onClick={handleClose} aria-label={tUi("Закрыть настройки")}>
             <X size={18} />
-          </button>
+          </Button>
         ) : (
           <Link
             className="settings-close-button"
             href="/"
             onClick={handleNavigation}
-            aria-label="Закрыть настройки"
+            aria-label={tUi("Закрыть настройки")}
           >
             <X size={18} />
           </Link>
-        )}
+        )}</div>
       </header>
 
       <div className="settings-layout">
-        <nav className="settings-nav" aria-label="Разделы настроек">
-          {navigation.map((item, index) => {
-            const showGroup = index === 0 || navigation[index - 1]?.group !== item.group;
+        <nav className="settings-nav" aria-label={tUi("Разделы настроек")}>
+          {ui_navigation.map((item, index) => {
+            const showGroup = index === 0 || ui_navigation[index - 1]?.group !== item.group;
             return (
               <div className="settings-nav-entry" key={item.section}>
                 {showGroup ? <span className="settings-nav-group">{item.group}</span> : null}
@@ -101,12 +109,14 @@ export function SettingsPanel({
                   replace={presentation === 'dialog'}
                   aria-current={section === item.section ? 'page' : undefined}
                 >
-                  <item.icon size={16} />
+                  <span className="settings-nav-icon"><item.icon size={17} /></span>
                   {item.label}
                 </Link>
               </div>
             );
           })}
+          <div className="settings-nav-entry"><Link href="/trash" onClick={handleNavigation}>
+            <span className="settings-nav-icon"><Trash2 size={17} /></span>{tUi("Корзина")}</Link></div>
         </nav>
 
         <div className="settings-content">

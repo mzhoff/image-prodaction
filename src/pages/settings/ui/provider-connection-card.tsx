@@ -1,4 +1,10 @@
 'use client';
+import { useFormatLocale } from '@/shared/i18n/use-format-locale';
+import { useTranslations } from '@/shared/i18n/use-translations';
+
+import { Button } from '@prodactionpro/ui-core/button';
+
+import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
 import {
   AlertCircle,
@@ -17,6 +23,8 @@ import type { ProviderSettingsModel } from '../model/use-provider-settings-model
 import { formatDateTime, roleLabel } from '../model/provider-settings-values';
 
 export function ProviderConnectionCard({ model }: { model: ProviderSettingsModel }) {
+  const language = useFormatLocale();
+  const tUi = useTranslations();
   const {
     actionError, canManage, connection, disconnectConfirmationOpen, disconnected,
     effectiveWorkspace, notice, showCredentialForm,
@@ -33,36 +41,36 @@ export function ProviderConnectionCard({ model }: { model: ProviderSettingsModel
               <h3 id="openrouter-card-title">OpenRouter</h3>
               <ConnectionStatus status={connection?.status ?? 'disconnected'} />
             </div>
-            <p>Один API key используется всеми разрешёнными AI-операциями Workspace.</p>
+            <p>{tUi("Общий доступ к AI для этого пространства.")}</p>
           </div>
         </div>
-        <span className="settings-provider-role">{roleLabel(effectiveWorkspace.role)}</span>
+        <span className="settings-provider-role">{tUi(roleLabel(effectiveWorkspace.role))}</span>
       </div>
 
-      <dl className="settings-provider-details">
+      <details className="settings-details"><summary>{tUi("Сведения о подключении")}</summary><dl className="settings-provider-details">
         <ProviderDetail
-          label="Сохранённый key"
-          value={connection?.maskedKey || (disconnected ? 'Не подключён' : 'Скрыт')}
+          label={tUi("API-ключ")}
+          value={connection?.maskedKey || (disconnected ? tUi("Не подключён") : tUi("Скрыт"))}
         />
-        <ProviderDetail label="Последняя проверка" value={formatDateTime(connection?.lastValidatedAt)} />
-        <ProviderDetail label="Последнее использование" value={formatDateTime(connection?.lastUsedAt)} />
-        <ProviderDetail label="Область действия" value={effectiveWorkspace.name} />
-      </dl>
+        <ProviderDetail label={tUi("Последняя проверка")} value={tUi(formatDateTime(connection?.lastValidatedAt, language))} />
+        <ProviderDetail label={tUi("Последнее использование")} value={tUi(formatDateTime(connection?.lastUsedAt, language))} />
+        <ProviderDetail label={tUi("Область действия")} value={effectiveWorkspace.name} />
+      </dl></details>
 
       {connection?.lastError ? (
-        <p className="settings-message settings-message-error" role="alert">{connection.lastError}</p>
+        <p className="settings-message settings-message-error" role="alert">{typeof (connection.lastError) === 'string' ? tUi((connection.lastError) as string) : (connection.lastError)}</p>
       ) : null}
       {actionError ? (
-        <p className="settings-message settings-message-error" role="alert">{actionError}</p>
+        <p className="settings-message settings-message-error" role="alert">{typeof (actionError) === 'string' ? tUi((actionError) as string) : (actionError)}</p>
       ) : null}
-      {notice ? <p className="settings-message settings-message-success" role="status">{notice}</p> : null}
+      {notice ? <p className="settings-message settings-message-success" role="status">{typeof (notice) === 'string' ? tUi((notice) as string) : (notice)}</p> : null}
 
       {!canManage ? (
         <div className="settings-provider-readonly">
           <ShieldCheck size={17} />
           <div>
-            <strong>{connection?.managedByPlatform ? 'AI-бюджет REVERIE' : 'Режим просмотра'}</strong>
-            <span>{connection?.managedByPlatform ? 'Подключение настроено автоматически. Для пополнения обратитесь к оператору.' : 'Подключать, заменять и отключать key могут только Owner и Admin.'}</span>
+            <strong>{connection?.managedByPlatform ? tUi("AI-бюджет REVERIE") : tUi("Режим просмотра")}</strong>
+            <span>{connection?.managedByPlatform ? tUi("Подключение настроено автоматически. Для пополнения обратитесь к оператору.") : tUi("Изменять подключение могут владелец и администраторы.")}</span>
           </div>
         </div>
       ) : null}
@@ -75,15 +83,16 @@ export function ProviderConnectionCard({ model }: { model: ProviderSettingsModel
 }
 
 function CredentialForm({ model }: { model: ProviderSettingsModel }) {
+  const tUi = useTranslations();
   const {
     apiKey, disconnected, mutation, replaceConfirmationOpen, showApiKey,
   } = model;
   return (
     <form className="settings-form settings-provider-key-form" onSubmit={model.submitCredential}>
       <label>
-        <span>{disconnected ? 'OpenRouter API key' : 'Новый OpenRouter API key'}</span>
+        <span>{disconnected ? tUi("OpenRouter API-ключ") : tUi("Новый OpenRouter API-ключ")}</span>
         <div className="settings-provider-secret">
-          <input
+          <PuiInput
             type={showApiKey ? 'text' : 'password'}
             name="openrouter-api-key"
             value={apiKey}
@@ -96,33 +105,31 @@ function CredentialForm({ model }: { model: ProviderSettingsModel }) {
             aria-describedby="openrouter-key-help"
             required
           />
-          <button
+          <Button size="sm" intent="neutral" appearance="soft"
             type="button"
-            aria-label={showApiKey ? 'Скрыть API key' : 'Показать API key'}
+            aria-label={showApiKey ? tUi("Скрыть API-ключ") : tUi("Показать API-ключ")}
             onClick={model.toggleApiKeyVisibility}
             disabled={mutation !== null}
           >
             {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
+          </Button>
         </div>
         <small id="openrouter-key-help">
-          Key отправляется только при сохранении и больше никогда не возвращается в браузер.
-        </small>
+          {tUi("После сохранения ключ будет скрыт.")}</small>
       </label>
 
       {replaceConfirmationOpen ? <ReplaceConfirmation model={model} /> : (
         <div className="settings-form-actions settings-provider-form-actions">
           {!disconnected ? (
-            <button className="settings-quiet-button" type="button"
+            <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button"
               onClick={model.resetCredentialDraft} disabled={mutation !== null}>
-              Отмена
-            </button>
+              {tUi("Отмена")}</Button>
           ) : null}
-          <button className="settings-primary-button" type="submit"
+          <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="submit"
             disabled={mutation !== null || !apiKey.trim()}>
             {mutation === 'connect' ? <Loader2 className="spin" size={15} /> : <PlugZap size={15} />}
-            {disconnected ? 'Подключить OpenRouter' : 'Проверить новый key'}
-          </button>
+            {disconnected ? tUi("Подключить OpenRouter") : tUi("Проверить новый ключ")}
+          </Button>
         </div>
       )}
     </form>
@@ -130,87 +137,80 @@ function CredentialForm({ model }: { model: ProviderSettingsModel }) {
 }
 
 function ReplaceConfirmation({ model }: { model: ProviderSettingsModel }) {
+  const tUi = useTranslations();
   return (
     <div className="settings-provider-confirmation" role="alert">
       <AlertCircle size={18} />
       <div>
-        <strong>Заменить действующий key?</strong>
+        <strong>{tUi("Заменить действующий ключ?")}</strong>
         <span>
-          Новый key сначала проверится. Старое подключение останется рабочим,
-          если проверка завершится ошибкой.
-        </span>
+          {tUi("Новый ключ сначала проверится. Старое подключение останется рабочим, если проверка завершится ошибкой.")}</span>
       </div>
       <div>
-        <button className="settings-quiet-button" type="button"
+        <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button"
           onClick={model.closeReplaceConfirmation} disabled={model.mutation !== null}>
-          Отмена
-        </button>
-        <button className="settings-primary-button" type="button"
+          {tUi("Отмена")}</Button>
+        <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="button"
           onClick={() => void model.persistCredential(true)} disabled={model.mutation !== null}>
           {model.mutation === 'connect'
             ? <Loader2 className="spin" size={15} /> : <KeyRound size={15} />}
-          Подтвердить замену
-        </button>
+          {tUi("Подтвердить замену")}</Button>
       </div>
     </div>
   );
 }
 
 function ConnectionActions({ model }: { model: ProviderSettingsModel }) {
+  const tUi = useTranslations();
   return (
     <div className="settings-provider-actions">
-      <button className="settings-primary-button" type="button"
+      <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="button"
         onClick={() => void model.validateConnection()} disabled={model.mutation !== null}>
         {model.mutation === 'validate'
           ? <Loader2 className="spin" size={15} /> : <RefreshCcw size={15} />}
-        Проверить
-      </button>
-      <button className="settings-quiet-button" type="button"
+        {tUi("Проверить")}</Button>
+      <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button"
         onClick={model.openReplaceForm} disabled={model.mutation !== null}>
         <KeyRound size={15} />
-        Заменить key
-      </button>
-      <button className="settings-danger-button" type="button"
+        {tUi("Заменить ключ")}</Button>
+      <Button size="sm" intent="danger" appearance="soft" className="settings-danger-button" type="button"
         onClick={model.openDisconnectConfirmation} disabled={model.mutation !== null}>
         <Unplug size={15} />
-        Отключить
-      </button>
+        {tUi("Отключить")}</Button>
     </div>
   );
 }
 
 function DisconnectConfirmation({ model }: { model: ProviderSettingsModel }) {
+  const tUi = useTranslations();
   return (
     <div className="settings-provider-confirmation settings-provider-confirmation-danger" role="alert">
       <AlertCircle size={18} />
       <div>
-        <strong>Отключить OpenRouter?</strong>
+        <strong>{tUi("Отключить OpenRouter?")}</strong>
         <span>
-          Новые AI-задачи остановятся. Уже поставленные в очередь операции могут
-          завершиться ошибкой, если ещё не получили credential.
-        </span>
+          {tUi("Новые генерации станут недоступны. Задачи в очереди могут завершиться ошибкой.")}</span>
       </div>
       <div>
-        <button className="settings-quiet-button" type="button"
+        <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button"
           onClick={model.closeDisconnectConfirmation} disabled={model.mutation !== null}>
-          Оставить подключение
-        </button>
-        <button className="settings-danger-button" type="button"
+          {tUi("Оставить подключение")}</Button>
+        <Button size="sm" intent="danger" appearance="soft" className="settings-danger-button" type="button"
           onClick={() => void model.confirmDisconnect()} disabled={model.mutation !== null}>
           {model.mutation === 'disconnect'
             ? <Loader2 className="spin" size={15} /> : <Unplug size={15} />}
-          Подтвердить отключение
-        </button>
+          {tUi("Подтвердить отключение")}</Button>
       </div>
     </div>
   );
 }
 
 function ConnectionStatus({ status }: { status: ProviderConnectionDto['status'] }) {
+  const tUi = useTranslations();
   const content = {
-    connected: { label: 'Подключён', icon: <CheckCircle2 size={13} /> },
-    invalid: { label: 'Требует внимания', icon: <AlertCircle size={13} /> },
-    disconnected: { label: 'Не подключён', icon: <Unplug size={13} /> },
+    connected: { label: tUi("Подключён"), icon: <CheckCircle2 size={13} /> },
+    invalid: { label: tUi("Требует внимания"), icon: <AlertCircle size={13} /> },
+    disconnected: { label: tUi("Не подключён"), icon: <Unplug size={13} /> },
   }[status];
   return (
     <span className={`settings-provider-status settings-provider-status-${status}`}>

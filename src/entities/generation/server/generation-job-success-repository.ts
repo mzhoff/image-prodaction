@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { GenerationJobRepository } from './generation-job-repository-contracts';
 import { getDb } from '@/shared/db/client';
 import { asset } from '@/shared/db/schema/asset';
@@ -31,11 +31,34 @@ export async function succeedGenerationJobRecord(input: SucceedInput) {
       eq(generationJob.attemptCount, input.attemptCount),
     )).returning();
     if (!updated) return undefined;
-    if (input.finalAssetId && updated.status === 'succeeded') {
+    if (updated.operation === 'asset_ingest' && updated.status === 'succeeded') {
+      await validateUploadedAsset(transaction, updated, input.finalAssetId);
+    } else if (input.finalAssetId && updated.status === 'succeeded') {
       await publishGeneratedAsset(transaction, updated.workspaceId, input);
     }
     return updated;
   });
+}
+
+async function validateUploadedAsset(
+  transaction: Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0],
+  job: typeof generationJob.$inferSelect,
+  assetId: string | null,
+) {
+  if (!assetId || job.provider !== 'local' || job.modelId !== 'media-inspection-v1'
+    || job.metadata?.uploadAssetId !== assetId || typeof job.metadata.assetChecksum !== 'string') {
+    throw new Error('Uploaded asset does not match its processing job.');
+  }
+  // Uploads retain their original provenance; only generated assets are published
+  // through generationJobId. Lock the validated upload through job completion.
+  const [uploaded] = await transaction.select({ id: asset.id }).from(asset).where(and(
+    eq(asset.id, assetId), eq(asset.workspaceId, job.workspaceId),
+    eq(asset.createdByUserId, job.createdByUserId),
+    job.documentId ? eq(asset.documentId, job.documentId) : isNull(asset.documentId),
+    eq(asset.checksumSha256, job.metadata.assetChecksum),
+    inArray(asset.origin, ['uploaded', 'saved']), eq(asset.status, 'ready'),
+  )).limit(1).for('update');
+  if (!uploaded) throw new Error('Uploaded asset does not match its processing job.');
 }
 
 async function publishGeneratedAsset(

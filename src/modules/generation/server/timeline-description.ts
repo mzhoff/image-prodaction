@@ -30,7 +30,7 @@ export function timelineDescriptionRequest(input: { shot: TimelineShot; images: 
 
 export async function describeTimelineShot(input: {
   shot: TimelineShot; images: Uint8Array[]; model: string; language: string;
-  actorUserId: string; documentId: string; workspaceId: string; parentJobId: string; signal: AbortSignal;
+  actorUserId: string; documentId?: string; workspaceId: string; parentJobId: string; signal: AbortSignal;
 }, execute = executeInternalOpenRouterChat<string>) {
   const fingerprint = timelineShotFingerprint(input.shot);
   const key = createHash('sha256').update(JSON.stringify([1, input.parentJobId, fingerprint, input.model, input.language])).digest('hex');

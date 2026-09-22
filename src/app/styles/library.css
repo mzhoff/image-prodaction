@@ -91,10 +91,11 @@
   overflow-y: auto;
   border: 1px solid var(--pui-semantic-border-default);
   border-radius: 13px;
-  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 98%, transparent);
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) var(--production-popup-opacity), transparent);
   padding: 5px;
   box-shadow: 0 18px 45px color-mix(in srgb, var(--pui-semantic-shadow-color) 15%, transparent);
-  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: var(--production-popup-backdrop-filter);
+  backdrop-filter: var(--production-popup-backdrop-filter);
 }
 
 .brand-select-option {

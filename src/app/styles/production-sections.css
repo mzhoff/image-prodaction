@@ -1,0 +1,187 @@
+/* Section lists share Home's surface; editors and Home keep their own layouts. */
+.production-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  color: var(--pui-semantic-text-primary);
+  background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 86%, var(--pui-semantic-border-default));
+}
+.production-section-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+  padding: 20px 28px 6px;
+}
+.production-section-header h1 {
+  margin: 0;
+  color: var(--pui-semantic-text-primary);
+  font-size: 16px;
+  font-weight: 550;
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+.production-section-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.production-section-back { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent); color: var(--pui-semantic-text-primary); text-decoration: none; transition: background 150ms ease; }
+.production-section-back:hover { background: var(--pui-semantic-surface-primary); }
+.production-section-back:focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: 3px; }
+.flows-playground-link { text-decoration: none; white-space: nowrap; }
+.production-section-actions, .production-section .story-library-create {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.production-section-actions :is(button, .studio-button, .workspace-create-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent);
+  color: var(--pui-semantic-text-primary);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.production-section-actions :is(button, .studio-button, .workspace-create-button):hover:not(:disabled) { background: var(--pui-semantic-surface-primary); }
+.production-section-actions :is(button, a) > svg { flex-shrink: 0; }
+.production-section-actions .section-tool-button { width: 36px; padding: 0; background: transparent; }
+.production-section-actions .section-tool-button:hover { background: var(--pui-semantic-surface-primary); }
+.production-section-actions .section-help-button { background: var(--pui-semantic-surface-primary); }
+.production-section-actions .workspace-create-button {
+  background: var(--pui-semantic-surface-inverse);
+  color: var(--pui-semantic-text-on-inverse);
+  border-color: transparent;
+}
+.production-section-actions .workspace-create-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 85%, black);
+}
+.production-section-actions .section-accent-button { background: var(--pui-semantic-accent-default); color: var(--pui-semantic-text-on-accent); }
+.production-section-actions .section-accent-button:hover:not(:disabled) { background: color-mix(in srgb, var(--pui-semantic-accent-default) 88%, black); }
+.production-section-status { color: var(--pui-semantic-text-muted); font-size: 11px; }
+.production-section-modes, .production-section-controls { flex: 0 0 auto; min-width: 0; }
+.production-section-modes { padding: 14px 28px 0; }
+.production-section-modes .production-section-navigation {
+  padding: 0;
+  gap: 5px;
+  border: 0;
+  scrollbar-width: thin;
+}
+.production-section-modes .production-section-navigation a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 150ms ease;
+}
+.production-section-modes .production-section-navigation a:hover { background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent); }
+.production-section-modes .production-section-navigation a[aria-current='page'] {
+  background: var(--pui-semantic-surface-primary);
+  border-color: color-mix(in srgb, var(--pui-semantic-surface-primary) 80%, transparent);
+  color: var(--pui-semantic-text-primary);
+}
+.production-section-navigation small { color: var(--pui-semantic-text-muted); font-size: 10px; }
+.production-section-controls { padding: 16px 28px 0; }
+.production-section-controls .workspace-files-header { margin: 0; }
+.production-section-context-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.production-section-context-heading h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.production-section-body { flex: 1; min-height: 0; overflow: auto; padding: 20px 28px 28px; scrollbar-gutter: stable; }
+.production-section-body > .workspace-content { padding: 0; overflow: visible; }
+.production-section-body > .workspace-load-error { margin: 0 0 16px; }
+.production-section-body > .workspace-template-band { margin-bottom: 20px; }
+.production-section .workspace-files-section { gap: 16px; }
+.production-section .workspace-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  padding-bottom: 8px;
+}
+.production-section .workspace-project-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+  padding: 8px 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-surface-primary) 80%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent);
+  transition: background 150ms ease, transform 150ms ease;
+}
+.production-section .workspace-project-card:hover,
+.production-section .workspace-project-card:focus-within {
+  transform: translateY(-3px);
+  background: var(--pui-semantic-surface-primary);
+}
+.production-section .workspace-project-preview {
+  height: auto;
+  aspect-ratio: 1.5;
+  border: 1px solid color-mix(in srgb, var(--pui-semantic-surface-primary) 40%, transparent);
+  border-radius: 14px;
+  background: var(--pui-semantic-surface-primary);
+}
+.production-section .workspace-project-title-row { min-width: 0; min-height: 38px; padding: 4px 7px 0; }
+.production-section .workspace-project-title-copy { flex-direction: column; align-items: stretch; gap: 4px; }
+.production-section .workspace-project-title-copy h3 { color: var(--pui-semantic-text-primary); font-size: 14px; font-weight: 550; }
+.production-section .workspace-project-title-copy > span { font-weight: 400; }
+.production-section .workspace-project-card:focus-within .workspace-project-star { opacity: 1; pointer-events: auto; }
+.production-section .story-file-identity, .production-section .project-folder-identity { padding: 6px 7px 0; min-height: 38px; }
+.production-section .workspace-project-list, .production-section .project-folders-list { grid-template-columns: 1fr; gap: 8px; }
+.production-section :is(.workspace-project-list, .project-folders-list) .workspace-project-card { padding: 8px; border-radius: 16px; align-items: center; }
+.production-section :is(.workspace-project-list, .project-folders-list) .workspace-project-preview { width: 112px; height: 72px; flex: 0 0 112px; aspect-ratio: auto; border-radius: 10px; }
+.production-section .workspace-project-list .workspace-project-title-row { padding: 4px 12px; }
+.production-section .workspace-empty-projects { grid-column: 1 / -1; }
+.production-section .story-library-tools { justify-content: space-between; flex-wrap: wrap; }
+.production-section .story-library-tools > label { border: 0; border-radius: 10px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent); }
+.production-section .story-section-heading { margin-top: 0; }
+.production-section .story-library-folders { margin-bottom: 24px; }
+.production-section .story-folder-row { padding: 4px 0; }
+.production-section .story-library-empty { margin-top: 16px; }
+.production-section .library-search { min-height: 36px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent); border-color: transparent; }
+.production-section :is(.library-search, .workspace-search):focus-within { background: var(--pui-semantic-surface-primary); }
+.production-section .workspace-search { background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent); }
+.production-section .studio-subject-card { padding: 8px; border-radius: 20px; border-color: color-mix(in srgb, var(--pui-semantic-surface-primary) 80%, transparent); background: color-mix(in srgb, var(--pui-semantic-surface-primary) 54%, transparent); transition: background 150ms ease, transform 150ms ease; }
+.production-section .studio-subject-card:hover { transform: translateY(-3px); background: var(--pui-semantic-surface-primary); }
+.production-section .studio-subject-cover { overflow: hidden; border-radius: 14px; }
+.production-section .studio-subject-card strong { padding: 12px 7px 0; font-size: 14px; font-weight: 550; }
+.production-section .studio-subject-card p { margin: 6px 7px; font-size: 11px; }
+@media (max-width: 700px) {
+  .production-section-header { padding: 16px 16px 6px; gap: 8px; }
+  .production-section-actions .production-section-status { display: none; }
+  .production-section-actions :is(button, .studio-button, .workspace-create-button) { padding: 7px 9px; font-size: 11px; }
+  .production-section-modes { padding: 12px 16px 0; }
+  .production-section-controls { padding: 12px 16px 0; }
+  .production-section-body { padding: 16px; }
+  .production-section .workspace-files-actions { flex-wrap: wrap; }
+  .production-section .workspace-search { min-width: 0; max-width: 100%; }
+  .production-section .story-library-empty > div { padding: 24px; }
+  .production-section .story-library-empty h2 { font-size: 26px; }
+}
+@media (hover: none) {
+  .production-section .workspace-project-menu-button, .production-section .workspace-project-star { opacity: 1; pointer-events: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .production-section .workspace-project-card, .production-section .studio-subject-card { transition: none; transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .production-section .workspace-project-card, .production-section .studio-subject-card { background: var(--pui-semantic-surface-primary); }
+}

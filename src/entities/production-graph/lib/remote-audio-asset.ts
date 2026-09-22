@@ -1,3 +1,4 @@
+import { awaitAssetUpload } from '@/shared/api/asset-upload-response';
 import { z } from 'zod';
 import { audioMetadataSchema, MAX_AUDIO_BYTES } from '@/shared/media/audio-contracts';
 import type { AssetRecord } from '../model/types';
@@ -18,7 +19,8 @@ export async function uploadRemoteAudioAsset(file: File, scope: ActiveAssetScope
   const body = new FormData();
   body.set('file', file); body.set('workspaceId', scope.workspaceId); body.set('documentId', scope.documentId);
   body.set('origin', origin);
-  const response = await request('/api/assets/audio', { method: 'POST', credentials: 'same-origin', body });
+  let response = await request('/api/assets/audio', { method: 'POST', credentials: 'same-origin', body });
+  response = await awaitAssetUpload(response, request);
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new AssetClientError(response.status, payload);
   const parsed = remoteAudioAssetSchema.safeParse(payload?.asset);

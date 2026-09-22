@@ -1,5 +1,5 @@
 import { readBoundedAudioStream } from './audio-upload-request';
-import { MAX_VIDEO_BYTES, VideoProcessingError } from './video-contracts';
+import { MAX_VIDEO_OUTPUT_BYTES, VideoProcessingError } from './video-contracts';
 
 let activeUploads = 0;
 /** One bounded video upload per process; multipart parsing currently materializes the body. */
@@ -12,8 +12,8 @@ export async function withVideoUploadLimit<T>(work: () => Promise<T>): Promise<T
 export async function readVideoMultipart(request: Request, allowedFields: readonly string[]) {
   const contentType = request.headers.get('content-type') ?? '';
   if (!/^multipart\/form-data\s*;/i.test(contentType)) throw new VideoProcessingError('invalid_content_type', 'A multipart file upload is required.', 415);
-  const maximum = MAX_VIDEO_BYTES + 1024 * 1024;
-  if (Number(request.headers.get('content-length')) > maximum) throw new VideoProcessingError('file_too_large', 'The video upload exceeds 100 MiB.', 413);
+  const maximum = MAX_VIDEO_OUTPUT_BYTES + 1024 * 1024;
+  if (Number(request.headers.get('content-length')) > maximum) throw new VideoProcessingError('file_too_large', 'The video upload exceeds 128 MiB.', 413);
   if (!request.body) throw new VideoProcessingError('missing_file', 'A video file is required.', 400);
   const bytes = await readBoundedAudioStream(request.body, maximum, request.signal);
   let form: FormData;
@@ -24,6 +24,6 @@ export async function readVideoMultipart(request: Request, allowedFields: readon
   }
   const file = form.get('file');
   if (!(file instanceof File)) throw new VideoProcessingError('missing_file', 'A video file is required.', 400);
-  if (!file.size || file.size > MAX_VIDEO_BYTES) throw new VideoProcessingError('file_too_large', 'Video must be nonempty and at most 100 MiB.', 413);
+  if (!file.size || file.size > MAX_VIDEO_OUTPUT_BYTES) throw new VideoProcessingError('file_too_large', 'Video must be nonempty and at most 128 MiB.', 413);
   return { file, form };
 }

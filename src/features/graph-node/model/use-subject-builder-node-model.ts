@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { getIncomingImageInputs, getIncomingTextInputs } from '@/entities/production-graph/model/graph-io';
@@ -22,6 +23,7 @@ import { useSubjectLibraryActions } from './use-subject-library-actions';
 export { subjectPreserveStrengthOptions, subjectTypeOptions } from './subject-reference-values';
 
 export function useSubjectBuilderNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as SubjectBuilderNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -67,11 +69,11 @@ export function useSubjectBuilderNodeModel(node: ProductionNode) {
   const sourceCount = textInputs.length + imageCount;
   const subjectLibrary = useSubjectLibraryActions(node.id, data, imageAssetIds, textInputs.map((input) => input.text));
   const subjectLibraryOptions = useMemo(
-    () => [{ value: '', label: 'Выберите персонажа' },
+    () => [{ value: '', label: tUi("Выберите персонажа") },
       ...subjectLibrary.library.subjects.map((subject) => ({ value: subject.id, label: subject.title })),
       ...subjects.filter((subject) => !subjectLibrary.library.subjects.some((item) => item.id === subject.id))
-        .map((subject) => ({ value: subject.id, label: `${subject.title} · в канвасе` }))],
-    [subjects, subjectLibrary.library.subjects],
+        .map((subject) => ({ value: subject.id, label: tUi("{p1} · в канвасе", { p1: subject.title }) }))],
+    [tUi, subjects, subjectLibrary.library.subjects],
   );
   const selectedLibrarySubjectId = data.librarySubjectId
     && subjectLibraryOptions.some((option) => option.value === data.librarySubjectId)

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useDocumentBackendSync } from '@/entities/document/api/use-document-backend-sync';
 import { useProductionGraphStore } from '@/entities/production-graph/model/use-production-graph-store';
+import { initialProject } from '@/entities/production-graph/model/initial-project';
+import { createEmptyProjectUiState, createProjectExport } from '@/entities/production-graph/model/project-schema';
 import type { useCanvasNavigation } from '@/shared/ui/use-canvas-navigation';
 import { useStudioPipelinePublications } from '@/modules/executable-pipelines/adapters/studio/use-studio-pipeline-publications';
 import { useDocumentThumbnailSync } from './use-document-thumbnail-sync';
@@ -19,6 +21,8 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
   const didInitialFitRef = useRef(false);
   const exportDocumentSnapshot = useProductionGraphStore((state) => state.exportDocumentSnapshot);
   const restoreDocumentSnapshot = useProductionGraphStore((state) => state.restoreDocumentSnapshot);
+  // Opening a new document is not an undoable "clear canvas" action.
+  const restoreEmptyDocument = useCallback(() => restoreDocumentSnapshot(createProjectExport(initialProject, createEmptyProjectUiState())), [restoreDocumentSnapshot]);
   const subscribeToProjectChanges = useCallback((
     listener: (change?: { thumbnailRelevant?: boolean }) => void,
   ) => useProductionGraphStore.subscribe((state, previous) => {
@@ -37,7 +41,7 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
     exportSnapshot: exportDocumentSnapshot,
     importSnapshot: restoreDocumentSnapshot,
     projectId,
-    resetProject: graph.resetProject,
+    resetProject: restoreEmptyDocument,
     subscribeToProjectChanges,
   });
   const documentThumbnail = useDocumentThumbnailSync({
@@ -74,10 +78,11 @@ export function useProductionCanvasPersistence({ canvas, graph, projectId }: {
   }, [documentPhase, graph.bounds, graph.nodes.length,
     graph.sections.length, projectId, zoomToBounds]);
   useEffect(() => {
+    if (!documentSync.documentReady) return;
     const viewport = { x: canvas.pan.x, y: canvas.pan.y, zoom: canvas.zoom };
     const timeoutId = window.setTimeout(() => setProjectUiViewport(viewport), 150);
     return () => window.clearTimeout(timeoutId);
-  }, [canvas.pan.x, canvas.pan.y, canvas.zoom, setProjectUiViewport]);
+  }, [canvas.pan.x, canvas.pan.y, canvas.zoom, documentSync.documentReady, setProjectUiViewport]);
 
   return { documentSync, documentThumbnail, studioPipelines };
 }

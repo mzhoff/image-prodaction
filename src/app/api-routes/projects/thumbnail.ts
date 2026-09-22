@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { withStreamingUpload } from '@/shared/media/streaming-upload';
 import { z } from 'zod';
 import { after } from 'next/server';
 import {
@@ -11,32 +13,20 @@ import {
 } from '@/entities/document/server/document-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
+import { readAuthServerConfig } from '@/shared/auth/config';
 import { isUuid } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from '../assets/error-response';
 
-const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 const thumbnailModeSchema = z.enum(['auto', 'manual']);
 
 export async function postProjectThumbnail(request: Request, projectId: string) {
   try {
+    const origin = request.headers.get('origin');
+    if (!origin || !readAuthServerConfig().trustedOrigins.includes(origin)) return apiError('invalid_origin', 'The request origin is not trusted.', 403);
     if (!isUuid(projectId)) return apiError('invalid_project_id', 'Invalid project id.', 400);
     const session = await requireApiSession(request);
-    const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
-    if (!contentType.startsWith('multipart/form-data')) {
-      return apiError('invalid_content_type', 'A multipart form upload is required.', 415);
-    }
-
     const maxBytes = getMaxImageUploadBytes();
-    const contentLength = Number(request.headers.get('content-length'));
-    if (Number.isFinite(contentLength) && contentLength > maxBytes + MAX_MULTIPART_OVERHEAD_BYTES) {
-      return apiError('file_too_large', 'The snapshot exceeds the upload limit.', 413);
-    }
-
-    const formData = await request.formData().catch(() => null);
-    if (!formData) return apiError('invalid_multipart', 'The multipart upload is invalid.', 400);
-    const file = formData.get('file');
-    if (!(file instanceof File)) return apiError('missing_file', 'A snapshot image is required.', 400);
-    if (file.size > maxBytes) return apiError('file_too_large', 'The snapshot exceeds the upload limit.', 413);
+    return await withStreamingUpload(request, maxBytes, ['file', 'mode', 'expectedRevision'], async ({ file, form: formData }) => {
     const parsedMode = thumbnailModeSchema.safeParse(formData.get('mode'));
     if (!parsedMode.success) return apiError('invalid_thumbnail_mode', 'Snapshot mode must be auto or manual.', 400);
     const revisionField = formData.get('expectedRevision');
@@ -53,7 +43,7 @@ export async function postProjectThumbnail(request: Request, projectId: string) 
     }
 
     const asset = await uploadImageAsset({
-      bytes: new Uint8Array(await file.arrayBuffer()),
+      bytes: await readFile(file.path),
       claimedContentType: file.type,
       documentId: projectId,
       maxBytes,
@@ -99,6 +89,7 @@ export async function postProjectThumbnail(request: Request, projectId: string) 
     return Response.json({ project: update.project }, {
       status: 201,
       headers: { 'Cache-Control': 'no-store' },
+    });
     });
   } catch (error) {
     return toAssetApiErrorResponse(error);

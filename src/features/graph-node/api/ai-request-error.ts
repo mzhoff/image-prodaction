@@ -11,6 +11,8 @@ export class AiRequestError extends Error {
 }
 
 export function formatApiError(error: unknown) {
+  const accessMessage = aiAccessErrorMessage(readApiErrorCode(error));
+  if (accessMessage) return accessMessage;
   if (typeof error === 'string') return error;
   if (!error) return 'OpenRouter request failed';
   if (typeof error === 'object' && 'message' in error) {
@@ -25,3 +27,4 @@ function readApiErrorCode(error: unknown) {
   const code = (error as { code?: unknown }).code;
   return typeof code === 'string' ? code : undefined;
 }
+import { aiAccessErrorMessage } from '@/modules/provider-connections/core/ai-access-messages';

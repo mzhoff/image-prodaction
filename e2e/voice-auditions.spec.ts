@@ -1,3 +1,4 @@
+import { gotoQaSection } from './release-user-fixture';
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
@@ -56,7 +57,7 @@ test('voice selector identifies gender, explains missing recordings and audition
   const play = node.locator('.voice-preview-button');
   const playingCount = () => page.evaluate(() => (window as typeof window & { qaVoiceAudios: HTMLAudioElement[] }).qaVoiceAudios.filter((item) => !item.paused).length);
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     await expect(play).toHaveAttribute('aria-disabled', 'true');
     await play.focus();
     await expect(page.locator('.pro-tooltip')).toContainText('образец ещё не записан');

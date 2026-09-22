@@ -1,0 +1,65 @@
+/* Figma 717:3161: a separate floating mode rail, shared across Home composers. */
+.home-composer-modes { display: flex; flex-direction: column; flex: 0 0 70px; gap: 4px; padding: 4px; border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 45%, transparent); border-radius: 24px; background: color-mix(in srgb, var(--pui-semantic-surface-primary) 70%, transparent); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: inset 0 1px 0 #ffffff60, 0 4px 12px #0000000a; }
+.home-composer-modes button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 52px; padding: 8px 4px; border: 0; border-radius: 19px; background: transparent; color: var(--pui-semantic-text-muted); cursor: pointer; font: inherit; font-size: 10px; transition: background 120ms, color 120ms; }
+.home-composer-modes button[data-mode='text'] { --home-mode-accent: var(--pui-semantic-dataflow-text); }
+.home-composer-modes button[data-mode='image'] { --home-mode-accent: var(--pui-semantic-dataflow-image); }
+.home-composer-modes button[data-mode='video'] { --home-mode-accent: var(--pui-semantic-dataflow-video); }
+.home-composer-modes button[aria-pressed='true'] {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--home-mode-accent) 15%, white) 0%,
+    color-mix(in srgb, var(--home-mode-accent) 34%, white) 100%);
+  color: color-mix(in srgb, var(--home-mode-accent) 35%, #17212b);
+  box-shadow: inset 0 1px 0 #ffffffd9,
+    inset 0 -1px 1px color-mix(in srgb, var(--home-mode-accent) 24%, transparent),
+    0 2px 4px color-mix(in srgb, var(--home-mode-accent) 15%, transparent);
+}
+.home-composer-modes button[aria-pressed='true']:hover:not(:disabled) { filter: brightness(1.035); }
+.home-composer-modes button[aria-pressed='false']:hover:not(:disabled) { background: var(--pui-semantic-surface-secondary); color: var(--pui-semantic-text-primary); }
+.home-composer-modes button:disabled { opacity: .5; cursor: default; }
+.home-composer-modes button:focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: 1px; }
+/* The mode rail floats outside the shared column without widening the form. */
+.production-home .home-unified-composer .home-image-composer { position: relative; }
+.production-home .home-unified-composer .home-composer-modes {
+  position: absolute; inset-inline-end: calc(100% + var(--home-mode-rail-gap)); bottom: 0;
+  width: var(--home-mode-rail-width); box-sizing: border-box;
+}
+.production-home .home-unified-composer .home-image-form { width: 100%; box-sizing: border-box; }
+.production-home .home-unified-composer .home-image-footnote { padding-inline: 16px; }
+.production-home .home-unified-composer :is(.home-image-error, .home-video-reference-hint) { margin-inline: 12px; }
+.workspace-page:has(.production-home:is([data-mode='video'],[data-mode='text'])) > .production-sidebar { display: none; }
+.production-home:is([data-mode='video'],[data-mode='text']) { background: color-mix(in srgb, var(--pui-semantic-surface-secondary) 78%, var(--pui-semantic-border-default)); }
+.home-production-chat:has(.home-composer-modes) .home-image-form-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.home-production-chat:has(.home-composer-modes) .home-image-prompt-area { display: contents; }
+.home-production-chat:has(.home-composer-modes) textarea { grid-column: 1 / -1; }
+.home-production-chat:has(.home-composer-modes) .home-image-tools { margin-left: 0; }
+.home-video-composer .home-image-parameters { max-width: 690px; }
+.home-video-camera-row { margin: 0 0 10px 86px; }
+.production-text-composer:has(.home-composer-modes) { max-width: 1120px; }
+.home-video-reference-hint { margin: 8px 16px 0 86px; color: var(--pui-semantic-text-muted); font-size: 11px; line-height: 1.5; }
+.home-video-media { position: relative; }
+.home-video-media video { display: block; width: 100%; max-height: 65vh; border-radius: 14px; background: var(--pui-semantic-surface-secondary); }
+.home-video-media > .pro-tooltip-trigger { position: absolute; top: 10px; right: 10px; }
+.home-video-media .home-video-download { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--pui-semantic-border-default); border-radius: 12px; background: var(--pui-semantic-surface-primary); color: var(--pui-semantic-text-primary); opacity: 0; transition: opacity 120ms; }
+.home-video-media:is(:hover,:focus-within) .home-video-download { opacity: 1; }
+@media (hover: none) { .home-video-media .home-video-download { opacity: 1; } }
+@media (max-width: 700px) { .home-production-chat:has(.home-composer-modes) .home-image-form-inner { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  .home-image-composer:has(.home-composer-modes) { flex-direction: column; align-items: stretch; }
+  .home-composer-modes { flex: none; flex-direction: row; align-self: flex-start; border-radius: 20px; }
+  .home-composer-modes button { min-height: 40px; min-width: 62px; flex-direction: row; padding: 6px 10px; border-radius: 16px; }
+  .home-video-reference-hint { margin-left: 10px; }
+  .home-video-camera-row { margin-left: 0; }
+}
+@container production-home (max-width: 760px) {
+  .production-home .home-production-chat.cm-shell[data-surface='fullscreen'] { --cm-chat-side-gap: 16px; }
+  .production-home .home-unified-composer .home-image-composer { flex-direction: column; align-items: stretch; }
+  .production-home .home-unified-composer .home-composer-modes {
+    position: static; width: fit-content; max-width: 100%; flex: none; flex-direction: row; flex-wrap: wrap; align-self: flex-start; border-radius: 20px;
+  }
+  .production-home .home-unified-composer .home-composer-modes button {
+    min-height: 40px; min-width: 62px; flex-direction: row; padding: 6px 10px; border-radius: 16px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) { .home-composer-modes { background: var(--pui-semantic-surface-primary); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .home-composer-modes { background: var(--pui-semantic-surface-primary); } }
+@media (prefers-reduced-motion: reduce) { .home-composer-modes button, .home-video-media .home-video-download { transition: none; } }

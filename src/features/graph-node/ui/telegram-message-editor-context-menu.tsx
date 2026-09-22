@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -63,6 +64,7 @@ const ALL_CONTEXT_MENU_FEATURES: TelegramTextContextMenuFeature[] = [
 ];
 
 export function TelegramTextContextMenuPlugin({ features = ALL_CONTEXT_MENU_FEATURES }: { features?: readonly TelegramTextContextMenuFeature[] }) {
+  const tUi = useTranslations();
   const [editor] = useLexicalComposerContext();
   const featureSet = useMemo(() => new Set(features), [features]);
   const savedSelectionRef = useRef<RangeSelection | null>(null);
@@ -166,29 +168,29 @@ export function TelegramTextContextMenuPlugin({ features = ALL_CONTEXT_MENU_FEAT
           data-node-interactive
           data-floating-context-menu="true"
         >
-          <TelegramContextMenuButton label="Копировать" shortcut="⌘C" onClick={() => runAction(() => copySelectedText(editor))} />
-          <TelegramContextMenuButton label="Вырезать" shortcut="⌘X" onClick={() => runAction(() => cutSelectedText(editor))} />
+          <TelegramContextMenuButton label={tUi("Копировать")} shortcut="⌘C" onClick={() => runAction(() => copySelectedText(editor))} />
+          <TelegramContextMenuButton label={tUi("Вырезать")} shortcut="⌘X" onClick={() => runAction(() => cutSelectedText(editor))} />
           <TelegramContextMenuButton
-            label="Вставить"
+            label={tUi("Вставить")}
             shortcut="⌘V"
             disabled={clipboardTextState === 'empty'}
             onClick={() => runAction(() => pasteClipboardText(editor))}
           />
           <div className="telegram-editor-context-menu-separator" />
-          <TelegramContextMenuButton label="Убрать форматирование" onClick={() => runAction(() => removeSelectedFormatting(editor))} />
+          <TelegramContextMenuButton label={tUi("Убрать форматирование")} onClick={() => runAction(() => removeSelectedFormatting(editor))} />
           <div className="telegram-editor-context-menu-separator" />
-          {featureSet.has('strikethrough') ? <TelegramContextMenuButton label="Зачёркнутый" shortcut="⇧⌘X" onClick={() => runAction(() => applyTextFormat(editor, 'strikethrough'))} /> : null}
-          {featureSet.has('underline') ? <TelegramContextMenuButton label="Подчёркнутый" shortcut="⇧⌘U" onClick={() => runAction(() => applyTextFormat(editor, 'underline'))} /> : null}
-          {featureSet.has('spoiler') ? <TelegramContextMenuButton label="Скрытый" shortcut="⇧⌘P" onClick={() => runAction(() => applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.spoiler, '1'))} /> : null}
-          {featureSet.has('code') ? <TelegramContextMenuButton label="Моноширинный" shortcut="⇧⌘K" onClick={() => runAction(() => applyTextFormat(editor, 'code'))} /> : null}
-          {featureSet.has('italic') ? <TelegramContextMenuButton label="Курсив" shortcut="⌘I" onClick={() => runAction(() => applyTextFormat(editor, 'italic'))} /> : null}
-          {featureSet.has('bold') ? <TelegramContextMenuButton label="Жирный" shortcut="⌘B" onClick={() => runAction(() => applyTextFormat(editor, 'bold'))} /> : null}
-          {featureSet.has('link') ? <TelegramContextMenuButton label="Добавить ссылку" shortcut="⌘U" onClick={openLinkDialog} /> : null}
-          {featureSet.has('quote') ? <TelegramContextMenuButton label="Цитата" shortcut="⇧⌘I" onClick={() => runAction(() => applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.quote, '1'))} /> : null}
+          {featureSet.has('strikethrough') ? <TelegramContextMenuButton label={tUi("Зачёркнутый")} shortcut="⇧⌘X" onClick={() => runAction(() => applyTextFormat(editor, 'strikethrough'))} /> : null}
+          {featureSet.has('underline') ? <TelegramContextMenuButton label={tUi("Подчёркнутый")} shortcut="⇧⌘U" onClick={() => runAction(() => applyTextFormat(editor, 'underline'))} /> : null}
+          {featureSet.has('spoiler') ? <TelegramContextMenuButton label={tUi("Скрытый")} shortcut="⇧⌘P" onClick={() => runAction(() => applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.spoiler, '1'))} /> : null}
+          {featureSet.has('code') ? <TelegramContextMenuButton label={tUi("Моноширинный")} shortcut="⇧⌘K" onClick={() => runAction(() => applyTextFormat(editor, 'code'))} /> : null}
+          {featureSet.has('italic') ? <TelegramContextMenuButton label={tUi("Курсив")} shortcut="⌘I" onClick={() => runAction(() => applyTextFormat(editor, 'italic'))} /> : null}
+          {featureSet.has('bold') ? <TelegramContextMenuButton label={tUi("Жирный")} shortcut="⌘B" onClick={() => runAction(() => applyTextFormat(editor, 'bold'))} /> : null}
+          {featureSet.has('link') ? <TelegramContextMenuButton label={tUi("Добавить ссылку")} shortcut="⌘U" onClick={openLinkDialog} /> : null}
+          {featureSet.has('quote') ? <TelegramContextMenuButton label={tUi("Цитата")} shortcut="⇧⌘I" onClick={() => runAction(() => applyTelegramStyle(editor, TELEGRAM_TEXT_STYLE.quote, '1'))} /> : null}
           {featureSet.has('case') ? <div className="telegram-editor-context-menu-separator" /> : null}
-          {featureSet.has('case') ? <TelegramContextMenuButton label="Прописные" prefix="АБВ" onClick={() => runAction(() => transformSelectedText(editor, (text) => text.toLocaleUpperCase()))} /> : null}
-          {featureSet.has('case') ? <TelegramContextMenuButton label="Строчные" prefix="абв" onClick={() => runAction(() => transformSelectedText(editor, (text) => text.toLocaleLowerCase()))} /> : null}
-          {featureSet.has('case') ? <TelegramContextMenuButton label="С заглавной буквы" prefix="Абв" onClick={() => runAction(() => transformSelectedText(editor, capitalizeText))} /> : null}
+          {featureSet.has('case') ? <TelegramContextMenuButton label={tUi("Прописные")} prefix={tUi("АБВ")} onClick={() => runAction(() => transformSelectedText(editor, (text) => text.toLocaleUpperCase()))} /> : null}
+          {featureSet.has('case') ? <TelegramContextMenuButton label={tUi("Строчные")} prefix={tUi("абв")} onClick={() => runAction(() => transformSelectedText(editor, (text) => text.toLocaleLowerCase()))} /> : null}
+          {featureSet.has('case') ? <TelegramContextMenuButton label={tUi("С заглавной буквы")} prefix={tUi("Абв")} onClick={() => runAction(() => transformSelectedText(editor, capitalizeText))} /> : null}
         </div>,
         document.body,
       ) : null}
@@ -250,6 +252,7 @@ function TelegramLinkPopover({
   onCancel: () => void;
   onSubmit: (url: string) => void;
 }) {
+  const tUi = useTranslations();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [url, setUrl] = useState(dialog.url);
 
@@ -271,7 +274,7 @@ function TelegramLinkPopover({
       }}
       data-node-interactive
     >
-      <label htmlFor="telegram-editor-link-input">Ссылка</label>
+      <label htmlFor="telegram-editor-link-input">{tUi("Ссылка")}</label>
       <input
         id="telegram-editor-link-input"
         ref={inputRef}
@@ -282,8 +285,8 @@ function TelegramLinkPopover({
         onChange={(event) => setUrl(event.target.value)}
       />
       <div className="telegram-editor-link-actions">
-        <button type="button" onClick={onCancel}>Отмена</button>
-        <button type="submit">Применить</button>
+        <button type="button" onClick={onCancel}>{tUi("Отмена")}</button>
+        <button type="submit">{tUi("Применить")}</button>
       </div>
     </form>
   );

@@ -12,6 +12,8 @@ export default defineConfig({
     './src/shared/db/schema/index.ts',
     './src/modules/chat-assistant/server/chat-persistence-schema.ts',
     './src/modules/chat-assistant/server/document-conversation-schema.ts',
+    './src/modules/chat-assistant/server/home-chat-schema.ts',
+    './src/modules/chat-assistant/server/production-chat-schema.ts',
     './src/modules/chat-assistant/server/pipeline-action-schema.ts',
     './src/modules/chat-assistant/server/pipeline-update-schema.ts',
     './src/modules/executable-pipelines/adapters/postgres/pipeline-schema.ts',

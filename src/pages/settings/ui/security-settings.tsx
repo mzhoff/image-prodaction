@@ -1,5 +1,10 @@
 'use client';
+import { useFormatLocale } from '@/shared/i18n/use-format-locale';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
+import { Button } from '@prodactionpro/ui-core/button';
+
+import { Switch } from '@prodactionpro/ui-core/client';
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
 import { KeyRound, Laptop, LogOut, ShieldCheck, Smartphone } from '@prodactionpro/ui-core/icons';
@@ -20,6 +25,8 @@ interface SecuritySettingsProps {
 }
 
 export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
+  const language = useFormatLocale();
+  const tUi = useTranslations();
   const { data: currentSession } = useSession();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -39,16 +46,16 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
     try {
       const result = await authClient.listSessions();
       if (result.error) {
-        setSessionError('Не удалось загрузить активные сессии.');
+        setSessionError(tUi("Не удалось загрузить активные сессии."));
         return;
       }
       setSessions((result.data ?? []) as SessionInfo[]);
     } catch {
-      setSessionError('Не удалось загрузить активные сессии.');
+      setSessionError(tUi("Не удалось загрузить активные сессии."));
     } finally {
       setSessionsPending(false);
     }
-  }, []);
+  }, [tUi]);
 
   useEffect(() => {
     onDirtyChange(dirty);
@@ -62,11 +69,11 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (newPassword !== confirmation) {
-      setError('Новый пароль и подтверждение не совпадают.');
+      setError(tUi("Новый пароль и подтверждение не совпадают."));
       return;
     }
     if (newPassword === currentPassword) {
-      setError('Новый пароль должен отличаться от текущего.');
+      setError(tUi("Новый пароль должен отличаться от текущего."));
       return;
     }
 
@@ -88,8 +95,8 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
       setConfirmation('');
       setMessage(
         revokeOtherSessions
-          ? 'Пароль изменён. Остальные сессии завершены.'
-          : 'Пароль успешно изменён.',
+          ? tUi("Пароль изменён. Остальные сессии завершены.")
+          : tUi("Пароль успешно изменён."),
       );
       await loadSessions();
     } catch (caughtError) {
@@ -104,12 +111,12 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
     try {
       const result = await authClient.revokeSession({ token });
       if (result.error) {
-        setSessionError('Не удалось завершить выбранную сессию.');
+        setSessionError(tUi("Не удалось завершить выбранную сессию."));
         return;
       }
       setSessions((items) => items.filter((item) => item.token !== token));
     } catch {
-      setSessionError('Не удалось завершить выбранную сессию.');
+      setSessionError(tUi("Не удалось завершить выбранную сессию."));
     }
   }
 
@@ -118,12 +125,12 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
     try {
       const result = await authClient.revokeOtherSessions();
       if (result.error) {
-        setSessionError('Не удалось завершить остальные сессии.');
+        setSessionError(tUi("Не удалось завершить остальные сессии."));
         return;
       }
       await loadSessions();
     } catch {
-      setSessionError('Не удалось завершить остальные сессии.');
+      setSessionError(tUi("Не удалось завершить остальные сессии."));
     }
   }
 
@@ -133,8 +140,7 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
     <section className="settings-section" aria-labelledby="settings-security-title">
       <header className="settings-section-head">
         <div>
-          <h2 id="settings-security-title">Безопасность</h2>
-          <p>Пароль и устройства, на которых выполнен вход.</p>
+          <h2 id="settings-security-title">{tUi("Безопасность")}</h2>
         </div>
       </header>
 
@@ -142,13 +148,12 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
         <div className="settings-card-head">
           <span><KeyRound size={18} /></span>
           <div>
-            <h3>Сменить пароль</h3>
-            <p>После смены можно завершить вход на всех остальных устройствах.</p>
+            <h3>{tUi("Сменить пароль")}</h3>
           </div>
         </div>
         <form className="settings-form" onSubmit={changePassword}>
           <label>
-            <span>Текущий пароль</span>
+            <span>{tUi("Текущий пароль")}</span>
             <PuiInput
               type="password"
               name="current-password"
@@ -163,7 +168,7 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
           </label>
           <div className="settings-form-row">
             <label>
-              <span>Новый пароль</span>
+              <span>{tUi("Новый пароль")}</span>
               <PuiInput
                 type="password"
                 name="new-password"
@@ -177,7 +182,7 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
               />
             </label>
             <label>
-              <span>Повторите пароль</span>
+              <span>{tUi("Повторите пароль")}</span>
               <PuiInput
                 type="password"
                 name="password-confirmation"
@@ -192,24 +197,20 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
             </label>
           </div>
           <label className="settings-checkbox">
-            <input
-              type="checkbox"
-              checked={revokeOtherSessions}
-              onChange={(event) => setRevokeOtherSessions(event.target.checked)}
-              disabled={pending}
-            />
+            <Switch aria-label={tUi("Выйти на остальных устройствах")} checked={revokeOtherSessions}
+              onCheckedChange={setRevokeOtherSessions} disabled={pending} size="sm" />
             <span>
-              <strong>Выйти на остальных устройствах</strong>
-              <small>Текущая сессия останется активной.</small>
+              <strong>{tUi("Выйти на остальных устройствах")}</strong>
+              <small>{tUi("Текущая сессия останется активной.")}</small>
             </span>
           </label>
-          {error ? <p className="settings-message settings-message-error" role="alert">{error}</p> : null}
+          {error ? <p className="settings-message settings-message-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
           {message ? <p className="settings-message settings-message-success" role="status">{message}</p> : null}
           <div className="settings-form-actions">
-            <button className="settings-primary-button" type="submit" disabled={pending || !dirty}>
+            <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="submit" disabled={pending || !dirty}>
               <ShieldCheck size={16} />
-              {pending ? 'Меняем…' : 'Сменить пароль'}
-            </button>
+              {pending ? tUi("Меняем…") : tUi("Сменить пароль")}
+            </Button>
           </div>
         </form>
       </div>
@@ -219,23 +220,21 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
           <div className="settings-card-title">
             <span><Laptop size={18} /></span>
             <div>
-              <h3>Активные сессии</h3>
-              <p>Проверьте устройства и завершите незнакомые подключения.</p>
+              <h3>{tUi("Устройства")}</h3>
             </div>
           </div>
-          <button
+          <Button size="sm" intent="neutral" appearance="soft"
             className="settings-quiet-button"
             type="button"
             onClick={() => void revokeAllOtherSessions()}
             disabled={sessionsPending || sessions.length <= 1}
           >
-            Завершить остальные
-          </button>
+            {tUi("Завершить остальные")}</Button>
         </div>
 
-        {sessionsPending ? <p className="settings-empty">Загружаем сессии…</p> : null}
+        {sessionsPending ? <p className="settings-empty">{tUi("Загружаем сессии…")}</p> : null}
         {!sessionsPending && sessions.length === 0 ? (
-          <p className="settings-empty">Активные сессии не найдены.</p>
+          <p className="settings-empty">{tUi("Активные сессии не найдены.")}</p>
         ) : null}
         <div className="settings-session-list">
           {sessions.map((item) => {
@@ -247,28 +246,27 @@ export function SecuritySettings({ onDirtyChange }: SecuritySettingsProps) {
                 </span>
                 <div>
                   <strong>
-                    {formatDevice(item.userAgent)}
-                    {isCurrent ? <em>Текущая</em> : null}
+                    {tUi(formatDevice(item.userAgent))}
+                    {isCurrent ? <em>{tUi("Текущая")}</em> : null}
                   </strong>
                   <span>
-                    {item.ipAddress || 'IP не определён'} · до {formatSessionDate(item.expiresAt)}
+                    {item.ipAddress || tUi("IP не определён")}  {' '}{tUi("· до")}{' '} {tUi(formatSessionDate(item.expiresAt, language))}
                   </span>
                 </div>
                 {isCurrent ? null : (
-                  <button
+                  <Button size="sm" intent="neutral" appearance="soft"
                     type="button"
                     onClick={() => void revokeSession(item.token)}
-                    aria-label={`Завершить сессию ${formatDevice(item.userAgent)}`}
+                    aria-label={tUi("Завершить сессию {p1}", { p1: tUi(formatDevice(item.userAgent)) })}
                   >
                     <LogOut size={15} />
-                    Завершить сессию
-                  </button>
+                    {tUi("Завершить сессию")}</Button>
                 )}
               </article>
             );
           })}
         </div>
-        {sessionError ? <p className="settings-message settings-message-error" role="alert">{sessionError}</p> : null}
+        {sessionError ? <p className="settings-message settings-message-error" role="alert">{typeof (sessionError) === 'string' ? tUi((sessionError) as string) : (sessionError)}</p> : null}
       </div>
     </section>
   );

@@ -1,14 +1,15 @@
+import { readAuthServerConfig } from '@/shared/auth/config';
+import { submitAssetIngest } from '@/modules/generation/server/asset-ingest-submission';
+import { withStreamingUpload } from '@/shared/media/streaming-upload';
 import { z } from 'zod';
 import {
   getMaxImageUploadBytes,
-  uploadImageAsset,
 } from '@/entities/asset/server/asset-service';
 import { apiError } from '@/shared/api/api-error';
 import { requireApiSession } from '@/modules/authentication/server/auth-session';
 import { isUuid } from '@/shared/lib/id';
 import { toAssetApiErrorResponse } from './error-response';
 
-const MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 const uploadFieldsSchema = z.object({
   documentId: z.string().refine(isUuid).nullable(),
@@ -18,24 +19,10 @@ const uploadFieldsSchema = z.object({
 
 export async function postAssetImage(request: Request) {
   try {
+    if (!readAuthServerConfig().trustedOrigins.includes(request.headers.get('origin') ?? '')) return apiError('invalid_origin', 'The request origin is not trusted.', 403);
     const session = await requireApiSession(request);
-    const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
-    if (!contentType.startsWith('multipart/form-data')) {
-      return apiError('invalid_content_type', 'A multipart form upload is required.', 415);
-    }
-
     const maxBytes = getMaxImageUploadBytes();
-    const contentLength = Number(request.headers.get('content-length'));
-    if (Number.isFinite(contentLength) && contentLength > maxBytes + MAX_MULTIPART_OVERHEAD_BYTES) {
-      return apiError('file_too_large', 'The image exceeds the upload limit.', 413);
-    }
-
-    const formData = await request.formData().catch(() => null);
-    if (!formData) return apiError('invalid_multipart', 'The multipart upload is invalid.', 400);
-    const file = formData.get('file');
-    if (!(file instanceof File)) return apiError('missing_file', 'An image file is required.', 400);
-    if (file.size > maxBytes) return apiError('file_too_large', 'The image exceeds the upload limit.', 413);
-
+    return await withStreamingUpload(request, maxBytes, ['file', 'workspaceId', 'documentId', 'origin'], async ({ file, form: formData }) => {
     const parsedFields = uploadFieldsSchema.safeParse({
       workspaceId: getStringField(formData, 'workspaceId'),
       documentId: getStringField(formData, 'documentId') || null,
@@ -49,23 +36,8 @@ export async function postAssetImage(request: Request) {
       );
     }
 
-    const created = await uploadImageAsset({
-      bytes: new Uint8Array(await file.arrayBuffer()),
-      claimedContentType: file.type,
-      documentId: parsedFields.data.documentId,
-      maxBytes,
-      libraryVisible: true,
-      origin: parsedFields.data.origin,
-      originalName: file.name,
-      userId: session.user.id,
-      workspaceId: parsedFields.data.workspaceId,
-    });
-    return Response.json({ asset: created }, {
-      status: 201,
-      headers: {
-        'Cache-Control': 'no-store',
-        Location: `/api/assets/${created.id}`,
-      },
+    const accepted = await submitAssetIngest({ ...parsedFields.data, file, mediaKind: 'image', userId: session.user.id, signal: request.signal });
+    return Response.json(accepted, { status: 202, headers: { 'Cache-Control': 'private, no-store', Location: accepted.statusUrl } });
     });
   } catch (error) {
     return toAssetApiErrorResponse(error);

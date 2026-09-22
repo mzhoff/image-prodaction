@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { CalendarDays, ClipboardCopy, Send } from '@prodactionpro/ui-core/icons';
 import { useCallback, useState, type PointerEvent as ReactPointerEvent } from 'react';
@@ -19,6 +20,7 @@ interface Props {
 type CopyStatus = 'idle' | 'copied' | 'fallback' | 'error' | 'unsupported';
 
 export function TelegramPublicationResultView({ canPublish, model, nodeId, onPublish, onStartConnection }: Props) {
+  const tUi = useTranslations();
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
   const hasMessage = model.messageText.trim().length > 0;
   const isCopying = copyStatus === 'copied' || copyStatus === 'fallback';
@@ -86,7 +88,7 @@ export function TelegramPublicationResultView({ canPublish, model, nodeId, onPub
           <CalendarDays size={16} /> Add to Plan
         </button>
         <button type="button" className="secondary-node-button publication-node-action-button" disabled={!hasMessage || isCopying} onClick={handleCopyFormattedText}>
-          <ClipboardCopy size={16} /> {isCopying ? 'Копируем…' : 'Копировать текст'}
+          <ClipboardCopy size={16} /> {isCopying ? tUi("Копируем…") : tUi("Копировать текст")}
         </button>
         <button type="button" className="primary-node-button publication-node-action-button" disabled={!canPublish} onClick={onPublish}>
           <Send size={16} /> Publish

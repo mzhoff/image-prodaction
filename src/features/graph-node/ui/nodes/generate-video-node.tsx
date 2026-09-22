@@ -1,4 +1,6 @@
 'use client';
+import { useUiCatalog } from '@/shared/i18n/use-ui-catalog';
+import { useTranslations } from '@/shared/i18n/use-translations';
 import type { PointerEvent } from 'react';
 import { Clapperboard, Loader2, Plus, RefreshCw, Square } from '@prodactionpro/ui-core/icons';
 import { getActiveAssetScope, getRemoteAssetContentUrl } from '@/entities/production-graph/lib/remote-asset';
@@ -30,6 +32,8 @@ interface Props { node: ProductionNode; onStartConnection: (nodeId: string, port
 interface ActiveVideoImageInput { id: string; label: string; referenceIndex?: number }
 const modes = [{ value: 'text', label: 'Только текст' }, { value: 'frames', label: 'Первый / последний кадр' }, { value: 'references', label: 'Референсы' }] as const;
 export function GenerateVideoNode({ node, onStartConnection }: Props) {
+  const tUi = useTranslations();
+  const ui_modes = useUiCatalog(modes, tUi);
   const data = node.data as GenerateVideoNodeData;
   const nodes = useProductionGraphStore((state) => state.nodes);
   const edges = useProductionGraphStore((state) => state.edges);
@@ -41,12 +45,12 @@ export function GenerateVideoNode({ node, onStartConnection }: Props) {
   const model = models.find((item) => item.key === data.model);
   const busy = node.status === 'running';
   const locked = node.locked || Boolean(data.videoRequest) || busy;
-  const modeOptions = model ? modes.filter((mode) => isVideoModeAvailable(mode.value, model)) : modes;
+  const modeOptions = model ? ui_modes.filter((mode) => isVideoModeAvailable(mode.value, model)) : ui_modes;
   const activeImageInputs = getActiveVideoImageInputs(data.mode, model);
   const settings = (patch: Partial<GenerateVideoNodeData>) => { if (!locked) update(node.id, patch); };
   let error = catalogError;
   try { error ||= validateVideoRequest(collectVideoRequest(node.id, data, { nodes, edges, assets }), model) ?? ''; }
-  catch (failure) { error ||= failure instanceof Error ? failure.message : 'Проверьте входы.'; }
+  catch (failure) { error ||= failure instanceof Error ? failure.message : tUi("Проверьте входы."); }
   const visibleError = getVideoGenerationUserMessage(data.message || error);
   const port = (id: string, label: string, kind: 'image' | 'text' | 'video', top?: number) => <PortButton nodeId={node.id} portId={id}
     side={id === 'video' ? 'output' : 'input'} kind={kind} label={label} onStartConnection={onStartConnection}
@@ -55,8 +59,8 @@ export function GenerateVideoNode({ node, onStartConnection }: Props) {
     const status = getInputConnectionStatus(node.id, id, { nodes, edges, assets });
     return <div key={id} className="video-generation-input">
       {port(id, label, 'image')}<span>{label}</span><InputConnectionBadge status={status} />
-      {index !== undefined ? <input aria-label={`Описание референса ${index + 1}`} disabled={locked} value={data.referenceDescriptions[index] ?? ''} maxLength={2000}
-        placeholder="Что сохранить: герой, стиль, место…" onChange={(event) => {
+      {index !== undefined ? <input aria-label={tUi("Описание референса {p1}", { p1: index + 1 })} disabled={locked} value={data.referenceDescriptions[index] ?? ''} maxLength={2000}
+        placeholder={tUi("Что сохранить: герой, стиль, место…")} onChange={(event) => {
           const values = [...data.referenceDescriptions]; values[index] = event.target.value; settings({ referenceDescriptions: values });
         }} /> : null}
     </div>;
@@ -87,29 +91,29 @@ export function GenerateVideoNode({ node, onStartConnection }: Props) {
               catalogRatios={models.flatMap((item) => item.aspectRatios)} disabled={locked}
               onChange={(aspectRatio) => settings({ aspectRatio })}
               getResolution={(ratio) => getVideoOutputResolution(model, ratio, data.resolution)} />
-            {model.audio ? <SettingRow label="Audio" value={String(data.generateAudio)} options={[{ value: 'false', label: 'Без звука' }, { value: 'true', label: 'Со звуком' }]} onChange={(value) => settings({ generateAudio: value === 'true' })} /> : null}
-            {model.seed ? <label className="video-seed">Seed<input type="number" min={0} max={2147483647} placeholder="Случайный" aria-label="Video seed" value={data.seed ?? ''} onChange={(event) => settings({ seed: event.target.value === '' ? undefined : Number(event.target.value) })} /></label> : null}
-          </> : <button type="button" onClick={reload}>Обновить каталог</button>}
+            {model.audio ? <SettingRow label="Audio" value={String(data.generateAudio)} options={[{ value: 'false', label: tUi("Без звука") }, { value: 'true', label: tUi("Со звуком") }]} onChange={(value) => settings({ generateAudio: value === 'true' })} /> : null}
+            {model.seed ? <label className="video-seed">Seed<input type="number" min={0} max={2147483647} placeholder={tUi("Случайный")} aria-label="Video seed" value={data.seed ?? ''} onChange={(event) => settings({ seed: event.target.value === '' ? undefined : Number(event.target.value) })} /></label> : null}
+          </> : <button type="button" onClick={reload}>{tUi("Обновить каталог")}</button>}
         </fieldset>
       </div>
       <CollapsibleSection title="Prompt" className="text-node-section" sidePort={port('prompt', 'Prompt', 'text')} dropTarget={{ nodeId: node.id, portId: 'prompt' }}>
         <textarea aria-label="Video prompt" data-text-field="prompt" className="prompt-box video-generation-prompt" disabled={locked} maxLength={20_000} value={data.prompt}
-          placeholder="Сцена, движение героя и камеры, действие, атмосфера…" onPointerDown={(event) => event.stopPropagation()} onChange={(event) => settings({ prompt: event.target.value })} />
+          placeholder={tUi("Сцена, движение героя и камеры, действие, атмосфера…")} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => settings({ prompt: event.target.value })} />
       </CollapsibleSection>
       <div className="video-generation-body" data-node-interactive onPointerDown={(event) => event.stopPropagation()}>
         {activeImageInputs.map(({ id, label, referenceIndex }) => imageRow(id, label, referenceIndex))}
         <div className="video-generation-actions">
-          <ProTooltip label={node.locked ? 'Нода заблокирована' : !execution.hasScope ? 'Сохраните проект перед генерацией' : data.videoRequest ? 'Сначала завершите или отпустите текущий запрос' : visibleError || 'Создать видео — платная генерация'}>
+          <ProTooltip label={node.locked ? tUi("Нода заблокирована") : !execution.hasScope ? tUi("Сохраните проект перед генерацией") : data.videoRequest ? tUi("Сначала завершите или отпустите текущий запрос") : visibleError || tUi("Создать видео — платная генерация")}>
             <PrimaryActionButton disabled={locked || !execution.hasScope || Boolean(error)} icon={busy ? <Loader2 size={15} className="spin" /> : <Clapperboard size={15} />} onClick={() => void execution.start(collectVideoRequest(node.id, data, { nodes, edges, assets }))}>Generate video</PrimaryActionButton>
           </ProTooltip>
           {data.videoRequest ? <>
-            <ProTooltip label="Проверить состояние текущего запроса"><button className="video-generation-icon-button" type="button" aria-label="Проверить результат" disabled={busy} onClick={() => void execution.check()}><RefreshCw size={15} className={busy ? 'spin' : undefined} /></button></ProTooltip>
-            {data.videoRequest.jobId ? <ProTooltip label="Отменить ожидание. Уже отправленный запрос может продолжиться у поставщика и быть оплачен."><button className="video-generation-icon-button" type="button" aria-label="Отменить ожидание" onClick={() => void execution.cancel()}><Square size={14} /></button></ProTooltip> : null}
-            {!busy ? <ProTooltip label="Подготовить новый запрос. Новая генерация оплачивается отдельно."><button className="video-generation-icon-button" type="button" aria-label="Новый запрос" onClick={() => void execution.release()}><Plus size={16} /></button></ProTooltip> : null}
+            <ProTooltip label={tUi("Проверить состояние текущего запроса")}><button className="video-generation-icon-button" type="button" aria-label={tUi("Проверить результат")} disabled={busy} onClick={() => void execution.check()}><RefreshCw size={15} className={busy ? 'spin' : undefined} /></button></ProTooltip>
+            {data.videoRequest.jobId ? <ProTooltip label={tUi("Отменить ожидание. Уже отправленный запрос может продолжиться у поставщика и быть оплачен.")}><button className="video-generation-icon-button" type="button" aria-label={tUi("Отменить ожидание")} onClick={() => void execution.cancel()}><Square size={14} /></button></ProTooltip> : null}
+            {!busy ? <ProTooltip label={tUi("Подготовить новый запрос. Новая генерация оплачивается отдельно.")}><button className="video-generation-icon-button" type="button" aria-label={tUi("Новый запрос")} onClick={() => void execution.release()}><Plus size={16} /></button></ProTooltip> : null}
           </> : null}
         </div>
         {execution.progress ? <p className="video-generation-status" role="status">{execution.progress}</p> : null}
-        {visibleError ? <p className="video-generation-status video-generation-error" role="alert">{visibleError}</p> : null}
+        {visibleError ? <p className="video-generation-status video-generation-error" role="alert">{typeof (visibleError) === 'string' ? tUi((visibleError) as string) : (visibleError)}</p> : null}
       </div>
       <CollapsibleSection title="Result" className="text-node-section" sidePort={port('video', 'Video', 'video')}>
         <div className="video-generation-result" onPointerDown={(event) => event.stopPropagation()}>
@@ -132,7 +136,7 @@ export function GenerateVideoNode({ node, onStartConnection }: Props) {
               preload="metadata"
               src={getRemoteAssetContentUrl(resultId)}
               onClick={(event) => event.stopPropagation()}
-            /> : <div className="video-generation-placeholder" role="img" aria-label="Место для будущего видео"><Clapperboard size={28} aria-hidden="true" /></div>}
+            /> : <div className="video-generation-placeholder" role="img" aria-label={tUi("Место для будущего видео")}><Clapperboard size={28} aria-hidden="true" /></div>}
             renderLoadingOverlay={() => <GenerationWaitingExperience kind="video" phase={waitingPhase} seed={data.videoRequest?.jobId ?? data.videoRequest?.idempotencyKey ?? node.id} />}
             viewerMedia={resultId && scope ? <video
               className="image-viewer-media library-video-player"

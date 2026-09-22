@@ -3,7 +3,7 @@ import { persistAuthorizedAudioAsset } from '@/entities/asset/server/audio-asset
 import { AssetProvenanceError } from '@/entities/asset/server/asset-service-contracts';
 import { AudioProcessingError, MAX_AUDIO_BYTES } from '@/shared/media/audio-contracts';
 import { inspectAudioBytes } from '@/shared/media/audio-processor';
-import { readAudioMultipart, withAudioUploadLimit } from '@/shared/media/audio-upload-request';
+import { withStreamingUpload } from '@/shared/media/streaming-upload';
 import { runtimeAudioUploadResponseSchema } from '../contracts/runtime-audio-contracts';
 import { RuntimeV2Error } from '../contracts/runtime-v2-errors';
 import { authenticateRuntimeClientRequest, requireRuntimeClient } from './runtime-client-auth';
@@ -12,10 +12,9 @@ import { runtimeIdempotencyKey, runtimeJson } from './runtime-v2-http';
 export async function uploadRuntimeAudio(request: Request) {
   try {
     await authenticateRuntimeClientRequest(request, 'pipeline.asset.write');
-    return await withAudioUploadLimit(async () => {
+    return await withStreamingUpload(request, MAX_AUDIO_BYTES, ['file'], async ({ file }) => {
     const key = request.headers.has('idempotency-key') ? runtimeIdempotencyKey(request) : undefined;
-    const { file } = await readAudioMultipart(request, ['file']);
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = file;
     const inspected = await inspectAudioBytes(bytes, { claimedContentType: file.type, maxBytes: MAX_AUDIO_BYTES, signal: request.signal });
     // Re-check after upload/decoding: a revoked/disabled connection must not gain a new asset.
     const actor = await authenticateRuntimeClientRequest(request, 'pipeline.asset.write');

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useCallback, useMemo, useState } from 'react';
 import type { ProductionNode, RemoveBackgroundNodeData } from '@/entities/production-graph/model/types';
@@ -9,6 +10,7 @@ import { getFirstIncomingImageAsset } from '@/entities/production-graph/model/gr
 import { blobToDataUrl, dataUrlToFile } from '@/shared/lib/image-data-url';
 
 export function useRemoveBackgroundNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as RemoveBackgroundNodeData;
   const [processing, setProcessing] = useState(false);
   const edges = useProductionGraphStore((state) => state.edges);
@@ -26,7 +28,7 @@ export function useRemoveBackgroundNodeModel(node: ProductionNode) {
 
   const handleRemoveBackground = useCallback(async () => {
     if (!sourceAsset) {
-      updateNodeData(node.id, { message: 'Подключи image output к входу Remove BG.' });
+      updateNodeData(node.id, { message: tUi("Подключи image output к входу Remove BG.") });
       return;
     }
 
@@ -35,7 +37,7 @@ export function useRemoveBackgroundNodeModel(node: ProductionNode) {
     updateNodeData(node.id, { message: '' });
     try {
       const sourceBlob = await loadAssetBlob(sourceAsset);
-      if (!sourceBlob) throw new Error('Не удалось прочитать изображение из локального хранилища.');
+      if (!sourceBlob) throw new Error(tUi("Не удалось прочитать изображение из локального хранилища."));
 
       const result = await requestRemoveBackground({
         imageDataUrl: await blobToDataUrl(sourceBlob),
@@ -49,13 +51,13 @@ export function useRemoveBackgroundNodeModel(node: ProductionNode) {
       });
       setNodeStatus(node.id, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось удалить фон через FAL.';
+      const message = error instanceof Error ? error.message : tUi("Не удалось удалить фон через FAL.");
       updateNodeData(node.id, { message });
       setNodeStatus(node.id, 'error');
     } finally {
       setProcessing(false);
     }
-  }, [addAsset, node.id, setNodeStatus, sourceAsset, updateNodeData]);
+  }, [tUi, addAsset, node.id, setNodeStatus, sourceAsset, updateNodeData]);
 
   return {
     data,

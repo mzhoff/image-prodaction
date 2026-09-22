@@ -1,0 +1,4 @@
+.menu { position: fixed; z-index: 100; min-width: 220px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--pui-semantic-surface-primary); color: var(--ink); box-shadow: 0 8px 32px #0003; }
+.menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px; border: 0; border-radius: 7px; background: transparent; color: inherit; text-align: left; font-size: 12px; }
+.menu button:disabled { opacity: .4; }
+.menu button:focus-visible, .menu button:hover:not(:disabled) { outline: none; background: var(--pui-semantic-surface-secondary); }

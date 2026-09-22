@@ -1,10 +1,11 @@
+import { gotoQaSection } from './release-user-fixture';
 import { expect, test } from '@playwright/test';
 import sharp from 'sharp';
 import { createDefaultNode } from '../src/entities/production-graph/model/create-default-node';
 import { initialProject } from '../src/entities/production-graph/model/initial-project';
 import { createEmptyProjectUiState, createProjectExport } from '../src/entities/production-graph/model/project-schema';
 import type { AssetRecord, GenerateImageNodeData } from '../src/entities/production-graph/model/types';
-import { audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
+import { awaitQaAssetIngest, audioQaForm, createAudioQaOwner } from './audio-runtime-fixtures';
 
 test.use({ trace: 'off', video: 'off', screenshot: 'off', viewport: { width: 1500, height: 1550 } });
 
@@ -21,8 +22,7 @@ test('three general references survive editing, section collapse, autosave and t
   for (const [index, colour] of ['red', 'green', 'blue'].entries()) {
     const bytes = await sharp({ create: { width: 32, height: 32, channels: 3, background: colour } }).png().toBuffer();
     const response = await owner.http.request('/api/assets/images', { form: audioQaForm(bytes, owner.workspaceId, true) });
-    expect(response.status).toBe(201);
-    const asset = (await response.json()).asset;
+    const { asset } = await awaitQaAssetIngest(owner.http, response);
     const node = createDefaultNode('importImage', { x: 20 + index * 360, y: 20 });
     node.data = { ...node.data, title: `Reference ${index + 1}`, assetId: asset.id };
     imports.push(node);
@@ -44,7 +44,7 @@ test('three general references survive editing, section collapse, autosave and t
   const styleRow = card.locator('.composing-row[data-port-id="style"]');
   const saved = async () => (await (await owner.http.request(`/api/projects/${document.id}`)).json()).project.snapshot;
   try {
-    await page.goto(`/projects/${document.id}`);
+    await gotoQaSection(page, `/projects/${document.id}`);
     for (let cycle = 1; cycle <= 2; cycle++) {
       await expect(reference).toHaveClass(/node-port-connected/);
       const toggle = card.getByRole('button', { name: 'Prompt', exact: true });

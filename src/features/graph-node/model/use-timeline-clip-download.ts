@@ -1,10 +1,12 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { useEffect, useRef, useState } from 'react';
 import { getRemoteAssetContentUrl } from '@/entities/production-graph/lib/remote-asset';
 import { prepareTimelineClip } from '../api/timeline-api';
 
 export function useTimelineClipDownload(workspaceId: string, assetId: string, startMs: number, endMs: number) {
+  const tUi = useTranslations();
   const pending = useRef<AbortController | null>(null);
   const key = `${workspaceId}:${assetId}:${startMs}:${endMs}`;
   const [busy, setBusy] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export function useTimelineClipDownload(workspaceId: string, assetId: string, st
       link.download = asset.name || `shot-${startMs}-${endMs}.mp4`;
       document.body.append(link); link.click(); link.remove();
     } catch {
-      if (pending.current === controller && !controller.signal.aborted) setError({ key, message: 'Не удалось подготовить фрагмент для скачивания. Попробуйте ещё раз.' });
+      if (pending.current === controller && !controller.signal.aborted) setError({ key, message: tUi("Не удалось подготовить фрагмент для скачивания. Попробуйте ещё раз.") });
     } finally {
       if (pending.current === controller) { pending.current = null; setBusy(null); }
     }

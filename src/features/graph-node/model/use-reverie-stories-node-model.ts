@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { validatePollDefinitionV1 } from '@prodaction/stories-platform-contracts/polls/1.0.0';
 import { finalizeStoryDocumentDraftV1, validateStoryDocumentDraftV1, validateStoryDocumentV1, type StoryDocumentDraftV1 } from '@prodaction/stories-platform-contracts/story-document/1.0.0';
@@ -55,6 +56,7 @@ function collectDocumentAssets(document?: StoryDocumentDraftV1) {
 }
 
 export function useReverieStoriesNodeModel(node: ProductionNode) {
+  const tUi = useTranslations();
   const data = node.data as ReverieStoriesNodeData;
   const edges = useProductionGraphStore((state) => state.edges);
   const nodes = useProductionGraphStore((state) => state.nodes);
@@ -91,12 +93,12 @@ export function useReverieStoriesNodeModel(node: ProductionNode) {
     const timeout = window.setTimeout(() => controller.abort(), 30_000);
     try {
       const scope = getActiveAssetScope();
-      if (!scope) throw new Error('Откройте сохранённый документ, чтобы работать с файлами Stories.');
+      if (!scope) throw new Error(tUi("Откройте сохранённый документ, чтобы работать с файлами Stories."));
       let draft = data.document && !fromInputs ? toStoriesDraft(data.document) : undefined;
       if (data.storyMode === 'sequence' && !draft) {
         const ports = ['document', ...Array.from({ length: 11 }, (_, index) => `document-${index + 2}`)];
         const connectedPorts = ports.filter((port) => getIncomingSources(node.id, port, context).length);
-        if (!connectedPorts.length) throw new Error('Подключите готовые слайды, чтобы посмотреть историю.');
+        if (!connectedPorts.length) throw new Error(tUi("Подключите готовые слайды, чтобы посмотреть историю."));
         const documents = connectedPorts.map((port) => {
           const input = incomingJson(port);
           const strict = validateStoryDocumentV1(input);
@@ -106,7 +108,7 @@ export function useReverieStoriesNodeModel(node: ProductionNode) {
             const finalized = finalizeStoryDocumentDraftV1(editable.data);
             if (finalized.valid) return finalized.data;
           }
-          throw new Error('Предпросмотр появится, когда подключённые слайды будут готовы. Отредактируйте слайды или выполните Pipeline в Content Hub.');
+          throw new Error(tUi("Предпросмотр появится, когда подключённые слайды будут готовы. Отредактируйте слайды или выполните Pipeline в Content Hub."));
         });
         draft = toStoriesDraft(combineStoryDocuments(documents, createId('story'), createId('revision')));
       }
@@ -117,7 +119,7 @@ export function useReverieStoriesNodeModel(node: ProductionNode) {
           const editable = validateStoryDocumentDraftV1(input);
           if (strict.valid) draft = toStoriesDraft(strict.data);
           else if (editable.valid) draft = editable.data;
-          else throw new Error('Подключённые слайды пока не готовы. Проверьте результат предыдущего шага.');
+          else throw new Error(tUi("Подключённые слайды пока не готовы. Проверьте результат предыдущего шага."));
         }
       }
       if (!draft) {
@@ -135,12 +137,12 @@ export function useReverieStoriesNodeModel(node: ProductionNode) {
         const inputPoll = incomingJson('poll');
         if (inputPoll !== undefined) {
           const poll = validatePollDefinitionV1(inputPoll);
-          if (!poll.valid) throw new Error('Проверьте вопрос и варианты ответа в подключённом опросе.');
+          if (!poll.valid) throw new Error(tUi("Проверьте вопрос и варианты ответа в подключённом опросе."));
           draft.slides[0].layers.push({ id: createId('poll-layer'), kind: 'poll', layout: { region: 'bottom', order: draft.slides[0].layers.length, alignment: 'start' }, definition: poll.data });
         }
       }
       const documentAssets = collectDocumentAssets(draft);
-      if (documentAssets.some((asset) => asset.source.kind !== 'productionArtifact' || asset.source.producerKey !== 'image-production')) throw new Error('Для Image Production выберите файлы из своей библиотеки.');
+      if (documentAssets.some((asset) => asset.source.kind !== 'productionArtifact' || asset.source.producerKey !== 'image-production')) throw new Error(tUi("Для Image Production выберите файлы из своей библиотеки."));
       const remoteId = (asset: AssetRecord | undefined) => asset?.storage.type === 'remote' ? asset.storage.assetId : undefined;
       const ids = Array.from(new Set([
         ...documentAssets.filter((asset) => asset.source.kind === 'productionArtifact').map((asset) => asset.source.kind === 'productionArtifact' ? asset.source.artifactId : ''),
@@ -170,27 +172,27 @@ export function useReverieStoriesNodeModel(node: ProductionNode) {
       if (data.storyMode !== 'sequence' && (fromInputs || !data.document)) {
         const background = video ?? image;
         if (background) {
-          if (background.storage.type !== 'remote') throw new Error('Сохраните фон в библиотеку, чтобы его можно было доставить в приложение.');
+          if (background.storage.type !== 'remote') throw new Error(tUi("Сохраните фон в библиотеку, чтобы его можно было доставить в приложение."));
           const selected = media.find((entry) => entry.id === remoteId(background));
-          if (!selected) throw new Error(video ? 'Для видео нужен MP4 H.264 и подключённое изображение-постер.' : 'Выберите изображение WebP, PNG или JPEG.');
-          if (!draft.slides[0]) throw new Error('Добавьте слайд перед выбором фона.');
+          if (!selected) throw new Error(video ? tUi("Для видео нужен MP4 H.264 и подключённое изображение-постер.") : tUi("Выберите изображение WebP, PNG или JPEG."));
+          if (!draft.slides[0]) throw new Error(tUi("Добавьте слайд перед выбором фона."));
           draft.slides[0].background = { asset: selected.asset, fit: 'cover', ...(selected.kind === 'video' ? { playback: { startMuted: true, loop: false, failure: 'posterManual' } as const } : {}) };
           draft.slides[0].advance = selected.kind === 'video' ? { mode: 'mediaEnd' } : { mode: 'manual' };
           draft.preview.cover ??= selected.asset.kind === 'image' ? selected.asset : selected.asset.poster;
         }
       }
       const active = getActiveAssetScope();
-      if (active?.documentId !== scope.documentId || active.workspaceId !== scope.workspaceId || !useProductionGraphStore.getState().nodes.some((item) => item.id === node.id)) throw new Error('Документ изменился. Откройте редактор Stories заново.');
+      if (active?.documentId !== scope.documentId || active.workspaceId !== scope.workspaceId || !useProductionGraphStore.getState().nodes.some((item) => item.id === node.id)) throw new Error(tUi("Документ изменился. Откройте редактор Stories заново."));
       return { document: draft, media, scope };
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось подготовить Stories.');
+      setMessage(error instanceof Error ? error.message : tUi("Не удалось подготовить Stories."));
       return undefined;
     } finally { clearTimeout(timeout); setPreparing(false); }
   }
 
   const saveDocument = (document: StoryDocumentDraftV1, scope: ActiveAssetScope) => {
     const active = getActiveAssetScope();
-    if (active?.documentId !== scope.documentId || active.workspaceId !== scope.workspaceId) throw new Error('Документ изменился. Откройте редактор Stories заново.');
+    if (active?.documentId !== scope.documentId || active.workspaceId !== scope.workspaceId) throw new Error(tUi("Документ изменился. Откройте редактор Stories заново."));
     if (data.authoringProfileBundle) {
       document = applyStoriesAuthoringProfile(document, data.authoringProfileBundle);
       assertStoriesDraftFitsHost(document, data.authoringProfileBundle);

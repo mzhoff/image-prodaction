@@ -13,3 +13,8 @@ export * from './worker';
 export * from './workspace';
 export * from './account-model-preference';
 export * from './workspace-budget';
+export * from './story-project';
+
+export * from './story-timeline';
+export * from './video-style-preset';
+export * from './user-onboarding';

@@ -137,7 +137,7 @@ test('catalog exposes video track control without allowing authored assets and d
   assert.deepEqual(imported.configurableFields, ['title', 'videoAudioTrackIndex']);
   assert.match(imported.portRules.join(' '), /original.*video.*audio.*videoAudioTrackIndex/u);
   assert.match(imported.capabilities.join(' '), /video\.import.*только подключённых выходов/u);
-  assert.match(imported.limitations.join(' '), /100 MiB.*30 минут/u);
+  assert.match(imported.limitations.join(' '), /1 GiB.*30 минут/u);
   assert.match(voice.limitations.join(' '), /30000 символами.*30 минутами/u);
   assert.match(voice.capabilities.join(' '), /фоновой очереди.*после перезагрузки/u);
   assert.match(voice.capabilities.join(' '), /одну MP3-дорожку/u);

@@ -1,5 +1,9 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
+import { Button } from '@prodactionpro/ui-core/button';
+
+import { SettingsSelect } from './settings-select';
 import { Input as PuiInput } from '@prodactionpro/ui-core/input';
 
 import { useEffect, useState, type FormEvent } from 'react';
@@ -10,6 +14,7 @@ import type { RuntimeConnectionsModel } from '../model/use-runtime-connections';
 import styles from './runtime-connections.module.css';
 
 export function RuntimeGrantForm({ model, onCreated }: { model: RuntimeConnectionsModel; onCreated: () => void }) {
+  const tUi = useTranslations();
   const [pipelineId, setPipelineId] = useState('');
   const [reference, setReference] = useState('');
   const [versions, setVersions] = useState<RuntimeV2Version[]>([]);
@@ -43,7 +48,7 @@ export function RuntimeGrantForm({ model, onCreated }: { model: RuntimeConnectio
   function resolveReference() {
     const found = resolveCatalogReference(reference, model.catalog);
     if (!found) {
-      setError('Этот pipeline не найден среди опубликованных pipelines выбранного Workspace.');
+      setError(tUi("Этот pipeline не найден среди опубликованных pipelines выбранного Workspace."));
       return;
     }
     choosePipeline(found.publicId);
@@ -56,56 +61,47 @@ export function RuntimeGrantForm({ model, onCreated }: { model: RuntimeConnectio
       checksum: version.checksum, inputSchemaChecksum: version.inputSchemaChecksum!, outputSchemaChecksum: version.outputSchemaChecksum!,
       updatePolicy: 'PINNED', executionPolicy: { maxAttempts: 1 },
       costPolicy: { maximumProviderCostUsd: cap.trim() || null, mode },
-    }), 'Pipeline разрешён. Новые публикации не будут менять закреплённую версию автоматически.');
+    }), tUi("Pipeline разрешён. Новые публикации не будут менять закреплённую версию автоматически."));
     if (!result) return;
     await model.refresh();
     onCreated();
   }
   return (
     <form className={`settings-form ${styles.nestedForm}`} onSubmit={(event) => void submit(event)}>
-      <h4>Разрешить pipeline</h4>
-      <label className={styles.selectLabel}><span>Опубликованный pipeline</span>
-        <select required value={pipelineId} disabled={model.mutation} onChange={(event) => choosePipeline(event.target.value)}>
-          <option value="">Выберите pipeline</option>
-          {model.catalog.map((item) => <option key={item.publicId} value={item.publicId}>{item.name}{item.latest.capabilityKey ? '' : ' · назначение не задано'}</option>)}
-        </select>
-      </label>
-      {model.catalog.length === 0 ? <p className={styles.callout}>Сначала опубликуйте исполняемый pipeline в конструкторе этого Workspace.</p> : null}
+      <h4>{tUi("Разрешить pipeline")}</h4>
+      <SettingsSelect label={tUi("Опубликованный Flow")} required value={pipelineId} disabled={model.mutation} onChange={choosePipeline}
+        options={[{ value: '', label: tUi("Выберите Flow") }, ...model.catalog.map((item) => ({ value: item.publicId, label: `${item.name}${item.latest.capabilityKey ? '' : tUi(" · назначение не задано")}` }))]} />
+      {model.catalog.length === 0 ? <p className={styles.callout}>{tUi("Сначала опубликуйте исполняемый pipeline в конструкторе этого Workspace.")}</p> : null}
       <div className={styles.referenceRow}>
-        <label><span>Или вставьте ссылку / publicId</span><PuiInput value={reference} maxLength={2048}
+        <label><span>{tUi("Или вставьте ссылку / publicId")}</span><PuiInput value={reference} maxLength={2048}
           disabled={model.mutation} onChange={(event) => setReference(event.target.value)} /></label>
-        <button className="settings-quiet-button" type="button" disabled={model.mutation || !reference.trim()} onClick={resolveReference}>Найти</button>
+        <Button size="sm" intent="neutral" appearance="soft" className="settings-quiet-button" type="button" disabled={model.mutation || !reference.trim()} onClick={resolveReference}>{tUi("Найти")}</Button>
       </div>
-      {versionsPending ? <p className={styles.muted} role="status">Загружаем опубликованные версии…</p> : null}
-      {error ? <p className="settings-message settings-message-error" role="alert">{error}</p> : null}
+      {versionsPending ? <p className={styles.muted} role="status">{tUi("Загружаем опубликованные версии…")}</p> : null}
+      {error ? <p className="settings-message settings-message-error" role="alert">{typeof (error) === 'string' ? tUi((error) as string) : (error)}</p> : null}
       {versions.length > 0 ? (
-        <label className={styles.selectLabel}><span>Версия</span>
-          <select value={versionNumber} disabled={model.mutation || versionsPending} onChange={(event) => setVersionNumber(event.target.value)}>
-            {versions.map((item) => <option key={item.version} value={item.version}>Версия {item.version}</option>)}
-          </select>
-        </label>
+        <SettingsSelect label={tUi("Версия")} value={versionNumber} disabled={model.mutation || versionsPending} onChange={setVersionNumber}
+          options={versions.map((item) => ({ value: String(item.version), label: tUi("Версия {p1}", { p1: item.version }) }))} />
       ) : null}
       {version ? (
         canPinRuntimeVersion(version)
-          ? <p className={styles.muted}>Назначение: <strong>{version.capabilityKey}</strong>. Обновления применяются вручную.</p>
-          : <p className={styles.callout}>В этой версии не задано назначение (capability) или не зафиксирован формат данных. В конструкторе нажмите правой кнопкой по секции → Integration capability, задайте назначение и выберите Publish executable version. Для первой публикации — Make executable. Старые версии остаются неизменными.</p>
+          ? <p className={styles.muted}>{tUi("Назначение:")}{' '} <strong>{version.capabilityKey}</strong>{tUi(". Обновления применяются вручную.")}</p>
+          : <p className={styles.callout}>{tUi("В этой версии не задано назначение (capability) или не зафиксирован формат данных. В конструкторе нажмите правой кнопкой по секции → Integration capability, задайте назначение и выберите Publish executable version. Для первой публикации — Make executable. Старые версии остаются неизменными.")}</p>
       ) : null}
-      <label><span>Максимальная стоимость одного запуска, USD</span>
-        <PuiInput inputMode="decimal" pattern="(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,8})?" placeholder="Не задана" value={cap}
+      <label><span>{tUi("Максимальная стоимость одного запуска, USD")}</span>
+        <PuiInput inputMode="decimal" pattern="(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,8})?" placeholder={tUi("Не задана")} value={cap}
           disabled={model.mutation} onChange={(event) => setCap(event.target.value)} />
-        <small>Используйте точку, например 0.05. Более строгий лимит вызывающего приложения тоже учитывается.</small></label>
-      <label className={styles.selectLabel}><span>Контроль расходов</span>
-        <select value={mode} disabled={model.mutation} onChange={(event) => setMode(event.target.value as 'STRICT' | 'BEST_EFFORT')}>
-          <option value="STRICT">Только с гарантируемым ограничением</option>
-          <option value="BEST_EFFORT">Без гарантии лимита — возможен перерасход</option>
-        </select>
+        <small>{tUi("Используйте точку, например 0.05. Более строгий лимит вызывающего приложения тоже учитывается.")}</small></label>
+      <div className={styles.selectLabel}>
+        <SettingsSelect label={tUi("Контроль расходов")} value={mode} disabled={model.mutation} onChange={(value) => setMode(value as 'STRICT' | 'BEST_EFFORT')}
+          options={[{ value: 'STRICT', label: tUi("Строгий лимит") }, { value: 'BEST_EFFORT', label: tUi("Возможен перерасход") }]} />
         <small>{mode === 'STRICT'
-          ? 'Если провайдер не позволяет гарантировать лимит, платный вызов не начнётся.'
-          : 'Учитываем уже известные расходы, но верхняя стоимость вызова может быть неизвестна. Вы разрешаете запуск с риском превышения лимита.'}</small>
-      </label>
-      <button className="settings-primary-button" type="submit" disabled={model.mutation || versionsPending || !canPinRuntimeVersion(version)}>
-        {model.mutation ? 'Сохраняем…' : 'Разрешить выбранную версию'}
-      </button>
+          ? tUi("Если провайдер не позволяет гарантировать лимит, платный вызов не начнётся.")
+          : tUi("Учитываем уже известные расходы, но верхняя стоимость вызова может быть неизвестна. Вы разрешаете запуск с риском превышения лимита.")}</small>
+      </div>
+      <Button size="sm" intent="neutral" appearance="solid" className="settings-primary-button" type="submit" disabled={model.mutation || versionsPending || !canPinRuntimeVersion(version)}>
+        {model.mutation ? tUi("Сохраняем…") : tUi("Разрешить выбранную версию")}
+      </Button>
     </form>
   );
 }

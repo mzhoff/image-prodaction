@@ -14,14 +14,14 @@ function shiftMonths(day: string, months: number) {
   return date.toISOString().slice(0, 10);
 }
 
-/** Completed rolling windows; Today is the only preset containing an unfinished day. */
+/** Rolling windows include today; Yesterday remains a single completed day. */
 export function usagePresetPeriod(preset: Exclude<UsagePreset, 'custom'>, timezone = 'Europe/Moscow', now = new Date()) {
   const today = usagePeriod(null, null, timezone, now).to;
   const yesterday = shiftUsageDay(today, -1);
   if (preset === 'today') return usagePeriod(today, today, timezone, now);
-  const from = preset === 'yesterday' ? yesterday : preset === 'week' ? shiftUsageDay(today, -7)
+  const from = preset === 'yesterday' ? yesterday : preset === 'week' ? shiftUsageDay(today, -6)
     : shiftMonths(today, preset === 'month' ? -1 : -3);
-  return usagePeriod(from, yesterday, timezone, now);
+  return usagePeriod(from, preset === 'yesterday' ? yesterday : today, timezone, now);
 }
 
 /** Shift by the exact number of selected calendar days, with the same elapsed cutoff. */

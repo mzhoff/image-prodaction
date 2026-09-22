@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  createWorkspace as createWorkspaceRequest,
   createWorkspaceProject,
   deleteWorkspaceProject,
   fetchWorkspaceState,
@@ -78,6 +79,14 @@ export function useWorkspaceProjects() {
     window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, workspaceId);
   }, [workspaces]);
 
+  const createWorkspace = useCallback(async (name: string, creationId: string) => {
+    const created = await createWorkspaceRequest(name, creationId);
+    setWorkspaces((current) => [...current.filter((item) => item.id !== created.id), created]);
+    setActiveWorkspaceId(created.id);
+    window.localStorage.setItem(ACTIVE_WORKSPACE_STORAGE_KEY, created.id);
+    return created;
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const update = () => { void refresh(controller.signal); };
@@ -145,9 +154,9 @@ export function useWorkspaceProjects() {
       && project.status === (section === 'trash' ? 'trash' : 'active'))
   ), [activeWorkspace?.id, projects]);
 
-  const saveFolder = useCallback(async (name: string, id?: string) => {
+  const saveFolder = useCallback(async (name: string, id?: string, parentId?: string) => {
     if (!activeWorkspace) throw new Error('Workspace is not ready yet.');
-    const folder = await saveStudioFolder(activeWorkspace.id, name, id);
+    const folder = await saveStudioFolder(activeWorkspace.id, name, id, parentId);
     setFolders((current) => [folder, ...current.filter((item) => item.id !== folder.id)]);
     return folder;
   }, [activeWorkspace]);
@@ -156,6 +165,7 @@ export function useWorkspaceProjects() {
     activeWorkspace,
     workspaces,
     selectWorkspace,
+    createWorkspace,
     folders,
     saveFolder,
     mutateProject,
@@ -174,6 +184,7 @@ export function useWorkspaceProjects() {
     activeWorkspace,
     workspaces,
     selectWorkspace,
+    createWorkspace,
     folders,
     saveFolder,
     mutateProject,

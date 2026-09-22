@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from '@/shared/i18n/use-translations';
 
 import { memo, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -16,6 +17,7 @@ export const TextFragmentDragPreview = memo(function TextFragmentDragPreview({ p
   previewRef: RefObject<HTMLDivElement | null>;
   hintRef: RefObject<HTMLSpanElement | null>;
 }) {
+  const tUi = useTranslations();
   if (!preview) return null;
   return createPortal(
     <div ref={previewRef} className="text-fragment-drag-preview" aria-hidden="true"
@@ -36,7 +38,7 @@ export const TextFragmentDragPreview = memo(function TextFragmentDragPreview({ p
           </div>
         </div>
         <span className="text-fragment-preview-port" />
-        <span ref={hintRef} className="text-fragment-drop-hint">Создать Prompt</span>
+        <span ref={hintRef} className="text-fragment-drop-hint">{tUi("Создать Prompt")}</span>
       </article>
     </div>, document.body,
   );

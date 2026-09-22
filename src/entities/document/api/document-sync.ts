@@ -1,3 +1,15 @@
+import type { ProjectExport } from '@/entities/production-graph/model/project-schema';
+
+export interface UseDocumentBackendSyncOptions {
+  exportSnapshot: () => ProjectExport;
+  importSnapshot: (snapshot: unknown, expectedKind: 'projectSnapshot') => unknown;
+  projectId?: string;
+  resetProject: () => void;
+  subscribeToProjectChanges: (
+    listener: (change?: { thumbnailRelevant?: boolean }) => void,
+  ) => () => void;
+}
+
 export const DOCUMENT_AUTOSAVE_DELAY_MS = 800;
 
 export type DocumentSyncPhase = 'idle' | 'loading' | 'saved' | 'dirty' | 'saving' | 'recovery' | 'conflict' | 'error';

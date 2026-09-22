@@ -46,11 +46,17 @@ if (directVersions.size !== 1) {
 
 const [expectedVersion] = directVersions;
 const lockedPackages = Object.entries(lockfile.packages ?? {}).filter(([path]) => (
-  /^node_modules\/@prodactionpro\/chat-[^/]+$/.test(path)
+  /(?:^|\/)node_modules\/@prodactionpro\/chat-[^/]+$/.test(path)
 ));
 
 if (lockedPackages.length === 0) {
   failures.push('package-lock.json does not contain the installed ChatModule family');
+}
+
+for (const name of directPackages.keys()) {
+  if (!lockfile.packages?.[`node_modules/${name}`]) {
+    failures.push(`${name} is missing from package-lock.json`);
+  }
 }
 
 for (const [path, record] of lockedPackages) {

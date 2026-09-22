@@ -10,6 +10,7 @@ export async function readAudioArtifact(workspaceId: string, artifact: PipelineA
   }
   const content = await readWorkspaceAudioAsset({ assetId: artifact.assetId, workspaceId, signal });
   if (artifact.checksumSha256 && artifact.checksumSha256 !== content.asset.checksumSha256) {
+    await content.dispose();
     throw new AudioProcessingError('audio_checksum_mismatch', 'Audio checksum does not match the stored file.');
   }
   return content;

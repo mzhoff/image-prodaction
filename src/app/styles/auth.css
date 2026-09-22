@@ -50,35 +50,56 @@
   min-height: 100vh;
   place-items: center;
   padding: 40px;
+  background: var(--pui-semantic-surface-secondary);
 }
 
-.auth-theme-switch {
+.auth-preference-controls {
   position: absolute;
   top: 40px;
   right: 40px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-theme-switch {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--pui-semantic-border-subtle);
+  padding: 3px;
+  border: 0;
   border-radius: var(--pui-radius-full);
-  background: var(--pui-semantic-surface-primary);
+  background: var(--pui-semantic-surface-secondary);
   color: var(--pui-semantic-text-muted);
-  padding: 2px 6px;
-  box-shadow: var(--pui-shadow-sm);
+  box-shadow: none;
 }
 
-.auth-theme-switch-icon {
+.auth-theme-switch button {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--pui-semantic-text-secondary);
+  cursor: pointer;
   transition: color 140ms ease;
 }
 
-.auth-theme-switch[data-theme='light'] .auth-theme-switch-icon-light,
-.auth-theme-switch[data-theme='dark'] .auth-theme-switch-icon-dark {
+.auth-theme-switch button[aria-pressed='true'] {
+  background: var(--pui-semantic-surface-primary);
   color: var(--pui-semantic-text-primary);
+  box-shadow: var(--pui-shadow-sm);
+}
+
+.auth-theme-switch button:focus-visible {
+  /* Preserve the previous computed outline; the old token was undefined. */
+  outline: initial;
+  outline-offset: 2px;
 }
 
 .auth-form-shell {
@@ -132,8 +153,15 @@
   box-shadow: 0 24px 60px color-mix(in srgb, var(--pui-semantic-shadow-color) 8%, transparent);
 }
 
-.auth-entry-card {
-  padding-inline-start: 0;
+.auth-page .auth-entry-card {
+  padding: 32px;
+  border-radius: 32px;
+}
+
+.auth-entry-help { margin: 24px 0 0; font-size: 12px !important; line-height: 1.65; }
+
+.auth-method-card .reverie-identity-actions {
+  margin-top: 28px;
 }
 
 .auth-card-badge {
@@ -474,7 +502,7 @@
     padding: 24px;
   }
 
-  .auth-theme-switch {
+  .auth-preference-controls {
     top: 24px;
     right: 24px;
   }

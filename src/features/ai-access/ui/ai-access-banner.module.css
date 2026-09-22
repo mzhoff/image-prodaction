@@ -1,0 +1,39 @@
+.banner { position: relative; isolation: isolate; container-type: inline-size; width: min(100%, 920px); margin: 0 auto 14px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 62%, transparent); border-radius: 22px; background: var(--pui-semantic-surface-secondary); box-shadow: var(--pui-shadow-sm); color: var(--pui-semantic-text-primary); text-align: left; }
+.art { position: absolute; inset: 0 0 0 auto; width: 52%; z-index: -1; opacity: .9; mask-image: linear-gradient(90deg, transparent, black 65%); pointer-events: none; }
+.art img { object-fit: contain; object-position: right center; }
+.art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--pui-semantic-surface-primary) 0%, color-mix(in srgb, var(--pui-semantic-surface-primary) 90%, transparent) 25%, transparent 100%); }
+.content { position: relative; padding: 22px 25px 16px; max-width: 68%; }
+.eyebrow { color: var(--pui-semantic-text-secondary); font-size: 9px; letter-spacing: .12em; font-weight: 500; }
+.banner h3 { font-size: 22px; font-weight: 500; letter-spacing: -.55px; line-height: 1.18; margin: 9px 0 8px; }
+.banner p { color: var(--pui-semantic-text-secondary); font-size: 12px; line-height: 1.55; margin: 0; max-width: 360px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; align-items: center; }
+.actions button, .dialog button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 8px 11px; border-radius: 11px; font: inherit; font-size: 11px; cursor: pointer; }
+.actions .primary, .dialog .primary { border: 1px solid var(--pui-semantic-accent-default); background: var(--pui-semantic-accent-default); color: var(--pui-semantic-text-on-accent); box-shadow: var(--pui-shadow-sm); }
+.actions .primary:hover:not(:disabled), .dialog .primary:hover:not(:disabled) { background: color-mix(in srgb, var(--pui-semantic-accent-default) 90%, var(--pui-semantic-text-primary)); }
+.actions .secondary { background: color-mix(in srgb, var(--pui-semantic-surface-primary) 66%, transparent); border: 1px solid color-mix(in srgb, var(--pui-semantic-border-default) 65%, transparent); color: var(--pui-semantic-text-secondary); backdrop-filter: blur(12px); }
+.actions button:disabled { opacity: .6; cursor: wait; }
+.status { min-height: 13px; margin-top: 10px; font-size: 10px; line-height: 1.45; color: var(--pui-semantic-text-secondary); }
+.banner button:focus-visible, .dialog button:focus-visible { outline: 2px solid var(--pui-semantic-accent-default); outline-offset: 3px; }
+.dialog { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto; padding: 26px; border: 1px solid var(--pui-semantic-border-default); border-radius: 24px; color: var(--pui-semantic-text-primary); background: var(--pui-semantic-surface-primary); box-shadow: var(--pui-shadow-sm); }
+.dialog::backdrop { background: color-mix(in srgb, var(--pui-semantic-surface-inverse) 25%, transparent); backdrop-filter: blur(12px); }
+.dialog header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.dialog .close { background: transparent; border: 0; padding: 6px; color: inherit; }
+.dialog h2 { font-size: 25px; font-weight: 500; line-height: 1.2; letter-spacing: -.5px; margin: 18px 0; }
+.dialog p, .dialog li { color: var(--pui-semantic-text-secondary); font-size: 13px; line-height: 1.65; }
+.dialog ol { display: grid; gap: 12px; padding-left: 20px; margin: 22px 0; }
+.dialog .note { padding: 14px; border-radius: 14px; background: var(--pui-semantic-surface-secondary); font-size: 12px; }
+.spinning { animation: ai-access-spin 1.2s linear infinite; }
+@keyframes ai-access-spin { to { transform: rotate(360deg); } }
+@container (max-width: 460px) {
+  .content { max-width: none; padding: 17px 16px 13px; }
+  .banner h3 { max-width: 210px; font-size: 20px; }
+  .banner p { max-width: 240px; font-size: 11px; }
+  .art { width: 100%; opacity: .6; mask-image: none; }
+  .art img { object-fit: cover; object-position: right center; }
+  .art::after { background: linear-gradient(100deg, var(--pui-semantic-surface-primary), color-mix(in srgb, var(--pui-semantic-surface-primary) 82%, transparent) 50%, transparent); }
+  .eyebrow { font-size: 8px; letter-spacing: .08em; }
+  .actions { gap: 6px; margin-top: 12px; }
+  .actions button { padding: 7px 9px; font-size: 10px; }
+  .status { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
