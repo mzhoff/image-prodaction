@@ -45,16 +45,25 @@ test('Curves and Adjustments share fullscreen side tools; masks stay below and v
   const stage = viewer.locator('.image-viewer-stage');
   const sidebar = viewer.locator('.image-editor-sidebar');
   const assertSide = async (screenWidth: number, screenHeight: number) => {
-    await expect(stage).toBeVisible();
-    await expect(sidebar).toBeVisible();
-    const image = (await stage.boundingBox())!;
-    const tools = (await sidebar.boundingBox())!;
-    expect(tools.x).toBeGreaterThan(image.x + image.width);
-    expect(tools.x - image.x - image.width).toBeLessThan(24);
-    expect(tools.x + tools.width).toBeLessThanOrEqual(screenWidth);
-    expect(tools.y + tools.height).toBeLessThanOrEqual(screenHeight);
-    expect(tools.y).toBeGreaterThanOrEqual(76);
-    expect(image.y + image.height).toBeLessThanOrEqual(screenHeight);
+    // React can reattach the responsive tools between separate locator calls.
+    // Read both rectangles in one frame and retry the unchanged layout contract.
+    await expect(async () => {
+      const boxes = await viewer.evaluate((element) => {
+        const image = element.querySelector('.image-viewer-stage')?.getBoundingClientRect();
+        const tools = element.querySelector('.image-editor-sidebar')?.getBoundingClientRect();
+        return image && tools ? { image: image.toJSON(), tools: tools.toJSON() } : null;
+      });
+      expect(boxes).not.toBeNull();
+      const { image, tools } = boxes!;
+      expect(image.width).toBeGreaterThan(0);
+      expect(tools.width).toBeGreaterThan(0);
+      expect(tools.x).toBeGreaterThan(image.x + image.width);
+      expect(tools.x - image.x - image.width).toBeLessThan(24);
+      expect(tools.x + tools.width).toBeLessThanOrEqual(screenWidth);
+      expect(tools.y + tools.height).toBeLessThanOrEqual(screenHeight);
+      expect(tools.y).toBeGreaterThanOrEqual(76);
+      expect(image.y + image.height).toBeLessThanOrEqual(screenHeight);
+    }).toPass({ timeout: 15_000 });
   };
   try {
     await gotoQaSection(page, `/projects/${document.id}`);

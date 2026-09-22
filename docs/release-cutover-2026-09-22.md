@@ -52,8 +52,9 @@ Production `/api/health/ready`, `/api/health/worker`, `/api/health/pipeline-work
 
 ## Проверки до переключения
 
-1. Завершить параллельные изменения Stories, зафиксировать итоговый Production
-   commit, дождаться его полного CI и проверки интерфейса. Выбрать **один**
+1. Stories/Create freeze завершён, общий состав зафиксирован в
+   [Production PR #38](https://github.com/mzhoff/image-prodaction/pull/38).
+   Перед переключением дождаться полного CI точного итогового commit. Выбрать **один**
    точный артефакт образа из этого CI; Production image здесь ещё не назначен.
 2. Сверить конфигурацию нового релиза с защищённым env, не печатая
    `docker compose config` целиком. Допустима валидация `config --quiet`.

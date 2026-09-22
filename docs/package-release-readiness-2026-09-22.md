@@ -3,6 +3,9 @@
 22 сентября 2026. Пакетные блокеры закрыты. Публичный сервер этим проходом
 не переключался; создание Storyboard/Timeline завершено и передано в общий
 release gate. Итоговый commit/CI фиксирует весь согласованный состав.
+[Production PR #38](https://github.com/mzhoff/image-prodaction/pull/38) содержит
+этот состав и окончательные Linux/container checks; перед cutover выбирается
+образ только из зелёного CI точного commit.
 
 ## Зафиксированная поставка
 
@@ -75,8 +78,19 @@ Core/Tokens/Onboarding и CSS опубликованных Media/Stories не м
   устанавливает FFmpeg и обязательно включает codec и S3 integration gates.
 - Browser auth/storage и chat проходят: полная анкета с resume, private async
   ingest, reset password, Library, создание чата при первой отправке, SSE и
-  восстановление document binding. Общие старые browser fixtures обновляются
-  под локализацию, first-visit tours и ingest 202; полный прогон ещё выполняется.
+  восстановление document binding. Старые browser fixtures обновлены под
+  локализацию, first-visit tours, общий поиск, темы и ingest 202. Все стандартные
+  сценарии проверены целевыми прогонами; полный браузерный прогон входит в CI.
+- Identity entry проверяется настоящим standalone сервером в отдельном процессе
+  с включённым Identity UI, без унаследованных credentials, живой БД или Telegram.
+  Три проверки внешнего вида, условий и reduced motion прошли. Работа протокола
+  входа проверяется upstream Identity gate и повторяется на сервере после cutover.
+- Четыре backend/persistence smoke и отдельный budget concurrency smoke прошли.
+  Direct-DB smoke создают собственные временные БД и S3-бакеты с cleanup;
+  работающие workers не могут забрать их задания.
+- Чистая установка пакетов и обязательный PostgreSQL/S3/codec coverage gate
+  прошли также в Linux CI. Старые неиспользуемые архивы исключены из Git и Docker
+  context; локальные копии этих файлов не удалялись.
 
 ## Следующий серверный шаг
 
