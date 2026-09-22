@@ -1,0 +1,16 @@
+# Production block only. Merge into the existing shared Caddyfile; do not replace
+# Identity routes or launch the retired Content Hub Compose project.
+production.apption.space {
+    encode zstd gzip
+    header X-Robots-Tag "noindex, nofollow, noarchive"
+    @production_storage path /image-prodaction-assets /image-prodaction-assets/*
+    handle @production_storage {
+        reverse_proxy reverie-production-storage:9000 {
+            # Preserve Host/path/Authorization for S3 SigV4; no browser cookies.
+            header_up -Cookie
+        }
+    }
+    handle {
+        reverse_proxy reverie-image-production:3000
+    }
+}
